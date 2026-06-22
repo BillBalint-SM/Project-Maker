@@ -18,6 +18,11 @@ type PdfFonts = {
 
 type JsPdf = import("jspdf").jsPDF;
 type AutoTable = (doc: JsPdf, options: PdfDocumentDefinition) => void;
+type WorkbookSheet = {
+  name: string;
+  rows: unknown[][];
+  columns: Array<{ wch: number }>;
+};
 
 const pdfMimeType = "application/pdf";
 const excelMimeType =
@@ -339,30 +344,204 @@ function uniqueSheetName(title: string, index: number, usedNames: Set<string>) {
   return candidate;
 }
 
+function xmlEscape(value: string) {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&apos;");
+}
+
+function columnName(index: number) {
+  let current = index;
+  let name = "";
+
+  while (current > 0) {
+    const remainder = (current - 1) % 26;
+    name = String.fromCharCode(65 + remainder) + name;
+    current = Math.floor((current - 1) / 26);
+  }
+
+  return name;
+}
+
+function cellReference(rowIndex: number, columnIndex: number) {
+  return `${columnName(columnIndex)}${rowIndex}`;
+}
+
+function sheetXml(rows: unknown[][], columns: Array<{ wch: number }>) {
+  const columnXml = columns
+    .map(
+      (column, index) =>
+        `<col min="${index + 1}" max="${index + 1}" width="${column.wch}" customWidth="1"/>`
+    )
+    .join("");
+  const rowXml = rows
+    .map((row, rowIndex) => {
+      const cells = row
+        .map((cell, columnIndex) => {
+          const reference = cellReference(rowIndex + 1, columnIndex + 1);
+          if (typeof cell === "number" && Number.isFinite(cell)) {
+            return `<c r="${reference}"><v>${cell}</v></c>`;
+          }
+
+          const text = cell === null || cell === undefined ? "" : String(cell);
+          return `<c r="${reference}" t="inlineStr"><is><t>${xmlEscape(text)}</t></is></c>`;
+        })
+        .join("");
+
+      return `<row r="${rowIndex + 1}">${cells}</row>`;
+    })
+    .join("");
+
+  return [
+    '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
+    '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">',
+    `<cols>${columnXml}</cols>`,
+    `<sheetData>${rowXml}</sheetData>`,
+    "</worksheet>"
+  ].join("");
+}
+
+function workbookXml(sheetNames: string[]) {
+  const sheets = sheetNames
+    .map(
+      (name, index) =>
+        `<sheet name="${xmlEscape(name)}" sheetId="${index + 1}" r:id="rId${index + 1}"/>`
+    )
+    .join("");
+
+  return [
+    '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
+    '<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">',
+    `<sheets>${sheets}</sheets>`,
+    "</workbook>"
+  ].join("");
+}
+
+function workbookRelationshipsXml(sheetCount: number) {
+  const relationships = Array.from({ length: sheetCount }, (_, index) =>
+    `<Relationship Id="rId${index + 1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet${index + 1}.xml"/>`
+  ).join("");
+
+  return [
+    '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
+    '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">',
+    relationships,
+    "</Relationships>"
+  ].join("");
+}
+
+function contentTypesXml(sheetCount: number) {
+  const sheets = Array.from({ length: sheetCount }, (_, index) =>
+    `<Override PartName="/xl/worksheets/sheet${index + 1}.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>`
+  ).join("");
+
+  return [
+    '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
+    '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">',
+    '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>',
+    '<Default Extension="xml" ContentType="application/xml"/>',
+    '<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>',
+    '<Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>',
+    '<Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/>',
+    '<Override PartName="/docProps/app.xml" ContentType="application/vnd.openxmlformats-officedocument.extended-properties+xml"/>',
+    sheets,
+    "</Types>"
+  ].join("");
+}
+
+function rootRelationshipsXml() {
+  return [
+    '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
+    '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">',
+    '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>',
+    '<Relationship Id="rId2" Type="http://schemas.openxmlformats.org/package/2006/relationships/metadata/core-properties" Target="docProps/core.xml"/>',
+    '<Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/extended-properties" Target="docProps/app.xml"/>',
+    "</Relationships>"
+  ].join("");
+}
+
+function stylesXml() {
+  return [
+    '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
+    '<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">',
+    '<fonts count="1"><font><sz val="11"/><name val="Calibri"/></font></fonts>',
+    '<fills count="1"><fill><patternFill patternType="none"/></fill></fills>',
+    '<borders count="1"><border/></borders>',
+    '<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>',
+    '<cellXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/></cellXfs>',
+    "</styleSheet>"
+  ].join("");
+}
+
+function corePropertiesXml(createdAt: string) {
+  return [
+    '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
+    '<cp:coreProperties xmlns:cp="http://schemas.openxmlformats.org/package/2006/metadata/core-properties" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:dcterms="http://purl.org/dc/terms/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">',
+    "<dc:creator>Project Maker</dc:creator>",
+    "<cp:lastModifiedBy>Project Maker</cp:lastModifiedBy>",
+    `<dcterms:created xsi:type="dcterms:W3CDTF">${createdAt}</dcterms:created>`,
+    `<dcterms:modified xsi:type="dcterms:W3CDTF">${createdAt}</dcterms:modified>`,
+    "</cp:coreProperties>"
+  ].join("");
+}
+
+function appPropertiesXml() {
+  return [
+    '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
+    '<Properties xmlns="http://schemas.openxmlformats.org/officeDocument/2006/extended-properties" xmlns:vt="http://schemas.openxmlformats.org/officeDocument/2006/docPropsVTypes">',
+    "<Application>Project Maker</Application>",
+    "</Properties>"
+  ].join("");
+}
+
+async function buildWorkbookBlob(sheets: WorkbookSheet[]) {
+  const { strToU8, zipSync } = await import("fflate");
+  const createdAt = new Date().toISOString();
+  const files: Record<string, Uint8Array> = {
+    "[Content_Types].xml": strToU8(contentTypesXml(sheets.length)),
+    "_rels/.rels": strToU8(rootRelationshipsXml()),
+    "docProps/app.xml": strToU8(appPropertiesXml()),
+    "docProps/core.xml": strToU8(corePropertiesXml(createdAt)),
+    "xl/_rels/workbook.xml.rels": strToU8(workbookRelationshipsXml(sheets.length)),
+    "xl/styles.xml": strToU8(stylesXml()),
+    "xl/workbook.xml": strToU8(workbookXml(sheets.map((sheet) => sheet.name)))
+  };
+
+  sheets.forEach((sheet, index) => {
+    files[`xl/worksheets/sheet${index + 1}.xml`] = strToU8(
+      sheetXml(sheet.rows, sheet.columns)
+    );
+  });
+
+  return new Blob([zipSync(files, { level: 6 })], { type: excelMimeType });
+}
+
 export async function buildProjectsExcelBlob(
   projects: Project[],
   preset: ExportPreset = "executive"
 ) {
   const exportPlan = buildProjectsExportPlan(projects, preset);
-  const XLSX = await import("xlsx");
-  const workbook = XLSX.utils.book_new();
-  const summary = XLSX.utils.aoa_to_sheet(exportPlan.summaryRows);
-  summary["!cols"] = exportPlan.summaryColumns;
-  XLSX.utils.book_append_sheet(workbook, summary, "Összesítő");
-
+  const sheets: WorkbookSheet[] = [
+    {
+      name: "Összesítő",
+      rows: exportPlan.summaryRows,
+      columns: exportPlan.summaryColumns
+    }
+  ];
   const usedSheetNames = new Set(["Összesítő"]);
+
   exportPlan.projects.forEach((projectPlan, index) => {
-    const sheet = XLSX.utils.aoa_to_sheet(projectSheetRows(projectPlan));
-    sheet["!cols"] = exportPlan.detailColumns;
-    XLSX.utils.book_append_sheet(
-      workbook,
-      sheet,
-      uniqueSheetName(projectPlan.title, index, usedSheetNames)
-    );
+    sheets.push({
+      name: uniqueSheetName(projectPlan.title, index, usedSheetNames),
+      rows: projectSheetRows(projectPlan),
+      columns: exportPlan.detailColumns
+    });
   });
 
-  const workbookData = XLSX.write(workbook, { bookType: "xlsx", type: "array" });
-  return new Blob([workbookData], { type: excelMimeType });
+  return buildWorkbookBlob(sheets);
 }
 
 export async function saveExportBlob(blob: Blob, fileName: string) {

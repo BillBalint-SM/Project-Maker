@@ -8,7 +8,9 @@ Windows telepítő a GitHub Releases oldalon érhető el:
 
 [Project Maker letöltése](https://github.com/BillBalint-SM/Project-Maker/releases/latest)
 
-A letöltéshez a `Project Maker_..._x64-setup.exe` fájlt kell választani. A telepítő Windows x64 gépre készült.
+A letöltéshez a `Project.Maker_..._x64-setup.exe` fájlt kell választani. A telepítő Windows x64 gépre készült.
+
+Biztonsági megjegyzés: a jelenlegi MVP installer még nincs kódtanúsítvánnyal aláírva. Szélesebb körű terjesztés előtt Windows code signing szükséges; a signing és SmartScreen terv a `docs/windows-code-signing.md` fájlban található.
 
 ## Funkciók
 
@@ -75,6 +77,7 @@ Fejlesztői böngészős futásnál SQLite helyett localStorage fallback aktív.
 - Refactor design: `docs/codebase-architecture-refactor/design.md`
 - Felhasználói útmutató: `docs/project-maker-user-guide.html`
 - Architekturális döntések: `docs/adr/`
+- Windows code signing terv: `docs/windows-code-signing.md`
 
 ## Repo hygiene
 
