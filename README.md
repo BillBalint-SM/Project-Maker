@@ -2,6 +2,14 @@
 
 Project Maker egy offline-first projektindítási és intake alkalmazás PM/PO munkához. Az MVP célja, hogy egy új projekt felmérése közben automatikusan mentse a válaszokat, readiness állapotot számoljon, döntési javaslatot adjon, majd PDF vagy Excel exportot készítsen.
 
+## Letöltés
+
+Windows telepítő a GitHub Releases oldalon érhető el:
+
+[Project Maker letöltése](https://github.com/BillBalint-SM/Project-Maker/releases/latest)
+
+A letöltéshez a `Project Maker_..._x64-setup.exe` fájlt kell választani. A telepítő Windows x64 gépre készült.
+
 ## Funkciók
 
 - Új projekt azonnali draftként jön létre, automata mentéssel.
