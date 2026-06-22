@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="hu">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Project Maker - User Guide</title>
+    <style>
+      body {
+        margin: 0;
+        background: #eef2f6;
+        color: #172033;
+        font-family: "Segoe UI", Arial, sans-serif;
+        line-height: 1.55;
+      }
+
+      main {
+        max-width: 920px;
+        margin: 0 auto;
+        padding: 40px 22px;
+      }
+
+      section {
+        margin-top: 18px;
+        border: 1px solid #d7dde6;
+        border-radius: 8px;
+        padding: 18px;
+        background: #fff;
+      }
+
+      h1 {
+        margin: 0 0 8px;
+        font-size: 2.2rem;
+      }
+
+      h2 {
+        margin: 0 0 10px;
+        font-size: 1.25rem;
+      }
+
+      p,
+      li {
+        color: #38465a;
+      }
+
+      code {
+        border-radius: 5px;
+        padding: 2px 5px;
+        background: #edf8f7;
+        color: #0f5653;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Project Maker - User Guide</h1>
+      <p>Rövid útmutató PM és PO felhasználóknak az IT projektindítási igényfelmérő használatához.</p>
+
+      <section>
+        <h2>Telepítés</h2>
+        <ol>
+          <li>Indítsd el a <code>Project Maker_*_x64-setup.exe</code> telepítőt.</li>
+          <li>Erősítsd meg, hogy telepíteni szeretnéd az alkalmazást.</li>
+          <li>Válaszd ki a telepítés helyét.</li>
+          <li>Várd meg, amíg a folyamatjelző végigér.</li>
+          <li>A befejező oldalon indíthatod az alkalmazást, vagy bezárhatod a telepítőt.</li>
+        </ol>
+      </section>
+
+      <section>
+        <h2>Adatok mentése</h2>
+        <p>
+          Telepített alkalmazásként a projektek a program mappája melletti
+          <code>data\project-maker.db</code> SQLite adatbázisba kerülnek.
+          A mentés automatikus: mező módosítása, projekt szerkesztése, archiválás és újranyitás után is ment az app.
+          A felső sávban látható mentési állapot jelzi, hogy nincs nem mentett változás, mentés folyamatban van,
+          vagy az utolsó módosítás már biztonságban van.
+        </p>
+      </section>
+
+      <section>
+        <h2>Új projekt felmérése</h2>
+        <ol>
+          <li>A főmenüben válaszd az <strong>Új projekt felmérése</strong> gombot.</li>
+          <li>A rendszer azonnal létrehoz egy draft projektet.</li>
+          <li>Választhatsz hagyományos tabos kitöltést, vagy az <strong>Interjú</strong> tabon vezetett kitöltési módot.</li>
+          <li>Töltsd ki az alapadatokat, majd menj végig a checklist, nyitott kérdések és döntés tabokon.</li>
+          <li>A checklist pontok külön nyithatók és zárhatók, így nem kell egyszerre a teljes űrlapot kezelni.</li>
+        </ol>
+      </section>
+
+      <section>
+        <h2>Interjú mód</h2>
+        <p>
+          Az <strong>Interjú</strong> tab PM/PO beszélgetésekhez készült. A <strong>Gyors felmérés</strong>
+          a legfontosabb üzleti, scope és readiness kérdéseken vezet végig, a <strong>Teljes felmérés</strong>
+          pedig a teljes checklistet lépésenként kezeli. A folyamat végén readiness review mutatja az aktuális
+          állapotot és a legfontosabb hiányokat.
+        </p>
+      </section>
+
+      <section>
+        <h2>Meglévő projektek</h2>
+        <p>
+          A <strong>Meglévő projektek</strong> nézetben a korábban létrehozott felmérések láthatók.
+          A projektek megtekinthetők, szerkeszthetők és archiválhatók. Archivált projekt nem törlődik azonnal,
+          csak átkerül az <strong>Archívum</strong> nézetbe.
+        </p>
+        <p>
+          A lista tetején gyorsszűrők segítenek: összes projekt, pontosításra váró elemek, becslésre vihető projektek,
+          magas score és határidős projektek. Egy vagy több projekt kijelölése után megjelenik az export csomag választó.
+        </p>
+      </section>
+
+      <section>
+        <h2>Readiness és Decision Score</h2>
+        <p>
+          A projekt részletes nézetének <strong>Cockpit</strong> tabja automatikusan mutatja a readiness értéket,
+          a döntési score-t, a javasolt következő lépést és a hiányzó információkat.
+          A <strong>Döntés</strong> tabon 1-5 skálán állítható az üzleti érték, stratégiai illeszkedés,
+          sürgősség, confidence, komplexitás és kockázat.
+        </p>
+        <p>
+          A hiánylistában a <strong>Javítás</strong> gomb közvetlenül a megfelelő mezőre vagy checklist pontra visz.
+          A cockpit megmutatja, miért nem becsülhető még a projekt, a score magyarázat pedig láthatóvá teszi,
+          mely faktorok húzzák fel vagy le a döntési eredményt. A <strong>Döntés</strong> tabon az
+          <strong>Összefoglaló generálása</strong> gomb kitölti a döntési megjegyzést readiness, score és top hiányok alapján.
+        </p>
+      </section>
+
+      <section>
+        <h2>Exportálás</h2>
+        <p>
+          A projektlista nézetben jelölj ki egy vagy több projektet, majd válaszd a
+          <strong>PDF export</strong> vagy <strong>Excel export</strong> gombot.
+          Egy projekt részletes megtekintése közben ugyanezek a gombok a felső eszközsorban érhetők el.
+        </p>
+        <p>
+          Export előtt választható csomag:
+          <strong>Vezetői összefoglaló</strong> rövid döntési anyaghoz,
+          <strong>Teljes felmérés</strong> minden rögzített adattal,
+          <strong>Hiánylista</strong> célzott pontosítási listához.
+        </p>
+        <p>
+          Telepített alkalmazásként az exportált fájlok a program mappájában létrejövő
+          <code>exports</code> mappába kerülnek.
+        </p>
+      </section>
+
+      <section>
+        <h2>Archívum és törlés</h2>
+        <p>
+          Az archívumban a projekt újra aktiválható, vagy véglegesen törölhető.
+          A végleges törlés után az adat nem állítható vissza az alkalmazásból.
+        </p>
+      </section>
+    </main>
+  </body>
+</html>

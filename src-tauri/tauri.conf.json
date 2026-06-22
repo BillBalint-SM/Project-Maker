@@ -1,0 +1,47 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Project Maker",
+  "version": "0.1.1",
+  "identifier": "com.projectmaker.desktop",
+  "build": {
+    "beforeDevCommand": "pnpm dev",
+    "devUrl": "http://127.0.0.1:5173",
+    "beforeBuildCommand": "pnpm build",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "Project Maker",
+        "width": 1280,
+        "height": 820,
+        "minWidth": 960,
+        "minHeight": 680
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["nsis"],
+    "publisher": "Project Maker",
+    "icon": ["icons/icon.ico"],
+    "resources": {
+      "../docs/project-maker-user-guide.html": "Project Maker User Guide.html"
+    },
+    "windows": {
+      "nsis": {
+        "installMode": "currentUser",
+        "languages": ["Hungarian", "English"],
+        "customLanguageFiles": {
+          "Hungarian": "windows/nsis/Hungarian.nsh"
+        },
+        "displayLanguageSelector": false,
+        "installerIcon": "icons/icon.ico",
+        "uninstallerIcon": "icons/icon.ico"
+      }
+    }
+  }
+}
