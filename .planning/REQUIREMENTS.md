@@ -98,17 +98,47 @@ Kifejezetten kizárva. Dokumentálva a scope-csúszás ellen.
 
 ## Traceability
 
-Melyik fázis melyik követelményt fedi. A roadmap-készítés során töltődik ki.
+Melyik fázis melyik követelményt fedi.
 
 | Követelmény | Fázis | Státusz |
 |-------------|-------|---------|
-| _(a roadmapper tölti ki)_ | — | Pending |
+| DATA-01 | Phase 1 | Pending |
+| DATA-02 | Phase 1 | Pending |
+| DATA-03 | Phase 1 | Pending |
+| DATA-04 | Phase 1 | Pending |
+| DATA-05 | Phase 1 | Pending |
+| DATA-06 | Phase 1 | Pending |
+| PREP-01 | Phase 1 | Pending |
+| PREP-02 | Phase 1 | Pending |
+| MIG-01 | Phase 1 | Pending |
+| SURVEY-01 | Phase 2 | Pending |
+| SURVEY-02 | Phase 2 | Pending |
+| SURVEY-03 | Phase 2 | Pending |
+| SURVEY-04 | Phase 2 | Pending |
+| SURVEY-05 | Phase 2 | Pending |
+| SURVEY-06 | Phase 2 | Pending |
+| SURVEY-07 | Phase 2 | Pending |
+| COACH-01 | Phase 2 | Pending |
+| COACH-02 | Phase 2 | Pending |
+| COACH-03 | Phase 2 | Pending |
+| QUAL-01 | Phase 3 | Pending |
+| QUAL-02 | Phase 3 | Pending |
+| QUAL-03 | Phase 3 | Pending |
+| OUT-01 | Phase 3 | Pending |
+| OUT-02 | Phase 4 | Pending |
+| OUT-03 | Phase 4 | Pending |
+| OUT-04 | Phase 4 | Pending |
+| OUT-05 | Phase 4 | Pending |
+| PWA-01 | Phase 5 | Pending |
+| PWA-02 | Phase 5 | Pending |
+| PWA-03 | Phase 5 | Pending |
+| PWA-04 | Phase 5 | Pending |
 
 **Lefedettség:**
 - v1 követelmények: 31 összesen
-- Fázisokhoz rendelve: _(roadmap után)_
-- Nem rendelt: _(roadmap után)_ ⚠️
+- Fázisokhoz rendelve: 31 ✓
+- Nem rendelt: 0
 
 ---
 *Követelmények definiálva: 2026-07-08*
-*Utoljára frissítve: 2026-07-08 az induló definíció után*
+*Utoljára frissítve: 2026-07-09 — roadmap 5 fázisra vonva (Phase 6/MIG-01 beolvasztva Phase 1-be)*
