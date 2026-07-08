@@ -6,193 +6,186 @@
 
 ```
 repo/
-├── index.html                    # Vite HTML entry point, mounts #root
-├── vite.config.ts                # Vite + React plugin config
-├── tsconfig.json                 # TypeScript config
-├── package.json                  # Frontend deps (React, Tauri API, lucide-react, etc.)
-├── pnpm-workspace.yaml           # pnpm workspace root
-├── pnpm-lock.yaml                # Lockfile
-├── public/
-│   └── favicon.svg
-├── src/                          # All frontend TypeScript/React source
-│   ├── main.tsx                  # React DOM root mount
-│   ├── App.tsx                   # Root component — view routing, top-level state
-│   ├── App.test.tsx              # Smoke tests for App
-│   ├── styles.css                # Global CSS
+├── src/                          # React/TypeScript frontend
+│   ├── App.tsx                   # Root component: state, routing, CRUD orchestration
+│   ├── App.test.tsx              # Tests for App
+│   ├── main.tsx                  # Vite/React entry point, mounts #root
+│   ├── styles.css                # Global CSS (no CSS-in-JS / Tailwind)
 │   ├── app/
-│   │   └── viewTypes.ts          # Shared view-layer types (DetailMode, SaveStatus, etc.)
+│   │   └── viewTypes.ts          # Shared view-related types (DetailMode, SaveStatus, filters)
 │   ├── data/
-│   │   ├── types.ts              # All domain types (Project, ChecklistAnswer, etc.)
-│   │   └── checklist.ts          # Static checklist template (array of ChecklistTemplateItem)
+│   │   ├── types.ts              # Core domain types (Project, ChecklistAnswer, etc.)
+│   │   └── checklist.ts          # Static checklist template data
 │   ├── features/
 │   │   ├── export/
-│   │   │   ├── exportPreset.ts   # ExportPreset labels map
-│   │   │   └── ExportPresetSelect.tsx  # Preset dropdown UI component
+│   │   │   ├── exportPreset.ts        # Export preset labels/logic
+│   │   │   └── ExportPresetSelect.tsx # Preset picker UI component
 │   │   ├── project-detail/
-│   │   │   ├── ProjectDetailView.tsx   # Tab container, detail state, edit/view mode
+│   │   │   ├── ProjectDetailView.tsx  # Tab container for a single project
 │   │   │   ├── ProjectDetailView.test.tsx
-│   │   │   ├── detailTypes.ts    # DetailTab union type
-│   │   │   ├── detailUi.tsx      # DetailTabs nav, Metric tile components
-│   │   │   └── tabs/
-│   │   │       ├── CockpitTab.tsx      # Decision cockpit — gap list, score summary
-│   │   │       ├── InterviewTab.tsx    # Guided interview wizard (quick/full mode)
-│   │   │       ├── OverviewTab.tsx     # Basic project fields editor
-│   │   │       ├── ChecklistTab.tsx    # Expandable checklist items
-│   │   │       ├── FollowUpsTab.tsx    # Follow-up questions list
-│   │   │       └── DecisionTab.tsx     # Decision scores + final decision fields
+│   │   │   ├── detailTypes.ts         # Types local to project-detail feature
+│   │   │   ├── detailUi.tsx           # Shared UI bits for detail tabs
+│   │   │   └── tabs/                  # One file per detail tab
+│   │   │       ├── OverviewTab.tsx
+│   │   │       ├── ChecklistTab.tsx
+│   │   │       ├── InterviewTab.tsx
+│   │   │       ├── FollowUpsTab.tsx
+│   │   │       ├── DecisionTab.tsx
+│   │   │       └── CockpitTab.tsx
 │   │   └── projects/
-│   │       ├── ProjectTable.tsx        # List/archive table with filters, bulk export
+│   │       ├── ProjectTable.tsx       # List/archive table, filters, bulk export
 │   │       └── ProjectTable.test.tsx
 │   ├── lib/
-│   │   ├── project.ts            # Domain logic: createDraftProject, recalculateProject, toProjectListItem
+│   │   ├── project.ts             # Domain calculations, project factory
 │   │   ├── project.test.ts
-│   │   ├── storage.ts            # ProjectRepository class + singleton export
+│   │   ├── export.ts              # PDF/Excel blob building, file save
+│   │   ├── exportPlan.ts          # Export content planning/shaping
+│   │   ├── exportPlan.test.ts
+│   │   ├── storage.ts             # ProjectRepository (persistence facade)
 │   │   ├── storage.test.ts
-│   │   ├── storageAdapters.ts    # TauriSqliteProjectStorageAdapter, LocalProjectStorageAdapter, factory fn
-│   │   ├── storageTypes.ts       # ProjectStorageAdapter interface, ProjectStorageInfo
-│   │   ├── export.ts             # buildProjectsPdfBlob, buildProjectsExcelBlob, saveExportBlob
-│   │   ├── exportPlan.ts         # Export content planning/formatting logic
-│   │   └── exportPlan.test.ts
-│   ├── ui/
-│   │   └── common.tsx            # Shared UI: TooltipIconButton, SaveState, formatTime
-│   └── test/
-│       ├── builders.ts           # Test data builder helpers
-│       └── setup.ts              # Vitest global setup
+│   │   ├── storageAdapters.ts     # SQLite (Tauri IPC) + localStorage adapters
+│   │   └── storageTypes.ts        # ProjectStorageAdapter interface
+│   ├── test/
+│   │   ├── builders.ts            # Test data builders/factories
+│   │   └── setup.ts               # Vitest/jsdom global setup
+│   └── ui/
+│       └── common.tsx             # Small shared UI primitives (tooltip button, formatTime)
 ├── src-tauri/                    # Rust/Tauri native backend
-│   ├── Cargo.toml                # Rust dependencies (tauri, rusqlite, serde)
-│   ├── Cargo.lock
-│   ├── build.rs                  # Tauri build script
-│   ├── tauri.conf.json           # Tauri app config (identifier, window, bundle)
+│   ├── src/
+│   │   ├── main.rs                # Native entry point, calls lib.rs::run()
+│   │   └── lib.rs                 # Tauri commands: SQLite CRUD, file export
 │   ├── capabilities/
-│   │   └── default.json          # Tauri capability permissions
-│   ├── icons/                    # App icons
-│   └── src/
-│       ├── main.rs               # Binary entry point — calls lib::run()
-│       └── lib.rs                # All Tauri commands + SQLite logic
-├── docs/                         # Design docs and ADRs
-│   ├── adr/
-│   │   └── 0001-offline-first-tauri-sqlite.md
-│   └── codebase-architecture-refactor/design.md
-└── .github/workflows/ci.yml      # CI pipeline
+│   │   └── default.json           # Tauri permission capabilities
+│   ├── icons/                     # App icons (.ico, .png)
+│   ├── windows/nsis/              # Windows NSIS installer customization
+│   ├── Cargo.toml / Cargo.lock    # Rust dependencies
+│   ├── build.rs                   # Tauri build script
+│   └── tauri.conf.json            # App window/bundle configuration
+├── docs/                          # Design docs, ADRs, plans (Markdown/HTML)
+│   ├── adr/                       # Architecture decision records
+│   ├── codebase-architecture-refactor/
+│   └── project-intake-app/
+├── .planning/                     # GSD planning artifacts (this document's home)
+│   ├── codebase/                  # Generated codebase maps (this directory)
+│   ├── phases/                    # Per-phase planning docs
+│   └── research/                  # Pre-project research docs
+├── .github/workflows/ci.yml       # CI pipeline
+├── scripts/                       # PowerShell release/security scripts
+├── public/favicon.svg             # Static asset served as-is
+├── index.html                     # Vite HTML entry point
+├── vite.config.ts                 # Vite + Vitest shared config
+├── tsconfig.json                  # TypeScript compiler config
+├── package.json / pnpm-lock.yaml  # Node dependencies
+└── pnpm-workspace.yaml            # pnpm workspace definition
 ```
 
 ## Directory Purposes
 
-**`src/app/`:**
-- Purpose: Shared view-layer type definitions used across App and features
-- Key files: `viewTypes.ts` — `DetailMode`, `SaveStatus`, `ProjectListFilter`
-
-**`src/data/`:**
-- Purpose: Static data and all domain type definitions
-- Key files: `types.ts` (all interfaces/enums), `checklist.ts` (static checklist array)
-- Note: No runtime logic — pure type/data declarations
-
 **`src/features/`:**
-- Purpose: Feature-scoped React components, co-located with their types and tests
-- Contains: `export/`, `project-detail/`, `projects/`
-- Pattern: Each feature subdirectory owns its components and local types
+- Purpose: Feature-scoped UI modules, one subdirectory per user-facing feature area
+- Contains: Components, feature-local types, feature-local tests
+- Key files: `src/features/projects/ProjectTable.tsx`, `src/features/project-detail/ProjectDetailView.tsx`
+
+**`src/features/project-detail/tabs/`:**
+- Purpose: One file per tab shown inside the project detail view
+- Contains: Tab-specific form/display components, each owning its own local UI state
+- Key files: `OverviewTab.tsx`, `ChecklistTab.tsx`, `InterviewTab.tsx`, `FollowUpsTab.tsx`, `DecisionTab.tsx`, `CockpitTab.tsx`
 
 **`src/lib/`:**
-- Purpose: Framework-independent business logic and storage layer
-- Contains: Pure functions, classes, and the `projectRepository` singleton
-- Note: No React imports — fully testable without rendering
+- Purpose: Framework-agnostic domain logic and persistence — no React imports here
+- Contains: Pure calculation functions, export builders, storage adapters/facade
+- Key files: `project.ts` (domain calc), `storage.ts` (repository facade), `storageAdapters.ts` (SQLite/localStorage), `export.ts` (PDF/Excel)
 
-**`src/ui/`:**
-- Purpose: Generic, reusable UI primitives not tied to any feature
-- Key files: `common.tsx` — `TooltipIconButton`, `SaveState`, `formatTime`
+**`src/data/`:**
+- Purpose: Domain type definitions and static reference data shared across the whole app
+- Contains: `types.ts` (all domain types), `checklist.ts` (static checklist template)
 
-**`src/test/`:**
-- Purpose: Shared test utilities
-- Key files: `builders.ts` (factory helpers), `setup.ts` (Vitest global setup)
+**`src-tauri/`:**
+- Purpose: Native Rust backend for the Tauri desktop shell
+- Contains: Tauri commands (IPC handlers), SQLite schema/queries, app config, Windows installer assets
+- Key files: `src-tauri/src/lib.rs` (all commands + SQLite logic), `src-tauri/tauri.conf.json` (app/bundle config)
 
-**`src-tauri/src/`:**
-- Purpose: All Rust backend code — SQLite operations and file system access
-- Key files: `lib.rs` (all Tauri command implementations), `main.rs` (binary entry)
+**`.planning/`:**
+- Purpose: GSD workflow artifacts — roadmap, phase plans, research, generated codebase docs
+- Generated: Partially (this `codebase/` subdirectory is fully generated)
+- Committed: Yes
 
 ## Key File Locations
 
 **Entry Points:**
-- `src/main.tsx`: Frontend React mount
-- `src-tauri/src/main.rs`: Native binary entry, calls `lib::run()`
-
-**Domain Types:**
-- `src/data/types.ts`: Single source of truth for all TypeScript interfaces
-
-**Core Business Logic:**
-- `src/lib/project.ts`: `createDraftProject`, `recalculateProject`, `toProjectListItem`, `touchProject`
-- `src/lib/storage.ts`: `ProjectRepository` class, `projectRepository` singleton
-
-**Storage Adapters:**
-- `src/lib/storageAdapters.ts`: `createProjectStorageAdapter` factory, both adapter classes
-
-**Rust Commands:**
-- `src-tauri/src/lib.rs`: All six Tauri IPC commands + SQLite schema creation
-
-**Export:**
-- `src/lib/export.ts`: `buildProjectsPdfBlob`, `buildProjectsExcelBlob`, `saveExportBlob`
-- `src/lib/exportPlan.ts`: Export content formatting
+- `src/main.tsx`: React app bootstrap, mounts `<App />`
+- `src-tauri/src/main.rs`: Native executable entry, delegates to `lib.rs::run()`
+- `index.html`: Vite HTML shell, references `src/main.tsx`
 
 **Configuration:**
-- `vite.config.ts`: Frontend build config
-- `src-tauri/tauri.conf.json`: App identifier, window config, bundle settings
+- `vite.config.ts`: Dev server (port 5173) + Vitest config (jsdom, setup file `src/test/setup.ts`)
+- `tsconfig.json`: `strict: true`, target `ES2020`, no path aliases
+- `src-tauri/tauri.conf.json`: Window size, bundle target (nsis), dev URL
+- `src-tauri/capabilities/default.json`: Tauri permission capabilities (`core:default` only)
+
+**Core Logic:**
+- `src/App.tsx`: Root state and view routing
+- `src/lib/project.ts`: Derived score calculation, project factory (`createDraftProject`, `recalculateProject`, `touchProject`)
+- `src/lib/storage.ts`: `ProjectRepository` — the single persistence entry point
+- `src/lib/storageAdapters.ts`: Adapter implementations and runtime selection (`createProjectStorageAdapter`)
+- `src-tauri/src/lib.rs`: All native Tauri commands and SQLite schema
+
+**Testing:**
+- Co-located `*.test.ts`/`*.test.tsx` files next to the code they test
+- `src/test/setup.ts`: Global Vitest/jsdom setup
+- `src/test/builders.ts`: Shared test data builders
 
 ## Naming Conventions
 
 **Files:**
-- React components: PascalCase (e.g., `ProjectDetailView.tsx`, `ChecklistTab.tsx`)
-- Non-component TS modules: camelCase (e.g., `storageAdapters.ts`, `exportPlan.ts`)
-- Type-only files: camelCase with "Types" suffix (e.g., `viewTypes.ts`, `detailTypes.ts`, `storageTypes.ts`)
-- Test files: co-located, `.test.ts` or `.test.tsx` suffix
+- Components: PascalCase `.tsx` — `ProjectTable.tsx`, `ProjectDetailView.tsx`, `OverviewTab.tsx`
+- Lib/utilities: camelCase `.ts` — `project.ts`, `storage.ts`, `exportPlan.ts`
+- Types files: `types.ts` (singular) at the domain root; feature-scoped equivalents named `<feature>Types.ts` (e.g. `detailTypes.ts`, `viewTypes.ts`, `storageTypes.ts`)
+- Test files: co-located, same base name + `.test.ts`/`.test.tsx` — `ProjectTable.test.tsx`, `storage.test.ts`
 
 **Directories:**
-- Feature directories: kebab-case (e.g., `project-detail/`, `projects/`)
-- Top-level src subdirs: lowercase (e.g., `app/`, `data/`, `lib/`, `ui/`, `test/`)
+- Feature directories under `src/features/` are lowercase-kebab or lowercase single words: `project-detail`, `projects`, `export`
+- Rust source lives entirely under `src-tauri/src/`, separate from the TS `src/` tree
 
 ## Where to Add New Code
 
-**New feature UI component:**
-- Implementation: `src/features/<feature-name>/<ComponentName>.tsx`
-- Tests: `src/features/<feature-name>/<ComponentName>.test.tsx`
-- Local types: `src/features/<feature-name>/<featureName>Types.ts`
+**New Feature:**
+- Primary code: new subdirectory under `src/features/<feature-name>/`
+- Tests: co-located `*.test.tsx` inside the same feature directory
+- If the feature needs new domain types, add them to `src/data/types.ts` (shared) or a feature-local `<feature>Types.ts`
 
-**New detail tab:**
-- Implementation: `src/features/project-detail/tabs/<TabName>Tab.tsx`
-- Register in `ProjectDetailView.tsx` — add to `DetailTab` union in `src/features/project-detail/detailTypes.ts`, add render branch and tab button
+**New Detail Tab:**
+- Implementation: `src/features/project-detail/tabs/<Name>Tab.tsx`
+- Wire into `ProjectDetailView.tsx` tab list and `detailTypes.ts` if a new `GapTargetTab` value is needed (also update `src/data/types.ts`)
 
-**New business logic / domain function:**
-- Location: `src/lib/project.ts` (project domain) or a new `src/lib/<name>.ts` module
+**New Persistence Field:**
+- Add to `Project` type in `src/data/types.ts`
+- If it must be filterable/sortable, update `toProjectRecord()` in `src/lib/storageAdapters.ts`, the Rust `ProjectRecordInput` struct, and the SQL schema/upsert in `src-tauri/src/lib.rs` together
+- Add/extend round-trip test in `src/lib/storage.test.ts`
 
-**New Tauri command:**
-- Add Rust function with `#[tauri::command]` in `src-tauri/src/lib.rs`
-- Register in `tauri::generate_handler![]` in `lib.rs::run()`
-- Add corresponding adapter method in `TauriSqliteProjectStorageAdapter` in `src/lib/storageAdapters.ts`
-- Mirror the method signature on `ProjectStorageAdapter` interface in `src/lib/storageTypes.ts`
+**New Tauri Command:**
+- Implementation: add a `#[tauri::command]` function in `src-tauri/src/lib.rs`
+- Register it in the `invoke_handler(tauri::generate_handler![...])` list in `run()`
+- Call it from a TS adapter method via `invoke<T>("command_name", args)` in `src/lib/storageAdapters.ts` (or a new adapter file)
 
-**Shared UI primitives:**
-- Location: `src/ui/common.tsx`
-
-**New domain type:**
-- Location: `src/data/types.ts`
+**Utilities:**
+- Shared framework-agnostic helpers: `src/lib/`
+- Shared small UI primitives: `src/ui/common.tsx`
 
 ## Special Directories
 
-**`src-tauri/target/`:**
-- Purpose: Rust build artifacts
-- Generated: Yes
-- Committed: No (in `.gitignore`)
+**`.planning/`:**
+- Purpose: GSD workflow state — roadmap, phase plans, requirements, generated codebase documentation
+- Generated: Partially (`.planning/codebase/` is fully generated; other files are authored/maintained manually)
+- Committed: Yes
 
-**`src-tauri/capabilities/`:**
-- Purpose: Tauri v2 permission declarations for IPC commands
+**`src-tauri/windows/nsis/`:**
+- Purpose: Windows NSIS installer customization assets
 - Generated: No
 - Committed: Yes
 
 **`docs/`:**
-- Purpose: Architecture decision records and design documents
-- Generated: No
-- Committed: Yes
-
-**`src/test/`:**
-- Purpose: Shared test helpers only — not a mirror of `src/` structure
+- Purpose: Architecture decision records, design docs, user guide
 - Generated: No
 - Committed: Yes
 
