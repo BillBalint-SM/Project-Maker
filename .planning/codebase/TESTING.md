@@ -4,69 +4,83 @@
 
 ## Test Framework
 
-**Runner:** Vitest 4.x
-- Config: `vite.config.ts` (unified config, `test` key)
-- Environment: `jsdom`
-- Setup file: `src/test/setup.ts`
+**Runner:**
+- Vitest 4.1.9
+- Config: `vite.config.ts` (`test` block — shared with Vite dev config, not a separate `vitest.config.ts`)
+  - `environment: "jsdom"`
+  - `setupFiles: "src/test/setup.ts"`
 
-**Assertion Library:** Vitest built-in `expect` + `@testing-library/jest-dom` matchers (`.toBeInTheDocument()`, etc.)
+**Assertion Library:**
+- Vitest built-in `expect`, extended with `@testing-library/jest-dom/vitest` matchers (`toBeInTheDocument`, etc.) via `src/test/setup.ts`
 
-**Component Testing:** `@testing-library/react` 16.x with `@testing-library/user-event` 14.x
+**Component Testing:**
+- `@testing-library/react` 16.3.2 for rendering and querying
+- `@testing-library/user-event` 14.6.1 for simulating user interaction (`userEvent.setup()`)
 
 **Run Commands:**
 ```bash
-pnpm test              # vitest run (single pass)
-pnpm test:watch        # vitest (watch mode)
-pnpm run checkpoint    # typecheck + test + build (full gate)
-pnpm run verify        # alias for checkpoint
+npm run test          # vitest run (single pass, CI mode)
+npm run test:watch    # vitest (watch mode)
+npm run checkpoint    # typecheck + test + build — full verification gate
+npm run verify        # alias for checkpoint
 ```
 
-No coverage command configured in `package.json`. No coverage threshold enforced.
+There is no separate coverage command configured; no coverage thresholds are enforced.
 
 ## Test File Organization
 
-**Pattern:** Co-located with source files. Test file sits next to the file it tests.
+**Location:** Co-located with the source file under test, same directory.
 
-**Naming:** `[ModuleName].test.ts` or `[ComponentName].test.tsx`
+**Naming:** `<SourceName>.test.ts` for pure logic, `<ComponentName>.test.tsx` for React components.
 
-**Test files found:**
-- `src/App.test.tsx` — integration test for the root App component
-- `src/features/project-detail/ProjectDetailView.test.tsx` — component test
-- `src/features/projects/ProjectTable.test.tsx` — component test
-- `src/lib/exportPlan.test.ts` — unit test for export plan builder
-- `src/lib/project.test.ts` — unit test for domain logic
-- `src/lib/storage.test.ts` — unit test for repository + storage adapter
+**Examples:**
+- `src/App.test.tsx` — top-level app smoke tests
+- `src/features/project-detail/ProjectDetailView.test.tsx`
+- `src/features/projects/ProjectTable.test.tsx`
+- `src/lib/exportPlan.test.ts`
+- `src/lib/project.test.ts`
+- `src/lib/storage.test.ts`
 
-**Test support directory:** `src/test/`
-- `src/test/setup.ts` — global setup: imports jest-dom matchers, calls `cleanup()` in `afterEach`, patches `scrollIntoView`
-- `src/test/builders.ts` — test data factories: `makeProject()` and `makeMemoryStorage()`
+**Shared test infrastructure:**
+- `src/test/setup.ts` — global Vitest setup: imports jest-dom matchers, runs `cleanup()` after each test, stubs `HTMLElement.prototype.scrollIntoView` (required because jsdom does not implement it and components call it, e.g. auto-scroll-into-view on tab change)
+- `src/test/builders.ts` — shared test-data builders/factories, imported by every test file that needs a `Project` fixture or an in-memory storage backend
 
-## Test Suite Structure
+## Test Structure
 
-**Describe / it pattern:**
+**Suite organization** — `describe` block per module/component, `it` blocks with full-sentence behavior descriptions:
+
 ```typescript
 describe("project domain", () => {
   it("creates a draft project with default checklist answers and calculated completion", () => {
-    ...
+    const project = createDraftProject();
+    expect(project.name).toMatch(/^Névtelen projekt - /);
+    expect(Object.keys(project.checklistAnswers)).toHaveLength(checklistTemplate.length);
   });
 });
 ```
 
-**Setup:** `beforeEach` with `vi.clearAllMocks()` and mock initialization (used in `App.test.tsx`).
-
-**Async:** `async/await` throughout. `waitFor` used to wait for async state resolution after renders.
+**Patterns:**
+- Arrange-Act-Assert within each `it`, no shared `beforeEach` for pure-logic tests (each test builds its own fixture via `makeProject`)
+- For stateful/mocked suites (`App.test.tsx`), `beforeEach` resets mocks and sets default resolved values (`vi.clearAllMocks()` + re-mock every method used in the test suite)
+- Multiple assertions per test are acceptable when they verify one logical outcome (e.g. checking several fields of `project.completion` after one `recalculateProject` call)
 
 ## Mocking
 
-**Framework:** Vitest's built-in `vi` API.
+**Framework:** Vitest's built-in `vi` (`vi.fn()`, `vi.mock()`, `vi.hoisted()`, `vi.clearAllMocks()`)
 
-**Module mocking pattern — `vi.hoisted` + `vi.mock`:**
+**Patterns:**
+
+Module-level mock objects, declared with `vi.hoisted()` so they're available inside `vi.mock()` factories:
+
 ```typescript
 const repositoryMock = vi.hoisted(() => ({
   init: vi.fn(),
   listProjects: vi.fn(),
+  getProject: vi.fn(),
   saveProject: vi.fn(),
-  ...
+  archiveProject: vi.fn(),
+  reopenProject: vi.fn(),
+  deleteProject: vi.fn(),
   mode: "localStorage"
 }));
 
@@ -74,86 +88,119 @@ vi.mock("./lib/storage", () => ({
   projectRepository: repositoryMock
 }));
 ```
-(`src/App.test.tsx:7-29`)
 
-**What is mocked:**
-- `projectRepository` (the singleton storage object) — mocked at module level in App and component tests
-- `src/lib/export` module — mocked in `App.test.tsx` to avoid actual PDF/Excel generation
-- Tauri APIs — implicitly avoided because jsdom environment never calls native bridge
+Dependency injection instead of mocking for lower-level modules — `ProjectRepository` accepts an adapter factory in its constructor, so storage tests use a real `LocalProjectStorageAdapter` backed by an in-memory fake `localStorage` (`makeMemoryStorage()`), not a mock:
 
-**What is NOT mocked:**
-- Domain logic in `src/lib/project.ts` — tested directly
-- Storage adapters in `src/lib/storageAdapters.ts` — tested with `makeMemoryStorage()` (in-memory fake)
-- Export plan builder in `src/lib/exportPlan.ts` — tested directly
+```typescript
+const storage = makeMemoryStorage();
+const adapter = new LocalProjectStorageAdapter(storage);
+const repository = new ProjectRepository(async () => adapter);
+```
+
+**What to Mock:**
+- External IO boundaries at the top level: `./lib/storage` (repository) and `./lib/export` when testing `App.tsx`, since they touch persistence/file system/Tauri IPC
+- Anything crossing the Tauri IPC boundary
+
+**What NOT to Mock:**
+- Pure domain logic (`src/lib/project.ts`, `src/lib/exportPlan.ts`) — test these directly with real inputs/outputs, no mocking needed
+- Lower-level storage adapters — prefer a fake in-memory implementation (`makeMemoryStorage`) over mocking `ProjectRepository`'s internals, so the real adapter logic (including error handling for corrupted data) is exercised
 
 ## Fixtures and Factories
 
-**Location:** `src/test/builders.ts`
+**Test data factory** (`src/test/builders.ts`):
 
-**`makeProject(overrides?)`** — creates a fully calculated `Project` with realistic defaults:
 ```typescript
 export function makeProject(overrides: Partial<Project> = {}): Project {
   const base = createDraftProject();
-  return recalculateProject({ ...base, id: "project-1", name: "Alpha projekt", ... overrides });
+  return recalculateProject({
+    ...base,
+    id: "project-1",
+    name: "Alpha projekt",
+    // ...fixed baseline fields...
+    ...overrides,
+    decisionScores: { ...base.decisionScores, ...(overrides.decisionScores ?? {}) },
+    checklistAnswers: { ...base.checklistAnswers, ...(overrides.checklistAnswers ?? {}) },
+    followUps: overrides.followUps ?? base.followUps
+  });
 }
 ```
 
-**`makeMemoryStorage(initialValue?)`** — returns an in-memory key/value store compatible with the `StorageAdapter` interface, used to test the `LocalProjectStorageAdapter` without touching `localStorage`.
+- Builds on the real `createDraftProject()` factory rather than hand-writing a full `Project` literal, so fixtures stay in sync with domain defaults
+- Accepts `Partial<Project>` overrides, with nested objects (`decisionScores`, `checklistAnswers`) merged rather than replaced
+- Always passes through `recalculateProject` so derived `completion` fields are consistent with the rest of the fixture
+
+**Fake storage factory:**
+
+```typescript
+export function makeMemoryStorage(initialValue = "") {
+  const store = new Map<string, string>();
+  if (initialValue) store.set("project-maker.projects.v1", initialValue);
+  return {
+    getItem: (key: string) => store.get(key) ?? null,
+    setItem: (key: string, value: string) => { store.set(key, value); },
+    dump: () => Object.fromEntries(store)
+  };
+}
+```
+
+**Location:** `src/test/builders.ts` — import from any test file with `import { makeProject, makeMemoryStorage } from "../test/builders"` (path depth varies by test file location).
+
+## Coverage
+
+**Requirements:** None enforced; no coverage tool configured in `vite.config.ts` or `package.json`.
+
+**View Coverage:** Not applicable — would require adding `@vitest/coverage-v8` (or similar) and a `test.coverage` block before this becomes available.
 
 ## Test Types
 
 **Unit Tests:**
-- `src/lib/project.test.ts` — tests `createDraftProject`, `recalculateProject`, `createFollowUpFromChecklist` in isolation
-- `src/lib/storage.test.ts` — tests `ProjectRepository` methods end-to-end with an in-memory adapter
-- `src/lib/exportPlan.test.ts` — tests section structure of export plan for each export preset
+- Pure domain logic in `src/lib/*.test.ts` — direct function calls, no rendering, no mocking (`project.test.ts`, `exportPlan.test.ts`)
 
-**Integration / Component Tests:**
-- `src/App.test.tsx` — renders the full `App` component, drives user workflows (create project, navigate to list, export, archive/unarchive) with mocked storage and export modules
-- `src/features/projects/ProjectTable.test.tsx` — renders `ProjectTable` with mock callbacks, exercises search, filter, selection, action buttons
-- `src/features/project-detail/ProjectDetailView.test.tsx` — exercises the detail view component
+**Integration/Storage Tests:**
+- `src/lib/storage.test.ts` — exercises `ProjectRepository` against a real `LocalProjectStorageAdapter` with fake in-memory storage, covering the full save/list/archive/reopen/delete lifecycle and corrupted-data recovery
 
-**E2E Tests:** Not present. No Playwright, Cypress, or Tauri-level E2E setup detected.
+**Component Tests:**
+- `src/features/projects/ProjectTable.test.tsx`, `src/features/project-detail/ProjectDetailView.test.tsx` — render with `@testing-library/react`, interact via `userEvent`, assert on rendered DOM via `screen`
 
-## Coverage
+**App-level Smoke Tests:**
+- `src/App.test.tsx` — renders the full `App` with mocked `storage`/`export` modules, drives multi-step flows via `userEvent` (create project → edit → save; list → archive; export), asserts via `waitFor` + `screen` queries. This is the closest thing to an E2E test in this codebase; there is no separate E2E framework (no Playwright/Cypress detected).
 
-**Requirements:** None enforced. No `coverage` script in `package.json`. No `c8`/`v8` reporter configured.
-
-**Observed coverage areas:**
-- Core domain logic (`src/lib/`) — well covered
-- Root App workflows — covered via integration tests
-- Main feature components (`ProjectTable`, `ProjectDetailView`) — covered
-- Export logic (`exportPlan`) — covered via unit tests
-- Actual PDF/Excel renderers (`src/lib/export.ts`) — not unit-tested (mocked at the boundary)
-- Storage adapters beyond `LocalProjectStorageAdapter` — not directly tested
-- UI primitives in `src/ui/common.tsx` — not directly tested
+**E2E Tests:** Not used — no browser-automation E2E framework configured.
 
 ## Common Patterns
 
-**Async component testing:**
-```typescript
-await renderAppWithProjects();
-await user.click(screen.getByRole("button", { name: "Meglévő projektek" }));
-expect(await screen.findByText("Alpha projekt")).toBeInTheDocument();
-```
+**Async Testing:**
 
-**Error/empty state testing:**
-```typescript
-await screen.findByText("Nincs megjeleníthető projekt.");
-```
-
-**Callback assertion:**
-```typescript
-expect(props.onFilterChange).toHaveBeenCalledWith("needsClarification" satisfies ProjectListFilter);
-```
-
-**Lazy import in test to allow `vi.mock` hoisting:**
 ```typescript
 async function renderAppWithProjects() {
   const { App } = await import("./App");
   render(<App />);
-  ...
+  await waitFor(() => expect(repositoryMock.init).toHaveBeenCalled());
 }
 ```
+
+- Dynamic `import()` inside the render helper ensures mocks registered via `vi.mock()` are applied before the module under test is loaded
+- `waitFor` is used to await async state settling after mount (repository init, list refresh) rather than arbitrary timeouts
+
+**Error/Resilience Testing:**
+
+```typescript
+it("ignores broken localStorage payloads instead of crashing", async () => {
+  const storage = makeMemoryStorage("not-json");
+  const adapter = new LocalProjectStorageAdapter(storage);
+  await expect(adapter.listProjects(false)).resolves.toEqual([]);
+});
+```
+
+- Use `expect(promise).resolves.toEqual(...)` for async functions that should fail soft rather than reject.
+
+**Regex assertions for generated/templated values:**
+
+```typescript
+expect(project.name).toMatch(/^Névtelen projekt - /);
+```
+
+Used for fields with a fixed prefix plus a dynamic suffix (timestamp/counter), avoiding brittle exact-string matches.
 
 ---
 

@@ -2,159 +2,92 @@
 
 **Analysis Date:** 2026-07-08
 
-## TypeScript Usage
-
-**Mode:** Strict (`"strict": true` in `tsconfig.json`). `allowJs` is `false` — pure TypeScript only.
-
-**Types vs Interfaces:**
-- Use `type` for union/string-literal types: `type AppView = "home" | "projects" | "archive" | "detail"` (`src/App.tsx:18`)
-- Use `interface` for object shapes: `interface ChecklistAnswer { ... }` (`src/data/types.ts:45`)
-- Rule of thumb in this codebase: `type` for discriminated unions and domain enums; `interface` for data records
-
-**Import type:**
-- Use `import type { ... }` for type-only imports throughout: `import type { Project, ProjectListItem } from "./data/types"` (`src/App.tsx:3`)
-- Never import types without the `type` keyword
-
-**satisfies operator:**
-- Used for type-narrowing assertions: `"needsClarification" satisfies ProjectListFilter` (`src/features/projects/ProjectTable.test.tsx:50`)
-
-**Target:** ES2020, ESNext modules, `isolatedModules: true`.
-
-## Component Patterns
-
-**Functional components only.** No class components detected.
-
-**Export style:** Named exports. No default component exports.
-```typescript
-export function App() { ... }          // src/App.tsx:20
-export function TextField({ ... }) {   // src/ui/common.tsx:7
-export function ProjectTable(...) {    // src/features/projects/ProjectTable.tsx
-```
-
-**Props:** Inline type annotations on destructured props (no separate Props type alias unless reused):
-```typescript
-export function TextField({
-  name, label, value, disabled, onChange, textarea = false, type = "text"
-}: {
-  name?: string;
-  label: string;
-  ...
-})
-```
-
-**Hooks:** Used directly inside function bodies. Custom hooks are not detected in the current codebase — logic lives in `src/lib/` modules called from component bodies.
-
-**State:** `useState` with explicit generics where type cannot be inferred:
-```typescript
-const [view, setView] = useState<AppView>("home");
-const [selectedProject, setSelectedProject] = useState<Project | null>(null);
-```
-
-**Side effects:** `useEffect` with full dependency arrays. Async logic wrapped in inner async functions or `.then()` chains, never `async useEffect`.
-
-**Memoization:** `useMemo` used for derived list filtering (`src/App.tsx:51`). No `useCallback` detected.
-
-## Naming Conventions
+## Naming Patterns
 
 **Files:**
-- Components: PascalCase `.tsx` — `ProjectTable.tsx`, `ProjectDetailView.tsx`
-- Lib/utilities: camelCase `.ts` — `project.ts`, `storage.ts`, `exportPlan.ts`
-- Types file: `types.ts` (singular)
-- Test files: co-located, same name + `.test.ts` / `.test.tsx` — `ProjectTable.test.tsx`
+- React components: PascalCase `.tsx` — `ProjectTable.tsx`, `ProjectDetailView.tsx`, `ExportPresetSelect.tsx`
+- Lib/domain modules: camelCase `.ts` — `project.ts`, `storage.ts`, `exportPlan.ts`, `export.ts`
+- Types modules: `types.ts` for domain types (`src/data/types.ts`), narrower `*Types.ts` for subsystem types (`src/lib/storageTypes.ts`, `src/app/viewTypes.ts`, `src/features/project-detail/detailTypes.ts`)
+- UI helper modules: camelCase, singular purpose — `detailUi.tsx` (shared detail UI atoms), `common.tsx` (shared generic UI atoms)
+- Tab components live under `src/features/project-detail/tabs/` and are named `<Name>Tab.tsx` — `ChecklistTab.tsx`, `CockpitTab.tsx`, `DecisionTab.tsx`, `FollowUpsTab.tsx`, `InterviewTab.tsx`, `OverviewTab.tsx`
 
-**Components:** PascalCase — `ProjectTable`, `ProjectDetail`, `TextField`, `SelectField`
+**Functions:**
+- camelCase verbs describing action: `createDraftProject`, `recalculateProject`, `createFollowUpFromChecklist`, `toProjectListItem` (`src/lib/project.ts`)
+- Factory functions prefixed `create*`: `createDraftProject`, `createDefaultChecklistAnswers`, `createProjectStorageAdapter`
+- Conversion functions prefixed `to*`: `toProjectListItem`, `toProjectRecord` (`src/lib/storageAdapters.ts`)
 
-**Functions:** camelCase — `createDraftProject`, `recalculateProject`, `makeExportFileName`
+**Variables:**
+- camelCase throughout; no Hungarian-notation or type-prefixing
+- Domain/UI copy strings are in Hungarian (e.g. `"Pontosítás szükséges"`, `"Nyitott"`, `"Kész"`) — identifiers themselves stay in English
 
-**Variables:** camelCase — `selectedProject`, `visibleProjects`, `exportPreset`
+**Types:**
+- PascalCase for both `type` and `interface` names: `Project`, `ChecklistAnswer`, `AppView`, `ProjectListFilter`
 
-**Types and Interfaces:** PascalCase — `Project`, `ProjectListItem`, `ChecklistAnswer`, `ExportPreset`
+## Code Style
 
-**Event handlers:** `on` prefix for props, handler function name mirrors action:
-```typescript
-onView={(id) => openProject(id, "view")}
-onArchive={archiveProject}
-```
+**TypeScript strictness:**
+- `tsconfig.json` has `"strict": true`; write null-safe code, avoid `any`
+- Target `ES2020`, `moduleResolution: Node`, `jsx: react-jsx`, no path aliases — use relative imports (`../data/types`, `./project`)
 
-**Boolean state:** No `is`/`has` prefix convention observed — plain nouns used: `archived`, `disabled`
+**`type` vs `interface`:**
+- Use `type` for union/string-literal types and discriminated unions: `type AppView = "home" | "projects" | "archive" | "detail"` (`src/App.tsx:18`)
+- Use `interface` for object shapes / data records: `interface ChecklistAnswer { ... }` (`src/data/types.ts:45`)
 
-## CSS / Styling Approach
+**Type-only imports:**
+- Always use `import type { ... }` for type-only imports: `import type { Project, ProjectListItem } from "./data/types"` (`src/App.tsx:3`)
+- Never import a type without the `type` keyword — this is enforced by convention across the codebase, not just style preference
 
-**Plain CSS only.** Single global stylesheet at `src/styles.css`. No CSS modules, no Tailwind, no styled-components.
+**Type assertions:**
+- `satisfies` is used for narrowing/validating object literals against a type without widening: `"needsClarification" satisfies ProjectListFilter`, and in tests: `{ ...answer, status: "Kész" } satisfies ChecklistAnswer` (`src/lib/project.test.ts:29`)
 
-**CSS custom properties** for design tokens defined on `:root`:
-```css
---primary: #126b68;
---danger: #b42318;
---surface: #ffffff;
---shadow: 0 18px 40px rgba(15, 23, 42, 0.09);
-```
-
-**Class-based styling:** Semantic class names applied via JSX `className`. Example: `"app-shell home-shell"`, `"topbar"`, `"home-grid"`, `"error-banner"`.
-
-**Conditional classes:** String template or ternary inline:
-```typescript
-const shellClass = view === "home" ? "app-shell home-shell" : "app-shell";
-```
-
-**No utility-class framework.** Do not introduce Tailwind or CSS-in-JS.
+**Formatting/Linting:**
+- No ESLint or Prettier config detected in the repo — no automated linting/formatting is enforced. Match surrounding code style manually: 2-space indentation, double quotes for strings, semicolons required.
 
 ## Import Organization
 
-Observed order (no enforced linter rule, but consistently applied):
+**Order (observed pattern):**
+1. External packages (`react`, `vitest`, `@testing-library/*`)
+2. Relative type imports (`import type { ... } from "../data/types"`)
+3. Relative value imports (local lib/component modules)
 
-1. External packages (React, lucide-react)
-2. Internal type imports (`import type { ... }`)
-3. Internal lib/utility imports
-4. Internal feature/component imports
-5. Internal UI imports
-
-```typescript
-import { ArrowLeft, FilePlus2, FolderOpen } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
-import type { ExportPreset, Project, ProjectListItem } from "./data/types";
-import { createDraftProject, touchProject } from "./lib/project";
-import { projectRepository } from "./lib/storage";
-import type { DetailMode, ProjectListFilter, SaveStatus } from "./app/viewTypes";
-import { ProjectDetail } from "./features/project-detail/ProjectDetailView";
-import { ProjectTable } from "./features/projects/ProjectTable";
-import { TooltipIconButton, formatTime } from "./ui/common";
-```
-
-No path aliases configured. All imports use relative paths.
+**Path Aliases:**
+- None configured. All cross-module imports use relative paths (`../lib/project`, `./storage`, `../test/builders`).
 
 ## Error Handling
 
-**Async functions:** `try/catch` with `console.error(error)` + user-facing state update:
-```typescript
-async function refreshLists() {
-  try {
-    ...
-  } catch (error) {
-    console.error(error);
-    setAppError("A projektlista betöltése nem sikerült.");
-  }
-}
-```
+- Async operations at the top of the call stack (`App` component handlers: `startNewProject`, `saveProject`, `refreshLists`, `exportProjects`) are wrapped in try/catch.
+- Storage adapter errors surface as strings thrown across the Tauri IPC boundary and are caught by the calling adapter method in `src/lib/storageAdapters.ts`.
+- The `LocalProjectStorageAdapter` fails soft on corrupted data: a broken/non-JSON `localStorage` payload is treated as "no projects" rather than throwing (see `src/lib/storage.test.ts` — "ignores broken localStorage payloads instead of crashing").
+- No React error boundary exists anywhere in the tree — an uncaught render error crashes the whole app. When adding new UI, prefer defensive checks over letting exceptions propagate to render.
 
-**Error display:** String state (`appError`, `appNotice`) rendered as banner elements in JSX. No toast/notification library.
+## Logging
 
-**Void operator:** Fire-and-forget async calls marked explicitly:
-```typescript
-void saveProject(next);   // src/App.tsx:158
-```
+- No logging framework in use. No `console.*` calls found in reviewed source files — keep new code silent on the happy path; avoid adding ad hoc `console.log` debugging statements to committed code.
 
-**Storage corruption:** Graceful degradation — broken JSON payloads return empty arrays instead of throwing (`src/lib/storage.test.ts:35`).
+## Comments
 
-## Comments and Documentation
+- Source files are largely comment-free; code is expected to be self-documenting through naming and small pure functions.
+- No JSDoc/TSDoc usage observed. Do not add JSDoc blocks unless matching an existing pattern in the touched file.
 
-**Minimal inline comments.** Code is self-documenting via naming.
+## Function Design
 
-**No JSDoc/TSDoc** annotations detected on public functions.
+**Size:** Small, single-purpose functions, especially in `src/lib/project.ts` (one function per domain calculation: completion %, decision score, readiness gaps).
 
-**No `TODO`/`FIXME` markers** detected in `src/`.
+**Parameters:** Domain functions take the full `Project` object (or a partial/overrides object) rather than long parameter lists, e.g. `recalculateProject(project: Project): Project`, `createFollowUpFromChecklist(project: Project, itemId: number)`.
 
-**Hungarian UI strings** are used directly in JSX and labels (the app is in Hungarian). No i18n layer.
+**Return Values:** Pure functions return new objects rather than mutating input (`recalculateProject` returns a new `Project` with recomputed `completion`); no in-place mutation of `Project` state.
+
+## Module Design
+
+**Exports:** Named exports throughout (no default exports observed in `src/lib` or `src/features`) — e.g. `export function createDraftProject`, `export class ProjectRepository`.
+
+**Domain vs UI separation:** Pure domain/calculation logic (`src/lib/project.ts`, `src/lib/export.ts`, `src/lib/exportPlan.ts`) contains no React imports and no side effects beyond IO (storage/export). UI components import from `lib` but never the reverse.
+
+**Barrel Files:** None — no `index.ts` re-export barrels found; import directly from the specific module file.
+
+## Language / Locale Note
+
+- All user-facing strings (labels, statuses, validation messages) are in Hungarian. When adding new UI text or domain enum values, match existing Hungarian terminology exactly (e.g. status values `"Kész"`, `"Nyitott"`; recommendation `"Pontosítás szükséges"`) rather than introducing English strings into the UI layer.
 
 ---
 
