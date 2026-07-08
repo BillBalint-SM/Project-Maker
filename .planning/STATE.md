@@ -1,6 +1,14 @@
 ---
-gsd_state_version: '1.0'  # placeholder; syncStateFrontmatter overwrites on first state.* call
+gsd_state_version: 1.0
+milestone: v1.0
+milestone_name: milestone
+current_phase: 1
+current_phase_name: Adat-alap, portok, perzisztencia és MVP-migráció
 status: planning
+stopped_at: Phase 1 context gathered
+last_updated: "2026-07-08T23:10:04.340Z"
+last_activity: 2026-07-09
+last_activity_desc: "Roadmap 5 fázisra vonva: Phase 6 (MIG-01) beolvasztva Phase 1-be; 31/31 v1 követelmény leképezve"
 progress:
   total_phases: 5
   completed_phases: 0
@@ -30,6 +38,7 @@ Progress: [░░░░░░░░░░] 0%
 ## Performance Metrics
 
 **Velocity:**
+
 - Total plans completed: 0
 - Average duration: - min
 - Total execution time: 0.0 hours
@@ -41,6 +50,7 @@ Progress: [░░░░░░░░░░] 0%
 | - | - | - | - |
 
 **Recent Trend:**
+
 - Last 5 plans: -
 - Trend: -
 
@@ -84,6 +94,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-09
-Stopped at: Roadmap 5 fázisra vonva (Phase 6/MIG-01 → Phase 1); ROADMAP.md, REQUIREMENTS.md és STATE.md frissítve
-Resume file: None
+Last session: 2026-07-08T23:10:04.335Z
+Stopped at: Phase 1 context gathered
+Resume file: .planning/phases/01-adat-alap-portok-perzisztencia-s-mvp-migr-ci/01-CONTEXT.md
