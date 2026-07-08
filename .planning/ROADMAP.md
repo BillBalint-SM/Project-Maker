@@ -31,10 +31,14 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. A felhasználó teljes JSON-backupot tud készíteni és visszaállítani; a séma verziózott, verzió-kulcsolt migrációs lánccal, amely üres lánccal is elindul.
   4. Mind az 5 port (Storage, Content, Export, Llm, Sync) definiált; az app alapból `NoopLlmAdapter` + `NoopSyncAdapter` mögött fut, dirty/outbox könyveléssel — AI és sync nélkül is teljes.
   5. A meglévő Tauri-MVP adata nem-destruktívan és idempotensen importálható a webes domain-modellre, Zod-sémákkal validálva, valósághű fixtúrán tesztelve (ismételt futtatás nem duplikál és nem ír felül meglévő adatot) — AI és sync nélkül is teljes.
-**Plans**: TBD
+**Plans**: 5 plans
 
 Plans:
-- [ ] 01-01: TBD
+- [ ] 01-01-PLAN.md — Walking Skeleton: Envelope/Zod domain modell, RxDB StoragePort/adapter, routing + ProjectListView
+- [ ] 01-02-PLAN.md — Soft-delete (tombstone) + verzió-kulcsolt migrációs lánc bizonyítása
+- [ ] 01-03-PLAN.md — Teljes JSON backup/restore, látható UI-gombokkal
+- [ ] 01-04-PLAN.md — Content/Export/Llm/Sync portok + Noop-adapterek + kompozíciós gyökér
+- [ ] 01-05-PLAN.md — Legacy Tauri-MVP import (MIG-01), szintetikus fixtúrán
 
 ### Phase 2: Felmérési flow és coaching
 **Cél**: A felhasználó projektet hoz létre és egy egységes, guided interjú+checklist felületen végigmegy egy felmérésen, kérdésenkénti coaching-panellel támogatva.
