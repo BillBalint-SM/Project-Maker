@@ -53,6 +53,13 @@ export function parseBackup(text: string): Envelope<Project>[] {
     throw new Error("Invalid backup file: not valid JSON");
   }
 
+  const backupSchemaVersion = (parsed as Partial<BackupFile> | null)?.schemaVersion;
+  if (backupSchemaVersion !== CURRENT_APP_SCHEMA_VERSION) {
+    throw new Error(
+      `Unsupported backup schema version: ${String(backupSchemaVersion)} (expected ${CURRENT_APP_SCHEMA_VERSION})`
+    );
+  }
+
   const projects = (parsed as Partial<BackupFile> | null)?.projects;
   if (!Array.isArray(projects)) {
     throw new Error("Invalid backup file: missing projects array");
@@ -73,6 +80,15 @@ export function parseBackup(text: string): Envelope<Project>[] {
       if (envelope.data.id !== envelope.id) {
         issues.push(
           `Invalid backup entry at index ${index}: envelope id (${envelope.id}) does not match data.id (${envelope.data.id})`
+        );
+      } else if (envelope.schemaVersion !== CURRENT_APP_SCHEMA_VERSION) {
+        // The top-level schemaVersion check above catches a foreign/future
+        // backup file as a whole; this per-entry check additionally guards
+        // against a hand-edited or partially-migrated backup where the
+        // top-level stamp was updated but an individual envelope's own
+        // schemaVersion was not.
+        issues.push(
+          `Invalid backup entry at index ${index}: unsupported schemaVersion ${envelope.schemaVersion} (expected ${CURRENT_APP_SCHEMA_VERSION})`
         );
       } else {
         validated.push(envelope);
