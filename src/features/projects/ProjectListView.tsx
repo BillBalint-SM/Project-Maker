@@ -48,6 +48,12 @@ export function ProjectListView() {
     await refresh();
   }
 
+  async function handleDelete(id: string) {
+    const storage = await getStorage();
+    await storage.softDelete(id);
+    await refresh();
+  }
+
   return (
     <main>
       <h1>Projektek</h1>
@@ -63,6 +69,7 @@ export function ProjectListView() {
               <th>Projekt neve</th>
               <th>Állapota</th>
               <th>Utolsó módosítás</th>
+              <th></th>
             </tr>
           </thead>
           <tbody>
@@ -71,6 +78,11 @@ export function ProjectListView() {
                 <td>{project.name}</td>
                 <td>{project.status}</td>
                 <td>{project.updatedAt}</td>
+                <td>
+                  <button type="button" onClick={() => handleDelete(project.id)}>
+                    Törlés
+                  </button>
+                </td>
               </tr>
             ))}
           </tbody>
