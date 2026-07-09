@@ -74,7 +74,13 @@ export class RxdbStorageAdapter implements StoragePort {
   }
 
   async list(): Promise<ProjectListItem[]> {
-    const docs = await this.collection.find().exec();
+    // Tombstoned records (deletedAt present) are hidden from list() —
+    // soft-delete, not a physical DELETE (DATA-03). `deletedAt` is declared
+    // optional (not `required`) in the RxDB schema (db.ts); its absence is
+    // the "not deleted" signal.
+    const docs = await this.collection
+      .find({ selector: { deletedAt: { $exists: false } } })
+      .exec();
     return docs.map((doc) => {
       const envelope = ProjectEnvelopeSchema.parse(
         toEnvelopeInput(doc.toJSON() as PersistedProjectEnvelope)
@@ -109,6 +115,31 @@ export class RxdbStorageAdapter implements StoragePort {
       // ALWAYS "local-user", regardless of what the caller passed — there
       // is exactly one local actor in this milestone (D-06 stub).
       updatedBy: "local-user",
+      dirty: true
+    };
+
+    await this.collection.upsert(toPersisted(toWrite));
+  }
+
+  async softDelete(id: string): Promise<void> {
+    const doc = await this.collection.findOne(id).exec();
+    if (!doc) {
+      throw new Error(`Project not found: ${id}`);
+    }
+
+    const existing = ProjectEnvelopeSchema.parse(
+      toEnvelopeInput(doc.toJSON() as PersistedProjectEnvelope)
+    ) as Envelope<Project>;
+
+    // Tombstone: deletedAt is ALWAYS a concrete, non-null ISO string here —
+    // no null-omission branch needed (that only applies to put(), where the
+    // caller may pass deletedAt: null). All other fields (data, id,
+    // schemaVersion, updatedBy) stay unchanged.
+    const toWrite: Envelope<Project> = {
+      ...existing,
+      deletedAt: new Date().toISOString(),
+      revision: existing.revision + 1,
+      updatedAt: new Date().toISOString(),
       dirty: true
     };
 
