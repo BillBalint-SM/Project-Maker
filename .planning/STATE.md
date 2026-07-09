@@ -4,17 +4,17 @@ milestone: v1.0
 milestone_name: milestone
 current_phase: 01
 current_phase_name: adat-alap-portok-perzisztencia-s-mvp-migr-ci
-status: executing
-stopped_at: Completed 01-05-PLAN.md (Tasks 1-2)
-last_updated: "2026-07-09T12:25:58.310Z"
+status: verifying
+stopped_at: Completed 01-03-PLAN.md (Tasks 1-2) — Phase 01 all plans complete
+last_updated: "2026-07-09T12:39:27.187Z"
 last_activity: 2026-07-09
 last_activity_desc: Phase 01 execution started
 progress:
   total_phases: 5
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 5
-  completed_plans: 4
-  percent: 0
+  completed_plans: 5
+  percent: 20
 ---
 
 # Project State
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-07-08)
 
 Phase: 01 (adat-alap-portok-perzisztencia-s-mvp-migr-ci) — EXECUTING
 Plan: 5 of 5
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-07-09 — Phase 01 execution started
 
 Progress: [░░░░░░░░░░] 0%
@@ -59,6 +59,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 01 P02 | 20min | 2 tasks | 6 files |
 | Phase 01 P04 | 15min | 2 tasks | 10 files |
 | Phase 01 P05 | ~10min | 2 tasks | 5 files |
+| Phase 01 P03 | 20min | 2 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -81,6 +82,10 @@ Recent decisions affecting current work:
 - [Phase 01-04]: container.test.ts closes the RxdbStorageAdapter's private db field via a test-only cast in afterEach, because removeRxDatabase() does not clear RxDB's USED_DATABASE_NAMES registry and createContainer() does not expose the db handle
 - [Phase 01-05]: InMemoryStorageAdapter implements the full current StoragePort (list/get/put/softDelete), not just 3 methods — StoragePort gained softDelete in 01-02 before this plan ran
 - [Phase 01-05]: Fixture loaded via native ESM JSON import (resolveJsonModule) instead of fs.readFileSync+fileURLToPath, which threw under this project's Vite/Vitest pipeline
+- [Phase 01-03]: TDD RED confirmed by temporarily reverting StoragePort/StorageAdapter/backup.ts before writing backup.test.ts, verifying 2 real failures, then re-applying the implementation for GREEN
+- [Phase 01-03]: InMemoryStorageAdapter (01-05 test double) extended with exportBackup/importBackup reusing backup.ts helpers, after tsc flagged it as incorrectly implementing the widened StoragePort
+- [Phase 01-03]: importBackup() restore writes bypass put() and call collection.upsert() directly, preserving original revision/updatedAt/updatedBy instead of bumping them
+- [Phase 01-03]: ProjectListView.test.tsx assigns URL.createObjectURL/revokeObjectURL directly on the real URL class rather than vi.stubGlobal, since stubbing a plain object copy breaks new URL() elsewhere (react-router)
 
 ### Pending Todos
 
@@ -107,6 +112,7 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-09T12:25:58.302Z
-Stopped at: Completed 01-05-PLAN.md (Tasks 1-2)
+Last session: 2026-07-09T12:39:27.182Z
+Stopped at: Completed 01-03-PLAN.md (Tasks 1-2) — Phase 01 all plans complete
 Resume file: 
+None
