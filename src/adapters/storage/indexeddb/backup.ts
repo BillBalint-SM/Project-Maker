@@ -64,7 +64,19 @@ export function parseBackup(text: string): Envelope<Project>[] {
   projects.forEach((entry, index) => {
     const result = ProjectEnvelopeSchema.safeParse(entry);
     if (result.success) {
-      validated.push(result.data as Envelope<Project>);
+      const envelope = result.data as Envelope<Project>;
+      // Same cross-field invariant enforced by RxdbStorageAdapter.put():
+      // the envelope's storage key (id) must match the domain payload's own
+      // embedded id (data.id). Zod's shape validation alone cannot catch a
+      // divergence here, and a restore must not silently import a record
+      // whose lookup key and payload id disagree.
+      if (envelope.data.id !== envelope.id) {
+        issues.push(
+          `Invalid backup entry at index ${index}: envelope id (${envelope.id}) does not match data.id (${envelope.data.id})`
+        );
+      } else {
+        validated.push(envelope);
+      }
     } else {
       issues.push(`Invalid backup entry at index ${index}: ${result.error.message}`);
     }
