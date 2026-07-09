@@ -59,8 +59,8 @@ Az induló mérföldkő követelményei. Mindegyik egy roadmap-fázishoz kapcsol
 
 ### Architektúra-előkészítés (PREP)
 
-- [ ] **PREP-01**: Az LLM-integráció port mögött, kikapcsolható (alapból `NoopLlmAdapter`); az app AI nélkül teljes értékű
-- [ ] **PREP-02**: A sync port mögött előkészített (`NoopSyncAdapter` + dirty/outbox könyvelés), de a tényleges szinkronizálás nincs megépítve
+- [x] **PREP-01**: Az LLM-integráció port mögött, kikapcsolható (alapból `NoopLlmAdapter`); az app AI nélkül teljes értékű
+- [x] **PREP-02**: A sync port mögött előkészített (`NoopSyncAdapter` + dirty/outbox könyvelés), de a tényleges szinkronizálás nincs megépítve
 
 ## v2 Követelmények
 
@@ -108,8 +108,8 @@ Melyik fázis melyik követelményt fedi.
 | DATA-04 | Phase 1 | Complete |
 | DATA-05 | Phase 1 | Complete |
 | DATA-06 | Phase 1 | Pending |
-| PREP-01 | Phase 1 | Pending |
-| PREP-02 | Phase 1 | Pending |
+| PREP-01 | Phase 1 | Complete |
+| PREP-02 | Phase 1 | Complete |
 | MIG-01 | Phase 1 | Pending |
 | SURVEY-01 | Phase 2 | Pending |
 | SURVEY-02 | Phase 2 | Pending |
