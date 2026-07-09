@@ -21,7 +21,7 @@ Az induló mérföldkő követelményei. Mindegyik egy roadmap-fázishoz kapcsol
 - [ ] **SURVEY-01**: A felhasználó projektet tud létrehozni, listázni, archiválni és törölni
 - [x] **SURVEY-02**: A felhasználót strukturált, guided kérdés-sorozat vezeti végig a felmérésen
 - [ ] **SURVEY-03**: A válaszok automatikusan mentődnek (debounce-olva)
-- [ ] **SURVEY-04**: A felhasználó projekttípus-specifikus playbook(ok) közül tud választani
+- [x] **SURVEY-04**: A felhasználó projekttípus-specifikus playbook(ok) közül tud választani
 - [x] **SURVEY-05**: Egységes interjú+checklist felület, szabad navigációval a szekciók között
 - [ ] **SURVEY-06**: Haladás-jelző (completion %) mutatja, mennyire kész a felmérés
 - [ ] **SURVEY-07**: Readiness/döntési pontszám számítása a playbook súlyai alapján, a szerkesztések után újraszámolva
@@ -114,7 +114,7 @@ Melyik fázis melyik követelményt fedi.
 | SURVEY-01 | Phase 2 | Pending |
 | SURVEY-02 | Phase 2 | Complete |
 | SURVEY-03 | Phase 2 | Pending |
-| SURVEY-04 | Phase 2 | Pending |
+| SURVEY-04 | Phase 2 | Complete |
 | SURVEY-05 | Phase 2 | Complete |
 | SURVEY-06 | Phase 2 | Pending |
 | SURVEY-07 | Phase 2 | Pending |

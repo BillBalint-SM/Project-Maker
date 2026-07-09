@@ -5,15 +5,15 @@ milestone_name: milestone
 current_phase: 02
 current_phase_name: Felmérési flow és coaching
 status: executing
-stopped_at: Completed 02-01-PLAN.md
-last_updated: "2026-07-09T21:43:24.125Z"
+stopped_at: Completed 02-02-PLAN.md
+last_updated: "2026-07-09T21:57:18.135Z"
 last_activity: 2026-07-09
 last_activity_desc: Phase 02 execution started
 progress:
   total_phases: 5
   completed_phases: 1
   total_plans: 13
-  completed_plans: 6
+  completed_plans: 7
   percent: 20
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-07-08)
 ## Current Position
 
 Phase: 02 (Felmérési flow és coaching) — EXECUTING
-Plan: 2 of 8
+Plan: 3 of 8
 Status: Ready to execute
 Last activity: 2026-07-09 — Phase 02 execution started
 
@@ -61,6 +61,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 01 P05 | ~10min | 2 tasks | 5 files |
 | Phase 01 P03 | 20min | 2 tasks | 7 files |
 | Phase 02 P01 | 5min | 3 tasks | 5 files |
+| Phase 02 P02 | 15min | 3 tasks | 10 files |
 
 ## Accumulated Context
 
@@ -90,6 +91,9 @@ Recent decisions affecting current work:
 - [Phase 02-01]: @types/react/@types/react-dom bumped to @19 alongside react/react-dom runtime bump (required for tsc --noEmit against React 19, not in RESEARCH.md's literal install command but plan flagged it explicitly)
 - [Phase 02-01]: Package legitimacy for @mantine/core, @mantine/hooks, react-hook-form confirmed via npm registry metadata (repository.url/maintainers) before human approval; all matched audited source repos, no typosquat indicators
 - [Phase 02-01]: MantineProvider wraps existing RouterProvider in src/main.tsx without touching router config (createBrowserRouter/single route unchanged) per plan scope boundary
+- [Phase 02-02]: createEmptyProject's playbookId is a mandatory first positional param, never defaulted (D-03); 3 existing call sites pass literal general until 02-05's real playbook-select flow
+- [Phase 02-02]: RxDBMigrationSchemaPlugin registered in db.ts itself (not only test files) so migrationStrategies[1] actually runs in production browser use
+- [Phase 02-02]: legacyImport.ts backfills playbookId: general before ProjectSchema.safeParse, mirroring db.ts's RxDB migration at a second independent data-entry point
 
 ### Pending Todos
 
@@ -116,7 +120,7 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-09T21:43:24.118Z
-Stopped at: Completed 02-01-PLAN.md
+Last session: 2026-07-09T21:57:18.121Z
+Stopped at: Completed 02-02-PLAN.md
 Resume file: 
 None
