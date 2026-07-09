@@ -2,18 +2,18 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_phase: 2
+current_phase: 02
 current_phase_name: Felmérési flow és coaching
 status: executing
-stopped_at: Phase 2 UI-SPEC approved
-last_updated: "2026-07-09T20:49:10.017Z"
+stopped_at: Completed 02-01-PLAN.md
+last_updated: "2026-07-09T21:43:24.125Z"
 last_activity: 2026-07-09
-last_activity_desc: Phase 01 complete, transitioned to Phase 2
+last_activity_desc: Phase 02 execution started
 progress:
   total_phases: 5
   completed_phases: 1
-  total_plans: 5
-  completed_plans: 5
+  total_plans: 13
+  completed_plans: 6
   percent: 20
 ---
 
@@ -24,14 +24,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-08)
 
 **Core value:** Egy ügyfél-felmérésből a lehető leggyorsabban konkrét, „agentic development"-re alkalmas, development-ready igény szülessen — miközben az app a használóját „junior → senior project leader" úton emeli.
-**Current focus:** Phase 01 — adat-alap-portok-perzisztencia-s-mvp-migr-ci
+**Current focus:** Phase 02 — Felmérési flow és coaching
 
 ## Current Position
 
-Phase: 2 — Felmérési flow és coaching
-Plan: Not started
+Phase: 02 (Felmérési flow és coaching) — EXECUTING
+Plan: 2 of 8
 Status: Ready to execute
-Last activity: 2026-07-09 — Phase 01 complete, transitioned to Phase 2
+Last activity: 2026-07-09 — Phase 02 execution started
 
 Progress: [░░░░░░░░░░] 0%
 
@@ -60,6 +60,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 01 P04 | 15min | 2 tasks | 10 files |
 | Phase 01 P05 | ~10min | 2 tasks | 5 files |
 | Phase 01 P03 | 20min | 2 tasks | 7 files |
+| Phase 02 P01 | 5min | 3 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -86,6 +87,9 @@ Recent decisions affecting current work:
 - [Phase 01-03]: InMemoryStorageAdapter (01-05 test double) extended with exportBackup/importBackup reusing backup.ts helpers, after tsc flagged it as incorrectly implementing the widened StoragePort
 - [Phase 01-03]: importBackup() restore writes bypass put() and call collection.upsert() directly, preserving original revision/updatedAt/updatedBy instead of bumping them
 - [Phase 01-03]: ProjectListView.test.tsx assigns URL.createObjectURL/revokeObjectURL directly on the real URL class rather than vi.stubGlobal, since stubbing a plain object copy breaks new URL() elsewhere (react-router)
+- [Phase 02-01]: @types/react/@types/react-dom bumped to @19 alongside react/react-dom runtime bump (required for tsc --noEmit against React 19, not in RESEARCH.md's literal install command but plan flagged it explicitly)
+- [Phase 02-01]: Package legitimacy for @mantine/core, @mantine/hooks, react-hook-form confirmed via npm registry metadata (repository.url/maintainers) before human approval; all matched audited source repos, no typosquat indicators
+- [Phase 02-01]: MantineProvider wraps existing RouterProvider in src/main.tsx without touching router config (createBrowserRouter/single route unchanged) per plan scope boundary
 
 ### Pending Todos
 
@@ -112,7 +116,7 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-09T20:13:34.383Z
-Stopped at: Phase 2 UI-SPEC approved
+Last session: 2026-07-09T21:43:24.118Z
+Stopped at: Completed 02-01-PLAN.md
 Resume file: 
-.planning/phases/02-felm-r-si-flow-s-coaching/02-UI-SPEC.md
+None
