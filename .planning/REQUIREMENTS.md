@@ -55,7 +55,7 @@ Az induló mérföldkő követelményei. Mindegyik egy roadmap-fázishoz kapcsol
 
 ### Migráció (MIG)
 
-- [ ] **MIG-01**: A meglévő (Tauri) MVP adatai JSON-ba exportálhatók és a webes appba importálhatók — nem-destruktív, idempotens módon
+- [x] **MIG-01**: A meglévő (Tauri) MVP adatai JSON-ba exportálhatók és a webes appba importálhatók — nem-destruktív, idempotens módon
 
 ### Architektúra-előkészítés (PREP)
 
@@ -110,7 +110,7 @@ Melyik fázis melyik követelményt fedi.
 | DATA-06 | Phase 1 | Pending |
 | PREP-01 | Phase 1 | Complete |
 | PREP-02 | Phase 1 | Complete |
-| MIG-01 | Phase 1 | Pending |
+| MIG-01 | Phase 1 | Complete |
 | SURVEY-01 | Phase 2 | Pending |
 | SURVEY-02 | Phase 2 | Pending |
 | SURVEY-03 | Phase 2 | Pending |
