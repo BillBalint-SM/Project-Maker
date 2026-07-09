@@ -9,11 +9,11 @@ Az induló mérföldkő követelményei. Mindegyik egy roadmap-fázishoz kapcsol
 
 ### Adatmodell & perzisztencia (DATA)
 
-- [ ] **DATA-01**: Minden entitás stabil, kliens-generált egyedi azonosítót (ULID/UUID) kap; a relációk kizárólag ID-ra hivatkoznak
-- [ ] **DATA-02**: Minden gyökér-rekord sync-envelope-ot kap (`schema_version`, monoton `version`, `updated_at`, `updated_by`/actor, `dirty` flag)
+- [x] **DATA-01**: Minden entitás stabil, kliens-generált egyedi azonosítót (ULID/UUID) kap; a relációk kizárólag ID-ra hivatkoznak
+- [x] **DATA-02**: Minden gyökér-rekord sync-envelope-ot kap (`schema_version`, monoton `version`, `updated_at`, `updated_by`/actor, `dirty` flag)
 - [ ] **DATA-03**: A törlés soft-delete (tombstone `deleted_at`); a listák alapból elrejtik a törölt rekordokat
 - [ ] **DATA-04**: A séma verziózott, verzió-kulcsolt migrációs lánccal (üres lánccal is működik)
-- [ ] **DATA-05**: Minden projekt-adat Zod-sémával validálódik mentés és betöltés előtt
+- [x] **DATA-05**: Minden projekt-adat Zod-sémával validálódik mentés és betöltés előtt
 - [ ] **DATA-06**: A felhasználó teljes adatmentést (backup) és visszaállítást (restore) tud készíteni JSON-ba/-ból
 
 ### Felmérési flow (SURVEY)
@@ -102,11 +102,11 @@ Melyik fázis melyik követelményt fedi.
 
 | Követelmény | Fázis | Státusz |
 |-------------|-------|---------|
-| DATA-01 | Phase 1 | Pending |
-| DATA-02 | Phase 1 | Pending |
+| DATA-01 | Phase 1 | Complete |
+| DATA-02 | Phase 1 | Complete |
 | DATA-03 | Phase 1 | Pending |
 | DATA-04 | Phase 1 | Pending |
-| DATA-05 | Phase 1 | Pending |
+| DATA-05 | Phase 1 | Complete |
 | DATA-06 | Phase 1 | Pending |
 | PREP-01 | Phase 1 | Pending |
 | PREP-02 | Phase 1 | Pending |
@@ -135,6 +135,7 @@ Melyik fázis melyik követelményt fedi.
 | PWA-04 | Phase 5 | Pending |
 
 **Lefedettség:**
+
 - v1 követelmények: 31 összesen
 - Fázisokhoz rendelve: 31 ✓
 - Nem rendelt: 0
