@@ -31,6 +31,15 @@ export class InMemoryStorageAdapter implements StoragePort {
   }
 
   async put(record: Envelope<Project>): Promise<void> {
+    // Mirrors RxdbStorageAdapter.put()'s cross-field invariant check: the
+    // envelope's storage key (id) must match the domain payload's own
+    // embedded id (data.id), since list()/toProjectListItem() below source
+    // ProjectListItem.id from data.id while get()/put()/softDelete() key off
+    // the envelope's id.
+    if (record.data.id !== record.id) {
+      throw new Error(`Envelope id (${record.id}) does not match data.id (${record.data.id})`);
+    }
+
     this.store.set(record.id, { ...record });
   }
 

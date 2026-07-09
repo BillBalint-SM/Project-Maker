@@ -104,6 +104,19 @@ export class RxdbStorageAdapter implements StoragePort {
     // caller. There is no silent partial write (DATA-05).
     const validated = ProjectEnvelopeSchema.parse(record) as Envelope<Project>;
 
+    // Enforce the invariant that the envelope's storage key (id, used by
+    // get()/put()/softDelete() as the RxDB primaryKey) and the domain
+    // payload's own embedded id (data.id, used by list() to build
+    // ProjectListItem.id) never diverge. Nothing in the Zod schema checks
+    // this cross-field relationship, so a caller-constructed mismatch would
+    // otherwise be silently written and later cause "Project not found" or
+    // lookups against the wrong record.
+    if (validated.data.id !== validated.id) {
+      throw new Error(
+        `Envelope id (${validated.id}) does not match data.id (${validated.data.id})`
+      );
+    }
+
     const existing = await this.collection.findOne(validated.id).exec();
     const revision = existing
       ? (existing.toJSON() as PersistedProjectEnvelope).revision + 1
