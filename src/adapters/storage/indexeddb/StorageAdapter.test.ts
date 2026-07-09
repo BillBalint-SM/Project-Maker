@@ -95,4 +95,27 @@ describe("RxdbStorageAdapter (memory storage — no real IndexedDB needed)", () 
     const plain = rawDoc?.toJSON() as Record<string, unknown>;
     expect(Object.prototype.hasOwnProperty.call(plain, "deletedAt")).toBe(false);
   });
+
+  it("softDelete() removes the record from list() but get() still returns it with deletedAt set (tombstone, not physical delete)", async () => {
+    const envelope = buildEnvelope();
+    await adapter.put(envelope);
+
+    const beforeDelete = await adapter.list();
+    expect(beforeDelete).toHaveLength(1);
+
+    await adapter.softDelete(envelope.id);
+
+    const afterDelete = await adapter.list();
+    expect(afterDelete).toHaveLength(0);
+
+    const direct = await adapter.get(envelope.id);
+    expect(direct).not.toBeNull();
+    expect(direct?.deletedAt).not.toBeNull();
+  });
+
+  it("softDelete() throws when the id does not exist", async () => {
+    await expect(adapter.softDelete("nonexistent-id")).rejects.toThrow(
+      "Project not found: nonexistent-id"
+    );
+  });
 });

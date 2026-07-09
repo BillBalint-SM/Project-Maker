@@ -9,7 +9,8 @@ import type { ProjectListItem } from "../../domain/model/types";
 const storageMock = vi.hoisted(() => ({
   list: vi.fn(),
   get: vi.fn(),
-  put: vi.fn()
+  put: vi.fn(),
+  softDelete: vi.fn()
 }));
 
 vi.mock("../../main", () => ({
@@ -44,6 +45,7 @@ describe("ProjectListView", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     storageMock.put.mockResolvedValue(undefined);
+    storageMock.softDelete.mockResolvedValue(undefined);
   });
 
   it('shows "Nincs megjeleníthető projekt." when the list is empty', async () => {
@@ -84,5 +86,21 @@ describe("ProjectListView", () => {
 
     expect(storageMock.list).toHaveBeenCalledTimes(2);
     expect(await screen.findByText("Friss teszt projekt")).toBeInTheDocument();
+  });
+
+  it('clicking "Törlés" calls storage.softDelete(id) and the row disappears from the list', async () => {
+    storageMock.list
+      .mockResolvedValueOnce([makeListItem({ id: "1", name: "Alpha projekt" })])
+      .mockResolvedValueOnce([]);
+    const user = userEvent.setup();
+
+    await renderView();
+    await screen.findByText("Alpha projekt");
+
+    await user.click(screen.getByRole("button", { name: "Törlés" }));
+
+    await waitFor(() => expect(storageMock.softDelete).toHaveBeenCalledWith("1"));
+    expect(storageMock.list).toHaveBeenCalledTimes(2);
+    expect(screen.queryByText("Alpha projekt")).not.toBeInTheDocument();
   });
 });
