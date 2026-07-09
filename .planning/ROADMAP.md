@@ -35,12 +35,12 @@ Decimal phases appear between their surrounding integers in numeric order.
   4. Mind az 5 port (Storage, Content, Export, Llm, Sync) definiált; az app alapból `NoopLlmAdapter` + `NoopSyncAdapter` mögött fut, dirty/outbox könyveléssel — AI és sync nélkül is teljes.
   5. A meglévő Tauri-MVP adata nem-destruktívan és idempotensen importálható a webes domain-modellre, Zod-sémákkal validálva, valósághű fixtúrán tesztelve (ismételt futtatás nem duplikál és nem ír felül meglévő adatot) — AI és sync nélkül is teljes.
 
-**Plans**: 5 plans
+**Plans**: 1/5 plans executed
 
 Plans:
 **Wave 1**
 
-- [ ] 01-01-PLAN.md — Walking Skeleton: Envelope/Zod domain modell, RxDB StoragePort/adapter, routing + ProjectListView
+- [x] 01-01-PLAN.md — Walking Skeleton: Envelope/Zod domain modell, RxDB StoragePort/adapter, routing + ProjectListView
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
@@ -141,7 +141,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Adat-alap, portok, perzisztencia és MVP-migráció | 0/TBD | Not started | - |
+| 1. Adat-alap, portok, perzisztencia és MVP-migráció | 1/5 | In Progress|  |
 | 2. Felmérési flow és coaching | 0/TBD | Not started | - |
 | 3. Minőség-heurisztika és Markdown spec | 0/TBD | Not started | - |
 | 4. Export és AC/user story | 0/TBD | Not started | - |

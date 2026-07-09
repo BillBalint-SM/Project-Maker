@@ -5,15 +5,15 @@ milestone_name: milestone
 current_phase: 01
 current_phase_name: adat-alap-portok-perzisztencia-s-mvp-migr-ci
 status: executing
-stopped_at: Phase 1 planned and verified (5 plans), merged to main, execution not started
-last_updated: "2026-07-09T11:11:56.138Z"
+stopped_at: Completed 01-01-PLAN.md (Tasks 2-4; Task 1 checkpoint approved by orchestrator)
+last_updated: "2026-07-09T11:44:33.029Z"
 last_activity: 2026-07-09
 last_activity_desc: Phase 01 execution started
 progress:
   total_phases: 5
   completed_phases: 0
   total_plans: 5
-  completed_plans: 0
+  completed_plans: 1
   percent: 0
 ---
 
@@ -29,8 +29,8 @@ See: .planning/PROJECT.md (updated 2026-07-08)
 ## Current Position
 
 Phase: 01 (adat-alap-portok-perzisztencia-s-mvp-migr-ci) — EXECUTING
-Plan: 1 of 5
-Status: Executing Phase 01
+Plan: 2 of 5
+Status: Ready to execute
 Last activity: 2026-07-09 — Phase 01 execution started
 
 Progress: [░░░░░░░░░░] 0%
@@ -55,6 +55,7 @@ Progress: [░░░░░░░░░░] 0%
 - Trend: -
 
 *Updated after each plan completion*
+| Phase 01 P01 | 28min | 4 tasks | 15 files |
 
 ## Accumulated Context
 
@@ -68,6 +69,9 @@ Recent decisions affecting current work:
 - [Roadmap]: A legacy Tauri-MVP migráció (MIG-01) a Phase 1 része — a domain-modell + Zod + backup/restore természetes testvére (5 fázisos roadmap).
 - [Roadmap]: A Markdown spec a kanonikus forrás — a spec-generálás (Phase 3) megelőzi az exportot (Phase 4).
 - [Roadmap]: Élő LLM-adapter és tényleges sync a mérföldkövön KÍVÜL (v2); most csak Noop-portok + sync-envelope. Minden fázis „AI és sync nélkül is teljes" (mvp mód).
+- [Phase 01]: 01-01: Installed rxdb/rxjs/zod/react-router during Task 2 (ahead of Task 3's literal pnpm add step) since Task 1's human checkpoint had already approved all 4 packages
+- [Phase 01]: 01-01: tsconfig.json moduleResolution changed Node -> Bundler to resolve react-router/dom conditional subpath export
+- [Phase 01]: 01-01: ProjectListView obtains StoragePort via a module-level lazy singleton (getStorage()) exported from src/main.tsx, avoiding repeated RxDB database opens
 
 ### Pending Todos
 
@@ -94,6 +98,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-09T11:08:47.756Z
-Stopped at: Session resumed, proceeding to /gsd-execute-phase 1
-Resume file: .planning/phases/01-adat-alap-portok-perzisztencia-s-mvp-migr-ci/.continue-here.md
+Last session: 2026-07-09T11:44:33.022Z
+Stopped at: Completed 01-01-PLAN.md (Tasks 2-4; Task 1 checkpoint approved by orchestrator)
+Resume file: None
