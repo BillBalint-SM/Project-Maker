@@ -29,9 +29,18 @@ export interface StoragePort {
   exportBackup(): Promise<Blob>;
   /**
    * Validates every entry in `blob` BEFORE writing anything. If any single
-   * entry fails validation, the whole import is rejected with zero writes
-   * (atomic, all-or-nothing) — this is the user's own, previously-exported
-   * data, not third-party legacy data to be triaged (DATA-06).
+   * entry fails Zod validation, the whole import is rejected with zero
+   * writes (atomic, all-or-nothing) — this is the user's own,
+   * previously-exported data, not third-party legacy data to be triaged
+   * (DATA-06).
+   *
+   * This "zero writes" guarantee covers validation failures only. It does
+   * NOT extend to failures during the write phase itself (e.g. a storage
+   * schema constraint the Zod schema doesn't also enforce, or an
+   * IndexedDB-level write/quota error) — those can still throw partway
+   * through the write loop, after some earlier entries in the same
+   * `blob` have already been persisted. There is no write-phase
+   * transaction/rollback.
    */
   importBackup(blob: Blob): Promise<void>;
 }
