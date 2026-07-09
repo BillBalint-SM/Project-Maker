@@ -1,6 +1,7 @@
 import type { Envelope } from "../../../domain/model/envelope";
 import type { Project, ProjectListItem } from "../../../domain/model/types";
 import type { StoragePort } from "../../../domain/ports/StoragePort";
+import { parseBackup, serializeBackup } from "../indexeddb/backup";
 
 /**
  * Fast, RxDB-free StoragePort test double. Used ONLY by this plan's own
@@ -8,10 +9,12 @@ import type { StoragePort } from "../../../domain/ports/StoragePort";
  * legacyImport.integration.test.ts a valós RxdbStorageAdapter ellen
  * gyakorolja (createStorageAdapter() a src/app/container.ts-ből).
  *
- * Implements the FULL current StoragePort surface (list/get/put/softDelete)
- * — softDelete already exists on StoragePort as of 01-02, so a test double
- * declaring `implements StoragePort` must implement it too, even though this
- * plan's own tests never call it.
+ * Implements the FULL current StoragePort surface
+ * (list/get/put/softDelete/exportBackup/importBackup) — every method added
+ * to StoragePort since 01-01 must be implemented here too, even though this
+ * plan's own tests never call some of them. `exportBackup`/`importBackup`
+ * reuse the same pure `backup.ts` helpers the real RxdbStorageAdapter uses,
+ * so both implementations share one validation/serialization path.
  */
 export class InMemoryStorageAdapter implements StoragePort {
   private readonly store = new Map<string, Envelope<Project>>();
@@ -44,6 +47,19 @@ export class InMemoryStorageAdapter implements StoragePort {
       updatedAt: new Date().toISOString(),
       dirty: true
     });
+  }
+
+  async exportBackup(): Promise<Blob> {
+    return serializeBackup(Array.from(this.store.values()).map((envelope) => ({ ...envelope })));
+  }
+
+  async importBackup(blob: Blob): Promise<void> {
+    const text = await blob.text();
+    const envelopes = parseBackup(text);
+
+    for (const envelope of envelopes) {
+      this.store.set(envelope.id, { ...envelope });
+    }
   }
 }
 
