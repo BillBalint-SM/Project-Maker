@@ -63,6 +63,23 @@ describe("importLegacyExport (fast in-memory StoragePort test double)", () => {
     expect(stored?.data.customerOrOrganization).toBe("Székesfehérvári Önkormányzat");
   });
 
+  it("backfills playbookId: \"general\" on every imported row (legacy rows never carried this field)", async () => {
+    const rows = loadFixture();
+    const storage = new InMemoryStorageAdapter();
+
+    const result = await importLegacyExport(rows, storage);
+    expect(result.imported).toBe(3);
+
+    for (const row of rows) {
+      const parsed = JSON.parse(row.data) as { name?: unknown };
+      if (parsed.name === undefined) continue; // the intentionally-invalid fixture row
+
+      const stored = await storage.get(row.id);
+      expect(stored).not.toBeNull();
+      expect(stored?.data.playbookId).toBe("general");
+    }
+  });
+
   it("never calls storage.softDelete — migration import never tombstones", async () => {
     const rows = loadFixture();
     const storage = new InMemoryStorageAdapter();
