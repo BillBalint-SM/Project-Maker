@@ -65,13 +65,13 @@ Plans:
   3. Minden kérdéshez elérhető a négy-rovatos coaching-panel (*miért* fontos / *mit* ad technikailag / *hogyan* kérdezz / *etikett*), magyar nyelven, adatként tárolt és verziózott tartalomból (nem kódba égetve).
   4. A teljes felmérési és coaching élmény determinisztikus — AI és sync nélkül is teljes.
 
-**Plans**: 1/8 plans executed
+**Plans**: 2/8 plans executed
 
 Plans:
 **Wave 1**
 
 - [x] 02-01-PLAN.md — React 19 + Mantine 9 + React Hook Form 7 + Zustand 5 stackváltás bevezetése
-- [ ] 02-02-PLAN.md — Project.playbookId mező + RxDB séma-migráció + legacy MIG-01 import playbookId-backfill
+- [x] 02-02-PLAN.md — Project.playbookId mező + RxDB séma-migráció + legacy MIG-01 import playbookId-backfill
 - [ ] 02-03-PLAN.md — content/playbook katalógus (Általános playbook) + domain/scoring playbook-paraméteres motor
 - [ ] 02-04-PLAN.md — content/coaching katalógus (30x4 magyar coaching-tartalom) + ContentPort adapter
 
@@ -156,7 +156,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Adat-alap, portok, perzisztencia és MVP-migráció | 5/5 | Complete    | 2026-07-09 |
-| 2. Felmérési flow és coaching | 1/8 | In Progress|  |
+| 2. Felmérési flow és coaching | 2/8 | In Progress|  |
 | 3. Minőség-heurisztika és Markdown spec | 0/TBD | Not started | - |
 | 4. Export és AC/user story | 0/TBD | Not started | - |
 | 5. PWA-héj, offline, biztonság és i18n | 0/TBD | Not started | - |
