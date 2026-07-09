@@ -199,8 +199,17 @@ export class RxdbStorageAdapter implements StoragePort {
   async importBackup(blob: Blob): Promise<void> {
     const text = await blob.text();
     // parseBackup() validates EVERY entry before returning anything — if it
-    // throws, execution never reaches the write loop below, so there is no
-    // partial write (atomic, all-or-nothing).
+    // throws, execution never reaches the write loop below, so there are
+    // zero writes for a VALIDATION failure (atomic, all-or-nothing — see
+    // StoragePort.importBackup()'s doc comment).
+    //
+    // The write loop itself is NOT similarly atomic: it is a plain
+    // sequential loop with no transaction/rollback. If any single
+    // `upsert()` below throws for a reason Zod's schema doesn't also catch
+    // (e.g. a storage-layer constraint or an IndexedDB write/quota error),
+    // every envelope already upserted before the failing one stays
+    // persisted — this loop can leave a partial import on a write-phase
+    // failure. Callers must not assume "zero writes" covers this case too.
     const envelopes = parseBackup(text);
 
     for (const envelope of envelopes) {
