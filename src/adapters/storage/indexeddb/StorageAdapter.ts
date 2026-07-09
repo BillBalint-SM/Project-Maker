@@ -118,21 +118,43 @@ export class RxdbStorageAdapter implements StoragePort {
     }
 
     const existing = await this.collection.findOne(validated.id).exec();
-    const revision = existing
-      ? (existing.toJSON() as PersistedProjectEnvelope).revision + 1
-      : 1;
 
-    const toWrite: Envelope<Project> = {
-      ...validated,
-      revision,
-      updatedAt: new Date().toISOString(),
-      // ALWAYS "local-user", regardless of what the caller passed — there
-      // is exactly one local actor in this milestone (D-06 stub).
-      updatedBy: "local-user",
-      dirty: true
-    };
+    if (!existing) {
+      // First write for this id — there is no existing revision to race
+      // against, so a plain upsert is safe.
+      const toWrite: Envelope<Project> = {
+        ...validated,
+        revision: 1,
+        updatedAt: new Date().toISOString(),
+        // ALWAYS "local-user", regardless of what the caller passed — there
+        // is exactly one local actor in this milestone (D-06 stub).
+        updatedBy: "local-user",
+        dirty: true
+      };
 
-    await this.collection.upsert(toPersisted(toWrite));
+      await this.collection.upsert(toPersisted(toWrite));
+      return;
+    }
+
+    // Existing doc: bump the revision via incrementalModify() rather than a
+    // separate findOne() + upsert(). RxDB queues incrementalModify() calls
+    // per-document (collection.incrementalWriteQueue), so the mutation
+    // function below always runs against the LATEST written state — this
+    // closes the lost-update race where two concurrent put() calls for the
+    // same id could both read the same `existing.revision`, both compute the
+    // same "next" value, and the second upsert() would silently clobber the
+    // first's increment.
+    await existing.incrementalModify((current: unknown) => {
+      const currentRevision = (current as PersistedProjectEnvelope).revision;
+      const toWrite: Envelope<Project> = {
+        ...validated,
+        revision: currentRevision + 1,
+        updatedAt: new Date().toISOString(),
+        updatedBy: "local-user",
+        dirty: true
+      };
+      return toPersisted(toWrite);
+    });
   }
 
   async softDelete(id: string): Promise<void> {
