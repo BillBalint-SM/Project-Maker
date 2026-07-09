@@ -28,9 +28,13 @@ export function ProjectListView() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const refresh = useCallback(async () => {
-    const storage = await getStorage();
-    const items = await storage.list();
-    setProjects(items);
+    try {
+      const storage = await getStorage();
+      const items = await storage.list();
+      setProjects(items);
+    } catch (err) {
+      setError(`Projektlista betöltése sikertelen: ${errorMessage(err)}`);
+    }
   }, []);
 
   useEffect(() => {
