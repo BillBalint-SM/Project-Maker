@@ -8,8 +8,6 @@ import type { LlmPort } from "../../domain/ports/LlmPort";
  * identity function: the deterministic pipeline's output is already
  * complete without the LLM, so "enrichment" here is a no-op passthrough.
  */
-// TODO(RED): placeholder implementation, intentionally not yet correct —
-// GREEN commit replaces this with the identity/empty-array Null Object.
 export const NoopLlmAdapter: LlmPort = {
   async rateAnswer() {
     return { level: "unknown" };
@@ -17,7 +15,7 @@ export const NoopLlmAdapter: LlmPort = {
   async suggestFollowups() {
     return [];
   },
-  async enrichSpec<T>(_spec: T): Promise<T> {
-    return undefined as unknown as T;
+  async enrichSpec<T>(spec: T): Promise<T> {
+    return spec;
   }
 };
