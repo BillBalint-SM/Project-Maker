@@ -132,6 +132,7 @@ export interface Project {
   checklistAnswers: Record<number, ChecklistAnswer>;
   followUps: FollowUpQuestion[];
   completion: ProjectCompletion;
+  playbookId: string;
   archivedAt: string | null;
   createdAt: string;
   updatedAt: string;

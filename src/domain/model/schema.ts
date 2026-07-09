@@ -137,6 +137,7 @@ export const ProjectSchema = z.object({
   checklistAnswers: z.record(z.string(), ChecklistAnswerSchema),
   followUps: z.array(FollowUpQuestionSchema),
   completion: ProjectCompletionSchema,
+  playbookId: z.string().min(1),
   archivedAt: z.string().nullable(),
   createdAt: z.string(),
   updatedAt: z.string()

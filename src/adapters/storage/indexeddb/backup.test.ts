@@ -13,7 +13,7 @@ function buildEnvelope(overrides: Partial<Envelope<Project>> = {}): Envelope<Pro
   return {
     id,
     schemaVersion: CURRENT_APP_SCHEMA_VERSION,
-    data: createEmptyProject({ id, name: "Teszt projekt" }),
+    data: createEmptyProject("general", { id, name: "Teszt projekt" }),
     revision: 0,
     updatedAt: new Date().toISOString(),
     updatedBy: "local-user",

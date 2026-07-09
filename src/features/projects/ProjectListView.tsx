@@ -47,7 +47,7 @@ export function ProjectListView() {
       const storage = await getStorage();
       const id = crypto.randomUUID();
       const timestamp = new Date().toISOString();
-      const data = createEmptyProject({ id, name: `Teszt projekt ${timestamp}` });
+      const data = createEmptyProject("general", { id, name: `Teszt projekt ${timestamp}` });
 
       const envelope: Envelope<Project> = {
         id,
