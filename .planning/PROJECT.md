@@ -22,6 +22,7 @@ Egy ügyfél-felmérésből a lehető leggyorsabban **konkrét, „agentic devel
 - ✓ Ember-olvasható PDF és Excel export — MVP
 - ✓ Magyar nyelvű felhasználói felület — MVP
 - ✓ Önálló, helyi adattárolás automatikus mentéssel — MVP
+- ✓ Sync-előkészítés az architektúrában: séma-verziózás + adat-backup/restore — **Phase 1** (Envelope<T> sync-envelope, hexagonális port-réteg, RxDB/Dexie perzisztencia, versioned migráció, teljes JSON backup/restore — mind bizonyítottan valós böngésző-IndexedDB-n futtatva, nem csak mock/memory-storage-on)
 
 ### Active
 
@@ -71,8 +72,8 @@ Egy ügyfél-felmérésből a lehető leggyorsabban **konkrét, „agentic devel
 
 | Döntés | Indoklás | Kimenet |
 |--------|----------|---------|
-| Web/PWA platform (el a desktoptól) | A jövőbeli 5-fős sync és a hozzáférhetőség webben természetesebb | — Függőben |
-| A stack nyitott; a kutatás javasolja | A vízióhoz optimális, webre szabott keret kiválasztása | — Függőben |
+| Web/PWA platform (el a desktoptól) | A jövőbeli 5-fős sync és a hozzáférhetőség webben természetesebb | Phase 1-ben bizonyítottan működik (Walking Skeleton valós böngésző-IndexedDB-n) |
+| A stack nyitott; a kutatás javasolja | A vízióhoz optimális, webre szabott keret kiválasztása | RxDB 17 (Dexie) + Zod 4 + React 18 + React Router 7 + Vite 8 — Phase 1-ben validálva |
 | Opcionális élő AI (nem kötelező) | Coaching/minőség erősítése úgy, hogy AI nélkül is teljes legyen | — Függőben |
 | Egységes felmérési élmény (interjú + checklist) | Koherensebb, egyszerűbb UX | — Függőben |
 | Elsődleges output: strukturált Markdown | Egyszerre AI-barát és ember-olvasható | — Függőben |
@@ -97,4 +98,4 @@ Ez a dokumentum a fázisváltásoknál és a mérföldkő-határokon fejlődik.
 4. Kontextus frissítése az aktuális állapottal
 
 ---
-*Utoljára frissítve: 2026-07-08 az inicializálás után*
+*Utoljára frissítve: 2026-07-09, Phase 1 (Adat-alap, portok, perzisztencia és MVP-migráció) lezárása után*
