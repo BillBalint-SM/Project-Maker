@@ -5,14 +5,14 @@ milestone_name: milestone
 current_phase: 1
 current_phase_name: Adat-alap, portok, perzisztencia és MVP-migráció
 status: executing
-stopped_at: Phase 1 context gathered
-last_updated: "2026-07-08T23:54:27.634Z"
+stopped_at: Phase 1 planned and verified (5 plans), merged to main, execution not started
+last_updated: "2026-07-09T11:08:47.756Z"
 last_activity: 2026-07-09
-last_activity_desc: "Roadmap 5 fázisra vonva: Phase 6 (MIG-01) beolvasztva Phase 1-be; 31/31 v1 követelmény leképezve"
+last_activity_desc: "Phase 1 tervezve (5 plan, 3 hullám, MVP+Walking Skeleton), plan-checker zöld, PR #1 Codex-review-jal (deletedAt RxDB-séma hiba javítva) main-be merge-elve"
 progress:
   total_phases: 5
   completed_phases: 0
-  total_plans: 0
+  total_plans: 5
   completed_plans: 0
   percent: 0
 ---
@@ -29,9 +29,9 @@ See: .planning/PROJECT.md (updated 2026-07-08)
 ## Current Position
 
 Phase: 1 of 5 (Adat-alap, portok, perzisztencia és MVP-migráció)
-Plan: 0 of TBD in current phase
+Plan: 0 of 5 in current phase
 Status: Ready to execute
-Last activity: 2026-07-09 — Roadmap 5 fázisra vonva: Phase 6 (MIG-01) beolvasztva Phase 1-be; 31/31 v1 követelmény leképezve
+Last activity: 2026-07-09 — Phase 1 tervezve és verifikálva, PR #1 main-be merge-elve (deletedAt RxDB-séma hiba javítva Codex-review után)
 
 Progress: [░░░░░░░░░░] 0%
 
@@ -94,6 +94,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-08T23:10:04.335Z
-Stopped at: Phase 1 context gathered
-Resume file: .planning/phases/01-adat-alap-portok-perzisztencia-s-mvp-migr-ci/01-CONTEXT.md
+Last session: 2026-07-09T11:08:47.756Z
+Stopped at: Session resumed, proceeding to /gsd-execute-phase 1
+Resume file: .planning/phases/01-adat-alap-portok-perzisztencia-s-mvp-migr-ci/.continue-here.md
