@@ -87,9 +87,12 @@ export async function importLegacyExport(
       // Envelope-level tombstone is ALWAYS null on import — see doc comment
       // above re: not conflating this with data.archivedAt.
       deletedAt: null,
-      // Freshly-imported data is in sync with itself; there is no pending
-      // local change to flag as dirty.
-      dirty: false
+      // NOTE: storage.put() (RxdbStorageAdapter) unconditionally overrides
+      // this to `true` on write, regardless of what is passed here — there
+      // is currently no "already synced" write path. `true` is used here so
+      // this literal doesn't claim a guarantee ("freshly-imported data is
+      // dirty: false") the code cannot actually deliver.
+      dirty: true
     };
 
     await storage.put(envelope);
