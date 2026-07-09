@@ -141,7 +141,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Adat-alap, portok, perzisztencia és MVP-migráció | 5/5 | Complete   | 2026-07-09 |
+| 1. Adat-alap, portok, perzisztencia és MVP-migráció | 5/5 | Complete    | 2026-07-09 |
 | 2. Felmérési flow és coaching | 0/TBD | Not started | - |
 | 3. Minőség-heurisztika és Markdown spec | 0/TBD | Not started | - |
 | 4. Export és AC/user story | 0/TBD | Not started | - |
