@@ -42,32 +42,42 @@ export function ProjectListView() {
   }, [refresh]);
 
   async function handleAddTestProject() {
-    const storage = await getStorage();
-    const id = crypto.randomUUID();
-    const timestamp = new Date().toISOString();
-    const data = createEmptyProject({ id, name: `Teszt projekt ${timestamp}` });
+    setError("");
+    try {
+      const storage = await getStorage();
+      const id = crypto.randomUUID();
+      const timestamp = new Date().toISOString();
+      const data = createEmptyProject({ id, name: `Teszt projekt ${timestamp}` });
 
-    const envelope: Envelope<Project> = {
-      id,
-      schemaVersion: CURRENT_APP_SCHEMA_VERSION,
-      data,
-      // The adapter's put() bumps this to 1 (or existing.revision + 1) —
-      // the value passed here is irrelevant, only its presence matters.
-      revision: 0,
-      updatedAt: timestamp,
-      updatedBy: "local-user",
-      deletedAt: null,
-      dirty: true
-    };
+      const envelope: Envelope<Project> = {
+        id,
+        schemaVersion: CURRENT_APP_SCHEMA_VERSION,
+        data,
+        // The adapter's put() bumps this to 1 (or existing.revision + 1) —
+        // the value passed here is irrelevant, only its presence matters.
+        revision: 0,
+        updatedAt: timestamp,
+        updatedBy: "local-user",
+        deletedAt: null,
+        dirty: true
+      };
 
-    await storage.put(envelope);
-    await refresh();
+      await storage.put(envelope);
+      await refresh();
+    } catch (err) {
+      setError(`Teszt-projekt létrehozása sikertelen: ${errorMessage(err)}`);
+    }
   }
 
   async function handleDelete(id: string) {
-    const storage = await getStorage();
-    await storage.softDelete(id);
-    await refresh();
+    setError("");
+    try {
+      const storage = await getStorage();
+      await storage.softDelete(id);
+      await refresh();
+    } catch (err) {
+      setError(`Törlés sikertelen: ${errorMessage(err)}`);
+    }
   }
 
   async function handleExportBackup() {
