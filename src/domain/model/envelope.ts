@@ -35,5 +35,14 @@ export interface Envelope<T> {
  * at 0). Never conflate the two — this one drives domain/Zod-level
  * migrations of the `data` payload; the RxDB `version` drives the
  * IndexedDB collection's own schema migrations.
+ *
+ * Bumped 1 -> 2 in Phase 2 Plan 02: this is the FIRST non-empty migration
+ * at this domain level, introducing `Project.playbookId` (required,
+ * non-empty string — SURVEY-04). Existing Phase-1 documents (persisted
+ * before this field existed) are backfilled to `playbookId: "general"` via
+ * the RxDB `migrationStrategies[1]` step in db.ts (storage-level entry
+ * point) and via a dedicated backfill in legacyImport.ts (legacy MIG-01
+ * JSON-blob entry point) — two different data entry points, same "general"
+ * default (D-01: "general" is the only playbook that exists today).
  */
-export const CURRENT_APP_SCHEMA_VERSION = 1;
+export const CURRENT_APP_SCHEMA_VERSION = 2;

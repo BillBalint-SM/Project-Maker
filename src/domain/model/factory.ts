@@ -24,8 +24,13 @@ function nowIso(): string {
  * EXPLICIT NON-GOAL: this factory does NOT compute readiness/decision
  * scores — that is the full checklist/scoring engine's job (Phase 2). It
  * only produces schema-valid, zeroed defaults.
+ *
+ * `playbookId` is a REQUIRED, first positional parameter — deliberately NOT
+ * part of `overrides` and NOT given a silent default (D-03 "véglegesség"
+ * elve): the caller must always explicitly decide which playbook a new
+ * project uses, even though only one playbook ("general") exists today.
  */
-export function createEmptyProject(overrides?: Partial<Project>): Project {
+export function createEmptyProject(playbookId: string, overrides?: Partial<Project>): Project {
   const timestamp = nowIso();
 
   const base: Project = {
@@ -83,6 +88,7 @@ export function createEmptyProject(overrides?: Partial<Project>): Project {
       nextRecommendedAction: "",
       readinessGaps: []
     },
+    playbookId,
     archivedAt: null,
     createdAt: timestamp,
     updatedAt: timestamp
