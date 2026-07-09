@@ -1,10 +1,11 @@
 ---
 phase: 02
 slug: felm-r-si-flow-s-coaching
-status: draft
-nyquist_compliant: false
-wave_0_complete: false
+status: planned
+nyquist_compliant: true
+wave_0_complete: true
 created: 2026-07-09
+updated: 2026-07-09
 ---
 
 # Phase 02 — Validation Strategy
@@ -36,27 +37,32 @@ created: 2026-07-09
 
 ## Per-Task Verification Map
 
-| Task ID | Plan | Wave | Requirement | Threat Ref | Secure Behavior | Test Type | Automated Command | File Exists | Status |
-|---------|------|------|-------------|------------|-----------------|-----------|-------------------|-------------|--------|
-| TBD (planner assigns) | TBD | TBD | SURVEY-01 | — | N/A | unit | `pnpm vitest run src/features/projects/ProjectListView.test.tsx` | ✅ (bővítendő) | ⬜ pending |
-| TBD | TBD | TBD | SURVEY-02/05/14 | — | N/A | unit (component) | `pnpm vitest run src/features/survey/ChecklistCard.test.tsx` | ❌ Wave 0 | ⬜ pending |
-| TBD | TBD | TBD | SURVEY-03 | — | N/A | unit | `pnpm vitest run src/features/survey/useAutosave.test.ts` | ❌ Wave 0 | ⬜ pending |
-| TBD | TBD | TBD | SURVEY-04 | — | N/A | unit (component) | `pnpm vitest run src/features/projects/CreateProjectModal.test.tsx` | ❌ Wave 0 | ⬜ pending |
-| TBD | TBD | TBD | SURVEY-06/07 | — | N/A | unit | `pnpm vitest run src/domain/scoring` | ❌ Wave 0 (logika átemelve, tesztek bővítendők) | ⬜ pending |
-| TBD | TBD | TBD | COACH-01/02/03 | — | N/A | unit | `pnpm vitest run src/adapters/content/staticContent.test.ts` | ❌ Wave 0 | ⬜ pending |
-| TBD | TBD | TBD | (migráció, D-03/playbookId) | T-02-01 (v0→v1 séma-migráció) | `migrationStrategies[1]` helyesen tölti fel `playbookId: "general"`-t v0-séma dokumentumon | unit | `pnpm vitest run src/adapters/storage/indexeddb/StorageAdapter.test.ts` | ✅ fájl létezik, teszteset bővítendő | ⬜ pending |
-| TBD | TBD | TBD | V5 Input Validation (statikus adat) | T-02-02 (hiányos/hibás CoachingContent/Playbook build-időben észrevétlen) | Zod-parse minden `content/playbook/` és `content/coaching/` bejegyzésre | unit (smoke) | `pnpm vitest run src/adapters/content/staticContent.test.ts` | ❌ Wave 0 | ⬜ pending |
+> Wave-0-style tests were not delivered as a separate pre-wave; the planner embedded each one directly into its owning plan as a `tdd="true"` task (RED→GREEN). Task references below use `Plan NN / Task N` since these plans do not carry a separate formal Task ID token.
 
-*Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
+| Task Ref | Plan | Wave | Requirement | Threat Ref | Secure Behavior | Test Type | Automated Command | Status |
+|---------|------|------|-------------|------------|-----------------|-----------|-------------------|--------|
+| 02-05 / Task 1 | 02-05 | 2 | SURVEY-01, SURVEY-04 | — | N/A | unit (component) | `pnpm vitest run src/features/projects/CreateProjectModal.test.tsx` | ⬜ pending |
+| 02-06 / Task 3 | 02-06 | 2 | SURVEY-02/05/14 | — | N/A | unit (component) | `pnpm vitest run src/features/survey/ChecklistCard.test.tsx` | ⬜ pending |
+| 02-06 / Task 1 | 02-06 | 2 | SURVEY-03 | — | N/A | unit | `pnpm vitest run src/app/store/checklistUiStore.test.ts src/features/survey/useAutosave.test.ts` | ⬜ pending |
+| 02-03 / Task 2 | 02-03 | 1 | SURVEY-06/07 | — | N/A | unit (regression) | `pnpm vitest run src/domain/scoring` | ⬜ pending |
+| 02-04 / Task 2 | 02-04 | 1 | COACH-01/02/03 | — | N/A | unit | `pnpm vitest run src/adapters/content/staticContent.test.ts` | ⬜ pending |
+| 02-02 / Task 2 | 02-02 | 1 | (migráció, D-03/playbookId) | T-02-02-01 (v1→v2 séma-migráció) | `migrationStrategies[1]` helyesen tölti fel `playbookId: "general"`-t v1-séma dokumentumon | unit | `pnpm vitest run src/adapters/storage/indexeddb/StorageAdapter.test.ts` | ⬜ pending |
+| 02-02 / Task 3 | 02-02 | 1 | (regresszió, MIG-01) | T-02-02-02 (legacyImport playbookId backfill) | Meglévő 5 legacyImport teszt változatlanul zöld marad | unit (regression) | `pnpm vitest run src/adapters/migration/legacyImport.test.ts` | ⬜ pending |
+| 02-04 / Task 1 | 02-04 | 1 | V5 Input Validation (statikus adat) | (hiányos/hibás CoachingContent build-időben észrevétlen) | Zod-parse + 30/30 lefedettség-teszt minden `content/coaching/` bejegyzésre | unit (smoke) | `pnpm vitest run src/content/coaching/general.test.ts` | ⬜ pending |
+| 02-08 / Task 3 | 02-08 | 3 | SURVEY-02 (fixGap), SURVEY-03, SURVEY-05 | — | N/A | integration | `pnpm vitest run src/features/survey/SurveyView.test.tsx src/features/projects/ProjectListView.test.tsx` | ⬜ pending |
+
+*Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky — statuses flip to ✅/❌ during execution, not at plan time.*
 
 ---
 
 ## Wave 0 Requirements
 
-- [ ] `src/domain/scoring/*.test.ts` — legacy `src/lib/project.ts` scoring-tesztjeinek átemelése playbook-paraméteres formába; ha nincs meglévő legacy teszt, új teszt írandó a legacy referencia-értékek ellen (30 tételes "Általános" playbook ugyanazt az eredményt adja, mint a régi hardcoded verzió).
-- [ ] `src/features/survey/useAutosave.test.ts` — debounce időzítés tesztelése `vi.useFakeTimers()`-rel.
-- [ ] `src/adapters/content/staticContent.test.ts` — ContentPort implementáció + a 30 coaching-bejegyzés jelenlétének smoke-tesztje (COACH-01/02 lefedettség: mind a 30 `PlaybookItem.id`-hez van `CoachingContent`), plusz Zod-parse minden bejegyzésre.
-- [ ] `src/adapters/storage/indexeddb/StorageAdapter.test.ts` bővítése migrációs teszttel (v0 dokumentum → v1 upgrade → `playbookId: "general"`).
+Nincs külön Wave 0 pre-wave — a planner mind a 4 tételt a saját plánjába ágyazta `tdd="true"` taskként (RED→GREEN fegyelemmel), a Wave 1-2 részeként:
+
+- [x] `src/domain/scoring/*.test.ts` — 02-03 / Task 2: legacy `src/lib/project.ts` scoring-tesztjeinek átemelése playbook-paraméteres formába, regresszió-teszttel a legacy referencia-értékek ellen.
+- [x] `src/features/survey/useAutosave.test.ts` — 02-06 / Task 1: debounce időzítés tesztelése `vi.useFakeTimers()`-rel (a `checklistUiStore.test.ts`-szel együtt).
+- [x] `src/content/coaching/general.test.ts` + ContentPort adapter teszt — 02-04 / Task 1 (30/30 lefedettség + Zod-validitás) és 02-04 / Task 2 (`staticContentAdapter` wiring).
+- [x] `src/adapters/storage/indexeddb/StorageAdapter.test.ts` migrációs teszttel — 02-02 / Task 2 (v1 dokumentum → v2 upgrade → `playbookId: "general"`), plusz 02-02 / Task 3 a `legacyImport.ts` regressziója ellen.
 
 ---
 
@@ -70,11 +76,11 @@ created: 2026-07-09
 
 ## Validation Sign-Off
 
-- [ ] All tasks have `<automated>` verify or Wave 0 dependencies
-- [ ] Sampling continuity: no 3 consecutive tasks without automated verify
-- [ ] Wave 0 covers all MISSING references
-- [ ] No watch-mode flags
-- [ ] Feedback latency < 10s
-- [ ] `nyquist_compliant: true` set in frontmatter
+- [x] All tasks have `<automated>` verify or Wave-0-equivalent inline `tdd="true"` coverage (confirmed by gsd-plan-checker across all 8 plans)
+- [x] Sampling continuity: no 3 consecutive tasks without automated verify (plan-checker confirmed acceptance criteria + verify blocks on every task)
+- [x] Wave 0 covers all MISSING references (delivered inline per plan, see Wave 0 Requirements above)
+- [x] No watch-mode flags (`pnpm vitest run`, not `pnpm vitest` watch mode)
+- [x] Feedback latency < 10s (task-scoped Vitest runs, Phase 1 baseline)
+- [x] `nyquist_compliant: true` set in frontmatter
 
-**Approval:** pending
+**Approval:** approved 2026-07-09 (gsd-plan-checker VERIFICATION PASSED, 0 blockers — see 02-01..02-08-PLAN.md `<threat_model>` blocks and acceptance criteria)
