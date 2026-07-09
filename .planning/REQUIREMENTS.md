@@ -14,7 +14,7 @@ Az induló mérföldkő követelményei. Mindegyik egy roadmap-fázishoz kapcsol
 - [x] **DATA-03**: A törlés soft-delete (tombstone `deleted_at`); a listák alapból elrejtik a törölt rekordokat
 - [x] **DATA-04**: A séma verziózott, verzió-kulcsolt migrációs lánccal (üres lánccal is működik)
 - [x] **DATA-05**: Minden projekt-adat Zod-sémával validálódik mentés és betöltés előtt
-- [ ] **DATA-06**: A felhasználó teljes adatmentést (backup) és visszaállítást (restore) tud készíteni JSON-ba/-ból
+- [x] **DATA-06**: A felhasználó teljes adatmentést (backup) és visszaállítást (restore) tud készíteni JSON-ba/-ból
 
 ### Felmérési flow (SURVEY)
 
@@ -107,7 +107,7 @@ Melyik fázis melyik követelményt fedi.
 | DATA-03 | Phase 1 | Complete |
 | DATA-04 | Phase 1 | Complete |
 | DATA-05 | Phase 1 | Complete |
-| DATA-06 | Phase 1 | Pending |
+| DATA-06 | Phase 1 | Complete |
 | PREP-01 | Phase 1 | Complete |
 | PREP-02 | Phase 1 | Complete |
 | MIG-01 | Phase 1 | Complete |

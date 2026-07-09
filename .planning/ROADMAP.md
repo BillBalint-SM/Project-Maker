@@ -13,7 +13,7 @@ A Tauri-alapú, lokálisan validált desktop MVP-t web/PWA platformra emeljük, 
 
 Decimal phases appear between their surrounding integers in numeric order.
 
-- [ ] **Phase 1: Adat-alap, portok, perzisztencia és MVP-migráció** - Sync-re felkészített adatmodell, hexagonális portok, IndexedDB perzisztencia, backup/restore és a legacy Tauri-MVP adatainak nem-destruktív, idempotens importja (blokkoló alapozás)
+- [x] **Phase 1: Adat-alap, portok, perzisztencia és MVP-migráció** - Sync-re felkészített adatmodell, hexagonális portok, IndexedDB perzisztencia, backup/restore és a legacy Tauri-MVP adatainak nem-destruktív, idempotens importja (blokkoló alapozás) (completed 2026-07-09)
 - [ ] **Phase 2: Felmérési flow és coaching** - Egységes guided interjú+checklist felület kérdésenkénti coaching-panellel
 - [ ] **Phase 3: Minőség-heurisztika és Markdown spec** - Determinisztikus inline tippek, nyitott kérdések és kanonikus development-ready Markdown spec-csomag
 - [ ] **Phase 4: Export és AC/user story** - A Markdown spec-ből származó acceptance criteria / user story és dinamikus tördelésű PDF/Excel export
@@ -35,7 +35,7 @@ Decimal phases appear between their surrounding integers in numeric order.
   4. Mind az 5 port (Storage, Content, Export, Llm, Sync) definiált; az app alapból `NoopLlmAdapter` + `NoopSyncAdapter` mögött fut, dirty/outbox könyveléssel — AI és sync nélkül is teljes.
   5. A meglévő Tauri-MVP adata nem-destruktívan és idempotensen importálható a webes domain-modellre, Zod-sémákkal validálva, valósághű fixtúrán tesztelve (ismételt futtatás nem duplikál és nem ír felül meglévő adatot) — AI és sync nélkül is teljes.
 
-**Plans**: 4/5 plans executed
+**Plans**: 5/5 plans complete
 
 Plans:
 **Wave 1**
@@ -50,7 +50,7 @@ Plans:
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 01-03-PLAN.md — Teljes JSON backup/restore, látható UI-gombokkal
+- [x] 01-03-PLAN.md — Teljes JSON backup/restore, látható UI-gombokkal
 
 ### Phase 2: Felmérési flow és coaching
 
@@ -141,7 +141,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Adat-alap, portok, perzisztencia és MVP-migráció | 4/5 | In Progress|  |
+| 1. Adat-alap, portok, perzisztencia és MVP-migráció | 5/5 | Complete   | 2026-07-09 |
 | 2. Felmérési flow és coaching | 0/TBD | Not started | - |
 | 3. Minőség-heurisztika és Markdown spec | 0/TBD | Not started | - |
 | 4. Export és AC/user story | 0/TBD | Not started | - |
