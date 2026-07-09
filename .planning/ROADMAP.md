@@ -35,7 +35,7 @@ Decimal phases appear between their surrounding integers in numeric order.
   4. Mind az 5 port (Storage, Content, Export, Llm, Sync) definiált; az app alapból `NoopLlmAdapter` + `NoopSyncAdapter` mögött fut, dirty/outbox könyveléssel — AI és sync nélkül is teljes.
   5. A meglévő Tauri-MVP adata nem-destruktívan és idempotensen importálható a webes domain-modellre, Zod-sémákkal validálva, valósághű fixtúrán tesztelve (ismételt futtatás nem duplikál és nem ír felül meglévő adatot) — AI és sync nélkül is teljes.
 
-**Plans**: 1/5 plans executed
+**Plans**: 2/5 plans executed
 
 Plans:
 **Wave 1**
@@ -44,7 +44,7 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 01-02-PLAN.md — Soft-delete (tombstone) + verzió-kulcsolt migrációs lánc bizonyítása
+- [x] 01-02-PLAN.md — Soft-delete (tombstone) + verzió-kulcsolt migrációs lánc bizonyítása
 - [ ] 01-04-PLAN.md — Content/Export/Llm/Sync portok + Noop-adapterek + kompozíciós gyökér
 - [ ] 01-05-PLAN.md — Legacy Tauri-MVP import (MIG-01), szintetikus fixtúrán
 
@@ -141,7 +141,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Adat-alap, portok, perzisztencia és MVP-migráció | 1/5 | In Progress|  |
+| 1. Adat-alap, portok, perzisztencia és MVP-migráció | 2/5 | In Progress|  |
 | 2. Felmérési flow és coaching | 0/TBD | Not started | - |
 | 3. Minőség-heurisztika és Markdown spec | 0/TBD | Not started | - |
 | 4. Export és AC/user story | 0/TBD | Not started | - |

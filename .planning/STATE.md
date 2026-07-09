@@ -6,14 +6,14 @@ current_phase: 01
 current_phase_name: adat-alap-portok-perzisztencia-s-mvp-migr-ci
 status: executing
 stopped_at: Completed 01-01-PLAN.md (Tasks 2-4; Task 1 checkpoint approved by orchestrator)
-last_updated: "2026-07-09T11:44:33.029Z"
+last_updated: "2026-07-09T12:03:53.126Z"
 last_activity: 2026-07-09
 last_activity_desc: Phase 01 execution started
 progress:
   total_phases: 5
   completed_phases: 0
   total_plans: 5
-  completed_plans: 1
+  completed_plans: 2
   percent: 0
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-07-08)
 ## Current Position
 
 Phase: 01 (adat-alap-portok-perzisztencia-s-mvp-migr-ci) — EXECUTING
-Plan: 2 of 5
+Plan: 3 of 5
 Status: Ready to execute
 Last activity: 2026-07-09 — Phase 01 execution started
 
@@ -56,6 +56,7 @@ Progress: [░░░░░░░░░░] 0%
 
 *Updated after each plan completion*
 | Phase 01 P01 | 28min | 4 tasks | 15 files |
+| Phase 01 P02 | 20min | 2 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -72,6 +73,8 @@ Recent decisions affecting current work:
 - [Phase 01]: 01-01: Installed rxdb/rxjs/zod/react-router during Task 2 (ahead of Task 3's literal pnpm add step) since Task 1's human checkpoint had already approved all 4 packages
 - [Phase 01]: 01-01: tsconfig.json moduleResolution changed Node -> Bundler to resolve react-router/dom conditional subpath export
 - [Phase 01]: 01-01: ProjectListView obtains StoragePort via a module-level lazy singleton (getStorage()) exported from src/main.tsx, avoiding repeated RxDB database opens
+- [Phase 01-02]: db.test.ts proves RxDB migration via two createRxDatabase() calls sharing a name over getRxStorageMemory(); discovered addCollections() auto-runs migratePromise() internally (autoMigrate default true) before its own promise resolves, so no explicit trigger call was needed in the test
+- [Phase 01-02]: softDelete() reuses the existing deletedAt null<->missing-key mapping helpers unchanged (deletedAt is always non-null in softDelete, so no null-omission branch was needed there)
 
 ### Pending Todos
 
@@ -98,6 +101,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-09T11:44:33.022Z
+Last session: 2026-07-09T12:02:39.706Z
 Stopped at: Completed 01-01-PLAN.md (Tasks 2-4; Task 1 checkpoint approved by orchestrator)
 Resume file: None

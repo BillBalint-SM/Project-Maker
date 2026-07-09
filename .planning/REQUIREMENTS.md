@@ -11,8 +11,8 @@ Az induló mérföldkő követelményei. Mindegyik egy roadmap-fázishoz kapcsol
 
 - [x] **DATA-01**: Minden entitás stabil, kliens-generált egyedi azonosítót (ULID/UUID) kap; a relációk kizárólag ID-ra hivatkoznak
 - [x] **DATA-02**: Minden gyökér-rekord sync-envelope-ot kap (`schema_version`, monoton `version`, `updated_at`, `updated_by`/actor, `dirty` flag)
-- [ ] **DATA-03**: A törlés soft-delete (tombstone `deleted_at`); a listák alapból elrejtik a törölt rekordokat
-- [ ] **DATA-04**: A séma verziózott, verzió-kulcsolt migrációs lánccal (üres lánccal is működik)
+- [x] **DATA-03**: A törlés soft-delete (tombstone `deleted_at`); a listák alapból elrejtik a törölt rekordokat
+- [x] **DATA-04**: A séma verziózott, verzió-kulcsolt migrációs lánccal (üres lánccal is működik)
 - [x] **DATA-05**: Minden projekt-adat Zod-sémával validálódik mentés és betöltés előtt
 - [ ] **DATA-06**: A felhasználó teljes adatmentést (backup) és visszaállítást (restore) tud készíteni JSON-ba/-ból
 
@@ -104,8 +104,8 @@ Melyik fázis melyik követelményt fedi.
 |-------------|-------|---------|
 | DATA-01 | Phase 1 | Complete |
 | DATA-02 | Phase 1 | Complete |
-| DATA-03 | Phase 1 | Pending |
-| DATA-04 | Phase 1 | Pending |
+| DATA-03 | Phase 1 | Complete |
+| DATA-04 | Phase 1 | Complete |
 | DATA-05 | Phase 1 | Complete |
 | DATA-06 | Phase 1 | Pending |
 | PREP-01 | Phase 1 | Pending |
