@@ -57,7 +57,20 @@ export async function importLegacyExport(
       continue;
     }
 
-    const validation = ProjectSchema.safeParse(parsed);
+    // Backfill playbookId BEFORE validation: the legacy Tauri-MVP export
+    // format predates this concept entirely, so `parsed` never carries it.
+    // This is the SAME "general" default applied by the RxDB
+    // migrationStrategies[1] step in db.ts's createProjectDatabase() — that
+    // fixes ALREADY-PERSISTED RxDB documents, this fixes legacy JSON-blob
+    // rows that never went through RxDB at all. Both entry points need
+    // their own fix: patching only one would leave the other producing
+    // Zod validation failures against the now-required `playbookId` field.
+    const withPlaybookId =
+      typeof parsed === "object" && parsed !== null && !("playbookId" in parsed)
+        ? { ...parsed, playbookId: "general" }
+        : parsed;
+
+    const validation = ProjectSchema.safeParse(withPlaybookId);
     if (!validation.success) {
       result.skippedInvalid.push({
         id: row.id,
