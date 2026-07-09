@@ -4,9 +4,8 @@ import type { Project, ProjectListItem } from "../model/types";
 /**
  * Storage port — the hexagon's persistence seam. This plan (01-01) declared
  * list/get/put. `softDelete` is added here by 01-02 (tombstone soft-delete,
- * DATA-03). `exportBackup`/`importBackup` (01-03) are added to this
- * interface — and its adapter — by a later plan (interface-first,
- * incremental extension). Do NOT declare them here as stubs.
+ * DATA-03). `exportBackup`/`importBackup` are added by this plan (01-03,
+ * DATA-06) — interface-first, incremental extension.
  *
  * Domain-purity rule: this file must never import from rxdb/dexie/react or
  * any adapters/features module.
@@ -22,4 +21,17 @@ export interface StoragePort {
    * exist.
    */
   softDelete(id: string): Promise<void>;
+  /**
+   * Serializes ALL envelopes (including tombstoned/deleted ones) into a
+   * single JSON Blob — a faithful full dump, so restoring it never loses
+   * deletion state (DATA-06).
+   */
+  exportBackup(): Promise<Blob>;
+  /**
+   * Validates every entry in `blob` BEFORE writing anything. If any single
+   * entry fails validation, the whole import is rejected with zero writes
+   * (atomic, all-or-nothing) — this is the user's own, previously-exported
+   * data, not third-party legacy data to be triaged (DATA-06).
+   */
+  importBackup(blob: Blob): Promise<void>;
 }

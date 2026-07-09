@@ -3,6 +3,7 @@ import type { Envelope } from "../../../domain/model/envelope";
 import { ProjectEnvelopeSchema } from "../../../domain/model/schema";
 import type { Project, ProjectListItem } from "../../../domain/model/types";
 import type { StoragePort } from "../../../domain/ports/StoragePort";
+import { parseBackup, serializeBackup } from "./backup";
 
 type PersistedProjectEnvelope = {
   id: string;
@@ -144,5 +145,34 @@ export class RxdbStorageAdapter implements StoragePort {
     };
 
     await this.collection.upsert(toPersisted(toWrite));
+  }
+
+  async exportBackup(): Promise<Blob> {
+    // No selector — unlike list(), a backup MUST include tombstoned records
+    // too, or a restore would silently lose deletion state (DATA-06).
+    const docs = await this.collection.find().exec();
+    const envelopes = docs.map(
+      (doc) =>
+        ProjectEnvelopeSchema.parse(
+          toEnvelopeInput(doc.toJSON() as PersistedProjectEnvelope)
+        ) as Envelope<Project>
+    );
+
+    return serializeBackup(envelopes);
+  }
+
+  async importBackup(blob: Blob): Promise<void> {
+    const text = await blob.text();
+    // parseBackup() validates EVERY entry before returning anything — if it
+    // throws, execution never reaches the write loop below, so there is no
+    // partial write (atomic, all-or-nothing).
+    const envelopes = parseBackup(text);
+
+    for (const envelope of envelopes) {
+      // Raw upsert — deliberately NOT this.put(), which would bump
+      // revision/updatedAt and force updatedBy to "local-user". A restore
+      // must write back the ORIGINAL exported values unchanged.
+      await this.collection.upsert(toPersisted(envelope));
+    }
   }
 }
