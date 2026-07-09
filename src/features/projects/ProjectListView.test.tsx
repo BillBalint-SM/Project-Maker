@@ -10,7 +10,9 @@ const storageMock = vi.hoisted(() => ({
   list: vi.fn(),
   get: vi.fn(),
   put: vi.fn(),
-  softDelete: vi.fn()
+  softDelete: vi.fn(),
+  exportBackup: vi.fn(),
+  importBackup: vi.fn()
 }));
 
 vi.mock("../../main", () => ({
@@ -46,6 +48,18 @@ describe("ProjectListView", () => {
     vi.clearAllMocks();
     storageMock.put.mockResolvedValue(undefined);
     storageMock.softDelete.mockResolvedValue(undefined);
+    storageMock.exportBackup.mockResolvedValue(
+      new Blob(['{"projects":[]}'], { type: "application/json" })
+    );
+    storageMock.importBackup.mockResolvedValue(undefined);
+
+    // jsdom's URL does not implement the Blob-URL APIs — assign fresh spies
+    // directly on the real URL class (NOT vi.stubGlobal with a plain object
+    // copy, which would break `new URL(...)` elsewhere in the app/router) so
+    // the component's download flow (createObjectURL + <a> + revokeObjectURL)
+    // is exercised without touching a real object-URL registry.
+    URL.createObjectURL = vi.fn(() => "blob:mock-url");
+    URL.revokeObjectURL = vi.fn();
   });
 
   it('shows "Nincs megjeleníthető projekt." when the list is empty', async () => {
@@ -102,5 +116,61 @@ describe("ProjectListView", () => {
     await waitFor(() => expect(storageMock.softDelete).toHaveBeenCalledWith("1"));
     expect(storageMock.list).toHaveBeenCalledTimes(2);
     expect(screen.queryByText("Alpha projekt")).not.toBeInTheDocument();
+  });
+
+  it('clicking "Adatmentés exportálása" calls storage.exportBackup() and downloads the resulting Blob via URL.createObjectURL', async () => {
+    storageMock.list.mockResolvedValue([]);
+    const user = userEvent.setup();
+
+    await renderView();
+    await screen.findByText("Nincs megjeleníthető projekt.");
+
+    await user.click(screen.getByRole("button", { name: "Adatmentés exportálása" }));
+
+    await waitFor(() => expect(storageMock.exportBackup).toHaveBeenCalledOnce());
+    expect(URL.createObjectURL).toHaveBeenCalledWith(expect.any(Blob));
+    expect(URL.revokeObjectURL).toHaveBeenCalledWith("blob:mock-url");
+  });
+
+  it('selecting a valid backup file calls storage.importBackup(file), refreshes the list, and shows a success notice', async () => {
+    storageMock.list
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([makeListItem({ id: "1", name: "Visszaállított projekt" })]);
+    const user = userEvent.setup();
+
+    await renderView();
+    await screen.findByText("Nincs megjeleníthető projekt.");
+
+    const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
+    const file = new File(['{"projects":[]}'], "backup.json", { type: "application/json" });
+    await user.upload(fileInput, file);
+
+    await waitFor(() => expect(storageMock.importBackup).toHaveBeenCalledWith(file));
+    expect(storageMock.list).toHaveBeenCalledTimes(2);
+    expect(await screen.findByText("Visszaállított projekt")).toBeInTheDocument();
+    expect(await screen.findByText("Visszaállítás sikeres.")).toBeInTheDocument();
+  });
+
+  it("selecting an invalid backup file shows an error message and does not touch the rendered list", async () => {
+    storageMock.list.mockResolvedValue([makeListItem({ id: "1", name: "Alpha projekt" })]);
+    storageMock.importBackup.mockRejectedValueOnce(
+      new Error("Invalid backup entry at index 0: name Required")
+    );
+    const user = userEvent.setup();
+
+    await renderView();
+    await screen.findByText("Alpha projekt");
+
+    const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
+    const file = new File(["not valid json"], "backup.json", { type: "application/json" });
+    await user.upload(fileInput, file);
+
+    await waitFor(() => expect(storageMock.importBackup).toHaveBeenCalledWith(file));
+    expect(
+      await screen.findByText(
+        "Visszaállítás sikertelen: Invalid backup entry at index 0: name Required"
+      )
+    ).toBeInTheDocument();
+    expect(screen.getByText("Alpha projekt")).toBeInTheDocument();
   });
 });
