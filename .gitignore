@@ -12,3 +12,6 @@ release/
 .env.local
 .DS_Store
 desktop.ini
+.superpowers/
+.env.*
+!.env.example
