@@ -2,10 +2,12 @@
 
 Project Maker is a web platform foundation built as a pnpm monorepo:
 
-- `apps/web`: Angular 22 single-page application with PrimeNG.
+- `apps/web`: Angular 21.2 single-page application with PrimeNG 21.1.9 (MIT baseline).
 - `apps/api`: NestJS 11 API.
 - `packages/contracts`: shared TypeScript contracts.
 - PostgreSQL 18, the API, and Nginx run on an internal Compose network.
+
+The web baseline intentionally pins PrimeNG to 21.1.9 and Angular 21.2.x. Upgrading to PrimeNG 22 or a later major requires a separate license and Angular-compatibility review because PrimeNG 22 uses the PrimeUI licensing model.
 
 Only Nginx publishes a host port. It serves the SPA and proxies `/api/*` to the internal API.
 
