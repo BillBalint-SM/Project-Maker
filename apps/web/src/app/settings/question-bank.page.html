@@ -270,7 +270,7 @@
               <div><dt>Order</dt><dd>{{ question.order }}</dd></div>
               <div><dt>Required</dt><dd>{{ question.required ? 'Yes' : 'No' }}</dd></div>
               @if (question.options?.length) {
-                <div class="detail-wide"><dt>Options</dt><dd>{{ question.options?.join(' · ') ?? '' }}</dd></div>
+                <div class="detail-wide"><dt>Options</dt><dd>{{ question.options.join(' · ') }}</dd></div>
               }
             </dl>
             @if (question.hint) {

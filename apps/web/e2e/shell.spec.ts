@@ -4,6 +4,6 @@ test('renders Project Maker', async ({ page }) => {
   await page.goto('/');
 
   await expect(
-    page.getByRole('heading', { name: 'Project Maker' }),
+    page.getByRole('link', { name: 'Project Maker project list' }),
   ).toBeVisible();
 });
