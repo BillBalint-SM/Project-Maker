@@ -15,7 +15,7 @@
     "compose:up": "docker compose --env-file .env up --build --wait",
     "test": "pnpm -r --if-present test",
     "test:e2e": "pnpm --filter @project-maker/web test:e2e",
-    "typecheck": "pnpm -r --if-present typecheck",
+    "typecheck": "pnpm --filter @project-maker/contracts build && pnpm -r --if-present typecheck",
     "verify": "pnpm typecheck && pnpm test && pnpm build"
   }
 }
