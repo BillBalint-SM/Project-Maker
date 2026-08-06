@@ -9,6 +9,7 @@ import { DataSource } from 'typeorm';
 import { AppModule } from '../src/app.module';
 import { Core0001Core1785916800000 } from '../src/migrations/0001-core';
 import { QuestionsRounds0002QuestionsRounds1786003200000 } from '../src/migrations/0002-questions-rounds';
+import { InitialIntakeOpenRound0005InitialIntakeOpenRound1786262400000 } from '../src/migrations/0005-initial-intake-open-round';
 
 describe('Question bank and interview rounds (PostgreSQL e2e)', () => {
   let app: INestApplication;
@@ -27,6 +28,7 @@ describe('Question bank and interview rounds (PostgreSQL e2e)', () => {
       migrations: [
         Core0001Core1785916800000,
         QuestionsRounds0002QuestionsRounds1786003200000,
+        InitialIntakeOpenRound0005InitialIntakeOpenRound1786262400000,
       ],
     });
     await migrationDataSource.initialize();
