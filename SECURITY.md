@@ -2,7 +2,7 @@
 
 ## Supported versions
 
-The web platform is currently a development foundation and has no supported public production release. The historical desktop release is preserved by Git tag `legacy-desktop-v0.1.2` but is no longer maintained on this branch.
+The web platform is currently a development foundation and has no supported public production release.
 
 ## Reporting a vulnerability
 

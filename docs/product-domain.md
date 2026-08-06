@@ -1,6 +1,6 @@
 # Project Maker product domain
 
-This document is the platform-neutral source of truth for the validated Project Maker product model. It preserves the reusable domain intent, workflow vocabulary, general intake playbook, and scoring rules from the retired React/Tauri implementation. Framework, persistence, and UI details are intentionally excluded so the Angular web client, NestJS API, and future workers can share the same meaning.
+This document is the platform-neutral source of truth for the Project Maker product model. It defines the reusable domain intent, workflow vocabulary, general intake playbook, and scoring rules independently from framework, persistence, and UI details so the Angular web client, NestJS API, and future workers can share the same meaning.
 
 ## Product purpose and workflow
 
@@ -31,7 +31,7 @@ The canonical workflow is:
 - **Cockpit:** the review surface for readiness, Decision Score, recommended action, and prioritized gaps.
 - **Canonical specification:** the structured Markdown output from which acceptance criteria, user stories, PDF, and spreadsheet exports are derived.
 
-The legacy-derived status vocabulary is defined only in the canonical general playbook contract below. Domain and application code must consume it from the contracts package instead of maintaining local copies.
+The status vocabulary is defined only in the canonical general playbook contract below. Domain and application code must consume it from the contracts package instead of maintaining local copies.
 
 ## Domain data intent
 
@@ -66,6 +66,6 @@ Each gap preserves `severity`, `category`, explanatory `message`, recommended `n
 
 ## Canonical playbook contract
 
-The framework-neutral, immutable source of truth for the `general` v1 template is [`packages/contracts/playbooks/general.v1.json`](../packages/contracts/playbooks/general.v1.json). It contains the 30 stable question IDs, Hungarian labels and hints, required/blocking metadata, status vocabularies, and legacy-derived readiness and decision-scoring policy.
+The framework-neutral, immutable source of truth for the `general` v1 template is [`packages/contracts/playbooks/general.v1.json`](../packages/contracts/playbooks/general.v1.json). It contains the 30 stable question IDs, Hungarian labels and hints, required/blocking metadata, status vocabularies, and readiness and decision-scoring policy.
 
-NestJS, Angular, and future workers should consume the typed, immutable `generalPlaybookV1` export from `@project-maker/contracts`; they must not duplicate or adapt these values in framework, persistence, or UI code. The contract preserves legacy behavior for compatibility, not a claim that the policy is final. Any future redesign must introduce a new playbook version and explicitly migrate stored answers.
+NestJS, Angular, and future workers should consume the typed, immutable `generalPlaybookV1` export from `@project-maker/contracts`; they must not duplicate or adapt these values in framework, persistence, or UI code. The contract is stable for the current playbook version, not a claim that the policy is final. Any future redesign must introduce a new playbook version and explicitly migrate stored answers.

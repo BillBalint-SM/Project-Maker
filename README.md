@@ -19,7 +19,7 @@ verification handoff is documented in [`docs/operations-handoff.md`](docs/operat
 ## Prerequisites
 
 - Node.js `^22.22.3`, `^24.15.0`, or `>=26.0.0`
-- pnpm `11.9.0`
+- pnpm `11.20.0`
 - Docker Desktop with the Linux engine for the container workflow
 
 ## Install and verify
@@ -85,7 +85,3 @@ The API requires `CORS_ORIGIN`; `@nestjs/config` reads it from the root `.env` w
 | `SMTP_USER` / `SMTP_PASSWORD` | Optional credentials; both are required together and require secure mode |
 
 The API and database do not publish host ports. PostgreSQL data persists in the named `postgres-data` volume.
-
-## Legacy desktop baseline
-
-The replaced Tauri desktop MVP is preserved by Git tag `legacy-desktop-v0.1.2`. It is not part of this web platform runtime and no desktop data is imported automatically.
