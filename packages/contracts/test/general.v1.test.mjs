@@ -103,7 +103,7 @@ test('validation rejects out-of-range scoring policy values', async () => {
 
 test('general v1 has the independently pinned legacy-migration integrity hash', async () => {
   const expectedHash = (await readFile(integrityFixtureUrl, 'utf8')).trim();
-  const source = await readFile(playbookUrl);
+  const source = (await readFile(playbookUrl, 'utf8')).replace(/\r\n/g, '\n');
   const actualHash = createHash('sha256').update(source).digest('hex');
 
   assert.equal(actualHash, expectedHash);
