@@ -1,9 +1,10 @@
 node_modules/
 dist/
-src-tauri/target/
-src-tauri/gen/
-release/
-.vite/
+dist-test/
+coverage/
+.angular/
+playwright-report/
+test-results/
 *.log
 *.db
 *.sqlite

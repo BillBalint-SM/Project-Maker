@@ -1,0 +1,233 @@
+<section aria-labelledby="markdown-title">
+  <a
+    class="back-link"
+    [routerLink]="['/projects', projectId]"
+    data-testid="back-to-cockpit-link"
+  >
+    <span aria-hidden="true">←</span> Project cockpit
+  </a>
+
+  <div class="page-heading markdown-heading">
+    <span class="eyebrow">Generated artifact</span>
+    <h1 id="markdown-title">Markdown execution plan</h1>
+    <p>Generate an immutable Markdown snapshot of the project delivery context and review its history.</p>
+  </div>
+
+  @if (actionError()) {
+    <p-message severity="error" role="alert" data-testid="markdown-action-error">
+      {{ actionError() }}
+    </p-message>
+  }
+  @if (feedback()) {
+    <p-message severity="success" role="status" aria-live="polite" data-testid="markdown-success">
+      {{ feedback() }}
+    </p-message>
+  }
+
+  @if (loading()) {
+    <div class="state-panel" data-testid="markdown-loading" aria-live="polite">
+      <p-progress-spinner ariaLabel="Loading Markdown revisions" />
+      <p>Loading Markdown revisions…</p>
+    </div>
+  } @else if (loadError()) {
+    <div class="state-panel" data-testid="markdown-error" role="alert">
+      <h2>Markdown revisions could not be loaded</h2>
+      <p>{{ loadError() }}</p>
+      <p-button
+        label="Try again"
+        severity="secondary"
+        data-testid="retry-markdown-button"
+        (onClick)="loadRevisions()"
+      />
+    </div>
+  } @else {
+    <div class="generate-card">
+      <p-card>
+        <ng-template #title>Generate a revision</ng-template>
+        <ng-template #subtitle>
+          The project and interview data are captured as an immutable source snapshot.
+        </ng-template>
+        <form
+          class="generation-form"
+          [formGroup]="generationForm"
+          (ngSubmit)="generateRevision()"
+          data-testid="markdown-generation-form"
+        >
+          <fieldset [disabled]="generating()">
+            <div class="field">
+              <label for="markdown-reason">Generation reason</label>
+              <select
+                id="markdown-reason"
+                class="full-width"
+                formControlName="reason"
+                data-testid="markdown-reason-select"
+              >
+                @for (option of reasonOptions; track option.value) {
+                  <option [value]="option.value">{{ option.label }}</option>
+                }
+              </select>
+              <small>Use a milestone reason when this snapshot records a named delivery checkpoint.</small>
+            </div>
+
+            <div class="field">
+              <label for="markdown-milestone">Milestone</label>
+              <input
+                id="markdown-milestone"
+                pInputText
+                class="full-width"
+                formControlName="milestone"
+                placeholder="For example: Discovery complete"
+                data-testid="markdown-milestone-input"
+                [attr.aria-required]="generationForm.controls.reason.value === 'MILESTONE'"
+                [attr.aria-invalid]="generationForm.controls.milestone.invalid && generationForm.controls.milestone.touched"
+                [attr.aria-describedby]="generationForm.controls.milestone.invalid && generationForm.controls.milestone.touched ? 'markdown-milestone-help markdown-milestone-error' : 'markdown-milestone-help'"
+              />
+              <small id="markdown-milestone-help">Required only for milestone revisions; leave empty for manual generation.</small>
+              @if (generationForm.controls.milestone.invalid && generationForm.controls.milestone.touched) {
+                <small class="field-error" id="markdown-milestone-error">
+                  @if (generationForm.controls.milestone.hasError('required')) {
+                    Enter a milestone name.
+                  } @else if (generationForm.controls.milestone.hasError('maxlength')) {
+                    Milestone must be 255 characters or fewer.
+                  }
+                </small>
+              }
+            </div>
+          </fieldset>
+
+          <p-button
+            type="submit"
+            label="Generate Markdown revision"
+            icon="pi pi-file-edit"
+            [loading]="generating()"
+            [disabled]="generating()"
+            data-testid="generate-markdown-button"
+          />
+        </form>
+      </p-card>
+    </div>
+
+    <div class="markdown-grid">
+      <p-card>
+        <ng-template #title>Revision history</ng-template>
+        <ng-template #subtitle>Latest revisions appear first.</ng-template>
+
+        @if (revisions().length === 0) {
+          <div class="state-panel compact" data-testid="markdown-no-revisions">
+            <h2>No Markdown revisions yet</h2>
+            <p>Generate the first revision to create a downloadable execution plan.</p>
+          </div>
+        } @else {
+          <ol class="revision-list" data-testid="markdown-revision-list">
+            @for (revision of revisions(); track revision.id) {
+              <li>
+                <a
+                  class="revision-link"
+                  [class.active]="isSelected(revision.id)"
+                  [routerLink]="['/projects', projectId, 'markdown']"
+                  [queryParams]="{ revision: revision.id }"
+                  [attr.aria-current]="isSelected(revision.id) ? 'page' : null"
+                  [attr.data-testid]="'markdown-revision-link-' + revision.id"
+                >
+                  <span>
+                    <strong>Revision v{{ revision.version }}</strong>
+                    <small>{{ revision.reason }}{{ revision.milestone ? ' · ' + revision.milestone : '' }}</small>
+                  </span>
+                  <time [attr.datetime]="revision.createdAt">{{ revision.createdAt | date: 'medium' }}</time>
+                </a>
+              </li>
+            }
+          </ol>
+        }
+      </p-card>
+
+      <p-card>
+        <ng-template #title>Revision details</ng-template>
+        @if (detailLoading()) {
+          <div class="state-panel compact" data-testid="markdown-detail-loading" aria-live="polite">
+            <p-progress-spinner ariaLabel="Loading Markdown revision" />
+            <p>Loading revision details…</p>
+          </div>
+        } @else if (detailError()) {
+          <div class="state-panel compact" data-testid="markdown-detail-error" role="alert">
+            <h2>Revision details could not be loaded</h2>
+            <p>{{ detailError() }}</p>
+            <p-button
+              label="Try again"
+              severity="secondary"
+              data-testid="retry-markdown-detail-button"
+              (onClick)="retryRevision()"
+            />
+          </div>
+        } @else if (selectedRevision(); as current) {
+          <article class="revision-detail" data-testid="markdown-revision-detail">
+            <div class="revision-detail-heading">
+              <div>
+                <span class="eyebrow">Immutable snapshot</span>
+                <h2>Revision v{{ current.version }}</h2>
+              </div>
+              <p-tag [value]="current.reason" [severity]="current.reason === 'MILESTONE' ? 'success' : 'info'" />
+            </div>
+
+            <dl class="revision-metadata" data-testid="markdown-revision-metadata">
+              <div>
+                <dt>Created</dt>
+                <dd><time [attr.datetime]="current.createdAt">{{ current.createdAt | date: 'medium' }}</time></dd>
+              </div>
+              <div>
+                <dt>Milestone</dt>
+                <dd>{{ current.milestone || 'None' }}</dd>
+              </div>
+              <div>
+                <dt>Source version</dt>
+                <dd data-testid="markdown-source-version">v{{ current.sourceSnapshot.version }}</dd>
+              </div>
+              <div>
+                <dt>Previous revision</dt>
+                <dd>
+                  @if (current.previousRevisionId; as previousRevisionId) {
+                    <a
+                      [routerLink]="['/projects', projectId, 'markdown']"
+                      [queryParams]="{ revision: previousRevisionId }"
+                      data-testid="markdown-previous-revision-link"
+                    >
+                      Open previous revision
+                    </a>
+                  } @else {
+                    <span>Initial revision</span>
+                  }
+                </dd>
+              </div>
+            </dl>
+
+            <section class="change-summary" aria-labelledby="markdown-change-summary-title">
+              <h3 id="markdown-change-summary-title">Change summary</h3>
+              <p data-testid="markdown-change-summary">{{ current.changeSummary }}</p>
+            </section>
+
+            <div class="detail-actions">
+              <a
+                class="download-link"
+                [href]="downloadUrl(current)"
+                download="execution-plan.md"
+                data-testid="markdown-download-link"
+              >
+                Download Markdown
+              </a>
+            </div>
+
+            <section aria-labelledby="markdown-preview-title">
+              <h3 id="markdown-preview-title">Content preview</h3>
+              <pre class="content-preview" data-testid="markdown-content-preview">{{ current.content }}</pre>
+            </section>
+          </article>
+        } @else {
+          <div class="state-panel compact" data-testid="markdown-detail-empty">
+            <h2>Select a revision</h2>
+            <p>Choose a revision from the history to inspect its source and content.</p>
+          </div>
+        }
+      </p-card>
+    </div>
+  }
+</section>

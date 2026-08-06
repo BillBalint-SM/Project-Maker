@@ -1,84 +1,89 @@
 # Project Maker
 
-Project Maker egy offline-first projektindítási és intake alkalmazás PM/PO munkához. Az MVP célja, hogy egy új projekt felmérése közben automatikusan mentse a válaszokat, readiness állapotot számoljon, döntési javaslatot adjon, majd PDF vagy Excel exportot készítsen.
+Project Maker is a web platform foundation built as a pnpm monorepo:
 
-## Letöltés
+- `apps/web`: Angular 22 single-page application with PrimeNG.
+- `apps/api`: NestJS 11 API.
+- `packages/contracts`: shared TypeScript contracts.
+- PostgreSQL 18, the API, and Nginx run on an internal Compose network.
 
-Windows telepítő a GitHub Releases oldalon érhető el:
+Only Nginx publishes a host port. It serves the SPA and proxies `/api/*` to the internal API.
 
-[Project Maker letöltése](https://github.com/BillBalint-SM/Project-Maker/releases/latest)
+The platform-neutral product workflow, vocabulary, domain data intent, general intake playbook, and scoring rules are preserved in [`docs/product-domain.md`](docs/product-domain.md). The current foundation does not yet implement all of that product behavior.
 
-A letöltéshez a `Project.Maker_..._x64-setup.exe` fájlt kell választani. A telepítő Windows x64 gépre készült.
+The current runtime, migration, backup/restore, SMTP, VPN boundary, and
+verification handoff is documented in [`docs/operations-handoff.md`](docs/operations-handoff.md).
 
-Biztonsági megjegyzés: a jelenlegi MVP installer még nincs kódtanúsítvánnyal aláírva. Szélesebb körű terjesztés előtt Windows code signing szükséges; a signing és SmartScreen terv a `docs/windows-code-signing.md` fájlban található.
+## Prerequisites
 
-## Funkciók
+- Node.js `^22.22.3`, `^24.15.0`, or `>=26.0.0`
+- pnpm `11.9.0`
+- Docker Desktop with the Linux engine for the container workflow
 
-- Új projekt azonnali draftként jön létre, automata mentéssel.
-- Meglévő és archivált projektek külön listában kezelhetők.
-- Projekt részletek: alapadatok, felelősök, checklist, follow-up kérdések, döntési blokk.
-- Readiness MVP és egyszerű Decision Score.
-- Vezetett interjú mód gyors vagy teljes felméréssel.
-- PDF és Excel export vezetői, teljes vagy hiánylista preset alapján.
-- Lokális SQLite adattárolás Tauri appban, böngészős fallback localStorage-gal.
-
-## Tech stack
-
-- Frontend: React + TypeScript + Vite
-- Desktop runtime: Tauri 2
-- Natív réteg: Rust
-- Adattárolás: SQLite a telepített alkalmazás mappája alatti `data/project-maker.db` fájlban
-- Export: `jspdf`, `jspdf-autotable`, `xlsx`
-
-## Fejlesztői indítás
+## Install and verify
 
 ```powershell
-pnpm install
-pnpm tauri:dev
+pnpm install --frozen-lockfile
+pnpm verify
 ```
 
-Csak frontend futtatáshoz:
+`pnpm verify` performs workspace type checks, API and web unit tests, and production builds. Browser E2E tests are separate because Playwright requires a locally installed browser. The foundation handoff uses the narrower typecheck/build/Compose smoke gates first; see [`docs/operations-handoff.md`](docs/operations-handoff.md).
 
 ```powershell
-pnpm dev
+pnpm test:e2e
 ```
 
-## Ellenőrzés és build
+## Run with Docker Compose
+
+Create a local environment file and replace the placeholder password in both `POSTGRES_PASSWORD` and `DATABASE_URL` with the same strong secret:
 
 ```powershell
-pnpm typecheck
-pnpm test
-pnpm checkpoint
-pnpm build
-pnpm tauri:build
+Copy-Item .env.example .env
+pnpm compose:config
+pnpm compose:up
 ```
 
-A `pnpm checkpoint` a napi fejlesztői visszaellenőrzés: TypeScript ellenőrzés, unit/UI integration tesztek és production frontend build egyben.
+Open `http://localhost:8080`. The proxied API health endpoint is `http://localhost:8080/api/health`.
 
-A Windows telepítő a Tauri build után itt jön létre:
+Stop the stack without deleting the named PostgreSQL volume:
 
-```text
-src-tauri/target/release/bundle/nsis/
+```powershell
+pnpm compose:down
 ```
 
-## Lokális adatok és exportok
+To remove stored database data, explicitly remove the `project-maker_postgres-data` Docker volume after the stack is down. This is destructive and is intentionally not part of the normal scripts.
 
-Telepített appban az adatok az alkalmazás futtatási mappájához képest kerülnek mentésre:
+## Local development
 
-- Adatbázis: `data/project-maker.db`
-- Exportok: `exports/`
+Copy `.env.example` to `.env`, then run the applications in separate terminals:
 
-Fejlesztői böngészős futásnál SQLite helyett localStorage fallback aktív.
+```powershell
+pnpm --filter @project-maker/api start:dev
+pnpm --filter @project-maker/web start
+```
 
-## Dokumentáció
+The API requires `CORS_ORIGIN`; `@nestjs/config` reads it from the root `.env` when the API is started from the repository root. The value must be one exact HTTP(S) origin such as `http://localhost:8080`; wildcards, paths, credentials, query strings, fragments, and origin lists are rejected at startup.
 
-- Termék és domain kontextus: `CONTEXT.md`
-- Skálázási irány: `future_scaling.md`
-- Refactor design: `docs/codebase-architecture-refactor/design.md`
-- Felhasználói útmutató: `docs/project-maker-user-guide.html`
-- Architekturális döntések: `docs/adr/`
-- Windows code signing terv: `docs/windows-code-signing.md`
+## Configuration
 
-## Repo hygiene
+`.env.example` documents every foundation variable. Never commit `.env` or real credentials. The example password is a placeholder and is not suitable for a deployed environment.
 
-Build artifactok, lokális adatbázisok, release csomagok és környezeti fájlok nincsenek verziózva. A cél, hogy a repo forráskódot, dokumentációt és reprodukálható build konfigurációt tartalmazzon.
+| Variable | Purpose |
+| --- | --- |
+| `POSTGRES_DB` | PostgreSQL database name |
+| `POSTGRES_USER` | PostgreSQL application user |
+| `POSTGRES_PASSWORD` | PostgreSQL application password |
+| `DATABASE_URL` | Internal API-to-PostgreSQL connection URL |
+| `WEB_PORT` | Host port published by Nginx |
+| `CORS_ORIGIN` | Exact browser origin allowed by the API |
+| `FOLLOW_UP_POLL_INTERVAL_MS` | Automatic follow-up poll interval (5,000–86,400,000 ms) |
+| `SMTP_HOST` / `SMTP_FROM` | Together enable customer email delivery; blank disables email |
+| `SMTP_PORT` | SMTP TCP/TLS port; `.env.example` uses `1025` for local capture |
+| `SMTP_SECURE` | `false` plain TCP, `true` implicit TLS; STARTTLS is not implemented |
+| `SMTP_USER` / `SMTP_PASSWORD` | Optional credentials; both are required together and require secure mode |
+
+The API and database do not publish host ports. PostgreSQL data persists in the named `postgres-data` volume.
+
+## Legacy desktop baseline
+
+The replaced Tauri desktop MVP is preserved by Git tag `legacy-desktop-v0.1.2`. It is not part of this web platform runtime and no desktop data is imported automatically.

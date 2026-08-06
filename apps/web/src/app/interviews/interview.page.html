@@ -1,0 +1,292 @@
+<section aria-labelledby="interview-title">
+  <a class="back-link" [routerLink]="['/projects', projectId]" data-testid="back-to-cockpit-link">
+    <span aria-hidden="true">←</span> Project cockpit
+  </a>
+
+  <div class="page-heading interview-heading">
+    <span class="eyebrow">Guided interview</span>
+    <h1 id="interview-title">Project interview</h1>
+    <p>Select the active questions for this project, publish the schema, and capture a round snapshot.</p>
+  </div>
+
+  @if (actionError()) {
+    <p-message severity="error" data-testid="interview-action-error" role="alert">
+      {{ actionError() }}
+    </p-message>
+  }
+  @if (feedback()) {
+    <p-message severity="success" data-testid="interview-success">
+      {{ feedback() }}
+    </p-message>
+  }
+
+  @if (loading()) {
+    <div class="state-panel" data-testid="interview-loading" aria-live="polite">
+      <p-progress-spinner ariaLabel="Loading interview questions" />
+      <p>Loading question bank and project schema…</p>
+    </div>
+  } @else if (loadError()) {
+    <div class="state-panel" data-testid="interview-error" role="alert">
+      <h2>Interview setup could not be loaded</h2>
+      <p>{{ loadError() }}</p>
+      <p-button
+        label="Try again"
+        severity="secondary"
+        data-testid="retry-interview-button"
+        (onClick)="loadInterviewData()"
+      />
+    </div>
+  } @else if (bank(); as currentBank) {
+    <div class="interview-grid">
+      <p-card>
+        <ng-template #title>Project question schema</ng-template>
+        <ng-template #subtitle>
+          Bank version {{ currentBank.version }} · {{ selectedCount() }} active questions selected
+        </ng-template>
+
+        @if (activeQuestions().length === 0) {
+          <div class="state-panel compact" data-testid="interview-no-active-questions">
+            <h2>No active base questions</h2>
+            <p>Ask a Settings administrator to activate at least one base question.</p>
+          </div>
+        } @else {
+          <fieldset class="question-selection" data-testid="interview-question-selection">
+            <legend>Select active base questions</legend>
+            @for (question of activeQuestions(); track question.stableKey) {
+              <label class="selection-row" [attr.data-testid]="'schema-question-' + question.stableKey">
+                <input
+                  type="checkbox"
+                  [checked]="isSelected(question.stableKey)"
+                  [disabled]="schemaSaving()"
+                  [attr.aria-label]="'Use question: ' + question.text"
+                  (change)="setSelected(question.stableKey, $any($event.target).checked)"
+                />
+                <span class="selection-copy">
+                  <strong>{{ question.text }}</strong>
+                  <small>{{ question.topic }} · {{ question.type }}</small>
+                </span>
+              </label>
+            }
+          </fieldset>
+
+          <div class="schema-status">
+            @if (schema(); as currentSchema) {
+              <span data-testid="project-schema-status">
+                Published schema v{{ currentSchema.schemaVersion }} (bank v{{ currentSchema.bankVersion }})
+              </span>
+            } @else {
+              <span data-testid="project-schema-status">No project schema published yet.</span>
+            }
+            <p-button
+              [label]="schema() ? 'Update schema' : 'Publish schema'"
+              [loading]="schemaSaving()"
+              [disabled]="schemaSaving() || selectedCount() === 0"
+              data-testid="publish-project-schema-button"
+              (onClick)="publishSchema()"
+            />
+          </div>
+        }
+      </p-card>
+
+      <p-card>
+        <ng-template #title>Interview round</ng-template>
+        <ng-template #subtitle>
+          A round keeps an immutable snapshot of the selected schema.
+        </ng-template>
+
+        @if (!round()) {
+          <div class="round-start">
+            <div class="field">
+              <label for="round-type">Round type</label>
+              <select
+                id="round-type"
+                [value]="roundType.value"
+                [disabled]="roundSaving() || !schema()"
+                (change)="setRoundType($any($event.target).value)"
+                data-testid="round-type-select"
+              >
+                @for (option of roundTypeOptions; track option.value) {
+                  <option [value]="option.value">{{ option.label }}</option>
+                }
+              </select>
+            </div>
+            <p-button
+              label="Start interview round"
+              [loading]="roundSaving()"
+              [disabled]="roundSaving() || !schema()"
+              data-testid="create-interview-round-button"
+              (onClick)="createRound()"
+            />
+            @if (!schema()) {
+              <small class="muted">Publish the project schema before starting a round.</small>
+            }
+          </div>
+        } @else {
+          @if (round(); as currentRound) {
+            <div class="round-header">
+              <div>
+                <span class="round-type">{{ currentRound.type.replaceAll('_', ' ') }}</span>
+                <p>{{ currentRound.questions.length }} snapshot questions</p>
+              </div>
+              <p-tag
+                [value]="currentRound.status"
+                [severity]="currentRound.status === 'COMPLETED' ? 'success' : 'info'"
+                data-testid="round-status"
+              />
+            </div>
+
+            @if (currentRound.questions.length === 0) {
+              <div class="state-panel compact" data-testid="round-empty">
+                <h2>No questions in this round</h2>
+                <p>Update the project schema and start a new round.</p>
+              </div>
+            } @else {
+              <div class="round-questions" data-testid="round-questions">
+                @for (question of currentRound.questions; track question.id; let index = $index) {
+                  <article class="round-question" [attr.data-testid]="'round-question-' + question.id">
+                    <div class="question-heading">
+                      <span class="question-number">{{ index + 1 }}</span>
+                      <div>
+                        <h2>{{ question.text }}</h2>
+                        <small>{{ question.topic }} · {{ question.type }}{{ question.required ? ' · required' : '' }}</small>
+                      </div>
+                    </div>
+                    @if (question.hint) {
+                      <p class="question-hint">{{ question.hint }}</p>
+                    }
+
+                    @switch (question.type) {
+                      @case ('TEXT') {
+                        <input
+                          class="answer-control"
+                          type="text"
+                          [value]="textAnswer(question)"
+                          [disabled]="currentRound.status === 'COMPLETED' || answerSavingId() !== null || completing()"
+                          [attr.aria-label]="'Answer: ' + question.text"
+                          [attr.aria-required]="question.required"
+                          [attr.data-testid]="'round-answer-input-' + question.id"
+                          (input)="setTextDraft(question.id, $any($event.target).value)"
+                        />
+                      }
+                      @case ('LONG_TEXT') {
+                        <textarea
+                          class="answer-control"
+                          rows="4"
+                          [value]="textAnswer(question)"
+                          [disabled]="currentRound.status === 'COMPLETED' || answerSavingId() !== null || completing()"
+                          [attr.aria-label]="'Answer: ' + question.text"
+                          [attr.aria-required]="question.required"
+                          [attr.data-testid]="'round-answer-textarea-' + question.id"
+                          (input)="setTextDraft(question.id, $any($event.target).value)"
+                        ></textarea>
+                      }
+                      @case ('SINGLE_SELECT') {
+                        <select
+                          class="answer-control"
+                          [value]="textAnswer(question)"
+                          [disabled]="currentRound.status === 'COMPLETED' || answerSavingId() !== null || completing()"
+                          [attr.aria-label]="'Answer: ' + question.text"
+                          [attr.aria-required]="question.required"
+                          [attr.data-testid]="'round-answer-select-' + question.id"
+                          (change)="setSingleSelectDraft(question.id, $any($event.target).value)"
+                        >
+                          <option value="">Select an option</option>
+                          @for (option of question.options ?? []; track option) {
+                            <option [value]="option">{{ option }}</option>
+                          }
+                        </select>
+                      }
+                      @case ('MULTI_SELECT') {
+                        <div class="multi-options" [attr.data-testid]="'round-answer-multi-' + question.id">
+                          @for (option of question.options ?? []; track option; let optionIndex = $index) {
+                            <label>
+                              <input
+                                type="checkbox"
+                                [checked]="hasSelectedOption(question, option)"
+                                [disabled]="currentRound.status === 'COMPLETED' || answerSavingId() !== null || completing()"
+                                [attr.data-testid]="'round-answer-multi-option-' + question.id + '-' + optionIndex"
+                                (change)="setMultiSelectDraft(question, option, $any($event.target).checked)"
+                              />
+                              {{ option }}
+                            </label>
+                          }
+                        </div>
+                      }
+                      @case ('BOOLEAN') {
+                        <label class="boolean-answer">
+                          <input
+                            type="checkbox"
+                            [checked]="booleanAnswer(question)"
+                            [disabled]="currentRound.status === 'COMPLETED' || answerSavingId() !== null || completing()"
+                            [attr.aria-label]="'Answer: ' + question.text"
+                            [attr.data-testid]="'round-answer-boolean-' + question.id"
+                            (change)="setDraft(question.id, $any($event.target).checked)"
+                          />
+                          Yes
+                        </label>
+                      }
+                      @case ('NUMBER') {
+                        <input
+                          class="answer-control"
+                          type="number"
+                          [value]="numberAnswer(question)"
+                          [disabled]="currentRound.status === 'COMPLETED' || answerSavingId() !== null || completing()"
+                          [attr.aria-label]="'Answer: ' + question.text"
+                          [attr.aria-required]="question.required"
+                          [attr.data-testid]="'round-answer-number-' + question.id"
+                          (input)="setNumberDraft(question.id, $any($event.target).value)"
+                        />
+                      }
+                      @case ('DATE') {
+                        <input
+                          class="answer-control"
+                          type="date"
+                          [value]="textAnswer(question)"
+                          [disabled]="currentRound.status === 'COMPLETED' || answerSavingId() !== null || completing()"
+                          [attr.aria-label]="'Answer: ' + question.text"
+                          [attr.aria-required]="question.required"
+                          [attr.data-testid]="'round-answer-date-' + question.id"
+                          (change)="setDraft(question.id, $any($event.target).value || null)"
+                        />
+                      }
+                    }
+
+                    <div class="answer-actions">
+                      @if (question.answeredAt) {
+                        <small class="muted">Saved</small>
+                      } @else {
+                        <small class="muted">Not answered</small>
+                      }
+                      <p-button
+                        label="Save answer"
+                        severity="secondary"
+                        [outlined]="true"
+                        [loading]="answerSavingId() === question.id"
+                        [disabled]="currentRound.status === 'COMPLETED' || answerSavingId() !== null || completing()"
+                        [attr.data-testid]="'save-round-answer-' + question.id"
+                        (onClick)="saveAnswer(question)"
+                      />
+                    </div>
+                  </article>
+                }
+              </div>
+            }
+
+            @if (currentRound.status === 'OPEN') {
+              <div class="complete-row">
+                <p-button
+                  label="Complete round"
+                  severity="success"
+                  [loading]="completing()"
+                  [disabled]="completing() || answerSavingId() !== null"
+                  data-testid="complete-interview-round-button"
+                  (onClick)="completeRound()"
+                />
+              </div>
+            }
+          }
+        }
+      </p-card>
+    </div>
+  }
+</section>

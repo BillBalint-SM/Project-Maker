@@ -1,25 +1,18 @@
 # Security Policy
 
-## Támogatott verziók
+## Supported versions
 
-Az aktuális publikus MVP verzió:
+The web platform is currently a development foundation and has no supported public production release. The historical desktop release is preserved by Git tag `legacy-desktop-v0.1.2` but is no longer maintained on this branch.
 
-- `v0.1.1`
+## Reporting a vulnerability
 
-## Letöltési forrás
+Report vulnerabilities privately through a GitHub Security Advisory or directly to the repository owner. Do not publish exploit details until a fix is available.
 
-Csak a hivatalos GitHub Releases oldalról származó telepítő tekinthető hivatalosnak:
+Include the affected route or component, reproduction steps, expected impact, and the smallest safe diagnostic evidence. Never include real credentials, personal data, access tokens, database contents, or other confidential values.
 
-https://github.com/BillBalint-SM/Project-Maker/releases/latest
+## Foundation deployment boundary
 
-## Windows aláírási státusz
-
-A szélesebb körű terjesztés előtt a Windows telepítőt kódtanúsítvánnyal kell aláírni. A részletes signing terv:
-
-`docs/windows-code-signing.md`
-
-## Sebezhetőség bejelentése
-
-Privát hibabejelentéshez nyiss GitHub Security Advisory-t, vagy jelezd közvetlenül a repo tulajdonosának.
-
-Kérlek, ne publikálj exploit részletet nyilvánosan addig, amíg a javítás nem készült el.
+- Never commit `.env` or real credentials. `.env.example` contains placeholders only.
+- Only the Nginx web service publishes a host port in the Compose topology. The API and PostgreSQL remain internal.
+- `CORS_ORIGIN` must be set explicitly to the public web origin before the API starts.
+- This foundation does not yet implement authentication or authorization and must not be treated as production-ready for user or project data.
