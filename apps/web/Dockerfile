@@ -1,11 +1,11 @@
 # syntax=docker/dockerfile:1
 
-FROM node:24.19.0-alpine3.24 AS build
+FROM node:26.4.0-alpine3.24 AS build
 
 ENV PNPM_HOME=/pnpm
 ENV PATH=$PNPM_HOME:$PATH
 
-RUN corepack enable && corepack prepare pnpm@11.9.0 --activate
+RUN npm install --global pnpm@11.20.0
 
 WORKDIR /workspace
 

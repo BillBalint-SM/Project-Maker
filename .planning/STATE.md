@@ -7,7 +7,7 @@ This file supersedes the July 2026 React/RxDB desktop/PWA execution state. Refer
 ## Current implementation
 
 - Monorepo: pnpm workspace.
-- Web: Angular standalone application with PrimeNG.
+- Web: Angular 22.1 standalone application with licensed PrimeNG 22.0.0.
 - API: NestJS with a health endpoint and startup CORS validation.
 - Shared package: `@project-maker/contracts`.
 - Runtime topology: Nginx-hosted SPA, internal API, and PostgreSQL through Compose.
