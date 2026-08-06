@@ -2,29 +2,33 @@
 
 ## Purpose
 
-Project Maker turns a customer discovery conversation into a concrete, development-ready requirement package while coaching PM, PO, and BA users toward stronger discovery practice.
+Project Maker turns a customer discovery conversation into a concrete,
+development-ready requirement package while coaching PM, PO, and BA users
+toward stronger discovery practice.
 
-The platform is an intake and requirements-clarification product, not a general project-management system. The authoritative workflow, vocabulary, legacy-compatible domain intent, general question playbook, and scoring rules are in `docs/product-domain.md`.
+The platform is an intake and requirements-clarification product, not a
+general project-management system. The authoritative workflow, vocabulary,
+playbook, and scoring rules are defined in `docs/product-domain.md` and the
+shared contracts package.
 
-## Current platform direction
+## Current platform
 
-- Browser-based Angular client.
+- Browser-based Angular client with PrimeNG.
 - NestJS API.
-- PostgreSQL persistence target.
+- PostgreSQL persistence through TypeORM migrations.
 - Nginx and Docker Compose deployment topology.
 - Shared TypeScript contracts between platform components.
 - Hungarian end-user experience; English engineering and operational documentation.
-- AI is optional enrichment. Deterministic workflows must remain useful without it.
-
-## Superseded implementation context
-
-The earlier React/Vite/RxDB/IndexedDB and Tauri/Rust desktop code validated useful product behavior, but that implementation and its stack are retired from the current source tree. Historical plans under `.planning/phases/`, `.planning/research/`, and `.planning/codebase/` may explain prior decisions; they are not current architecture instructions and must not be treated as completed web-platform capabilities.
+- AI is optional enrichment; deterministic workflows remain useful without it.
 
 ## Current constraints
 
-- Only verified web-platform behavior may be marked delivered.
-- Preserve stable domain meaning and plan explicit data migrations before changing persisted contracts.
+- Only verified platform behavior may be marked delivered.
+- Preserve stable domain meaning and plan explicit data migrations before
+  changing persisted contracts.
 - Keep CORS configuration to one exact HTTP(S) origin.
-- Keep API and PostgreSQL internal in Compose; only the web gateway publishes a host port.
+- Keep API and PostgreSQL internal in Compose; only the web gateway publishes a
+  host port.
 - Do not require live AI for core product operation.
-- Do not claim desktop-era persistence, backup, migration, scoring, or export code as current until it is reimplemented and verified on this platform.
+- Keep authentication and authorization outside the foundation until they are
+  separately designed and verified.

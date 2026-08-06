@@ -1,24 +1,25 @@
 # Project state
 
-**Current baseline:** Web-platform foundation on `dev-web-platform-foundation`.
-
-This file supersedes the July 2026 React/RxDB desktop/PWA execution state. References under `.planning/phases/` and `.planning/codebase/` are retained as historical discovery and implementation evidence only; they do not describe the current source tree or approved stack.
+**Current baseline:** Angular 22.1 web platform with licensed PrimeNG 22.0.0 on `main`.
 
 ## Current implementation
 
 - Monorepo: pnpm workspace.
-- Web: Angular 22.1 standalone application with licensed PrimeNG 22.0.0.
-- API: NestJS with a health endpoint and startup CORS validation.
+- Web: Angular 22.1 standalone application with PrimeNG 22.0.0.
+- API: NestJS with a health endpoint, CORS validation, TypeORM migrations, and PostgreSQL access.
 - Shared package: `@project-maker/contracts`.
 - Runtime topology: Nginx-hosted SPA, internal API, and PostgreSQL through Compose.
-- Product/domain source of truth: `docs/product-domain.md`.
+- Product/domain source of truth: `docs/product-domain.md` and `packages/contracts`.
 
 ## Current delivery state
 
-Task 1 establishes the runnable foundation only. The Angular shell, NestJS health API, package gates, and static Compose topology exist. Product workflows, persistence, authentication, migrations, scoring execution, exports, and full PWA behavior are not implemented in this new platform baseline unless separately delivered and verified.
-
-The deleted React, RxDB, IndexedDB, Vite, Tauri, Rust, and desktop-installer files are not current implementation. Their reusable product meaning is preserved in `docs/product-domain.md`; implementation recovery remains possible through the `legacy-desktop-v0.1.2` tag.
+The runnable foundation, package gates, database migrations, Compose health
+checks, and web/API smoke paths are implemented and verified. Full product
+workflows, authentication, authorization, backup operations, and complete
+export coverage remain separate delivery work until their requirements and
+verification evidence are complete.
 
 ## Next gate
 
-Continue from the approved web-platform implementation plan. Before any repository decision or edit, refresh `WORK_STATE`; do not infer current branch, HEAD, worktree, upstream, or PR state from this document.
+Before any repository decision or edit, refresh `WORK_STATE`; do not infer
+current branch, HEAD, worktree, upstream, or PR state from this document.
