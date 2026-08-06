@@ -10,10 +10,18 @@ export default defineConfig({
     baseURL: 'http://127.0.0.1:4200',
     trace: 'on-first-retry',
   },
-  webServer: {
-    command: 'pnpm exec ng serve --host 127.0.0.1 --port 4200',
-    url: 'http://127.0.0.1:4200',
-    reuseExistingServer: false,
-    timeout: 120_000,
-  },
+  webServer: [
+    {
+      command: 'node e2e/start-api-for-e2e.mjs',
+      url: 'http://127.0.0.1:3000/health',
+      reuseExistingServer: false,
+      timeout: 120_000,
+    },
+    {
+      command: 'pnpm exec ng serve --host 127.0.0.1 --port 4200',
+      url: 'http://127.0.0.1:4200',
+      reuseExistingServer: false,
+      timeout: 120_000,
+    },
+  ],
 });
