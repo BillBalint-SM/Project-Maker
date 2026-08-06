@@ -13,7 +13,7 @@ import type {
   InterviewRound,
   RoundQuestionSnapshot,
 } from '@project-maker/contracts';
-import { DataSource, EntityManager, In } from 'typeorm';
+import { DataSource, EntityManager, In, QueryFailedError } from 'typeorm';
 
 import { AuditEvent } from '../audit/audit-event.entity';
 import { Project } from '../projects/project.entity';
@@ -30,9 +30,20 @@ import { RoundQuestionSnapshotEntity } from './round-question-snapshot.entity';
 export class InterviewsService {
   constructor(private readonly dataSource: DataSource) {}
 
+  async getActiveInitialIntake(projectId: string): Promise<InterviewRound | null> {
+    return this.dataSource.transaction(async (manager) => {
+      await requireProject(manager, projectId, false);
+      const activeRound = await findOpenInitialIntakeRound(manager, projectId);
+      if (!activeRound) {
+        return null;
+      }
+      return loadInterviewRound(manager, activeRound);
+    });
+  }
+
   async createRound(projectId: string, input: CreateInterviewRoundDto): Promise<InterviewRound> {
     return this.dataSource.transaction(async (manager) => {
-      await requireProject(manager, projectId);
+      await requireProject(manager, projectId, true);
       const schema = await manager.getRepository(ProjectQuestionSchemaEntity).findOne({
         where: { projectId },
         order: { schemaVersion: 'DESC' },
@@ -41,6 +52,12 @@ export class InterviewsService {
         throw new ConflictException(
           'A published project question schema is required before creating a round.',
         );
+      }
+      if (input.type === 'INITIAL_INTAKE') {
+        const activeRound = await findOpenInitialIntakeRound(manager, projectId);
+        if (activeRound) {
+          throwOpenInitialIntakeConflict();
+        }
       }
       const schemaQuestions = await manager.getRepository(ProjectSchemaQuestionEntity).find({
         where: { projectSchemaId: schema.id },
@@ -66,7 +83,14 @@ export class InterviewsService {
         completedAt: null,
         source: 'ROUNDS_API',
       });
-      await manager.getRepository(InterviewRoundEntity).save(round);
+      try {
+        await manager.getRepository(InterviewRoundEntity).save(round);
+      } catch (error) {
+        if (input.type === 'INITIAL_INTAKE' && isUniqueViolation(error)) {
+          throwOpenInitialIntakeConflict();
+        }
+        throw error;
+      }
       const snapshots = schemaQuestions.map((schemaQuestion) => {
         const baseQuestion = baseQuestionsById.get(schemaQuestion.baseQuestionId);
         if (!baseQuestion) {
@@ -122,15 +146,15 @@ export class InterviewsService {
 
       const answerRepository = manager.getRepository(RoundAnswerEntity);
       const existingAnswer = await answerRepository.findOneBy({ snapshotId });
-  if (input.value === null) {
-    if (existingAnswer) {
-      await answerRepository.remove(existingAnswer);
-      await saveAuditEvent(manager, projectId, 'ROUND_ANSWER_CLEARED', {
-        roundId,
-        snapshotId,
-      });
-    }
-    return toRoundQuestionSnapshot(snapshot, null);
+      if (input.value === null) {
+        if (existingAnswer) {
+          await answerRepository.remove(existingAnswer);
+          await saveAuditEvent(manager, projectId, 'ROUND_ANSWER_CLEARED', {
+            roundId,
+            snapshotId,
+          });
+        }
+        return toRoundQuestionSnapshot(snapshot, null);
       }
 
       validateAnswer(snapshot.type, snapshot.options, input.value);
@@ -210,15 +234,33 @@ export class InterviewsService {
   }
 }
 
-async function requireProject(manager: EntityManager, projectId: string): Promise<Project> {
+async function requireProject(
+  manager: EntityManager,
+  projectId: string,
+  lock: boolean,
+): Promise<Project> {
   const project = await manager.getRepository(Project).findOne({
     where: { id: projectId },
-    lock: { mode: 'pessimistic_write' },
+    lock: lock ? { mode: 'pessimistic_write' } : undefined,
   });
   if (!project) {
     throw new NotFoundException('Project not found.');
   }
   return project;
+}
+
+async function findOpenInitialIntakeRound(
+  manager: EntityManager,
+  projectId: string,
+): Promise<InterviewRoundEntity | null> {
+  return manager.getRepository(InterviewRoundEntity).findOne({
+    where: {
+      projectId,
+      type: 'INITIAL_INTAKE',
+      status: 'OPEN',
+    },
+    order: { createdAt: 'DESC', id: 'ASC' },
+  });
 }
 
 async function findLockedRound(
@@ -297,6 +339,31 @@ async function saveAuditEvent(
   });
 }
 
+async function loadInterviewRound(
+  manager: EntityManager,
+  round: InterviewRoundEntity,
+): Promise<InterviewRound> {
+  const schema = await manager
+    .getRepository(ProjectQuestionSchemaEntity)
+    .findOneBy({ id: round.projectSchemaId });
+  if (!schema) {
+    throw new InternalServerErrorException('Stored interview round schema is missing.');
+  }
+  const snapshots = await manager.getRepository(RoundQuestionSnapshotEntity).find({
+    where: { roundId: round.id },
+    order: { order: 'ASC', id: 'ASC' },
+  });
+  const answers = await manager.getRepository(RoundAnswerEntity).find({
+    where: { roundId: round.id },
+    order: { snapshotId: 'ASC', id: 'ASC' },
+  });
+  return toInterviewRound(round, schema.schemaVersion, snapshots, answers);
+}
+
+function throwOpenInitialIntakeConflict(): never {
+  throw new ConflictException('An open initial intake round already exists for this project.');
+}
+
 function toInterviewRound(
   round: InterviewRoundEntity,
   schemaVersion: number,
@@ -360,4 +427,12 @@ function toIso(value: Date, field: string): string {
     throw new InternalServerErrorException(`Stored interview round ${field} is invalid.`);
   }
   return timestamp.toISOString();
+}
+
+function isUniqueViolation(error: unknown): boolean {
+  if (!(error instanceof QueryFailedError)) {
+    return false;
+  }
+  const driverError = error.driverError as { readonly code?: unknown };
+  return driverError.code === '23505';
 }

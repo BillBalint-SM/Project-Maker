@@ -1,4 +1,4 @@
-import { Body, Controller, Param, ParseUUIDPipe, Patch, Post } from '@nestjs/common';
+import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post, Res } from '@nestjs/common';
 import type { InterviewRound, RoundQuestionSnapshot } from '@project-maker/contracts';
 
 import { CreateInterviewRoundDto } from './dto/create-interview-round.dto';
@@ -8,6 +8,16 @@ import { InterviewsService } from './interviews.service';
 @Controller('projects/:projectId/rounds')
 export class InterviewsController {
   constructor(private readonly interviewsService: InterviewsService) {}
+
+  @Get('active')
+  async getActiveRound(
+    @Param('projectId', new ParseUUIDPipe()) projectId: string,
+    @Res()
+    response: { status(code: number): { json(value: InterviewRound | null): void } },
+  ): Promise<void> {
+    const activeRound = await this.interviewsService.getActiveInitialIntake(projectId);
+    response.status(200).json(activeRound);
+  }
 
   @Post()
   createRound(
