@@ -165,6 +165,88 @@
   color: var(--p-primary-color);
 }
 
+.audit-state {
+  align-items: center;
+  color: var(--p-text-muted-color);
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  justify-content: center;
+  line-height: 1.5;
+  margin: 0;
+  min-height: 8rem;
+  text-align: center;
+}
+
+.audit-events {
+  display: grid;
+  gap: 0.85rem;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.audit-event {
+  border-bottom: 1px solid var(--p-content-border-color);
+  display: grid;
+  gap: 0.45rem;
+  padding-bottom: 0.85rem;
+}
+
+.audit-event:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+
+.audit-event-heading {
+  align-items: baseline;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  justify-content: space-between;
+}
+
+.audit-event-heading strong {
+  font-size: 0.82rem;
+  overflow-wrap: anywhere;
+}
+
+.audit-event-heading time {
+  color: var(--p-text-muted-color);
+  font-size: 0.75rem;
+  white-space: nowrap;
+}
+
+.audit-event pre {
+  background: var(--p-surface-100);
+  border-radius: 0.5rem;
+  font-family: var(--p-font-family);
+  font-size: 0.75rem;
+  line-height: 1.45;
+  margin: 0;
+  overflow-wrap: anywhere;
+  overflow-x: auto;
+  padding: 0.65rem;
+  white-space: pre-wrap;
+}
+
+.audit-pagination {
+  align-items: center;
+  border-top: 1px solid var(--p-content-border-color);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+  justify-content: space-between;
+  margin-top: 1rem;
+  padding-top: 1rem;
+}
+
+.audit-pagination span {
+  color: var(--p-text-muted-color);
+  font-size: 0.76rem;
+  text-align: center;
+}
+
 .state-actions {
   display: flex;
   flex-wrap: wrap;

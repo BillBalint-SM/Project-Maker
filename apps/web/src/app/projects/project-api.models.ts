@@ -1,4 +1,6 @@
 import type {
+  AuditEventPage,
+  AuditEventRecord,
   CustomerFollowUpState,
   ProjectCockpit,
   ProjectStatus,
@@ -6,6 +8,8 @@ import type {
 } from '@project-maker/contracts';
 
 export type {
+  AuditEventPage,
+  AuditEventRecord,
   CustomerEmailDelivery,
   CustomerFollowUpState,
   CreateProjectInput,

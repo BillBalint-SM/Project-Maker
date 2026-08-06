@@ -1,8 +1,9 @@
-import { HttpClient, HttpErrorResponse } from '@angular/common/http';
+import { HttpClient, HttpErrorResponse, HttpParams } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { forkJoin, map, Observable, throwError } from 'rxjs';
 import { catchError } from 'rxjs/operators';
 import type {
+  AuditEventPage,
   CustomerEmailDelivery,
   CustomerFollowUpState,
   CreateProjectInput,
@@ -21,6 +22,18 @@ import type { CockpitView } from './project-api.models';
 @Injectable({ providedIn: 'root' })
 export class ProjectApiService {
   private readonly http = inject(HttpClient);
+
+  loadAuditEvents(projectId: string, offset: number): Observable<AuditEventPage> {
+    const params = new HttpParams()
+      .set('offset', String(offset))
+      .set('limit', '10');
+    return this.http
+      .get<AuditEventPage>(
+        `/api/projects/${encodeURIComponent(projectId)}/audit-events`,
+        { params },
+      )
+      .pipe(catchError((error: unknown) => this.fail(error, 'load audit history')));
+  }
 
   listProjects(): Observable<readonly ProjectWorkspace[]> {
     return this.http

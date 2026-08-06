@@ -332,6 +332,81 @@
           </dl>
         </p-card>
 
+        <p-card data-testid="audit-history-card">
+          <ng-template #title>Audit history</ng-template>
+          <ng-template #subtitle>Recent project changes and delivery events.</ng-template>
+
+          @if (auditLoading()) {
+            <div class="audit-state" data-testid="audit-history-loading" aria-live="polite">
+              <p-progress-spinner ariaLabel="Loading audit history" />
+              <p>Loading audit history…</p>
+            </div>
+          } @else if (auditError()) {
+            <div class="audit-state" data-testid="audit-history-error" role="alert">
+              <p>{{ auditError() }}</p>
+              <p-button
+                label="Retry audit history"
+                severity="secondary"
+                [outlined]="true"
+                data-testid="retry-audit-history-button"
+                (onClick)="retryAuditEvents()"
+              />
+            </div>
+          } @else if (auditPage(); as audit) {
+            @if (audit.events.length === 0) {
+              <p class="audit-state" data-testid="audit-history-empty">
+                No audit events have been recorded for this project yet.
+              </p>
+            } @else {
+              <ol class="audit-events" data-testid="audit-history-events">
+                @for (event of audit.events; track event.createdAt + event.eventType + $index) {
+                  <li class="audit-event" data-testid="audit-event">
+                    <div class="audit-event-heading">
+                      <strong data-testid="audit-event-type">{{ event.eventType }}</strong>
+                      <time
+                        [attr.datetime]="event.createdAt"
+                        data-testid="audit-event-created-at"
+                      >
+                        {{ event.createdAt | date: 'medium' }}
+                      </time>
+                    </div>
+                    <pre data-testid="audit-event-payload">{{ event.payload | json }}</pre>
+                  </li>
+                }
+              </ol>
+
+              <div class="audit-pagination" data-testid="audit-history-pagination">
+                <p-button
+                  label="Previous"
+                  icon="pi pi-angle-left"
+                  severity="secondary"
+                  [outlined]="true"
+                  [disabled]="!canGoPreviousAuditPage()"
+                  data-testid="previous-audit-page-button"
+                  (onClick)="previousAuditPage()"
+                />
+                <span data-testid="audit-history-page">
+                  Showing {{ audit.offset + 1 }}–{{ audit.offset + audit.events.length }} of {{ audit.total }}
+                </span>
+                <p-button
+                  label="Next"
+                  icon="pi pi-angle-right"
+                  iconPos="right"
+                  severity="secondary"
+                  [outlined]="true"
+                  [disabled]="!canGoNextAuditPage()"
+                  data-testid="next-audit-page-button"
+                  (onClick)="nextAuditPage()"
+                />
+              </div>
+            }
+          } @else {
+            <p class="audit-state" data-testid="audit-history-empty">
+              No audit events have been recorded for this project yet.
+            </p>
+          }
+        </p-card>
+
         <p-card>
           <ng-template #title>Lifecycle action</ng-template>
           @if (isArchived()) {
