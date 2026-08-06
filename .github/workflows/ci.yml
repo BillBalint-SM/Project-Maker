@@ -52,5 +52,8 @@ jobs:
       - name: Run database migrations
         run: pnpm --filter @project-maker/api migration:run
 
+      - name: Build shared contracts
+        run: pnpm --filter @project-maker/contracts build
+
       - name: Run checkpoint
         run: pnpm checkpoint
