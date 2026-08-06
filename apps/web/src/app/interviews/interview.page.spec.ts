@@ -1,7 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { ActivatedRoute, convertToParamMap } from '@angular/router';
 import { describe, expect, it, vi } from 'vitest';
-import { of } from 'rxjs';
+import { of, throwError } from 'rxjs';
 import type {
   BaseQuestionBank,
   InterviewRound,
@@ -117,6 +117,110 @@ describe('InterviewPage', () => {
       nativeElement.querySelector('[data-testid="round-type-select"]'),
     ).toBeNull();
   });
+
+  it('fails into a Hungarian page-level error state for an unsupported active round type', async () => {
+    const questionBankApi = {
+      loadBaseQuestionBank: vi.fn().mockReturnValue(of(buildBank())),
+      loadProjectSchema: vi.fn().mockReturnValue(of(buildSchema())),
+      createProjectSchema: vi.fn(),
+      updateProjectSchema: vi.fn(),
+    };
+    const interviewApi = {
+      getActiveInitialIntake: vi.fn().mockReturnValue(of(buildUnsupportedRound())),
+      createRound: vi.fn(),
+      updateAnswer: vi.fn(),
+      completeRound: vi.fn(),
+    };
+
+    await TestBed.configureTestingModule({
+      imports: [InterviewPage],
+      providers: [
+        ...appConfig.providers,
+        {
+          provide: ActivatedRoute,
+          useValue: {
+            snapshot: {
+              paramMap: convertToParamMap({ projectId: 'project-789' }),
+            },
+          },
+        },
+        { provide: QuestionBankApiService, useValue: questionBankApi },
+        { provide: InterviewApiService, useValue: interviewApi },
+      ],
+    }).compileComponents();
+
+    const fixture = TestBed.createComponent(InterviewPage);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    const nativeElement = fixture.nativeElement as HTMLElement;
+    const loadError = nativeElement.querySelector(
+      '[data-testid="interview-load-error-text"]',
+    ) as HTMLElement | null;
+
+    expect(
+      loadError?.textContent?.trim(),
+    ).toBe(
+      'Nem támogatott aktív interjúkör érkezett a szervertől. Frissítsd az oldalt, és ha a hiba megmarad, ellenőrizd a projekt interjúállapotát.',
+    );
+    expect(
+      nativeElement.querySelector('[data-testid="active-round-resume-state"]'),
+    ).toBeNull();
+  });
+
+  it('preserves the specific Hungarian service error during initial load', async () => {
+    const questionBankApi = {
+      loadBaseQuestionBank: vi.fn().mockReturnValue(of(buildBank())),
+      loadProjectSchema: vi.fn().mockReturnValue(of(buildSchema())),
+      createProjectSchema: vi.fn(),
+      updateProjectSchema: vi.fn(),
+    };
+    const interviewApi = {
+      getActiveInitialIntake: vi.fn().mockReturnValue(
+        throwError(
+          () =>
+            new Error(
+              'Nem sikerült betölteni az aktív kezdő interjúkört (HTTP 404). Ellenőrizd, hogy a projekt, az interjúkör vagy a kérdés még létezik-e.',
+            ),
+        ),
+      ),
+      createRound: vi.fn(),
+      updateAnswer: vi.fn(),
+      completeRound: vi.fn(),
+    };
+
+    await TestBed.configureTestingModule({
+      imports: [InterviewPage],
+      providers: [
+        ...appConfig.providers,
+        {
+          provide: ActivatedRoute,
+          useValue: {
+            snapshot: {
+              paramMap: convertToParamMap({ projectId: 'project-999' }),
+            },
+          },
+        },
+        { provide: QuestionBankApiService, useValue: questionBankApi },
+        { provide: InterviewApiService, useValue: interviewApi },
+      ],
+    }).compileComponents();
+
+    const fixture = TestBed.createComponent(InterviewPage);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    const nativeElement = fixture.nativeElement as HTMLElement;
+    const loadError = nativeElement.querySelector(
+      '[data-testid="interview-load-error-text"]',
+    ) as HTMLElement | null;
+
+    expect(loadError?.textContent?.trim()).toBe(
+      'Nem sikerült betölteni az aktív kezdő interjúkört (HTTP 404). Ellenőrizd, hogy a projekt, az interjúkör vagy a kérdés még létezik-e.',
+    );
+  });
 });
 
 function buildBank(): BaseQuestionBank {
@@ -199,5 +303,13 @@ function buildOpenRound(): InterviewRound {
         answeredAt: '2026-08-06T10:12:00.000Z',
       },
     ],
+  };
+}
+
+function buildUnsupportedRound(): InterviewRound {
+  return {
+    ...buildOpenRound(),
+    id: 'round-unsupported',
+    type: 'STAKEHOLDER',
   };
 }
