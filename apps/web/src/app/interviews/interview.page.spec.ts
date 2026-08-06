@@ -243,6 +243,100 @@ describe('InterviewPage', () => {
     ).toBeNull();
   });
 
+  it('blocks completion while a failed autosave is still in error and keeps the retryable draft visible', async () => {
+    const autosaveError =
+      'Nem sikerült elmenteni a választ (HTTP 409). Frissítsd az oldalt, hogy a legfrissebb interjúállapotot lásd, majd próbáld újra.';
+    const failedQuestion = buildOptionalTextQuestion({
+      answer: null,
+      answeredAt: null,
+    });
+    const updateAnswer = vi.fn().mockReturnValue(
+      throwError(
+        () =>
+          Object.assign(new Error(autosaveError), {
+            brand: interviewApiErrorBrand,
+          }),
+      ),
+    );
+    const completedRound = buildCompletedRound(failedQuestion);
+    const completeRound = vi.fn().mockReturnValue(of(completedRound));
+    const questionBankApi = createQuestionBankApi(buildOptionalTextBank(), buildOptionalTextSchema());
+    const interviewApi = {
+      ...createInterviewApi(buildOpenRound(failedQuestion), updateAnswer),
+      completeRound,
+    };
+
+    const page = await renderInterviewPage('project-123', questionBankApi, interviewApi);
+    const answerInput = page.nativeElement.querySelector(
+      '[data-testid="round-answer-input-snapshot-optional"]',
+    ) as HTMLInputElement;
+
+    setInputValue(answerInput, 'Még nincs mentve, de fontos válasz');
+    await waitForDuration(800);
+    await page.fixture.whenStable();
+    page.fixture.detectChanges();
+
+    const completeButtonHost = page.nativeElement.querySelector(
+      '[data-testid="complete-interview-round-button"]',
+    ) as HTMLElement | null;
+    const completeButton = completeButtonHost?.querySelector('button') as HTMLButtonElement | null;
+    const blockedMessage = page.nativeElement.querySelector(
+      '[data-testid="complete-round-blocked-message"]',
+    ) as HTMLElement | null;
+
+    expect(answerInput.value).toBe('Még nincs mentve, de fontos válasz');
+    expect(completeButton?.disabled).toBe(true);
+    expect(blockedMessage?.textContent?.trim()).toBe(
+      'Az interjúkör nem zárható le, amíg van sikertelen válaszmentés. Mentsd újra a hibás válaszokat, majd próbáld újra.',
+    );
+
+    page.fixture.componentInstance.completeRound();
+    page.fixture.detectChanges();
+
+    const actionError = page.nativeElement.querySelector(
+      '[data-testid="interview-action-error-text"]',
+    ) as HTMLElement | null;
+    expect(completeRound).not.toHaveBeenCalled();
+    expect(actionError?.textContent?.trim()).toBe(
+      'Az interjúkör nem zárható le, amíg van sikertelen válaszmentés. Mentsd újra a hibás válaszokat, majd próbáld újra.',
+    );
+    expect(answerInput.value).toBe('Még nincs mentve, de fontos válasz');
+    expect(
+      page.nativeElement.querySelector('[data-testid="retry-round-answer-snapshot-optional"]'),
+    ).not.toBeNull();
+  });
+
+  it('maps schema publish failures to safe Hungarian text without exposing the raw service message', async () => {
+    const rawServiceMessage =
+      'Could not update the project question schema (HTTP 409). PostgreSQL duplicate key value violates unique constraint.';
+    const questionBankApi = createQuestionBankApi(null, null);
+    questionBankApi.updateProjectSchema.mockReturnValue(
+      throwError(() => new Error(rawServiceMessage)),
+    );
+    const interviewApi = createInterviewApi(null, null);
+
+    const page = await renderInterviewPage('project-123', questionBankApi, interviewApi);
+    const publishButtonHost = page.nativeElement.querySelector(
+      '[data-testid="publish-project-schema-button"]',
+    ) as HTMLElement | null;
+    const publishButton = publishButtonHost?.querySelector('button') as HTMLButtonElement | null;
+
+    publishButton?.click();
+    await page.fixture.whenStable();
+    page.fixture.detectChanges();
+
+    const actionError = page.nativeElement.querySelector(
+      '[data-testid="interview-action-error-text"]',
+    ) as HTMLElement | null;
+
+    expect(questionBankApi.updateProjectSchema).toHaveBeenCalledTimes(1);
+    expect(actionError?.textContent?.trim()).toBe(
+      'Nem sikerült frissíteni a projektsémát. Frissítsd az oldalt, ellenőrizd a kiválasztott kérdéseket, majd próbáld újra.',
+    );
+    expect(actionError?.textContent).not.toContain('Could not');
+    expect(actionError?.textContent).not.toContain('PostgreSQL');
+  });
+
   it('renders deterministic Hungarian coaching from the round snapshot contract', async () => {
     const question = buildLongTextQuestion({
       hint: 'Írd le a jelenlegi helyzetet és a kívánt kimenetet.',
@@ -466,6 +560,18 @@ function buildOpenRound(question: RoundQuestionSnapshot): InterviewRound {
   };
 }
 
+function buildCompletedRound(question: RoundQuestionSnapshot): InterviewRound {
+  return {
+    ...buildOpenRound({
+      ...question,
+      answer: question.answer,
+      answeredAt: question.answeredAt,
+    }),
+    status: 'COMPLETED',
+    completedAt: '2026-08-06T10:30:00.000Z',
+  };
+}
+
 function buildUnsupportedRound(): InterviewRound {
   return {
     ...buildOpenRound(buildTextQuestion({})),
@@ -560,6 +666,28 @@ function buildBooleanQuestion(
   };
 }
 
+function buildOptionalTextQuestion(
+  overrides: Partial<RoundQuestionSnapshot>,
+): RoundQuestionSnapshot {
+  return {
+    id: 'snapshot-optional',
+    baseQuestionId: 'base-question-optional',
+    stableKey: 'optional-detail',
+    topic: 'Részlet',
+    controlPoint: 'Kiegészítő információ',
+    text: 'Van még fontos részlet?',
+    type: 'TEXT',
+    required: false,
+    blocking: false,
+    order: 1,
+    hint: null,
+    options: null,
+    answer: null,
+    answeredAt: null,
+    ...overrides,
+  };
+}
+
 function buildLongTextQuestion(
   overrides: Partial<RoundQuestionSnapshot>,
 ): RoundQuestionSnapshot {
@@ -601,6 +729,25 @@ function buildBooleanBank(): BaseQuestionBank {
   };
 }
 
+function buildOptionalTextBank(): BaseQuestionBank {
+  return {
+    version: 3,
+    questions: [
+      {
+        ...buildBaseTextQuestion(),
+        id: 'base-question-optional',
+        stableKey: 'optional-detail',
+        topic: 'Részlet',
+        controlPoint: 'Kiegészítő információ',
+        text: 'Van még fontos részlet?',
+        required: false,
+        requiredForEstimate: false,
+        blocking: false,
+      },
+    ],
+  };
+}
+
 function buildBooleanSchema(): ProjectQuestionSchema {
   return {
     id: 'schema-boolean',
@@ -617,6 +764,32 @@ function buildBooleanSchema(): ProjectQuestionSchema {
         controlPoint: 'Jóváhagyás',
         text: 'Szükséges vezetői jóváhagyás?',
         type: 'BOOLEAN',
+        required: false,
+        blocking: false,
+        order: 1,
+        hint: null,
+        options: null,
+      },
+    ],
+  };
+}
+
+function buildOptionalTextSchema(): ProjectQuestionSchema {
+  return {
+    id: 'schema-optional',
+    projectId: 'project-123',
+    schemaVersion: 2,
+    bankVersion: 3,
+    publishedAt: '2026-08-06T10:05:00.000Z',
+    questions: [
+      {
+        id: 'schema-question-optional',
+        baseQuestionId: 'base-question-optional',
+        stableKey: 'optional-detail',
+        topic: 'Részlet',
+        controlPoint: 'Kiegészítő információ',
+        text: 'Van még fontos részlet?',
+        type: 'TEXT',
         required: false,
         blocking: false,
         order: 1,

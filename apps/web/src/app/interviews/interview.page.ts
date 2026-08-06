@@ -22,6 +22,10 @@ import { QuestionBankApiService } from '../settings/question-bank-api.service';
 
 const supportedRoundType = 'INITIAL_INTAKE';
 const textAutosaveDelayMs = 750;
+const completionBlockedByAnswerErrorMessage =
+  'Az interjúkör nem zárható le, amíg van sikertelen válaszmentés. Mentsd újra a hibás válaszokat, majd próbáld újra.';
+const completionBlockedByPendingSaveMessage =
+  'Az interjúkör lezárása előtt várd meg, amíg minden automatikus mentés befejeződik.';
 
 type QuestionSaveStatus = 'idle' | 'saving' | 'saved' | 'error';
 
@@ -184,7 +188,8 @@ export class InterviewPage implements OnInit, OnDestroy {
     this.schemaSaving.set(true);
     this.actionError.set(null);
     this.feedback.set(null);
-    const request = this.schema()
+    const hasExistingSchema = this.schema() !== null;
+    const request = hasExistingSchema
       ? this.questionBankApi.updateProjectSchema(this.projectId, input)
       : this.questionBankApi.createProjectSchema(this.projectId, input);
     request.subscribe({
@@ -198,8 +203,8 @@ export class InterviewPage implements OnInit, OnDestroy {
             : 'A projekt interjúsémája frissült.',
         );
       },
-      error: (error: Error) => {
-        this.actionError.set(error.message);
+      error: () => {
+        this.actionError.set(resolveSchemaPublishError(hasExistingSchema));
         this.schemaSaving.set(false);
       },
     });
@@ -334,12 +339,19 @@ export class InterviewPage implements OnInit, OnDestroy {
 
   completeRound(): void {
     const round = this.round();
-    if (
-      !round ||
-      round.status === 'COMPLETED' ||
-      this.hasPendingAnswerWork() ||
-      this.completing()
-    ) {
+    if (!round || round.status === 'COMPLETED' || this.completing()) {
+      return;
+    }
+
+    if (this.hasAnswerSaveErrors()) {
+      this.actionError.set(completionBlockedByAnswerErrorMessage);
+      this.feedback.set(null);
+      return;
+    }
+
+    if (this.hasPendingAnswerWork()) {
+      this.actionError.set(completionBlockedByPendingSaveMessage);
+      this.feedback.set(null);
       return;
     }
 
@@ -371,7 +383,15 @@ export class InterviewPage implements OnInit, OnDestroy {
   }
 
   isCompleteDisabled(): boolean {
-    return this.completing() || this.hasPendingAnswerWork();
+    return this.completing() || this.hasPendingAnswerWork() || this.hasAnswerSaveErrors();
+  }
+
+  showCompletionBlockedMessage(): boolean {
+    return this.hasAnswerSaveErrors();
+  }
+
+  completionBlockedMessage(): string {
+    return completionBlockedByAnswerErrorMessage;
   }
 
   questionSaveState(question: RoundQuestionSnapshot): string {
@@ -714,6 +734,10 @@ export class InterviewPage implements OnInit, OnDestroy {
     return this.autosaveTimers.size > 0 || this.inFlightRequestIds.size > 0;
   }
 
+  private hasAnswerSaveErrors(): boolean {
+    return [...this.answerStates().values()].some((state) => state.status === 'error');
+  }
+
   private savedStateFor(value: AnswerValue | null): QuestionSaveStatus {
     return value === null ? 'idle' : 'saved';
   }
@@ -783,4 +807,12 @@ function resolveLoadError(error: unknown): string {
   }
 
   return 'Nem sikerült betölteni az interjú adatait. Frissítsd az oldalt, majd próbáld újra.';
+}
+
+function resolveSchemaPublishError(hasExistingSchema: boolean): string {
+  if (hasExistingSchema) {
+    return 'Nem sikerült frissíteni a projektsémát. Frissítsd az oldalt, ellenőrizd a kiválasztott kérdéseket, majd próbáld újra.';
+  }
+
+  return 'Nem sikerült közzétenni a projektsémát. Frissítsd az oldalt, ellenőrizd a kiválasztott kérdéseket, majd próbáld újra.';
 }
