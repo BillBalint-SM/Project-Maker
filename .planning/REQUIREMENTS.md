@@ -16,10 +16,10 @@ Angular/NestJS monorepo; unchecked items remain future delivery work.
 
 - [x] **DOMAIN-01:** Product workflow, domain terms, the version-1 playbook, and scoring contract are defined in `docs/product-domain.md` and `packages/contracts`.
 - [ ] **INTAKE-01:** Users can create, list, edit, archive, reopen, and explicitly delete projects.
-- [ ] **INTAKE-02:** Users can run the versioned guided interview/checklist and record answers.
-- [ ] **INTAKE-03:** Answers autosave and remain recoverable after restart.
+- [x] **INTAKE-02:** Users can run the versioned guided interview/checklist and record answers. Verified for the first `INITIAL_INTAKE` slice: a published project question schema starts exactly one open round, records answers, rejects duplicate open starts with HTTP 409, validates completion server-side, keeps completed rounds immutable, and allows a later initial round after completion.
+- [x] **INTAKE-03:** Answers autosave and remain recoverable after restart. Verified for persisted answers in the first `INITIAL_INTAKE` slice: text autosaves after the 750 ms quiet period, discrete values save immediately, failed saves keep the draft and expose retry, reload/API restart/Compose-backed recovery return the same active round and answer from PostgreSQL.
 - [ ] **INTAKE-04:** Users can manage follow-ups with owner, due date, status, answer/decision, and next step.
-- [ ] **INTAKE-05:** The UI provides Hungarian coaching content and deterministic answer-quality guidance.
+- [x] **INTAKE-05:** The UI provides Hungarian coaching content and deterministic answer-quality guidance. Verified for the first `INITIAL_INTAKE` slice: loading, blocked, save, retry, validation, completion, and round-state messages are Hungarian, and question coaching is rendered deterministically from persisted contract metadata without a model or keyword path.
 
 ## Scoring and output
 
