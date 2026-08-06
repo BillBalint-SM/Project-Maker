@@ -19,6 +19,8 @@ import type {
 import { InterviewApiService } from './interview-api.service';
 import { QuestionBankApiService } from '../settings/question-bank-api.service';
 
+const supportedRoundType = 'INITIAL_INTAKE';
+
 @Component({
   selector: 'app-interview-page',
   imports: [
@@ -77,6 +79,14 @@ export class InterviewPage implements OnInit {
       activeRound: this.interviewApi.getActiveInitialIntake(this.projectId),
     }).subscribe({
       next: ({ bank, schema, activeRound }) => {
+        if (activeRound && activeRound.type !== supportedRoundType) {
+          this.loadError.set(
+            'Nem támogatott aktív interjúkör érkezett a szervertől. Frissítsd az oldalt, és ha a hiba megmarad, ellenőrizd a projekt interjúállapotát.',
+          );
+          this.loading.set(false);
+          return;
+        }
+
         this.bank.set(bank);
         this.schema.set(schema);
         this.round.set(activeRound);
@@ -84,8 +94,8 @@ export class InterviewPage implements OnInit {
         this.selectedKeys.set(this.buildSelectedKeys(bank, schema, activeRound));
         this.loading.set(false);
       },
-      error: (error: Error) => {
-        this.loadError.set(formatLoadError(error));
+      error: (error: unknown) => {
+        this.loadError.set(resolveLoadError(error));
         this.loading.set(false);
       },
     });
@@ -422,10 +432,14 @@ function answersEqual(
   return left === right;
 }
 
-function formatLoadError(error: unknown): string {
-  if (error instanceof Error && error.message.includes('API')) {
-    return 'Nem sikerült betölteni az interjú adatait, mert az API nem érhető el. Ellenőrizd, hogy fut-e a szerver, majd próbáld újra.';
+function resolveLoadError(error: unknown): string {
+  if (error instanceof Error && isUserFacingHungarianLoadMessage(error.message)) {
+    return error.message;
   }
 
   return 'Nem sikerült betölteni az interjú adatait. Frissítsd az oldalt, majd próbáld újra.';
+}
+
+function isUserFacingHungarianLoadMessage(message: string): boolean {
+  return message.startsWith('Nem sikerült ') && !message.includes('\n') && !message.includes('\r');
 }
