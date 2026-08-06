@@ -294,6 +294,15 @@
 
             @if (currentRound.status === 'OPEN') {
               <div class="complete-row">
+                @if (showCompletionBlockedMessage()) {
+                  <p
+                    class="complete-row-message"
+                    data-testid="complete-round-blocked-message"
+                    role="alert"
+                  >
+                    {{ completionBlockedMessage() }}
+                  </p>
+                }
                 <p-button
                   label="Interjúkör lezárása"
                   severity="success"

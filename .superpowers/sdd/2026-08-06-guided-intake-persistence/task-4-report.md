@@ -114,3 +114,93 @@ exit 0
 
 - The shell PATH pnpm was `11.16.0`, so verification used `npx pnpm@11.20.0 ...` to match the repository's required pnpm version without changing the repo or global toolchain.
 - The branch did not need an API e2e save-failure fixture for this slice because the failure and retry behavior was fully covered at the web unit level.
+
+---
+
+## Fix round 1
+
+### Implementation summary
+
+- Prevented round completion while any question is still in autosave `error` state, even when there are no pending timers or in-flight requests left.
+- Added a clear Hungarian blocked-state message for this case and kept the retryable draft visible.
+- Preserved normal completion once all answer saves are no longer in error and server-side completion validation passes.
+- Mapped project schema publish/update failures on the interview page to safe Hungarian user-facing text without exposing raw English/database details from the service layer.
+
+### TDD RED
+
+Command:
+
+```text
+npx pnpm@11.20.0 --filter @project-maker/web exec ng test --watch=false --include src/app/interviews/interview.page.spec.ts
+```
+
+Observed failure before the fix:
+
+```text
+❯ |web| src/app/interviews/interview.page.spec.ts (12 tests | 2 failed) 3736ms
+  × blocks completion while a failed autosave is still in error and keeps the retryable draft visible
+  × maps schema publish failures to safe Hungarian text without exposing the raw service message
+```
+
+Representative failure details:
+
+```text
+AssertionError: expected false to be true
+AssertionError: expected 'Could not update the project question...' to be 'Nem sikerült frissíteni a projektsémát...'
+```
+
+### TDD GREEN
+
+Command:
+
+```text
+npx pnpm@11.20.0 --filter @project-maker/web exec ng test --watch=false --include src/app/interviews/interview.page.spec.ts
+```
+
+Observed result after the fix:
+
+```text
+Test Files  1 passed (1)
+     Tests  12 passed (12)
+  Duration  5.31s
+```
+
+### Fresh full-suite verification
+
+#### Web unit suite
+
+Command:
+
+```text
+npx pnpm@11.20.0 --filter @project-maker/web test
+```
+
+Output:
+
+```text
+Test Files  2 passed (2)
+     Tests  13 passed (13)
+  Duration  5.15s
+```
+
+#### Web typecheck
+
+Command:
+
+```text
+npx pnpm@11.20.0 --filter @project-maker/web typecheck
+```
+
+Output:
+
+```text
+$ tsc --project tsconfig.app.json --noEmit
+exit 0
+```
+
+### Self-review
+
+- The completion guard now blocks both the actual button path and a direct method call while any answer save remains failed.
+- The new blocked message is Hungarian, actionable, and scoped to the answer-save error state.
+- The schema publish failure mapping is contained to the interview page and does not refactor unrelated services.
+- Successful schema publish/update behavior remains unchanged.
