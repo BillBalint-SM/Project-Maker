@@ -2,6 +2,8 @@
 
 This is the current delivery baseline. Checked items are verified in the
 Angular/NestJS monorepo; unchecked items remain future delivery work.
+The guided-intake Task 6 verification evidence is tracked in
+`.superpowers/sdd/2026-08-06-guided-intake-persistence/task-6-report.md`.
 
 ## Foundation
 

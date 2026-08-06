@@ -28,6 +28,8 @@ checks, web/API smoke paths, and the first guided `INITIAL_INTAKE` vertical
 slice are implemented and verified. The Task 6 gate passed with API/web/contracts
 typechecks, API/web unit tests, web E2E, production build, repository `verify`,
 Compose health, migration status, and active-round recovery after API restart.
+The tracked evidence handoff is
+`.superpowers/sdd/2026-08-06-guided-intake-persistence/task-6-report.md`.
 
 The verified guided-intake scope is intentionally limited to `INITIAL_INTAKE`.
 Follow-up management, scoring/readiness calculations, structured output
