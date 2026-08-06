@@ -144,9 +144,13 @@ describe('Question bank and interview rounds (PostgreSQL e2e)', () => {
       .send({ value: 'Ready to complete' })
       .expect(200);
 
-    await request(app.getHttpServer())
+    const completedResponse = await request(app.getHttpServer())
       .post(`/projects/${projectId}/rounds/${roundId}/complete`)
       .expect(201);
+    assert.equal(completedResponse.body.id, roundId);
+    assert.equal(completedResponse.body.questions[0].id, snapshotId);
+    assert.equal(completedResponse.body.questions[0].answer, 'Ready to complete');
+    assert.ok(typeof completedResponse.body.questions[0].answeredAt === 'string');
 
     const activeRoundResponse = await request(app.getHttpServer())
       .get(`/projects/${projectId}/rounds/active`)
@@ -431,7 +435,7 @@ async function createProjectWithSingleQuestionSchema(
   app: INestApplication,
   projectName: string,
   emailPrefix: string,
-): Promise<{ projectId: string }> {
+): Promise<{ projectId: string; schemaId: string }> {
   const bankResponse = await request(app.getHttpServer())
     .get('/settings/base-questions')
     .expect(200);
@@ -447,12 +451,12 @@ async function createProjectWithSingleQuestionSchema(
     .expect(201);
   const projectId = projectResponse.body.id as string;
 
-  await request(app.getHttpServer())
+  const schemaResponse = await request(app.getHttpServer())
     .post(`/projects/${projectId}/question-schema`)
     .send({
       questions: [{ stableKey: baseQuestion.stableKey, required: true, blocking: true }],
     })
     .expect(201);
 
-  return { projectId };
+  return { projectId, schemaId: schemaResponse.body.id as string };
 }

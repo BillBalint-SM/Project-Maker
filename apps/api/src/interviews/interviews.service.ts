@@ -26,6 +26,8 @@ import { InterviewRoundEntity } from './interview-round.entity';
 import { RoundAnswerEntity } from './round-answer.entity';
 import { RoundQuestionSnapshotEntity } from './round-question-snapshot.entity';
 
+const openInitialIntakeConstraintName = 'uq_interview_rounds_open_initial_intake';
+
 @Injectable()
 export class InterviewsService {
   constructor(private readonly dataSource: DataSource) {}
@@ -86,7 +88,7 @@ export class InterviewsService {
       try {
         await manager.getRepository(InterviewRoundEntity).save(round);
       } catch (error) {
-        if (input.type === 'INITIAL_INTAKE' && isUniqueViolation(error)) {
+        if (input.type === 'INITIAL_INTAKE' && isOpenInitialIntakeUniqueViolation(error)) {
           throwOpenInitialIntakeConflict();
         }
         throw error;
@@ -223,13 +225,7 @@ export class InterviewsService {
         schemaId: round.projectSchemaId,
         answeredQuestionCount: String(answers.length),
       });
-      const schema = await manager
-        .getRepository(ProjectQuestionSchemaEntity)
-        .findOneBy({ id: round.projectSchemaId });
-      if (!schema) {
-        throw new InternalServerErrorException('Stored interview round schema is missing.');
-      }
-      return toInterviewRound(round, schema.schemaVersion, snapshots, answers);
+      return loadInterviewRound(manager, round);
     });
   }
 }
@@ -429,10 +425,16 @@ function toIso(value: Date, field: string): string {
   return timestamp.toISOString();
 }
 
-function isUniqueViolation(error: unknown): boolean {
+function isOpenInitialIntakeUniqueViolation(error: unknown): boolean {
   if (!(error instanceof QueryFailedError)) {
     return false;
   }
-  const driverError = error.driverError as { readonly code?: unknown };
-  return driverError.code === '23505';
+  const driverError = error.driverError as {
+    readonly code?: unknown;
+    readonly constraint?: unknown;
+  };
+  return (
+    driverError.code === '23505' &&
+    driverError.constraint === openInitialIntakeConstraintName
+  );
 }
