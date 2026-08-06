@@ -9,6 +9,26 @@ import type {
   UpdateRoundAnswerInput,
 } from '@project-maker/contracts';
 
+export const interviewApiErrorBrand = 'INTERVIEW_API_ERROR' as const;
+
+export class InterviewApiError extends Error {
+  readonly brand = interviewApiErrorBrand;
+
+  constructor(userMessage: string) {
+    super(userMessage);
+    this.name = 'InterviewApiError';
+  }
+}
+
+export function isInterviewApiError(error: unknown): error is InterviewApiError {
+  if (!(error instanceof Error)) {
+    return false;
+  }
+
+  const brandedError = error as Error & { brand?: unknown };
+  return brandedError.brand === interviewApiErrorBrand;
+}
+
 @Injectable({ providedIn: 'root' })
 export class InterviewApiService {
   private readonly http = inject(HttpClient);
@@ -83,16 +103,17 @@ function failApiRequest(error: unknown, action: string): Observable<never> {
   if (mapped.diagnostics) {
     console.error('Interview API request failed.', mapped.diagnostics);
   }
-  return throwError(() => new Error(mapped.userMessage));
+  return throwError(() => new InterviewApiError(mapped.userMessage));
 }
 
 function mapApiError(error: unknown, action: string): ActionableApiError {
+  if (isInterviewApiError(error)) {
+    return { userMessage: error.message, diagnostics: null };
+  }
+
   if (!(error instanceof HttpErrorResponse)) {
-    if (error instanceof Error) {
-      return { userMessage: error.message, diagnostics: null };
-    }
     return {
-      userMessage: `Nem sikerült ${action}. Frissítsd az oldalt, majd próbáld újra.`,
+      userMessage: createGenericActionErrorMessage(action),
       diagnostics: null,
     };
   }
@@ -121,4 +142,8 @@ function mapApiError(error: unknown, action: string): ActionableApiError {
     userMessage: `Nem sikerült ${action} (HTTP ${error.status}). ${nextStep}`,
     diagnostics: { action, status: error.status, statusText: error.statusText },
   };
+}
+
+function createGenericActionErrorMessage(action: string): string {
+  return `Nem sikerült ${action}. Frissítsd az oldalt, majd próbáld újra.`;
 }

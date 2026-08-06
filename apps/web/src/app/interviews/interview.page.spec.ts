@@ -170,6 +170,8 @@ describe('InterviewPage', () => {
   });
 
   it('preserves the specific Hungarian service error during initial load', async () => {
+    const userMessage =
+      'Nem sikerült betölteni az aktív kezdő interjúkört (HTTP 404). Ellenőrizd, hogy a projekt, az interjúkör vagy a kérdés még létezik-e.';
     const questionBankApi = {
       loadBaseQuestionBank: vi.fn().mockReturnValue(of(buildBank())),
       loadProjectSchema: vi.fn().mockReturnValue(of(buildSchema())),
@@ -180,9 +182,9 @@ describe('InterviewPage', () => {
       getActiveInitialIntake: vi.fn().mockReturnValue(
         throwError(
           () =>
-            new Error(
-              'Nem sikerült betölteni az aktív kezdő interjúkört (HTTP 404). Ellenőrizd, hogy a projekt, az interjúkör vagy a kérdés még létezik-e.',
-            ),
+            Object.assign(new Error(userMessage), {
+              brand: 'INTERVIEW_API_ERROR' as const,
+            }),
         ),
       ),
       createRound: vi.fn(),
@@ -217,8 +219,59 @@ describe('InterviewPage', () => {
       '[data-testid="interview-load-error-text"]',
     ) as HTMLElement | null;
 
+    expect(loadError?.textContent?.trim()).toBe(userMessage);
+  });
+
+  it('falls back to the generic Hungarian load error for an unknown internal error message', async () => {
+    const questionBankApi = {
+      loadBaseQuestionBank: vi.fn().mockReturnValue(of(buildBank())),
+      loadProjectSchema: vi.fn().mockReturnValue(of(buildSchema())),
+      createProjectSchema: vi.fn(),
+      updateProjectSchema: vi.fn(),
+    };
+    const interviewApi = {
+      getActiveInitialIntake: vi.fn().mockReturnValue(
+        throwError(
+          () =>
+            new Error(
+              'Nem sikerült lekérni az interjúkört. PostgreSQL relation interview_rounds does not exist at SELECT * FROM interview_rounds.',
+            ),
+        ),
+      ),
+      createRound: vi.fn(),
+      updateAnswer: vi.fn(),
+      completeRound: vi.fn(),
+    };
+
+    await TestBed.configureTestingModule({
+      imports: [InterviewPage],
+      providers: [
+        ...appConfig.providers,
+        {
+          provide: ActivatedRoute,
+          useValue: {
+            snapshot: {
+              paramMap: convertToParamMap({ projectId: 'project-1001' }),
+            },
+          },
+        },
+        { provide: QuestionBankApiService, useValue: questionBankApi },
+        { provide: InterviewApiService, useValue: interviewApi },
+      ],
+    }).compileComponents();
+
+    const fixture = TestBed.createComponent(InterviewPage);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    const nativeElement = fixture.nativeElement as HTMLElement;
+    const loadError = nativeElement.querySelector(
+      '[data-testid="interview-load-error-text"]',
+    ) as HTMLElement | null;
+
     expect(loadError?.textContent?.trim()).toBe(
-      'Nem sikerült betölteni az aktív kezdő interjúkört (HTTP 404). Ellenőrizd, hogy a projekt, az interjúkör vagy a kérdés még létezik-e.',
+      'Nem sikerült betölteni az interjú adatait. Frissítsd az oldalt, majd próbáld újra.',
     );
   });
 });
