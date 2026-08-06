@@ -86,6 +86,15 @@ async function insertOpenInitialIntakeRound(
   return roundId;
 }
 
+function createDatabaseUrlWithName(
+  databaseUrl: string,
+  databaseName: string,
+): string {
+  const parsedUrl = new URL(databaseUrl);
+  parsedUrl.pathname = `/${databaseName}`;
+  return parsedUrl.toString();
+}
+
 async function insertMoveFixture(dataSource: DataSource): Promise<RoundFixture> {
   const { projectId, schemaId, baseQuestionId } = await insertProjectSchema(
     dataSource,
@@ -113,12 +122,14 @@ async function insertMoveFixture(dataSource: DataSource): Promise<RoundFixture> 
 
 describe('Round integrity database boundary (PostgreSQL)', () => {
   let dataSource: DataSource;
+  let databaseUrl: string;
 
   before(async () => {
-    const databaseUrl = process.env['DATABASE_URL'];
-    if (!databaseUrl) {
+    const configuredDatabaseUrl = process.env['DATABASE_URL'];
+    if (!configuredDatabaseUrl) {
       throw new Error('DATABASE_URL is required for the real PostgreSQL round-integrity proof.');
     }
+    databaseUrl = configuredDatabaseUrl;
 
     dataSource = new DataSource({
       type: 'postgres',
@@ -136,6 +147,111 @@ describe('Round integrity database boundary (PostgreSQL)', () => {
 
   after(async () => {
     await dataSource.destroy();
+  });
+
+  it('aborts migration 0005 on duplicate open INITIAL_INTAKE rounds without altering existing rows', async () => {
+    const migrationDatabaseName = `round_integrity_${Date.now()}_${randomUUID().replaceAll('-', '')}`;
+    const migrationDatabaseUrl = createDatabaseUrlWithName(databaseUrl, migrationDatabaseName);
+    let seedDataSource: DataSource | undefined;
+    let migrationDataSource: DataSource | undefined;
+    let inspectionDataSource: DataSource | undefined;
+
+    try {
+      await dataSource.query(`CREATE DATABASE "${migrationDatabaseName}"`);
+
+      seedDataSource = new DataSource({
+        type: 'postgres',
+        url: migrationDatabaseUrl,
+        synchronize: false,
+        migrations: [
+          Core0001Core1785916800000,
+          QuestionsRounds0002QuestionsRounds1786003200000,
+        ],
+      });
+      await seedDataSource.initialize();
+      await seedDataSource.runMigrations();
+
+      const { projectId, schemaId } = await insertProjectSchema(
+        seedDataSource,
+        `R2 migration abort ${Date.now()}`,
+      );
+      const firstRoundId = await insertOpenInitialIntakeRound(seedDataSource, projectId, schemaId);
+      const secondRoundId = await insertOpenInitialIntakeRound(seedDataSource, projectId, schemaId);
+
+      await seedDataSource.destroy();
+      seedDataSource = undefined;
+
+      migrationDataSource = new DataSource({
+        type: 'postgres',
+        url: migrationDatabaseUrl,
+        synchronize: false,
+        migrations: [
+          Core0001Core1785916800000,
+          QuestionsRounds0002QuestionsRounds1786003200000,
+          InitialIntakeOpenRound0005InitialIntakeOpenRound1786262400000,
+        ],
+      });
+      await migrationDataSource.initialize();
+
+      await assert.rejects(
+        migrationDataSource.runMigrations(),
+        (error: { message?: string }) => {
+          assert.match(
+            error.message ?? '',
+            new RegExp(
+              `Migration 0005 cannot create uq_interview_rounds_open_initial_intake because duplicate open INITIAL_INTAKE rounds already exist\\. Repair the conflicting project data explicitly before rerunning the migration\\. project ${projectId} has 2 open INITIAL_INTAKE rounds \\(${firstRoundId}, ${secondRoundId}\\)`,
+            ),
+          );
+          return true;
+        },
+      );
+
+      await migrationDataSource.destroy();
+      migrationDataSource = undefined;
+
+      inspectionDataSource = new DataSource({
+        type: 'postgres',
+        url: migrationDatabaseUrl,
+        synchronize: false,
+      });
+      await inspectionDataSource.initialize();
+
+      const preservedRoundRows = await inspectionDataSource.query<
+        Array<{ completedAt: Date | null; id: string; status: string; type: string }>
+      >(
+        `SELECT "id", "type", "status", "completed_at" AS "completedAt"
+         FROM "interview_rounds"
+         WHERE "project_id" = $1
+         ORDER BY "created_at" ASC`,
+        [projectId],
+      );
+      assert.deepEqual(preservedRoundRows, [
+        { completedAt: null, id: firstRoundId, status: 'OPEN', type: 'INITIAL_INTAKE' },
+        { completedAt: null, id: secondRoundId, status: 'OPEN', type: 'INITIAL_INTAKE' },
+      ]);
+
+      const migrationRows = await inspectionDataSource.query<Array<{ name: string }>>(
+        'SELECT "name" FROM "migrations" ORDER BY "timestamp" ASC',
+      );
+      assert.deepEqual(
+        migrationRows.map((row) => row.name),
+        [
+          'Core0001Core1785916800000',
+          'QuestionsRounds0002QuestionsRounds1786003200000',
+        ],
+      );
+    } finally {
+      if (inspectionDataSource) {
+        await inspectionDataSource.destroy();
+      }
+      if (migrationDataSource) {
+        await migrationDataSource.destroy();
+      }
+      if (seedDataSource) {
+        await seedDataSource.destroy();
+      }
+      await dataSource.query(`DROP DATABASE IF EXISTS "${migrationDatabaseName}" WITH (FORCE)`);
+    }
   });
 
   it('rejects moving or deleting an answer owned by a completed round', async () => {
