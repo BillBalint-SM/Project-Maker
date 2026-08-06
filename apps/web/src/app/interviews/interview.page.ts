@@ -16,7 +16,7 @@ import type {
   RoundQuestionSnapshot,
 } from '@project-maker/contracts';
 
-import { InterviewApiService } from './interview-api.service';
+import { InterviewApiService, isInterviewApiError } from './interview-api.service';
 import { QuestionBankApiService } from '../settings/question-bank-api.service';
 
 const supportedRoundType = 'INITIAL_INTAKE';
@@ -433,13 +433,9 @@ function answersEqual(
 }
 
 function resolveLoadError(error: unknown): string {
-  if (error instanceof Error && isUserFacingHungarianLoadMessage(error.message)) {
+  if (isInterviewApiError(error)) {
     return error.message;
   }
 
   return 'Nem sikerült betölteni az interjú adatait. Frissítsd az oldalt, majd próbáld újra.';
-}
-
-function isUserFacingHungarianLoadMessage(message: string): boolean {
-  return message.startsWith('Nem sikerült ') && !message.includes('\n') && !message.includes('\r');
 }
