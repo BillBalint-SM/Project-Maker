@@ -1,4 +1,4 @@
-import { Component, inject, OnInit, signal } from '@angular/core';
+import { Component, OnDestroy, OnInit, inject, signal } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { forkJoin } from 'rxjs';
 import { ButtonModule } from 'primeng/button';
@@ -10,6 +10,7 @@ import type {
   AnswerValue,
   BaseQuestion,
   BaseQuestionBank,
+  BaseQuestionType,
   InterviewRound,
   ProjectQuestionSchema,
   PublishProjectQuestionSchemaInput,
@@ -20,6 +21,18 @@ import { InterviewApiService, isInterviewApiError } from './interview-api.servic
 import { QuestionBankApiService } from '../settings/question-bank-api.service';
 
 const supportedRoundType = 'INITIAL_INTAKE';
+const textAutosaveDelayMs = 750;
+
+type QuestionSaveStatus = 'idle' | 'saving' | 'saved' | 'error';
+
+interface QuestionAnswerState {
+  readonly draft: AnswerValue | null;
+  readonly persisted: AnswerValue | null;
+  readonly status: QuestionSaveStatus;
+  readonly error: string | null;
+  readonly latestRequestId: number;
+  readonly latestSubmittedRequestId: number | null;
+}
 
 @Component({
   selector: 'app-interview-page',
@@ -34,28 +47,34 @@ const supportedRoundType = 'INITIAL_INTAKE';
   templateUrl: './interview.page.html',
   styleUrl: './interview.page.scss',
 })
-export class InterviewPage implements OnInit {
+export class InterviewPage implements OnInit, OnDestroy {
   private readonly route = inject(ActivatedRoute);
   private readonly questionBankApi = inject(QuestionBankApiService);
   private readonly interviewApi = inject(InterviewApiService);
+  private readonly autosaveTimers = new Map<string, ReturnType<typeof setTimeout>>();
+  private readonly inFlightRequestIds = new Map<string, Set<number>>();
 
   readonly projectId = this.route.snapshot.paramMap.get('projectId') ?? '';
   readonly bank = signal<BaseQuestionBank | null>(null);
   readonly schema = signal<ProjectQuestionSchema | null>(null);
   readonly selectedKeys = signal<readonly string[]>([]);
   readonly round = signal<InterviewRound | null>(null);
-  readonly drafts = signal<ReadonlyMap<string, AnswerValue | null>>(new Map());
+  readonly answerStates = signal<ReadonlyMap<string, QuestionAnswerState>>(new Map());
   readonly loading = signal(true);
   readonly loadError = signal<string | null>(null);
   readonly actionError = signal<string | null>(null);
   readonly feedback = signal<string | null>(null);
   readonly schemaSaving = signal(false);
   readonly roundSaving = signal(false);
-  readonly answerSavingId = signal<string | null>(null);
   readonly completing = signal(false);
 
   ngOnInit(): void {
     this.loadInterviewData();
+  }
+
+  ngOnDestroy(): void {
+    this.clearAutosaveTimers();
+    this.inFlightRequestIds.clear();
   }
 
   loadInterviewData(): void {
@@ -67,12 +86,14 @@ export class InterviewPage implements OnInit {
       return;
     }
 
+    this.clearAutosaveTimers();
+    this.inFlightRequestIds.clear();
     this.loading.set(true);
     this.loadError.set(null);
     this.actionError.set(null);
     this.feedback.set(null);
     this.round.set(null);
-    this.drafts.set(new Map());
+    this.answerStates.set(new Map());
     forkJoin({
       bank: this.questionBankApi.loadBaseQuestionBank(),
       schema: this.questionBankApi.loadProjectSchema(this.projectId),
@@ -90,7 +111,7 @@ export class InterviewPage implements OnInit {
         this.bank.set(bank);
         this.schema.set(schema);
         this.round.set(activeRound);
-        this.drafts.set(buildDrafts(activeRound));
+        this.answerStates.set(buildAnswerStates(activeRound));
         this.selectedKeys.set(this.buildSelectedKeys(bank, schema, activeRound));
         this.loading.set(false);
       },
@@ -138,7 +159,9 @@ export class InterviewPage implements OnInit {
       return;
     }
     if (this.selectedCount() === 0) {
-      this.actionError.set('Select at least one active base question before publishing a schema.');
+      this.actionError.set(
+        'Legalább egy aktív alapkérdést ki kell választanod a projektséma közzététele előtt.',
+      );
       return;
     }
 
@@ -195,8 +218,10 @@ export class InterviewPage implements OnInit {
     this.feedback.set(null);
     this.interviewApi.createRound(this.projectId, { type: 'INITIAL_INTAKE' }).subscribe({
       next: (round) => {
+        this.clearAutosaveTimers();
+        this.inFlightRequestIds.clear();
         this.round.set(round);
-        this.drafts.set(buildDrafts(round));
+        this.answerStates.set(buildAnswerStates(round));
         this.roundSaving.set(false);
         this.feedback.set('A kezdő interjúkör elindult.');
       },
@@ -208,38 +233,50 @@ export class InterviewPage implements OnInit {
   }
 
   currentAnswer(question: RoundQuestionSnapshot): AnswerValue | null {
-    const drafts = this.drafts();
-    if (drafts.has(question.id)) {
-      return drafts.get(question.id) ?? null;
-    }
-    return question.answer;
+    return this.answerState(question).draft;
   }
 
-  setDraft(snapshotId: string, value: AnswerValue | null): void {
-    if (this.answerSavingId() !== null || this.completing()) {
+  setTextDraft(question: RoundQuestionSnapshot, value: string): void {
+    if (this.isAnswerEditingLocked(question)) {
       return;
     }
-    const next = new Map(this.drafts());
-    next.set(snapshotId, value);
-    this.drafts.set(next);
+
+    if (value.trim().length === 0) {
+      this.setAnswerDraft(question.id, null);
+      this.persistAnswer(question);
+      return;
+    }
+
+    this.setAnswerDraft(question.id, value);
+    this.scheduleAnswerSave(question, textAutosaveDelayMs);
   }
 
-  setTextDraft(snapshotId: string, value: string): void {
-    this.setDraft(snapshotId, value.trim().length > 0 ? value : null);
+  setDiscreteDraft(question: RoundQuestionSnapshot, value: AnswerValue | null): void {
+    if (this.isAnswerEditingLocked(question)) {
+      return;
+    }
+
+    this.setAnswerDraft(question.id, value);
+    this.persistAnswer(question);
   }
 
-  setSingleSelectDraft(snapshotId: string, value: string): void {
-    this.setDraft(snapshotId, value.length > 0 ? value : null);
+  setSingleSelectDraft(question: RoundQuestionSnapshot, value: string): void {
+    this.setDiscreteDraft(question, value.length > 0 ? value : null);
   }
 
-  setNumberDraft(snapshotId: string, value: string): void {
+  setNumberDraft(question: RoundQuestionSnapshot, value: string): void {
     const trimmed = value.trim();
     if (trimmed.length === 0) {
-      this.setDraft(snapshotId, null);
+      this.setDiscreteDraft(question, null);
       return;
     }
+
     const parsed = Number(trimmed);
-    this.setDraft(snapshotId, Number.isFinite(parsed) ? parsed : null);
+    if (!Number.isFinite(parsed)) {
+      return;
+    }
+
+    this.setDiscreteDraft(question, parsed);
   }
 
   setMultiSelectDraft(
@@ -248,19 +285,37 @@ export class InterviewPage implements OnInit {
     checked: boolean,
   ): void {
     const current = this.currentAnswer(question);
-    const selections: string[] = Array.isArray(current) ? [...(current as readonly string[])] : [];
-    const existingIndex = selections.indexOf(option);
-    if (checked && existingIndex < 0) {
-      selections.push(option);
-    } else if (!checked && existingIndex >= 0) {
-      selections.splice(existingIndex, 1);
+    const selectedOptions = new Set(Array.isArray(current) ? current : []);
+    if (checked) {
+      selectedOptions.add(option);
+    } else {
+      selectedOptions.delete(option);
     }
-    this.setDraft(question.id, selections.length > 0 ? selections : null);
+
+    const nextSelections = (question.options ?? []).filter((candidate) =>
+      selectedOptions.has(candidate),
+    );
+    this.setDiscreteDraft(question, nextSelections.length > 0 ? nextSelections : null);
+  }
+
+  retryAnswer(question: RoundQuestionSnapshot): void {
+    if (this.isAnswerEditingLocked(question)) {
+      return;
+    }
+
+    this.persistAnswer(question);
+  }
+
+  clearAutosaveTimers(): void {
+    for (const timerId of this.autosaveTimers.values()) {
+      clearTimeout(timerId);
+    }
+    this.autosaveTimers.clear();
   }
 
   hasSelectedOption(question: RoundQuestionSnapshot, option: string): boolean {
     const answer = this.currentAnswer(question);
-    return Array.isArray(answer) && (answer as readonly string[]).includes(option);
+    return Array.isArray(answer) && answer.includes(option);
   }
 
   textAnswer(question: RoundQuestionSnapshot): string {
@@ -277,46 +332,12 @@ export class InterviewPage implements OnInit {
     return this.currentAnswer(question) === true;
   }
 
-  saveAnswer(question: RoundQuestionSnapshot): void {
-    const round = this.round();
-    if (
-      !round ||
-      round.status === 'COMPLETED' ||
-      this.answerSavingId() !== null ||
-      this.completing()
-    ) {
-      return;
-    }
-
-    this.answerSavingId.set(question.id);
-    this.actionError.set(null);
-    this.feedback.set(null);
-    this.interviewApi
-      .updateAnswer(this.projectId, round.id, question.id, {
-        value: this.currentAnswer(question),
-      })
-      .subscribe({
-        next: (savedQuestion) => {
-          this.replaceRoundQuestion(savedQuestion);
-          const next = new Map(this.drafts());
-          next.delete(question.id);
-          this.drafts.set(next);
-          this.answerSavingId.set(null);
-          this.feedback.set('A válasz mentve lett.');
-        },
-        error: (error: Error) => {
-          this.actionError.set(error.message);
-          this.answerSavingId.set(null);
-        },
-      });
-  }
-
   completeRound(): void {
     const round = this.round();
     if (
       !round ||
       round.status === 'COMPLETED' ||
-      this.answerSavingId() !== null ||
+      this.hasPendingAnswerWork() ||
       this.completing()
     ) {
       return;
@@ -327,8 +348,10 @@ export class InterviewPage implements OnInit {
     this.feedback.set(null);
     this.interviewApi.completeRound(this.projectId, round.id).subscribe({
       next: (completedRound) => {
+        this.clearAutosaveTimers();
+        this.inFlightRequestIds.clear();
         this.round.set(completedRound);
-        this.drafts.set(new Map());
+        this.answerStates.set(buildAnswerStates(completedRound));
         this.completing.set(false);
         this.feedback.set('Az interjúkör lezárult.');
       },
@@ -343,17 +366,43 @@ export class InterviewPage implements OnInit {
     return this.round()?.status === 'OPEN';
   }
 
+  isAnswerDisabled(question: RoundQuestionSnapshot): boolean {
+    return this.isAnswerEditingLocked(question);
+  }
+
+  isCompleteDisabled(): boolean {
+    return this.completing() || this.hasPendingAnswerWork();
+  }
+
   questionSaveState(question: RoundQuestionSnapshot): string {
-    if (this.answerSavingId() === question.id) {
+    const state = this.answerState(question);
+    if (state.status === 'saving') {
       return 'Mentés folyamatban…';
     }
-    if (this.hasUnsavedChanges(question)) {
-      return 'Piszkozat – még nincs mentve';
+    if (state.status === 'error') {
+      return state.error
+        ? `Nem sikerült menteni. ${state.error}`
+        : 'Nem sikerült menteni. Próbáld újra.';
     }
-    if (question.answeredAt) {
+    if (this.hasUnsavedChanges(question)) {
+      return 'Piszkozat – automatikus mentésre vár';
+    }
+    if (state.persisted !== null || question.answeredAt) {
       return 'Mentve';
     }
     return 'Még nincs mentve';
+  }
+
+  questionHasError(question: RoundQuestionSnapshot): boolean {
+    return this.answerState(question).status === 'error';
+  }
+
+  showRetryButton(question: RoundQuestionSnapshot): boolean {
+    return this.questionHasError(question);
+  }
+
+  questionRetryLabel(question: RoundQuestionSnapshot): string {
+    return `Válasz újramentése: ${question.text}`;
   }
 
   showBlockingGuidance(question: RoundQuestionSnapshot): boolean {
@@ -361,13 +410,59 @@ export class InterviewPage implements OnInit {
     return (
       round?.status === 'OPEN' &&
       question.blocking &&
-      !question.answeredAt &&
+      this.currentAnswer(question) === null &&
       !this.hasUnsavedChanges(question)
     );
   }
 
   roundTypeLabel(): string {
     return 'Kezdő interjú';
+  }
+
+  questionTypeLabel(type: BaseQuestionType): string {
+    switch (type) {
+      case 'TEXT':
+        return 'Rövid szöveg';
+      case 'LONG_TEXT':
+        return 'Hosszú szöveg';
+      case 'SINGLE_SELECT':
+        return 'Egyszeres választás';
+      case 'MULTI_SELECT':
+        return 'Többszörös választás';
+      case 'BOOLEAN':
+        return 'Igen / nem';
+      case 'NUMBER':
+        return 'Szám';
+      case 'DATE':
+        return 'Dátum';
+    }
+  }
+
+  questionTypeGuidance(question: RoundQuestionSnapshot): string {
+    switch (question.type) {
+      case 'TEXT':
+        return 'Rövid, tömör válasz ajánlott.';
+      case 'LONG_TEXT':
+        return 'Részletes, többmondatos válasz ajánlott.';
+      case 'SINGLE_SELECT':
+        return 'Pontosan egy lehetőséget válassz.';
+      case 'MULTI_SELECT':
+        return 'Egy vagy több lehetőséget is kiválaszthatsz.';
+      case 'BOOLEAN':
+        return 'Jelöld be, ha a válasz igen.';
+      case 'NUMBER':
+        return 'Adj meg egy véges számértéket.';
+      case 'DATE':
+        return 'Add meg a dátumot ÉÉÉÉ-HH-NN formátumban.';
+    }
+  }
+
+  questionOptionGuidance(question: RoundQuestionSnapshot): string | null {
+    if (!question.options || question.options.length === 0) {
+      return null;
+    }
+
+    return `Választható lehetőségek: ${question.options.join(' · ')}`;
   }
 
   private buildSelectedKeys(
@@ -392,8 +487,173 @@ export class InterviewPage implements OnInit {
     );
   }
 
+  private answerState(question: RoundQuestionSnapshot): QuestionAnswerState {
+    return (
+      this.answerStates().get(question.id) ??
+      createQuestionAnswerState(question.answer, question.answeredAt)
+    );
+  }
+
+  private setAnswerDraft(snapshotId: string, value: AnswerValue | null): void {
+    const current = this.answerStates().get(snapshotId) ?? createQuestionAnswerState(null, null);
+    const hasUnsavedChanges = this.hasUnsavedChangesByState(current.persisted, value);
+    this.setAnswerState(snapshotId, {
+      ...current,
+      draft: cloneAnswerValue(value),
+      status: hasUnsavedChanges
+        ? current.status === 'saving'
+          ? 'saving'
+          : 'idle'
+        : this.savedStateFor(value),
+      error: null,
+    });
+  }
+
+  private scheduleAnswerSave(question: RoundQuestionSnapshot, delayMs: number): void {
+    this.clearAutosaveTimer(question.id);
+    const timerId = setTimeout(() => {
+      this.autosaveTimers.delete(question.id);
+      this.persistAnswer(question);
+    }, delayMs);
+    this.autosaveTimers.set(question.id, timerId);
+  }
+
+  private persistAnswer(question: RoundQuestionSnapshot): void {
+    const round = this.round();
+    if (!round || round.status === 'COMPLETED' || this.completing()) {
+      return;
+    }
+
+    this.clearAutosaveTimer(question.id);
+    const state = this.answerState(question);
+    if (answersEqual(state.draft, state.persisted) && state.status !== 'error') {
+      this.setAnswerState(question.id, {
+        ...state,
+        status: this.savedStateFor(state.draft),
+        error: null,
+      });
+      return;
+    }
+
+    const requestId = state.latestRequestId + 1;
+    const requestValue = cloneAnswerValue(state.draft);
+    this.addInFlightRequest(question.id, requestId);
+    this.setAnswerState(question.id, {
+      ...state,
+      status: 'saving',
+      error: null,
+      latestRequestId: requestId,
+      latestSubmittedRequestId: requestId,
+    });
+
+    this.interviewApi
+      .updateAnswer(this.projectId, round.id, question.id, {
+        value: requestValue,
+      })
+      .subscribe({
+        next: (savedQuestion) => {
+          this.removeInFlightRequest(question.id, requestId);
+          this.handlePersistSuccess(question, requestId, requestValue, savedQuestion);
+        },
+        error: (error: Error) => {
+          this.removeInFlightRequest(question.id, requestId);
+          this.handlePersistError(question, requestId, requestValue, error);
+        },
+      });
+  }
+
+  private handlePersistSuccess(
+    question: RoundQuestionSnapshot,
+    requestId: number,
+    requestValue: AnswerValue | null,
+    savedQuestion: RoundQuestionSnapshot,
+  ): void {
+    const state = this.answerState(question);
+    const hasLaterSubmittedRequest =
+      state.latestSubmittedRequestId !== null && state.latestSubmittedRequestId > requestId;
+    if (hasLaterSubmittedRequest) {
+      if (this.hasInFlightRequests(question.id)) {
+        this.setAnswerState(question.id, {
+          ...state,
+          status: 'saving',
+        });
+      }
+      return;
+    }
+
+    if (!answersEqual(state.draft, requestValue)) {
+      if (this.hasInFlightRequests(question.id)) {
+        this.setAnswerState(question.id, {
+          ...state,
+          status: 'saving',
+        });
+        return;
+      }
+
+      this.setAnswerState(question.id, {
+        ...state,
+        status: 'saving',
+        error: null,
+      });
+      this.persistAnswer(question);
+      return;
+    }
+
+    this.replaceRoundQuestion(savedQuestion);
+    this.setAnswerState(question.id, {
+      ...state,
+      persisted: cloneAnswerValue(savedQuestion.answer),
+      status: this.hasInFlightRequests(question.id) ? 'saving' : this.savedStateFor(savedQuestion.answer),
+      error: null,
+    });
+  }
+
+  private handlePersistError(
+    question: RoundQuestionSnapshot,
+    requestId: number,
+    requestValue: AnswerValue | null,
+    error: Error,
+  ): void {
+    const state = this.answerState(question);
+    const hasLaterSubmittedRequest =
+      state.latestSubmittedRequestId !== null && state.latestSubmittedRequestId > requestId;
+    if (hasLaterSubmittedRequest) {
+      if (this.hasInFlightRequests(question.id)) {
+        this.setAnswerState(question.id, {
+          ...state,
+          status: 'saving',
+        });
+      }
+      return;
+    }
+
+    if (!answersEqual(state.draft, requestValue) && !this.hasInFlightRequests(question.id)) {
+      this.setAnswerState(question.id, {
+        ...state,
+        status: 'saving',
+        error: null,
+      });
+      this.persistAnswer(question);
+      return;
+    }
+
+    this.setAnswerState(question.id, {
+      ...state,
+      status: 'error',
+      error: error.message,
+    });
+  }
+
   private hasUnsavedChanges(question: RoundQuestionSnapshot): boolean {
-    return !answersEqual(this.currentAnswer(question), question.answer);
+    const state = this.answerState(question);
+    return this.hasUnsavedChangesByState(state.persisted, state.draft);
+  }
+
+  private hasUnsavedChangesByState(
+    persisted: AnswerValue | null,
+    draft: AnswerValue | null,
+  ): boolean {
+    return !answersEqual(persisted, draft);
   }
 
   private replaceRoundQuestion(question: RoundQuestionSnapshot): void {
@@ -409,16 +669,96 @@ export class InterviewPage implements OnInit {
       };
     });
   }
+
+  private setAnswerState(snapshotId: string, state: QuestionAnswerState): void {
+    this.answerStates.update((states) => {
+      const nextStates = new Map(states);
+      nextStates.set(snapshotId, state);
+      return nextStates;
+    });
+  }
+
+  private clearAutosaveTimer(snapshotId: string): void {
+    const timerId = this.autosaveTimers.get(snapshotId);
+    if (timerId === undefined) {
+      return;
+    }
+    clearTimeout(timerId);
+    this.autosaveTimers.delete(snapshotId);
+  }
+
+  private addInFlightRequest(snapshotId: string, requestId: number): void {
+    const current = this.inFlightRequestIds.get(snapshotId) ?? new Set<number>();
+    current.add(requestId);
+    this.inFlightRequestIds.set(snapshotId, current);
+  }
+
+  private removeInFlightRequest(snapshotId: string, requestId: number): void {
+    const current = this.inFlightRequestIds.get(snapshotId);
+    if (!current) {
+      return;
+    }
+    current.delete(requestId);
+    if (current.size === 0) {
+      this.inFlightRequestIds.delete(snapshotId);
+      return;
+    }
+    this.inFlightRequestIds.set(snapshotId, current);
+  }
+
+  private hasInFlightRequests(snapshotId: string): boolean {
+    return (this.inFlightRequestIds.get(snapshotId)?.size ?? 0) > 0;
+  }
+
+  private hasPendingAnswerWork(): boolean {
+    return this.autosaveTimers.size > 0 || this.inFlightRequestIds.size > 0;
+  }
+
+  private savedStateFor(value: AnswerValue | null): QuestionSaveStatus {
+    return value === null ? 'idle' : 'saved';
+  }
+
+  private isAnswerEditingLocked(question: RoundQuestionSnapshot): boolean {
+    const round = this.round();
+    return round?.status === 'COMPLETED' || this.completing() || !this.answerStates().has(question.id);
+  }
 }
 
-function buildDrafts(round: InterviewRound | null): ReadonlyMap<string, AnswerValue | null> {
+function buildAnswerStates(
+  round: InterviewRound | null,
+): ReadonlyMap<string, QuestionAnswerState> {
   if (!round) {
     return new Map();
   }
 
   return new Map(
-    round.questions.map((question) => [question.id, question.answer] as const),
+    round.questions.map((question) => [
+      question.id,
+      createQuestionAnswerState(question.answer, question.answeredAt),
+    ]),
   );
+}
+
+function createQuestionAnswerState(
+  answer: AnswerValue | null,
+  answeredAt: string | null,
+): QuestionAnswerState {
+  return {
+    draft: cloneAnswerValue(answer),
+    persisted: cloneAnswerValue(answer),
+    status: answer !== null || answeredAt !== null ? 'saved' : 'idle',
+    error: null,
+    latestRequestId: 0,
+    latestSubmittedRequestId: null,
+  };
+}
+
+function cloneAnswerValue(value: AnswerValue | null): AnswerValue | null {
+  if (Array.isArray(value)) {
+    return [...value];
+  }
+
+  return value;
 }
 
 function answersEqual(
@@ -426,7 +766,12 @@ function answersEqual(
   right: AnswerValue | null,
 ): boolean {
   if (Array.isArray(left) && Array.isArray(right)) {
-    return left.length === right.length && left.every((value, index) => value === right[index]);
+    const sortedLeft = [...left].sort();
+    const sortedRight = [...right].sort();
+    return (
+      sortedLeft.length === sortedRight.length &&
+      sortedLeft.every((value, index) => value === sortedRight[index])
+    );
   }
 
   return left === right;

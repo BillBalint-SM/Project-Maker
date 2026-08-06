@@ -63,7 +63,7 @@
                 />
                 <span class="selection-copy">
                   <strong>{{ question.text }}</strong>
-                  <small>{{ question.topic }} · {{ question.type }}</small>
+                  <small>{{ question.topic }} · {{ questionTypeLabel(question.type) }}</small>
                 </span>
               </label>
             }
@@ -143,14 +143,28 @@
                   <article class="round-question" [attr.data-testid]="'round-question-' + question.id">
                     <div class="question-heading">
                       <span class="question-number">{{ index + 1 }}</span>
-                      <div>
+                      <div class="question-heading-copy">
                         <h2>{{ question.text }}</h2>
-                        <small>{{ question.topic }} · {{ question.type }}{{ question.required ? ' · required' : '' }}</small>
+                        <small>{{ question.topic }} · {{ questionTypeLabel(question.type) }}</small>
                       </div>
                     </div>
-                    @if (question.hint) {
-                      <p class="question-hint">{{ question.hint }}</p>
-                    }
+
+                    <ul class="question-guidance" [attr.data-testid]="'round-question-guidance-' + question.id">
+                      <li>Ellenőrzési pont: {{ question.controlPoint }}</li>
+                      @if (question.required) {
+                        <li>Kötelező kérdés</li>
+                      }
+                      @if (question.blocking) {
+                        <li>Blokkoló tisztázás</li>
+                      }
+                      @if (question.hint) {
+                        <li>{{ question.hint }}</li>
+                      }
+                      <li>{{ questionTypeGuidance(question) }}</li>
+                      @if (questionOptionGuidance(question); as optionGuidance) {
+                        <li>{{ optionGuidance }}</li>
+                      }
+                    </ul>
 
                     @switch (question.type) {
                       @case ('TEXT') {
@@ -158,11 +172,11 @@
                           class="answer-control"
                           type="text"
                           [value]="textAnswer(question)"
-                          [disabled]="currentRound.status === 'COMPLETED' || answerSavingId() !== null || completing()"
+                          [disabled]="isAnswerDisabled(question)"
                           [attr.aria-label]="'Válasz: ' + question.text"
                           [attr.aria-required]="question.required"
                           [attr.data-testid]="'round-answer-input-' + question.id"
-                          (input)="setTextDraft(question.id, $any($event.target).value)"
+                          (input)="setTextDraft(question, $any($event.target).value)"
                         />
                       }
                       @case ('LONG_TEXT') {
@@ -170,22 +184,22 @@
                           class="answer-control"
                           rows="4"
                           [value]="textAnswer(question)"
-                          [disabled]="currentRound.status === 'COMPLETED' || answerSavingId() !== null || completing()"
+                          [disabled]="isAnswerDisabled(question)"
                           [attr.aria-label]="'Válasz: ' + question.text"
                           [attr.aria-required]="question.required"
                           [attr.data-testid]="'round-answer-textarea-' + question.id"
-                          (input)="setTextDraft(question.id, $any($event.target).value)"
+                          (input)="setTextDraft(question, $any($event.target).value)"
                         ></textarea>
                       }
                       @case ('SINGLE_SELECT') {
                         <select
                           class="answer-control"
                           [value]="textAnswer(question)"
-                          [disabled]="currentRound.status === 'COMPLETED' || answerSavingId() !== null || completing()"
+                          [disabled]="isAnswerDisabled(question)"
                           [attr.aria-label]="'Válasz: ' + question.text"
                           [attr.aria-required]="question.required"
                           [attr.data-testid]="'round-answer-select-' + question.id"
-                          (change)="setSingleSelectDraft(question.id, $any($event.target).value)"
+                          (change)="setSingleSelectDraft(question, $any($event.target).value)"
                         >
                           <option value="">Válassz egy lehetőséget</option>
                           @for (option of question.options ?? []; track option) {
@@ -200,7 +214,7 @@
                               <input
                                 type="checkbox"
                                 [checked]="hasSelectedOption(question, option)"
-                                [disabled]="currentRound.status === 'COMPLETED' || answerSavingId() !== null || completing()"
+                                [disabled]="isAnswerDisabled(question)"
                                 [attr.data-testid]="'round-answer-multi-option-' + question.id + '-' + optionIndex"
                                 (change)="setMultiSelectDraft(question, option, $any($event.target).checked)"
                               />
@@ -214,10 +228,10 @@
                           <input
                             type="checkbox"
                             [checked]="booleanAnswer(question)"
-                            [disabled]="currentRound.status === 'COMPLETED' || answerSavingId() !== null || completing()"
+                            [disabled]="isAnswerDisabled(question)"
                             [attr.aria-label]="'Válasz: ' + question.text"
                             [attr.data-testid]="'round-answer-boolean-' + question.id"
-                            (change)="setDraft(question.id, $any($event.target).checked)"
+                            (change)="setDiscreteDraft(question, $any($event.target).checked)"
                           />
                           Igen
                         </label>
@@ -227,11 +241,11 @@
                           class="answer-control"
                           type="number"
                           [value]="numberAnswer(question)"
-                          [disabled]="currentRound.status === 'COMPLETED' || answerSavingId() !== null || completing()"
+                          [disabled]="isAnswerDisabled(question)"
                           [attr.aria-label]="'Válasz: ' + question.text"
                           [attr.aria-required]="question.required"
                           [attr.data-testid]="'round-answer-number-' + question.id"
-                          (input)="setNumberDraft(question.id, $any($event.target).value)"
+                          (input)="setNumberDraft(question, $any($event.target).value)"
                         />
                       }
                       @case ('DATE') {
@@ -239,32 +253,38 @@
                           class="answer-control"
                           type="date"
                           [value]="textAnswer(question)"
-                          [disabled]="currentRound.status === 'COMPLETED' || answerSavingId() !== null || completing()"
+                          [disabled]="isAnswerDisabled(question)"
                           [attr.aria-label]="'Válasz: ' + question.text"
                           [attr.aria-required]="question.required"
                           [attr.data-testid]="'round-answer-date-' + question.id"
-                          (change)="setDraft(question.id, $any($event.target).value || null)"
+                          (change)="setDiscreteDraft(question, $any($event.target).value || null)"
                         />
                       }
                     }
 
                     <div class="answer-actions">
-                      <small class="muted" [attr.data-testid]="'round-answer-save-state-' + question.id">
+                      <small
+                        class="muted answer-save-state"
+                        [class.answer-save-state--error]="questionHasError(question)"
+                        [attr.data-testid]="'round-answer-save-state-' + question.id"
+                        aria-live="polite"
+                      >
                         {{ questionSaveState(question) }}
                       </small>
-                      <p-button
-                        label="Válasz mentése"
-                        severity="secondary"
-                        [outlined]="true"
-                        [loading]="answerSavingId() === question.id"
-                        [disabled]="currentRound.status === 'COMPLETED' || answerSavingId() !== null || completing()"
-                        [attr.data-testid]="'save-round-answer-' + question.id"
-                        (onClick)="saveAnswer(question)"
-                      />
+                      @if (showRetryButton(question)) {
+                        <p-button
+                          label="Mentés újrapróbálása"
+                          severity="secondary"
+                          [outlined]="true"
+                          [attr.aria-label]="questionRetryLabel(question)"
+                          [attr.data-testid]="'retry-round-answer-' + question.id"
+                          (onClick)="retryAnswer(question)"
+                        />
+                      }
                     </div>
                     @if (showBlockingGuidance(question)) {
                       <p class="blocking-guidance" [attr.data-testid]="'round-blocking-guidance-' + question.id">
-                        Ezt a blokkoló kérdést mentsd el a kör lezárása előtt.
+                        Ez blokkoló tisztázás. Rögzítsd a választ, mielőtt lezárod a kört.
                       </p>
                     }
                   </article>
@@ -278,7 +298,7 @@
                   label="Interjúkör lezárása"
                   severity="success"
                   [loading]="completing()"
-                  [disabled]="completing() || answerSavingId() !== null"
+                  [disabled]="isCompleteDisabled()"
                   data-testid="complete-interview-round-button"
                   (onClick)="completeRound()"
                 />
