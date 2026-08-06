@@ -8,6 +8,8 @@ const hungarianTextPattern = /[áéíóöőúüűÁÉÍÓÖŐÚÜŰ]/;
 const textAutosaveDelayMs = 750;
 const textAutosavePreBoundaryProbeMs = 700;
 const textAutosaveSchedulingToleranceMs = 50;
+const textAutosaveBrowserToleranceMs = 200;
+const textAutosaveRequestTimeoutMs = textAutosaveDelayMs + textAutosaveBrowserToleranceMs + 250;
 const requireFromApi = createRequire(resolve(process.cwd(), '..', 'api', 'package.json'));
 const { Client } = requireFromApi('pg') as {
   readonly Client: new (configuration: { readonly connectionString: string }) => DatabaseClient;
@@ -94,11 +96,18 @@ test.describe.serial('guided intake real Hungarian browser flow', () => {
 
     const textAnswer = 'A böngészős E2E válasz üzleti célt és mérhető eredményt rögzít.';
     const textPatchCounter = countAnswerPatchRequests(page, fixture.projectId, textQuestion.id);
+    const textSaveRequestPromise = waitForAnswerPatchRequest(
+      page,
+      fixture.projectId,
+      textQuestion.id,
+      textAutosaveRequestTimeoutMs,
+    );
     const textSaveResponsePromise = waitForAnswerPatch(page, fixture.projectId, textQuestion.id);
     const textInputStartedAt = Date.now();
     await page.getByTestId(`round-answer-textarea-${textQuestion.id}`).fill(textAnswer);
     await page.waitForTimeout(textAutosavePreBoundaryProbeMs);
     expect(textPatchCounter.count()).toBe(0);
+    await textSaveRequestPromise;
     const textSaveResponse = await textSaveResponsePromise;
     const textPatchElapsedMs = textPatchCounter.firstRequestStartedAt() - textInputStartedAt;
     textPatchCounter.stop();
@@ -107,6 +116,7 @@ test.describe.serial('guided intake real Hungarian browser flow', () => {
     expect(textPatchElapsedMs).toBeGreaterThanOrEqual(
       textAutosaveDelayMs - textAutosaveSchedulingToleranceMs,
     );
+    expect(textPatchElapsedMs).toBeLessThan(textAutosaveDelayMs + textAutosaveBrowserToleranceMs);
     await expectSavedAnswer(request, fixture.projectId, textQuestion.id, textAnswer);
     await expect(page.getByTestId(`round-answer-save-state-${textQuestion.id}`)).toContainText(
       /Mentve/,
@@ -349,6 +359,21 @@ function waitForAnswerPatch(page: Page, projectId: string, snapshotId: string) {
       response.request().method() === 'PATCH' &&
       response.url().includes(`/api/projects/${projectId}/rounds/`) &&
       response.url().includes(`/answers/${snapshotId}`),
+  );
+}
+
+function waitForAnswerPatchRequest(
+  page: Page,
+  projectId: string,
+  snapshotId: string,
+  timeoutMs: number,
+) {
+  return page.waitForRequest(
+    (request) =>
+      request.method() === 'PATCH' &&
+      request.url().includes(`/api/projects/${projectId}/rounds/`) &&
+      request.url().includes(`/answers/${snapshotId}`),
+    { timeout: timeoutMs },
   );
 }
 
