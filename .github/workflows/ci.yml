@@ -8,7 +8,30 @@ on:
 
 jobs:
   checkpoint:
-    runs-on: windows-latest
+    runs-on: ubuntu-latest
+    env:
+      CORS_ORIGIN: http://localhost:8080
+      DATABASE_URL: postgres://project_maker_app:ci-password@127.0.0.1:5432/project_maker
+      SMTP_HOST: ''
+      SMTP_PORT: '1025'
+      SMTP_SECURE: 'false'
+      SMTP_USER: ''
+      SMTP_PASSWORD: ''
+      SMTP_FROM: project-maker@localhost
+    services:
+      postgres:
+        image: postgres:18.4-alpine3.24
+        env:
+          POSTGRES_DB: project_maker
+          POSTGRES_USER: project_maker_app
+          POSTGRES_PASSWORD: ci-password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U project_maker_app -d project_maker"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
 
     steps:
       - name: Checkout
@@ -16,8 +39,6 @@ jobs:
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
-        with:
-          version: 11.5.3
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -27,6 +48,12 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
+      - name: Run database migrations
+        run: pnpm --filter @project-maker/api migration:run
+
+      - name: Build shared contracts
+        run: pnpm --filter @project-maker/contracts build
 
       - name: Run checkpoint
         run: pnpm checkpoint
