@@ -48,6 +48,121 @@ describe('Question bank and interview rounds (PostgreSQL e2e)', () => {
     await app.close();
   });
 
+  it('returns null from the active-round endpoint before the first initial intake round', async () => {
+    const { projectId } = await createProjectWithSingleQuestionSchema(
+      app,
+      `Active null ${Date.now()}`,
+      'active-null',
+    );
+
+    const activeRoundResponse = await request(app.getHttpServer())
+      .get(`/projects/${projectId}/rounds/active`)
+      .expect(200);
+
+    assert.equal(activeRoundResponse.body, null);
+  });
+
+  it('recovers the open initial intake round with persisted answers', async () => {
+    const { projectId } = await createProjectWithSingleQuestionSchema(
+      app,
+      `Active recovery ${Date.now()}`,
+      'active-recovery',
+    );
+
+    const createdRoundResponse = await request(app.getHttpServer())
+      .post(`/projects/${projectId}/rounds`)
+      .send({ type: 'INITIAL_INTAKE' })
+      .expect(201);
+    const roundId = createdRoundResponse.body.id as string;
+    const snapshotId = createdRoundResponse.body.questions[0].id as string;
+    const answerValue = 'Recovered persisted answer';
+
+    await request(app.getHttpServer())
+      .patch(`/projects/${projectId}/rounds/${roundId}/answers/${snapshotId}`)
+      .send({ value: answerValue })
+      .expect(200);
+
+    const activeRoundResponse = await request(app.getHttpServer())
+      .get(`/projects/${projectId}/rounds/active`)
+      .expect(200);
+
+    assert.equal(activeRoundResponse.body.id, roundId);
+    assert.equal(activeRoundResponse.body.type, 'INITIAL_INTAKE');
+    assert.equal(activeRoundResponse.body.status, 'OPEN');
+    assert.equal(activeRoundResponse.body.questions[0].id, snapshotId);
+    assert.equal(activeRoundResponse.body.questions[0].answer, answerValue);
+    assert.equal(
+      activeRoundResponse.body.questions[0].stableKey,
+      createdRoundResponse.body.questions[0].stableKey,
+    );
+    assert.equal(
+      activeRoundResponse.body.questions[0].baseQuestionId,
+      createdRoundResponse.body.questions[0].baseQuestionId,
+    );
+    assert.ok(typeof activeRoundResponse.body.questions[0].answeredAt === 'string');
+  });
+
+  it('rejects a duplicate open initial intake start with HTTP 409', async () => {
+    const { projectId } = await createProjectWithSingleQuestionSchema(
+      app,
+      `Duplicate start ${Date.now()}`,
+      'duplicate-start',
+    );
+
+    await request(app.getHttpServer())
+      .post(`/projects/${projectId}/rounds`)
+      .send({ type: 'INITIAL_INTAKE' })
+      .expect(201);
+
+    const duplicateStartResponse = await request(app.getHttpServer())
+      .post(`/projects/${projectId}/rounds`)
+      .send({ type: 'INITIAL_INTAKE' })
+      .expect(409);
+
+    assert.equal(
+      duplicateStartResponse.body.message,
+      'An open initial intake round already exists for this project.',
+    );
+  });
+
+  it('returns null after initial intake completion and allows a new initial intake round', async () => {
+    const { projectId } = await createProjectWithSingleQuestionSchema(
+      app,
+      `Completed active ${Date.now()}`,
+      'completed-active',
+    );
+
+    const createdRoundResponse = await request(app.getHttpServer())
+      .post(`/projects/${projectId}/rounds`)
+      .send({ type: 'INITIAL_INTAKE' })
+      .expect(201);
+    const roundId = createdRoundResponse.body.id as string;
+    const snapshotId = createdRoundResponse.body.questions[0].id as string;
+
+    await request(app.getHttpServer())
+      .patch(`/projects/${projectId}/rounds/${roundId}/answers/${snapshotId}`)
+      .send({ value: 'Ready to complete' })
+      .expect(200);
+
+    await request(app.getHttpServer())
+      .post(`/projects/${projectId}/rounds/${roundId}/complete`)
+      .expect(201);
+
+    const activeRoundResponse = await request(app.getHttpServer())
+      .get(`/projects/${projectId}/rounds/active`)
+      .expect(200);
+    assert.equal(activeRoundResponse.body, null);
+
+    const restartedRoundResponse = await request(app.getHttpServer())
+      .post(`/projects/${projectId}/rounds`)
+      .send({ type: 'INITIAL_INTAKE' })
+      .expect(201);
+
+    assert.notEqual(restartedRoundResponse.body.id, roundId);
+    assert.equal(restartedRoundResponse.body.status, 'OPEN');
+    assert.equal(restartedRoundResponse.body.type, 'INITIAL_INTAKE');
+  });
+
   it('keeps prior round snapshots immutable and blocks completion until required answers exist', async () => {
     const bankResponse = await request(app.getHttpServer())
       .get('/settings/base-questions')
@@ -311,3 +426,33 @@ describe('Question bank and interview rounds (PostgreSQL e2e)', () => {
     );
   });
 });
+
+async function createProjectWithSingleQuestionSchema(
+  app: INestApplication,
+  projectName: string,
+  emailPrefix: string,
+): Promise<{ projectId: string }> {
+  const bankResponse = await request(app.getHttpServer())
+    .get('/settings/base-questions')
+    .expect(200);
+  const baseQuestion = bankResponse.body.questions[0] as { stableKey: string };
+
+  const projectResponse = await request(app.getHttpServer())
+    .post('/projects')
+    .send({
+      name: projectName,
+      customerContactName: 'Task 2 Test Contact',
+      customerContactEmail: `${emailPrefix}-${Date.now()}@example.test`,
+    })
+    .expect(201);
+  const projectId = projectResponse.body.id as string;
+
+  await request(app.getHttpServer())
+    .post(`/projects/${projectId}/question-schema`)
+    .send({
+      questions: [{ stableKey: baseQuestion.stableKey, required: true, blocking: true }],
+    })
+    .expect(201);
+
+  return { projectId };
+}
