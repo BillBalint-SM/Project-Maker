@@ -13,6 +13,17 @@ import type {
 export class InterviewApiService {
   private readonly http = inject(HttpClient);
 
+  getActiveInitialIntake(projectId: string): Observable<InterviewRound | null> {
+    const encodedProjectId = encodeURIComponent(projectId);
+    return this.http
+      .get<InterviewRound | null>(`/api/projects/${encodedProjectId}/rounds/active`)
+      .pipe(
+        catchError((error: unknown) =>
+          failApiRequest(error, 'betölteni az aktív kezdő interjúkört'),
+        ),
+      );
+  }
+
   createRound(
     projectId: string,
     input: CreateInterviewRoundInput,
@@ -20,7 +31,9 @@ export class InterviewApiService {
     const encodedProjectId = encodeURIComponent(projectId);
     return this.http
       .post<InterviewRound>(`/api/projects/${encodedProjectId}/rounds`, input)
-      .pipe(catchError((error: unknown) => failApiRequest(error, 'create the interview round')));
+      .pipe(
+        catchError((error: unknown) => failApiRequest(error, 'elindítani az interjúkört')),
+      );
   }
 
   updateAnswer(
@@ -37,7 +50,7 @@ export class InterviewApiService {
         `/api/projects/${encodedProjectId}/rounds/${encodedRoundId}/answers/${encodedSnapshotId}`,
         input,
       )
-      .pipe(catchError((error: unknown) => failApiRequest(error, 'save the answer')));
+      .pipe(catchError((error: unknown) => failApiRequest(error, 'elmenteni a választ')));
   }
 
   completeRound(projectId: string, roundId: string): Observable<InterviewRound> {
@@ -48,7 +61,9 @@ export class InterviewApiService {
         `/api/projects/${encodedProjectId}/rounds/${encodedRoundId}/complete`,
         {},
       )
-      .pipe(catchError((error: unknown) => failApiRequest(error, 'complete the interview round')));
+      .pipe(
+        catchError((error: unknown) => failApiRequest(error, 'lezárni az interjúkört')),
+      );
   }
 }
 
@@ -77,33 +92,33 @@ function mapApiError(error: unknown, action: string): ActionableApiError {
       return { userMessage: error.message, diagnostics: null };
     }
     return {
-      userMessage: `Could not ${action}. Refresh the page and try again.`,
+      userMessage: `Nem sikerült ${action}. Frissítsd az oldalt, majd próbáld újra.`,
       diagnostics: null,
     };
   }
 
   if (error.status === 0) {
     return {
-      userMessage: `Could not ${action} because the API is unreachable. Check that the server is running, then try again.`,
+      userMessage: `Nem sikerült ${action}, mert az API nem érhető el. Ellenőrizd, hogy fut-e a szerver, majd próbáld újra.`,
       diagnostics: { action, status: error.status, statusText: error.statusText },
     };
   }
 
-  if (error.status === 409 && action === 'complete the interview round') {
+  if (error.status === 409 && action === 'lezárni az interjúkört') {
     return {
-      userMessage: `Could not ${action} because required answers are missing. Fill and save every required question, then try again.`,
+      userMessage: 'Nem sikerült lezárni az interjúkört, mert hiányoznak kötelező válaszok. Ments el minden kötelező kérdést, majd próbáld újra.',
       diagnostics: { action, status: error.status, statusText: error.statusText },
     };
   }
 
   const nextStep =
     error.status === 404
-      ? 'Confirm that the project, round, or question still exists.'
+      ? 'Ellenőrizd, hogy a projekt, az interjúkör vagy a kérdés még létezik-e.'
       : error.status === 409
-        ? 'Refresh the page to see the latest round state, then try again.'
-        : 'Review the answer and try again.';
+        ? 'Frissítsd az oldalt, hogy a legfrissebb interjúállapotot lásd, majd próbáld újra.'
+        : 'Ellenőrizd az adatokat, majd próbáld újra.';
   return {
-    userMessage: `Could not ${action} (HTTP ${error.status}). ${nextStep}`,
+    userMessage: `Nem sikerült ${action} (HTTP ${error.status}). ${nextStep}`,
     diagnostics: { action, status: error.status, statusText: error.statusText },
   };
 }

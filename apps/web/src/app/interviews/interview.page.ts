@@ -1,5 +1,4 @@
 import { Component, inject, OnInit, signal } from '@angular/core';
-import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { forkJoin } from 'rxjs';
 import { ButtonModule } from 'primeng/button';
@@ -12,25 +11,13 @@ import type {
   BaseQuestion,
   BaseQuestionBank,
   InterviewRound,
-  InterviewRoundType,
   ProjectQuestionSchema,
   PublishProjectQuestionSchemaInput,
   RoundQuestionSnapshot,
 } from '@project-maker/contracts';
-import { interviewRoundTypes } from '@project-maker/contracts';
 
 import { InterviewApiService } from './interview-api.service';
 import { QuestionBankApiService } from '../settings/question-bank-api.service';
-
-interface RoundTypeOption {
-  readonly label: string;
-  readonly value: InterviewRoundType;
-}
-
-const roundTypeOptions: readonly RoundTypeOption[] = interviewRoundTypes.map((value) => ({
-  value,
-  label: value.replaceAll('_', ' '),
-}));
 
 @Component({
   selector: 'app-interview-page',
@@ -39,7 +26,6 @@ const roundTypeOptions: readonly RoundTypeOption[] = interviewRoundTypes.map((va
     CardModule,
     MessageModule,
     ProgressSpinnerModule,
-    ReactiveFormsModule,
     RouterLink,
     TagModule,
   ],
@@ -52,10 +38,6 @@ export class InterviewPage implements OnInit {
   private readonly interviewApi = inject(InterviewApiService);
 
   readonly projectId = this.route.snapshot.paramMap.get('projectId') ?? '';
-  readonly roundTypeOptions = roundTypeOptions;
-  readonly roundType = new FormControl<InterviewRoundType>('INITIAL_INTAKE', {
-    nonNullable: true,
-  });
   readonly bank = signal<BaseQuestionBank | null>(null);
   readonly schema = signal<ProjectQuestionSchema | null>(null);
   readonly selectedKeys = signal<readonly string[]>([]);
@@ -77,7 +59,7 @@ export class InterviewPage implements OnInit {
   loadInterviewData(): void {
     if (!this.projectId) {
       this.loadError.set(
-        'The interview URL is missing a project ID. Return to the project cockpit and open the interview again.',
+        'Hiányzik a projektazonosító az interjú URL-jéből. Menj vissza a projekt áttekintő oldalára, és nyisd meg újra az interjút.',
       );
       this.loading.set(false);
       return;
@@ -86,28 +68,24 @@ export class InterviewPage implements OnInit {
     this.loading.set(true);
     this.loadError.set(null);
     this.actionError.set(null);
+    this.feedback.set(null);
+    this.round.set(null);
+    this.drafts.set(new Map());
     forkJoin({
       bank: this.questionBankApi.loadBaseQuestionBank(),
       schema: this.questionBankApi.loadProjectSchema(this.projectId),
+      activeRound: this.interviewApi.getActiveInitialIntake(this.projectId),
     }).subscribe({
-      next: ({ bank, schema }) => {
+      next: ({ bank, schema, activeRound }) => {
         this.bank.set(bank);
         this.schema.set(schema);
-        const activeKeys = new Set(
-          bank.questions
-            .filter((question) => question.active)
-            .map((question) => question.stableKey),
-        );
-        this.selectedKeys.set(
-          schema?.questions
-            .map((question) => question.stableKey)
-            .filter((stableKey) => activeKeys.has(stableKey)) ??
-            bank.questions.filter((question) => question.active).map((question) => question.stableKey),
-        );
+        this.round.set(activeRound);
+        this.drafts.set(buildDrafts(activeRound));
+        this.selectedKeys.set(this.buildSelectedKeys(bank, schema, activeRound));
         this.loading.set(false);
       },
       error: (error: Error) => {
-        this.loadError.set(error.message);
+        this.loadError.set(formatLoadError(error));
         this.loading.set(false);
       },
     });
@@ -122,6 +100,9 @@ export class InterviewPage implements OnInit {
   }
 
   setSelected(stableKey: string, checked: boolean): void {
+    if (this.hasOpenRound()) {
+      return;
+    }
     const next = new Set(this.selectedKeys());
     if (checked) {
       next.add(stableKey);
@@ -138,6 +119,12 @@ export class InterviewPage implements OnInit {
 
   publishSchema(): void {
     if (this.schemaSaving()) {
+      return;
+    }
+    if (this.hasOpenRound()) {
+      this.actionError.set(
+        'A kérdésséma nem módosítható, amíg van nyitott kezdő interjúkör.',
+      );
       return;
     }
     if (this.selectedCount() === 0) {
@@ -174,8 +161,8 @@ export class InterviewPage implements OnInit {
         this.schemaSaving.set(false);
         this.feedback.set(
           this.schema()?.schemaVersion === 1
-            ? 'Project interview schema published.'
-            : 'Project interview schema updated.',
+            ? 'A projekt interjúsémája elkészült.'
+            : 'A projekt interjúsémája frissült.',
         );
       },
       error: (error: Error) => {
@@ -185,14 +172,10 @@ export class InterviewPage implements OnInit {
     });
   }
 
-  setRoundType(type: InterviewRoundType): void {
-    this.roundType.setValue(type);
-  }
-
   createRound(): void {
     if (this.roundSaving() || this.schema() === null) {
       if (this.schema() === null) {
-        this.actionError.set('Publish a project question schema before starting a round.');
+        this.actionError.set('Az interjúkör indítása előtt tedd közzé a projekt kérdéssémáját.');
       }
       return;
     }
@@ -200,12 +183,12 @@ export class InterviewPage implements OnInit {
     this.roundSaving.set(true);
     this.actionError.set(null);
     this.feedback.set(null);
-    this.interviewApi.createRound(this.projectId, { type: this.roundType.value }).subscribe({
+    this.interviewApi.createRound(this.projectId, { type: 'INITIAL_INTAKE' }).subscribe({
       next: (round) => {
         this.round.set(round);
-        this.drafts.set(new Map());
+        this.drafts.set(buildDrafts(round));
         this.roundSaving.set(false);
-        this.feedback.set('Interview round created.');
+        this.feedback.set('A kezdő interjúkör elindult.');
       },
       error: (error: Error) => {
         this.actionError.set(error.message);
@@ -309,7 +292,7 @@ export class InterviewPage implements OnInit {
           next.delete(question.id);
           this.drafts.set(next);
           this.answerSavingId.set(null);
-          this.feedback.set('Answer saved.');
+          this.feedback.set('A válasz mentve lett.');
         },
         error: (error: Error) => {
           this.actionError.set(error.message);
@@ -337,13 +320,70 @@ export class InterviewPage implements OnInit {
         this.round.set(completedRound);
         this.drafts.set(new Map());
         this.completing.set(false);
-        this.feedback.set('Interview round completed.');
+        this.feedback.set('Az interjúkör lezárult.');
       },
       error: (error: Error) => {
         this.actionError.set(error.message);
         this.completing.set(false);
       },
     });
+  }
+
+  hasOpenRound(): boolean {
+    return this.round()?.status === 'OPEN';
+  }
+
+  questionSaveState(question: RoundQuestionSnapshot): string {
+    if (this.answerSavingId() === question.id) {
+      return 'Mentés folyamatban…';
+    }
+    if (this.hasUnsavedChanges(question)) {
+      return 'Piszkozat – még nincs mentve';
+    }
+    if (question.answeredAt) {
+      return 'Mentve';
+    }
+    return 'Még nincs mentve';
+  }
+
+  showBlockingGuidance(question: RoundQuestionSnapshot): boolean {
+    const round = this.round();
+    return (
+      round?.status === 'OPEN' &&
+      question.blocking &&
+      !question.answeredAt &&
+      !this.hasUnsavedChanges(question)
+    );
+  }
+
+  roundTypeLabel(): string {
+    return 'Kezdő interjú';
+  }
+
+  private buildSelectedKeys(
+    bank: BaseQuestionBank,
+    schema: ProjectQuestionSchema | null,
+    activeRound: InterviewRound | null,
+  ): readonly string[] {
+    if (activeRound) {
+      return activeRound.questions.map((question) => question.stableKey);
+    }
+
+    const activeKeys = new Set(
+      bank.questions
+        .filter((question) => question.active)
+        .map((question) => question.stableKey),
+    );
+    return (
+      schema?.questions
+        .map((question) => question.stableKey)
+        .filter((stableKey) => activeKeys.has(stableKey)) ??
+      bank.questions.filter((question) => question.active).map((question) => question.stableKey)
+    );
+  }
+
+  private hasUnsavedChanges(question: RoundQuestionSnapshot): boolean {
+    return !answersEqual(this.currentAnswer(question), question.answer);
   }
 
   private replaceRoundQuestion(question: RoundQuestionSnapshot): void {
@@ -359,4 +399,33 @@ export class InterviewPage implements OnInit {
       };
     });
   }
+}
+
+function buildDrafts(round: InterviewRound | null): ReadonlyMap<string, AnswerValue | null> {
+  if (!round) {
+    return new Map();
+  }
+
+  return new Map(
+    round.questions.map((question) => [question.id, question.answer] as const),
+  );
+}
+
+function answersEqual(
+  left: AnswerValue | null,
+  right: AnswerValue | null,
+): boolean {
+  if (Array.isArray(left) && Array.isArray(right)) {
+    return left.length === right.length && left.every((value, index) => value === right[index]);
+  }
+
+  return left === right;
+}
+
+function formatLoadError(error: unknown): string {
+  if (error instanceof Error && error.message.includes('API')) {
+    return 'Nem sikerült betölteni az interjú adatait, mert az API nem érhető el. Ellenőrizd, hogy fut-e a szerver, majd próbáld újra.';
+  }
+
+  return 'Nem sikerült betölteni az interjú adatait. Frissítsd az oldalt, majd próbáld újra.';
 }

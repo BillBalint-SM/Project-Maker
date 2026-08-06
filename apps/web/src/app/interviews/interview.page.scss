@@ -77,6 +77,12 @@
   padding-top: 1rem;
 }
 
+.schema-lock-note,
+.blocking-guidance {
+  color: var(--p-text-muted-color);
+  margin: 0.75rem 0 0;
+}
+
 .round-start {
   display: grid;
   gap: 1rem;
@@ -105,6 +111,19 @@
   border-bottom: 1px solid var(--p-content-border-color);
   margin-bottom: 1rem;
   padding-bottom: 1rem;
+}
+
+.resume-state {
+  background: color-mix(in srgb, var(--p-primary-color) 8%, transparent);
+  border: 1px solid color-mix(in srgb, var(--p-primary-color) 25%, var(--p-content-border-color));
+  border-radius: 0.8rem;
+  margin-bottom: 1rem;
+  padding: 1rem;
+}
+
+.resume-state p {
+  color: var(--p-text-muted-color);
+  margin: 0.4rem 0 0;
 }
 
 .round-header p {
