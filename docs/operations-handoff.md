@@ -215,10 +215,15 @@ attachment:
 GET /api/projects/{projectId}/markdown-revisions/{revisionId}/download
 ```
 
-The current foundation accepts `MILESTONE` as a recorded reason, but does not
-yet wire every project-status transition to an automatic generator. Automatic
-milestone triggers remain a backlog item; the manual button is the reliable
-operation today.
+Entering the selected `READY_FOR_PLANNING` project milestone automatically
+creates a `MILESTONE` revision in the same database transaction as the
+workspace status update. Saving the project while it is already at that status
+does not create a duplicate; leaving and entering the milestone again creates
+the next version. The manual button remains available for any other snapshot.
+
+The project cockpit also shows a bounded, paginated audit history with event
+type, timestamp, and payload. Audit loading is independent from the core
+cockpit load and has its own retry state.
 
 ### Customer review and follow-up email semantics
 
@@ -278,7 +283,6 @@ The following are deliberately not hidden in this handoff:
 - an outbox/idempotency model so SMTP I/O is not coupled to a database
   transaction;
 - STARTTLS support and provider-specific SMTP compatibility;
-- automatic Markdown generation on selected project milestones;
 - complete intake/checklist/readiness/decision-score behavior from the domain
   contract;
 - backup retention/rotation and a restore drill owned by the deployment team.

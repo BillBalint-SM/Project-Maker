@@ -1,4 +1,4 @@
-import { DatePipe } from '@angular/common';
+import { DatePipe, JsonPipe } from '@angular/common';
 import { Component, inject, OnInit, signal } from '@angular/core';
 import {
   FormControl,
@@ -23,7 +23,7 @@ import type {
   UpdateCustomerFollowUpInput,
 } from '@project-maker/contracts';
 
-import type { CockpitView, StatusOption } from './project-api.models';
+import type { AuditEventPage, CockpitView, StatusOption } from './project-api.models';
 import { ProjectApiService } from './project-api.service';
 
 type ActiveProjectStatus = Exclude<ProjectStatus, 'ARCHIVED'>;
@@ -46,6 +46,7 @@ const statusOptions: StatusOption[] = [
     InputTextModule,
     MessageModule,
     ProgressSpinnerModule,
+    JsonPipe,
     ReactiveFormsModule,
     RouterLink,
     SelectModule,
@@ -71,6 +72,11 @@ export class ProjectCockpitPage implements OnInit {
   readonly followUpSaving = signal(false);
   readonly pinging = signal(false);
   readonly reviewSending = signal(false);
+  readonly auditPage = signal<AuditEventPage | null>(null);
+  readonly auditLoading = signal(false);
+  readonly auditError = signal<string | null>(null);
+  private auditRequestOffset = 0;
+  private auditRequestToken = 0;
 
   readonly workspaceForm = new FormGroup({
     status: new FormControl<ActiveProjectStatus>('DRAFT', {
@@ -119,16 +125,85 @@ export class ProjectCockpitPage implements OnInit {
     this.loadError.set(null);
     this.actionError.set(null);
     this.feedback.set(null);
+    this.auditRequestToken += 1;
+    this.auditRequestOffset = 0;
+    this.auditPage.set(null);
+    this.auditError.set(null);
+    this.auditLoading.set(false);
     this.api.loadCockpit(this.projectId).subscribe({
       next: (view) => {
         this.setView(view);
         this.loading.set(false);
+        this.loadAuditEvents(0);
       },
       error: (error: Error) => {
         this.loadError.set(error.message);
         this.loading.set(false);
       },
     });
+  }
+
+  loadAuditEvents(offset: number): void {
+    if (!this.view()) {
+      return;
+    }
+
+    const requestToken = ++this.auditRequestToken;
+    this.auditRequestOffset = offset;
+    this.auditLoading.set(true);
+    this.auditError.set(null);
+    this.api.loadAuditEvents(this.projectId, offset).subscribe({
+      next: (page) => {
+        if (requestToken !== this.auditRequestToken) {
+          return;
+        }
+        this.auditPage.set(page);
+        this.auditLoading.set(false);
+      },
+      error: (error: Error) => {
+        if (requestToken !== this.auditRequestToken) {
+          return;
+        }
+        this.auditError.set(error.message);
+        this.auditLoading.set(false);
+      },
+    });
+  }
+
+  retryAuditEvents(): void {
+    this.loadAuditEvents(this.auditRequestOffset);
+  }
+
+  previousAuditPage(): void {
+    const page = this.auditPage();
+    if (!page || this.auditLoading() || page.offset === 0) {
+      return;
+    }
+    this.loadAuditEvents(Math.max(0, page.offset - page.limit));
+  }
+
+  nextAuditPage(): void {
+    const page = this.auditPage();
+    if (!page || this.auditLoading() || page.nextOffset === null) {
+      return;
+    }
+    this.loadAuditEvents(page.nextOffset);
+  }
+
+  canGoPreviousAuditPage(): boolean {
+    const page = this.auditPage();
+    return Boolean(page && page.offset > 0 && !this.auditLoading());
+  }
+
+  canGoNextAuditPage(): boolean {
+    const page = this.auditPage();
+    return Boolean(page && page.hasMore && !this.auditLoading());
+  }
+
+  refreshAuditEvents(): void {
+    if (this.view()) {
+      this.loadAuditEvents(0);
+    }
   }
 
   saveWorkspace(): void {
@@ -153,6 +228,7 @@ export class ProjectCockpitPage implements OnInit {
           this.applyWorkspaceResponse(project);
           this.feedback.set('Workspace saved.');
           this.saving.set(false);
+          this.refreshAuditEvents();
         },
         error: (error: Error) => {
           this.actionError.set(error.message);
@@ -185,6 +261,7 @@ export class ProjectCockpitPage implements OnInit {
         this.applyFollowUpResponse(followUp);
         this.feedback.set('Customer follow-up settings saved.');
         this.followUpSaving.set(false);
+        this.refreshAuditEvents();
       },
       error: (error: Error) => {
         this.actionError.set(error.message);
@@ -206,10 +283,12 @@ export class ProjectCockpitPage implements OnInit {
         this.applyFollowUpStatus(followUp);
         this.feedback.set('Customer follow-up ping sent.');
         this.pinging.set(false);
+        this.refreshAuditEvents();
       },
       error: (error: Error) => {
         this.actionError.set(error.message);
         this.pinging.set(false);
+        this.refreshAuditEvents();
       },
     });
   }
@@ -228,10 +307,12 @@ export class ProjectCockpitPage implements OnInit {
           `Customer review email sent using Markdown revision v${delivery.revisionVersion}.`,
         );
         this.reviewSending.set(false);
+        this.refreshAuditEvents();
       },
       error: (error: Error) => {
         this.actionError.set(error.message);
         this.reviewSending.set(false);
+        this.refreshAuditEvents();
       },
     });
   }
@@ -248,6 +329,7 @@ export class ProjectCockpitPage implements OnInit {
         this.applyWorkspaceResponse(project);
         this.feedback.set('Project archived.');
         this.transitioning.set(false);
+        this.refreshAuditEvents();
       },
       error: (error: Error) => {
         this.actionError.set(error.message);
@@ -268,6 +350,7 @@ export class ProjectCockpitPage implements OnInit {
         this.applyWorkspaceResponse(project);
         this.feedback.set('Project restored to DRAFT.');
         this.transitioning.set(false);
+        this.refreshAuditEvents();
       },
       error: (error: Error) => {
         this.actionError.set(error.message);

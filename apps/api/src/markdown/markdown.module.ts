@@ -29,5 +29,6 @@ import { MarkdownService } from './markdown.service';
   ],
   controllers: [MarkdownController],
   providers: [MarkdownService],
+  exports: [MarkdownService],
 })
 export class MarkdownModule {}

@@ -9,6 +9,7 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import type {
+  CreateMarkdownRevisionInput,
   ProjectCockpit,
   ProjectStatus,
   ProjectWorkspace,
@@ -16,12 +17,18 @@ import type {
 import { DataSource, EntityManager, Repository } from 'typeorm';
 
 import { AuditEvent, type AuditPayload } from '../audit/audit-event.entity';
+import { MarkdownService } from '../markdown/markdown.service';
 import { CreateProjectDto } from './dto/create-project.dto';
 import { UpdateProjectWorkspaceDto } from './dto/update-project-workspace.dto';
 import { Project } from './project.entity';
 
 const archivedStatus: ProjectStatus = 'ARCHIVED';
 const draftStatus: ProjectStatus = 'DRAFT';
+const readyForPlanningStatus: ProjectStatus = 'READY_FOR_PLANNING';
+const readyForPlanningRevision: CreateMarkdownRevisionInput = {
+  reason: 'MILESTONE',
+  milestone: readyForPlanningStatus,
+};
 
 @Injectable()
 export class ProjectsService {
@@ -29,6 +36,7 @@ export class ProjectsService {
     @InjectRepository(Project)
     private readonly projectRepository: Repository<Project>,
     private readonly dataSource: DataSource,
+    private readonly markdownService: MarkdownService,
   ) {}
 
   async create(input: CreateProjectDto): Promise<ProjectWorkspace> {
@@ -73,30 +81,44 @@ export class ProjectsService {
       throw new BadRequestException('Workspace update must include at least one field.');
     }
 
-    const project = await this.findProject(projectId);
-    if (project.status === archivedStatus) {
-      throw new ConflictException('Archived projects must be restored before they can be updated.');
-    }
+    return this.dataSource.transaction(async (manager) => {
+      const projectRepository = manager.getRepository(Project);
+      const project = await findLockedProject(manager, projectId);
+      const previousStatus = project.status;
 
-    if (hasField(input, 'ballOwner')) {
-      project.ballOwner = optionalText(input.ballOwner, 'ballOwner');
-    }
-    if (hasField(input, 'nextAction')) {
-      project.nextAction = optionalText(input.nextAction, 'nextAction');
-    }
-    if (hasField(input, 'dueAt')) {
-      project.dueAt = parseDueAt(input.dueAt);
-    }
-    if (hasField(input, 'status')) {
-      if (!input.status || input.status === archivedStatus) {
-        throw new BadRequestException(
-          'Workspace status must be a non-archived project status; use the archive endpoint for ARCHIVED.',
+      if (project.status === archivedStatus) {
+        throw new ConflictException('Archived projects must be restored before they can be updated.');
+      }
+
+      if (hasField(input, 'ballOwner')) {
+        project.ballOwner = optionalText(input.ballOwner, 'ballOwner');
+      }
+      if (hasField(input, 'nextAction')) {
+        project.nextAction = optionalText(input.nextAction, 'nextAction');
+      }
+      if (hasField(input, 'dueAt')) {
+        project.dueAt = parseDueAt(input.dueAt);
+      }
+      if (hasField(input, 'status')) {
+        if (!input.status || input.status === archivedStatus) {
+          throw new BadRequestException(
+            'Workspace status must be a non-archived project status; use the archive endpoint for ARCHIVED.',
+          );
+        }
+        project.status = input.status;
+      }
+
+      const savedProject = await projectRepository.save(project);
+      if (previousStatus !== readyForPlanningStatus && savedProject.status === readyForPlanningStatus) {
+        await this.markdownService.createWithinTransaction(
+          manager,
+          savedProject,
+          readyForPlanningRevision,
         );
       }
-      project.status = input.status;
-    }
 
-    return toWorkspace(await this.projectRepository.save(project));
+      return toWorkspace(savedProject);
+    });
   }
 
   async archive(projectId: string): Promise<ProjectWorkspace> {

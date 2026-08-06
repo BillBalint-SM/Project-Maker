@@ -70,59 +70,69 @@ export class MarkdownService {
 
     return this.dataSource.transaction(async (manager) => {
       const project = await findProject(manager, projectId, true);
-      const revisionRepository = manager.getRepository(MarkdownRevisionEntity);
-      const previousRevision = await revisionRepository.findOne({
-        where: { projectId },
-        order: { version: 'DESC' },
-      });
-      const version = (previousRevision?.version ?? 0) + 1;
-      const createdAt = new Date();
-      const sourceSnapshot = await buildSourceSnapshot(manager, project);
-      const changeSummary = summarizeChanges(previousRevision, sourceSnapshot, version);
-      const content = renderMarkdown({
-        projectId,
-        version,
-        reason: input.reason,
-        milestone: normalizeMilestone(input.milestone),
-        createdAt,
-        sourceSnapshot,
-        changeSummary,
-        previousRevision,
-      });
-      const revision = revisionRepository.create({
-        id: randomUUID(),
-        projectId,
-        version,
-        reason: input.reason,
-        milestone: normalizeMilestone(input.milestone),
-        createdAt,
-        sourceSnapshot,
-        changeSummary,
-        content,
-        previousRevisionId: previousRevision?.id ?? null,
-      });
-
-      let savedRevision: MarkdownRevisionEntity;
-      try {
-        savedRevision = await revisionRepository.save(revision);
-      } catch (error) {
-        if (isUniqueViolation(error)) {
-          throw new ConflictException(
-            `Markdown revision version ${version} already exists for this project; retry the request.`,
-          );
-        }
-        throw error;
-      }
-
-      await manager.getRepository(AuditEvent).save({
-        id: randomUUID(),
-        projectId,
-        eventType: 'MARKDOWN_REVISION_CREATED',
-        payload: createAuditPayload(savedRevision, sourceSnapshot),
-      });
-
-      return toMarkdownRevision(savedRevision);
+      return this.createWithinTransaction(manager, project, input);
     });
+  }
+
+  async createWithinTransaction(
+    manager: EntityManager,
+    project: Project,
+    input: CreateMarkdownRevisionInput,
+  ): Promise<MarkdownRevision> {
+    validateCreateInput(input);
+
+    const revisionRepository = manager.getRepository(MarkdownRevisionEntity);
+    const previousRevision = await revisionRepository.findOne({
+      where: { projectId: project.id },
+      order: { version: 'DESC' },
+    });
+    const version = (previousRevision?.version ?? 0) + 1;
+    const createdAt = new Date();
+    const sourceSnapshot = await buildSourceSnapshot(manager, project);
+    const changeSummary = summarizeChanges(previousRevision, sourceSnapshot, version);
+    const content = renderMarkdown({
+      projectId: project.id,
+      version,
+      reason: input.reason,
+      milestone: normalizeMilestone(input.milestone),
+      createdAt,
+      sourceSnapshot,
+      changeSummary,
+      previousRevision,
+    });
+    const revision = revisionRepository.create({
+      id: randomUUID(),
+      projectId: project.id,
+      version,
+      reason: input.reason,
+      milestone: normalizeMilestone(input.milestone),
+      createdAt,
+      sourceSnapshot,
+      changeSummary,
+      content,
+      previousRevisionId: previousRevision?.id ?? null,
+    });
+
+    let savedRevision: MarkdownRevisionEntity;
+    try {
+      savedRevision = await revisionRepository.save(revision);
+    } catch (error) {
+      if (isUniqueViolation(error)) {
+        throw new ConflictException(
+          `Markdown revision version ${version} already exists for this project; retry the request.`,
+        );
+      }
+      throw error;
+    }
+
+    await manager.getRepository(AuditEvent).save({
+      id: randomUUID(),
+      projectId: project.id,
+      eventType: 'MARKDOWN_REVISION_CREATED',
+      payload: createAuditPayload(savedRevision, sourceSnapshot),
+    });
+
+    return toMarkdownRevision(savedRevision);
   }
 
   async list(projectId: string): Promise<readonly MarkdownRevision[]> {
