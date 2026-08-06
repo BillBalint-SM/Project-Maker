@@ -5,7 +5,9 @@ import { expect, test, type APIRequestContext, type Locator, type Page } from '@
 
 const apiOrigin = 'http://127.0.0.1:3000';
 const hungarianTextPattern = /[áéíóöőúüűÁÉÍÓÖŐÚÜŰ]/;
-const textAutosaveQuietPeriodMs = 500;
+const textAutosaveDelayMs = 750;
+const textAutosavePreBoundaryProbeMs = 700;
+const textAutosaveSchedulingToleranceMs = 50;
 const requireFromApi = createRequire(resolve(process.cwd(), '..', 'api', 'package.json'));
 const { Client } = requireFromApi('pg') as {
   readonly Client: new (configuration: { readonly connectionString: string }) => DatabaseClient;
@@ -91,15 +93,20 @@ test.describe.serial('guided intake real Hungarian browser flow', () => {
     await expect(page.getByTestId(`round-answer-save-state-${textQuestion.id}`)).toBeVisible();
 
     const textAnswer = 'A böngészős E2E válasz üzleti célt és mérhető eredményt rögzít.';
-    const textPatchCounter = countAnswerPatchResponses(page, fixture.projectId, textQuestion.id);
+    const textPatchCounter = countAnswerPatchRequests(page, fixture.projectId, textQuestion.id);
     const textSaveResponsePromise = waitForAnswerPatch(page, fixture.projectId, textQuestion.id);
+    const textInputStartedAt = Date.now();
     await page.getByTestId(`round-answer-textarea-${textQuestion.id}`).fill(textAnswer);
-    await page.waitForTimeout(textAutosaveQuietPeriodMs);
+    await page.waitForTimeout(textAutosavePreBoundaryProbeMs);
     expect(textPatchCounter.count()).toBe(0);
     const textSaveResponse = await textSaveResponsePromise;
+    const textPatchElapsedMs = textPatchCounter.firstRequestStartedAt() - textInputStartedAt;
     textPatchCounter.stop();
     expect(textSaveResponse.status()).toBe(200);
     expect(textPatchCounter.count()).toBe(1);
+    expect(textPatchElapsedMs).toBeGreaterThanOrEqual(
+      textAutosaveDelayMs - textAutosaveSchedulingToleranceMs,
+    );
     await expectSavedAnswer(request, fixture.projectId, textQuestion.id, textAnswer);
     await expect(page.getByTestId(`round-answer-save-state-${textQuestion.id}`)).toContainText(
       /Mentve/,
@@ -345,21 +352,29 @@ function waitForAnswerPatch(page: Page, projectId: string, snapshotId: string) {
   );
 }
 
-function countAnswerPatchResponses(page: Page, projectId: string, snapshotId: string) {
+function countAnswerPatchRequests(page: Page, projectId: string, snapshotId: string) {
   let patchCount = 0;
-  const handler = (response: { request(): { method(): string }; url(): string }) => {
+  let firstRequestStartedAt: number | null = null;
+  const handler = (request: { method(): string; url(): string }) => {
     if (
-      response.request().method() === 'PATCH' &&
-      response.url().includes(`/api/projects/${projectId}/rounds/`) &&
-      response.url().includes(`/answers/${snapshotId}`)
+      request.method() === 'PATCH' &&
+      request.url().includes(`/api/projects/${projectId}/rounds/`) &&
+      request.url().includes(`/answers/${snapshotId}`)
     ) {
       patchCount += 1;
+      firstRequestStartedAt = firstRequestStartedAt ?? Date.now();
     }
   };
-  page.on('response', handler);
+  page.on('request', handler);
   return {
     count: () => patchCount,
-    stop: () => page.off('response', handler),
+    firstRequestStartedAt: () => {
+      if (firstRequestStartedAt === null) {
+        throw new Error('No matching answer PATCH request was observed.');
+      }
+      return firstRequestStartedAt;
+    },
+    stop: () => page.off('request', handler),
   };
 }
 
