@@ -1,7 +1,15 @@
+import { createRequire } from 'node:module';
+import { resolve } from 'node:path';
+
 import { expect, test, type APIRequestContext, type Locator, type Page } from '@playwright/test';
 
 const apiOrigin = 'http://127.0.0.1:3000';
 const hungarianTextPattern = /[áéíóöőúüűÁÉÍÓÖŐÚÜŰ]/;
+const textAutosaveQuietPeriodMs = 500;
+const requireFromApi = createRequire(resolve(process.cwd(), '..', 'api', 'package.json'));
+const { Client } = requireFromApi('pg') as {
+  readonly Client: new (configuration: { readonly connectionString: string }) => DatabaseClient;
+};
 
 interface BaseQuestionBank {
   readonly questions: readonly BaseQuestion[];
@@ -34,8 +42,18 @@ interface GuidedIntakeFixture {
   readonly missingRequiredStableKey: string;
 }
 
+interface DatabaseClient {
+  connect(): Promise<void>;
+  end(): Promise<void>;
+  query(sql: string, parameters?: readonly unknown[]): Promise<unknown>;
+}
+
 test.describe.serial('guided intake real Hungarian browser flow', () => {
   test.setTimeout(120_000);
+
+  test.afterEach(async () => {
+    await clearE2eAnswerSaveFailures();
+  });
 
   test('persists, recovers, validates, completes, locks, and starts a later initial intake round', async ({
     context,
@@ -73,13 +91,18 @@ test.describe.serial('guided intake real Hungarian browser flow', () => {
     await expect(page.getByTestId(`round-answer-save-state-${textQuestion.id}`)).toBeVisible();
 
     const textAnswer = 'A böngészős E2E válasz üzleti célt és mérhető eredményt rögzít.';
+    const textPatchCounter = countAnswerPatchResponses(page, fixture.projectId, textQuestion.id);
     const textSaveResponsePromise = waitForAnswerPatch(page, fixture.projectId, textQuestion.id);
     await page.getByTestId(`round-answer-textarea-${textQuestion.id}`).fill(textAnswer);
+    await page.waitForTimeout(textAutosaveQuietPeriodMs);
+    expect(textPatchCounter.count()).toBe(0);
     const textSaveResponse = await textSaveResponsePromise;
+    textPatchCounter.stop();
     expect(textSaveResponse.status()).toBe(200);
+    expect(textPatchCounter.count()).toBe(1);
     await expectSavedAnswer(request, fixture.projectId, textQuestion.id, textAnswer);
     await expect(page.getByTestId(`round-answer-save-state-${textQuestion.id}`)).toContainText(
-      /\S/,
+      /Mentve/,
     );
 
     const booleanSaveResponsePromise = waitForAnswerPatch(
@@ -125,17 +148,27 @@ test.describe.serial('guided intake real Hungarian browser flow', () => {
     await expectActiveRoundStatus(request, fixture.projectId, 'OPEN');
 
     const retryAnswer = 'Újrapróbált válasz stabil API-kapcsolattal.';
-    await context.setOffline(true);
-    await page.getByTestId(`round-answer-textarea-${missingRequiredQuestion.id}`).fill(retryAnswer);
-    await expect(page.getByTestId(`retry-round-answer-${missingRequiredQuestion.id}`)).toBeVisible();
-    await expect(
-      page.getByTestId(`round-answer-textarea-${missingRequiredQuestion.id}`),
-    ).toHaveValue(retryAnswer);
-    await expect(
-      page.getByTestId(`round-answer-save-state-${missingRequiredQuestion.id}`),
-    ).toContainText(hungarianTextPattern);
+    const cleanupSaveFailure = await installOneAnswerSaveFailure(missingRequiredQuestion.id);
+    try {
+      const failedSaveResponsePromise = waitForAnswerPatch(
+        page,
+        fixture.projectId,
+        missingRequiredQuestion.id,
+      );
+      await page.getByTestId(`round-answer-textarea-${missingRequiredQuestion.id}`).fill(retryAnswer);
+      const failedSaveResponse = await failedSaveResponsePromise;
+      expect(failedSaveResponse.status()).toBeGreaterThanOrEqual(500);
+      await expect(page.getByTestId(`retry-round-answer-${missingRequiredQuestion.id}`)).toBeVisible();
+      await expect(
+        page.getByTestId(`round-answer-textarea-${missingRequiredQuestion.id}`),
+      ).toHaveValue(retryAnswer);
+      await expect(
+        page.getByTestId(`round-answer-save-state-${missingRequiredQuestion.id}`),
+      ).toContainText(hungarianTextPattern);
+    } finally {
+      await cleanupSaveFailure();
+    }
 
-    await context.setOffline(false);
     const retryResponsePromise = waitForAnswerPatch(
       page,
       fixture.projectId,
@@ -262,9 +295,8 @@ async function apiJson<T>(
       ? await request.get(`${apiOrigin}${path}`)
       : await request.post(`${apiOrigin}${path}`, { data });
   if (!response.ok()) {
-    const body = await response.text();
     throw new Error(
-      `${method} ${path} failed with HTTP ${response.status()}: ${body.slice(0, 500)}`,
+      `${method} ${path} failed with HTTP ${response.status()}. Response body omitted to avoid leaking server diagnostics.`,
     );
   }
   return (await response.json()) as T;
@@ -313,12 +345,109 @@ function waitForAnswerPatch(page: Page, projectId: string, snapshotId: string) {
   );
 }
 
+function countAnswerPatchResponses(page: Page, projectId: string, snapshotId: string) {
+  let patchCount = 0;
+  const handler = (response: { request(): { method(): string }; url(): string }) => {
+    if (
+      response.request().method() === 'PATCH' &&
+      response.url().includes(`/api/projects/${projectId}/rounds/`) &&
+      response.url().includes(`/answers/${snapshotId}`)
+    ) {
+      patchCount += 1;
+    }
+  };
+  page.on('response', handler);
+  return {
+    count: () => patchCount,
+    stop: () => page.off('response', handler),
+  };
+}
+
 function waitForRoundCompletion(page: Page, projectId: string, roundId: string) {
   return page.waitForResponse(
     (response) =>
       response.request().method() === 'POST' &&
       response.url().includes(`/api/projects/${projectId}/rounds/${roundId}/complete`),
   );
+}
+
+async function installOneAnswerSaveFailure(snapshotId: string): Promise<() => Promise<void>> {
+  await withE2eDatabase(async (client) => {
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS "e2e_answer_save_failures" (
+        "snapshot_id" uuid PRIMARY KEY
+      )
+    `);
+    await client.query(`
+      CREATE OR REPLACE FUNCTION "e2e_reject_configured_answer_save"()
+      RETURNS trigger
+      LANGUAGE plpgsql
+      AS $$
+      BEGIN
+        IF EXISTS (
+          SELECT 1
+          FROM "e2e_answer_save_failures"
+          WHERE "snapshot_id" = (NEW."payload"->>'snapshotId')::uuid
+        ) THEN
+          RAISE EXCEPTION 'E2E configured answer save failure'
+            USING ERRCODE = 'P0001';
+        END IF;
+        RETURN NEW;
+      END;
+      $$
+    `);
+    await client.query(`
+      DROP TRIGGER IF EXISTS "trg_e2e_reject_configured_answer_save" ON "audit_events"
+    `);
+    await client.query(`
+      CREATE TRIGGER "trg_e2e_reject_configured_answer_save"
+      BEFORE INSERT ON "audit_events"
+      FOR EACH ROW
+      WHEN (NEW."event_type" = 'ROUND_ANSWER_SAVED')
+      EXECUTE FUNCTION "e2e_reject_configured_answer_save"()
+    `);
+    await client.query(
+      'INSERT INTO "e2e_answer_save_failures" ("snapshot_id") VALUES ($1) ON CONFLICT DO NOTHING',
+      [snapshotId],
+    );
+  }, 'install the E2E answer save failure trigger');
+
+  return async () => {
+    await withE2eDatabase(async (client) => {
+      await client.query('DELETE FROM "e2e_answer_save_failures" WHERE "snapshot_id" = $1', [
+        snapshotId,
+      ]);
+    }, 'remove the E2E answer save failure trigger row');
+  };
+}
+
+async function clearE2eAnswerSaveFailures(): Promise<void> {
+  await withE2eDatabase(async (client) => {
+    await client.query('DROP TRIGGER IF EXISTS "trg_e2e_reject_configured_answer_save" ON "audit_events"');
+    await client.query('DROP FUNCTION IF EXISTS "e2e_reject_configured_answer_save"()');
+    await client.query('DROP TABLE IF EXISTS "e2e_answer_save_failures"');
+  }, 'clear E2E answer save failure fixtures');
+}
+
+async function withE2eDatabase(
+  action: (client: DatabaseClient) => Promise<void>,
+  actionDescription: string,
+): Promise<void> {
+  const databaseUrl = process.env['DATABASE_URL'];
+  if (!databaseUrl) {
+    throw new Error(`Cannot ${actionDescription}: DATABASE_URL is required.`);
+  }
+
+  const client = new Client({ connectionString: databaseUrl });
+  try {
+    await client.connect();
+    await action(client);
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : 'unknown database error';
+    throw new Error(`Cannot ${actionDescription}: ${reason}`);
+  } finally {
+    await client.end();
+  }
 }
 
 async function nativeButton(page: Page, testId: string): Promise<Locator> {
