@@ -10,7 +10,7 @@ The runtime is a Docker Compose stack:
 
 | Service | Role | Network exposure |
 | --- | --- | --- |
-| `web` | Angular 22 + PrimeNG static application served by Nginx; proxies `/api/*` | Publishes `WEB_PORT` (default `8080`) |
+| `web` | Angular 21.2 + PrimeNG 21.1.9 static application served by Nginx; proxies `/api/*` | Publishes `WEB_PORT` (default `8080`) |
 | `api` | NestJS 11 API, TypeORM migrations, SMTP worker/timer | Internal only; port `3000` is exposed to the Compose network |
 | `postgres` | PostgreSQL 18.4 Alpine data store | Internal only; no host port |
 
