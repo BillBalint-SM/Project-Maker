@@ -1,0 +1,211 @@
+:host {
+  display: block;
+}
+
+.back-link {
+  color: var(--p-primary-color);
+  display: inline-block;
+  font-weight: 700;
+  margin-bottom: 1rem;
+  text-decoration: none;
+}
+
+.markdown-heading {
+  margin-bottom: 1.5rem;
+}
+
+p-message {
+  display: block;
+  margin-bottom: 0.75rem;
+}
+
+.generate-card {
+  margin-bottom: 1.25rem;
+}
+
+.generation-form {
+  display: grid;
+  gap: 1.25rem;
+}
+
+.generation-form fieldset {
+  border: 0;
+  display: grid;
+  gap: 1.25rem;
+  margin: 0;
+  min-inline-size: 0;
+  padding: 0;
+}
+
+.field select {
+  background: var(--p-form-field-background);
+  border: 1px solid var(--p-form-field-border-color);
+  border-radius: var(--p-form-field-border-radius);
+  color: var(--p-form-field-color);
+  font: inherit;
+  padding: 0.7rem 0.8rem;
+}
+
+.markdown-grid {
+  align-items: start;
+  display: grid;
+  gap: 1.25rem;
+  grid-template-columns: minmax(16rem, 0.72fr) minmax(28rem, 1.28fr);
+}
+
+.revision-list {
+  display: grid;
+  gap: 0.55rem;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.revision-link {
+  align-items: flex-start;
+  border: 1px solid var(--p-content-border-color);
+  border-radius: 0.7rem;
+  color: var(--p-text-color);
+  display: flex;
+  gap: 0.75rem;
+  justify-content: space-between;
+  padding: 0.8rem;
+  text-decoration: none;
+}
+
+.revision-link:hover,
+.revision-link.active {
+  background: color-mix(in srgb, var(--p-primary-color) 7%, transparent);
+  border-color: color-mix(in srgb, var(--p-primary-color) 55%, var(--p-content-border-color));
+}
+
+.revision-link span {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.revision-link small,
+.revision-link time {
+  color: var(--p-text-muted-color);
+  font-size: 0.78rem;
+}
+
+.revision-link time {
+  flex: 0 0 auto;
+  text-align: right;
+}
+
+.revision-detail {
+  display: grid;
+  gap: 1.25rem;
+}
+
+.revision-detail-heading {
+  align-items: flex-start;
+  border-bottom: 1px solid var(--p-content-border-color);
+  display: flex;
+  gap: 1rem;
+  justify-content: space-between;
+  padding-bottom: 1rem;
+}
+
+.revision-detail-heading h2 {
+  margin: 0.35rem 0 0;
+}
+
+.revision-metadata {
+  display: grid;
+  gap: 0.85rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin: 0;
+}
+
+.revision-metadata div {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.revision-metadata dt {
+  color: var(--p-text-muted-color);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.revision-metadata dd {
+  line-height: 1.45;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.revision-metadata a,
+.download-link {
+  color: var(--p-primary-color);
+  font-weight: 700;
+}
+
+.change-summary {
+  background: color-mix(in srgb, var(--p-primary-color) 5%, var(--p-content-background));
+  border-left: 0.25rem solid var(--p-primary-color);
+  padding: 0.8rem 1rem;
+}
+
+.change-summary h3,
+.change-summary p {
+  margin: 0;
+}
+
+.change-summary h3 {
+  font-size: 0.88rem;
+  margin-bottom: 0.35rem;
+}
+
+.change-summary p {
+  line-height: 1.5;
+}
+
+.detail-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.content-preview {
+  background: var(--p-surface-50);
+  border: 1px solid var(--p-content-border-color);
+  border-radius: 0.7rem;
+  font: 0.83rem/1.55 ui-monospace, SFMono-Regular, Consolas, monospace;
+  margin: 0;
+  max-height: 32rem;
+  overflow: auto;
+  padding: 1rem;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.state-panel.compact {
+  min-height: 8rem;
+  padding: 1rem;
+}
+
+@media (max-width: 62rem) {
+  .markdown-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 38rem) {
+  .revision-detail-heading,
+  .revision-link {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .revision-link time {
+    text-align: left;
+  }
+
+  .revision-metadata {
+    grid-template-columns: 1fr;
+  }
+}

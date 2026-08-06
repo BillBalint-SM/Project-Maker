@@ -1,0 +1,362 @@
+<a class="back-link" routerLink="/" data-testid="back-to-projects-link">
+  <span aria-hidden="true">←</span> All projects
+</a>
+
+@if (loading()) {
+  <div class="state-panel" data-testid="cockpit-loading" aria-live="polite">
+    <p-progress-spinner ariaLabel="Loading project cockpit" />
+    <p>Loading cockpit…</p>
+  </div>
+} @else if (loadError()) {
+  <div class="state-panel" data-testid="cockpit-error" role="alert">
+    <h1>Project cockpit could not be loaded</h1>
+    <p>{{ loadError() }}</p>
+    <div class="state-actions">
+      <p-button
+        label="Try again"
+        data-testid="retry-cockpit-button"
+        (onClick)="loadCockpit()"
+      />
+      <p-button
+        label="Return to projects"
+        severity="secondary"
+        [outlined]="true"
+        routerLink="/"
+      />
+    </div>
+  </div>
+} @else if (view(); as current) {
+  <section aria-labelledby="cockpit-title">
+    <div class="cockpit-heading">
+      <div class="page-heading">
+        <span class="eyebrow">Project cockpit</span>
+        <h1 id="cockpit-title">{{ current.project.name }}</h1>
+        <p>Keep ownership, the next action, and delivery timing explicit.</p>
+        <p-button
+          label="Open project interview"
+          icon="pi pi-comments"
+          [outlined]="true"
+          [routerLink]="['/projects', projectId, 'interview']"
+          data-testid="open-project-interview-button"
+        />
+        <p-button
+          label="Open Markdown plan"
+          icon="pi pi-file-edit"
+          [outlined]="true"
+          [routerLink]="['/projects', projectId, 'markdown']"
+          data-testid="open-markdown-button"
+        />
+      </div>
+      <p-tag
+        [value]="current.cockpit.status"
+        data-testid="project-lifecycle-status"
+      />
+    </div>
+
+    @if (actionError()) {
+      <p-message severity="error" role="alert" data-testid="cockpit-action-error">
+        {{ actionError() }}
+      </p-message>
+    }
+    @if (feedback()) {
+      <p-message severity="success" role="status" aria-live="polite" data-testid="cockpit-action-success">
+        {{ feedback() }}
+      </p-message>
+    }
+
+    <div class="summary-grid" aria-label="Current delivery summary">
+      <article>
+        <span>Lifecycle status</span>
+        <strong>{{ current.cockpit.status }}</strong>
+      </article>
+      <article>
+        <span>Ball owner</span>
+        <strong>{{ current.cockpit.ballOwner || 'Not assigned' }}</strong>
+      </article>
+      <article>
+        <span>Next action</span>
+        <strong>{{ current.cockpit.nextAction || 'Not defined' }}</strong>
+      </article>
+      <article>
+        <span>Due</span>
+        <strong>
+          {{
+            current.cockpit.dueAt
+              ? (current.cockpit.dueAt | date: 'medium')
+              : 'No due date'
+          }}
+        </strong>
+      </article>
+    </div>
+
+    <div class="cockpit-grid">
+      <p-card>
+        <ng-template #title>Workspace</ng-template>
+        <ng-template #subtitle>
+          Update the exact delivery state. Archived projects are read-only until restored.
+        </ng-template>
+        <form
+          class="workspace-form"
+          [formGroup]="workspaceForm"
+          (ngSubmit)="saveWorkspace()"
+          data-testid="workspace-form"
+        >
+          <fieldset class="workspace-fields" [disabled]="saving() || transitioning() || isArchived()">
+          <div class="field">
+            <label for="project-status">Lifecycle status</label>
+            <p-select
+              inputId="project-status"
+              styleClass="full-width"
+              formControlName="status"
+              [options]="statusOptions"
+              optionLabel="label"
+              optionValue="value"
+              data-testid="workspace-status-select"
+            />
+          </div>
+
+          <div class="field">
+            <label for="ball-owner">Ball owner</label>
+            <input
+              pInputText
+              id="ball-owner"
+              class="full-width"
+              formControlName="ballOwner"
+              data-testid="workspace-ball-owner-input"
+              [attr.aria-invalid]="workspaceForm.controls.ballOwner.invalid && workspaceForm.controls.ballOwner.touched"
+              [attr.aria-describedby]="workspaceForm.controls.ballOwner.invalid && workspaceForm.controls.ballOwner.touched ? 'ball-owner-help ball-owner-error' : 'ball-owner-help'"
+            />
+            <small id="ball-owner-help">Leave empty when ownership is not assigned.</small>
+            @if (workspaceForm.controls.ballOwner.hasError('maxlength') && workspaceForm.controls.ballOwner.touched) {
+              <small class="field-error" id="ball-owner-error">Ball owner must be 255 characters or fewer.</small>
+            }
+          </div>
+
+          <div class="field">
+            <label for="next-action">Next action</label>
+            <textarea
+              pTextarea
+              id="next-action"
+              class="full-width"
+              rows="5"
+              formControlName="nextAction"
+              data-testid="workspace-next-action-input"
+              [attr.aria-invalid]="workspaceForm.controls.nextAction.invalid && workspaceForm.controls.nextAction.touched"
+              [attr.aria-describedby]="workspaceForm.controls.nextAction.invalid && workspaceForm.controls.nextAction.touched ? 'next-action-help next-action-error' : 'next-action-help'"
+            ></textarea>
+            <small id="next-action-help">State one concrete action that moves delivery forward.</small>
+            @if (workspaceForm.controls.nextAction.hasError('maxlength') && workspaceForm.controls.nextAction.touched) {
+              <small class="field-error" id="next-action-error">Next action must be 10,000 characters or fewer.</small>
+            }
+          </div>
+
+          <div class="field">
+            <label for="due-at">Due date and time</label>
+            <p-datepicker
+              inputId="due-at"
+              styleClass="full-width"
+              formControlName="dueAt"
+              [showTime]="true"
+              [showIcon]="true"
+              [showButtonBar]="true"
+              [hourFormat]="'24'"
+              [appendTo]="'body'"
+              data-testid="workspace-due-at-input"
+            />
+            <small>The selected local time is saved as an exact UTC timestamp.</small>
+          </div>
+          </fieldset>
+
+          <p-button
+            type="submit"
+            label="Save workspace"
+            [loading]="saving()"
+            [disabled]="saving() || transitioning() || isArchived()"
+            data-testid="save-workspace-button"
+          />
+        </form>
+      </p-card>
+
+      <aside class="side-column">
+        <p-card data-testid="follow-up-card">
+          <ng-template #title>Customer follow-up</ng-template>
+          <ng-template #subtitle>
+            PO/PM cadence and delivery controls. Emails use the latest Markdown revision when available.
+          </ng-template>
+
+          <form
+            class="follow-up-form"
+            [formGroup]="followUpForm"
+            (ngSubmit)="saveFollowUp()"
+            data-testid="follow-up-settings-form"
+          >
+            <fieldset
+              class="follow-up-fields"
+              [disabled]="followUpControlsDisabled()"
+              aria-describedby="follow-up-settings-help"
+            >
+              <legend class="sr-only">Customer follow-up settings</legend>
+
+              <div class="follow-up-toggle">
+                <input
+                  id="follow-up-enabled"
+                  type="checkbox"
+                  formControlName="enabled"
+                  data-testid="follow-up-enabled-input"
+                />
+                <label for="follow-up-enabled">Enable automatic follow-up pings</label>
+              </div>
+
+              <div class="field">
+                <label for="follow-up-interval">Cadence (minutes)</label>
+                <input
+                  pInputText
+                  id="follow-up-interval"
+                  class="full-width"
+                  type="number"
+                  min="1"
+                  max="525600"
+                  step="1"
+                  formControlName="intervalMinutes"
+                  data-testid="follow-up-interval-input"
+                  [attr.aria-invalid]="followUpForm.controls.intervalMinutes.invalid && followUpForm.controls.intervalMinutes.touched"
+                  [attr.aria-describedby]="followUpForm.controls.intervalMinutes.invalid && followUpForm.controls.intervalMinutes.touched ? 'follow-up-interval-help follow-up-interval-error' : 'follow-up-interval-help'"
+                />
+                <small id="follow-up-interval-help">Use a whole number from 1 to 525,600 minutes.</small>
+                @if (followUpForm.controls.intervalMinutes.invalid && followUpForm.controls.intervalMinutes.touched) {
+                  <small class="field-error" id="follow-up-interval-error">Cadence must be a whole number from 1 to 525,600 minutes.</small>
+                }
+              </div>
+
+              <div class="field">
+                <label for="follow-up-expires-at">Stop after</label>
+                <p-datepicker
+                  inputId="follow-up-expires-at"
+                  styleClass="full-width"
+                  formControlName="expiresAt"
+                  [showTime]="true"
+                  [showIcon]="true"
+                  [showButtonBar]="true"
+                  [hourFormat]="'24'"
+                  [appendTo]="'body'"
+                  data-testid="follow-up-expires-at-input"
+                />
+                <small id="follow-up-settings-help">Leave blank for no expiry. The selected local time is saved as UTC.</small>
+              </div>
+            </fieldset>
+
+            <p-button
+              type="submit"
+              label="Save follow-up settings"
+              [loading]="followUpSaving()"
+              [disabled]="followUpControlsDisabled()"
+              data-testid="save-follow-up-settings-button"
+            />
+          </form>
+
+          <dl class="follow-up-status" aria-label="Customer follow-up status">
+            <div>
+              <dt>Automatic pings</dt>
+              <dd data-testid="follow-up-enabled-value">{{ current.followUp.enabled ? 'Enabled' : 'Disabled' }}</dd>
+            </div>
+            <div>
+              <dt>Cadence</dt>
+              <dd data-testid="follow-up-interval-value">{{ current.followUp.intervalMinutes }} minutes</dd>
+            </div>
+            <div>
+              <dt>Expires</dt>
+              <dd data-testid="follow-up-expires-at-value">
+                {{ current.followUp.expiresAt ? (current.followUp.expiresAt | date: 'medium') : 'No expiry' }}
+              </dd>
+            </div>
+            <div>
+              <dt>Last ping</dt>
+              <dd data-testid="follow-up-last-ping-at-value">
+                {{ current.followUp.lastPingAt ? (current.followUp.lastPingAt | date: 'medium') : 'Never' }}
+              </dd>
+            </div>
+            <div>
+              <dt>Next ping</dt>
+              <dd data-testid="follow-up-next-ping-at-value">
+                {{ current.followUp.nextPingAt ? (current.followUp.nextPingAt | date: 'medium') : 'Not scheduled' }}
+              </dd>
+            </div>
+            <div>
+              <dt>Last delivery</dt>
+              <dd data-testid="follow-up-last-delivery-status-value">{{ current.followUp.lastDeliveryStatus }}</dd>
+            </div>
+            <div>
+              <dt>Delivery error</dt>
+              <dd data-testid="follow-up-last-delivery-error-value">{{ current.followUp.lastDeliveryError || 'None reported' }}</dd>
+            </div>
+          </dl>
+
+          <div class="follow-up-actions" aria-label="Customer email actions">
+            <p-button
+              type="button"
+              label="Send follow-up ping"
+              icon="pi pi-send"
+              [loading]="pinging()"
+              [disabled]="emailActionsDisabled()"
+              data-testid="send-follow-up-ping-button"
+              (onClick)="sendFollowUpPing()"
+            />
+            <p-button
+              type="button"
+              label="Send customer review email"
+              icon="pi pi-envelope"
+              [outlined]="true"
+              [loading]="reviewSending()"
+              [disabled]="emailActionsDisabled()"
+              data-testid="send-customer-review-email-button"
+              (onClick)="sendCustomerReviewEmail()"
+            />
+          </div>
+        </p-card>
+
+        <p-card>
+          <ng-template #title>Customer contact</ng-template>
+          <dl class="contact-details">
+            <div>
+              <dt>Name</dt>
+              <dd>{{ current.project.customerContactName }}</dd>
+            </div>
+            <div>
+              <dt>Email</dt>
+              <dd>
+                <a [href]="'mailto:' + current.project.customerContactEmail">
+                  {{ current.project.customerContactEmail }}
+                </a>
+              </dd>
+            </div>
+          </dl>
+        </p-card>
+
+        <p-card>
+          <ng-template #title>Lifecycle action</ng-template>
+          @if (isArchived()) {
+            <p>This project is archived. Restore it to resume workspace updates.</p>
+            <p-button
+              label="Restore project"
+              [loading]="transitioning()"
+              [disabled]="transitioning()"
+              data-testid="restore-project-button"
+              (onClick)="restoreProject()"
+            />
+          } @else {
+            <p>Archive this project when active delivery tracking is no longer needed.</p>
+            <p-button
+              label="Archive project"
+              severity="danger"
+              [outlined]="true"
+              [loading]="transitioning()"
+              [disabled]="transitioning() || saving() || pinging() || reviewSending()"
+              data-testid="archive-project-button"
+              (onClick)="archiveProject()"
+            />
+          }
+        </p-card>
+      </aside>
+    </div>
+  </section>
+}

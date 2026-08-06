@@ -1,126 +1,24 @@
----
-gsd_state_version: 1.0
-milestone: v1.0
-milestone_name: milestone
-current_phase: 02
-current_phase_name: Felmérési flow és coaching
-status: executing
-stopped_at: Completed 02-02-PLAN.md
-last_updated: "2026-07-09T21:57:18.135Z"
-last_activity: 2026-07-09
-last_activity_desc: Phase 02 execution started
-progress:
-  total_phases: 5
-  completed_phases: 1
-  total_plans: 13
-  completed_plans: 7
-  percent: 20
----
+# Project state
 
-# Project State
+**Current baseline:** Web-platform foundation on `dev-web-platform-foundation`.
 
-## Project Reference
+This file supersedes the July 2026 React/RxDB desktop/PWA execution state. References under `.planning/phases/` and `.planning/codebase/` are retained as historical discovery and implementation evidence only; they do not describe the current source tree or approved stack.
 
-See: .planning/PROJECT.md (updated 2026-07-08)
+## Current implementation
 
-**Core value:** Egy ügyfél-felmérésből a lehető leggyorsabban konkrét, „agentic development"-re alkalmas, development-ready igény szülessen — miközben az app a használóját „junior → senior project leader" úton emeli.
-**Current focus:** Phase 02 — Felmérési flow és coaching
+- Monorepo: pnpm workspace.
+- Web: Angular standalone application with PrimeNG.
+- API: NestJS with a health endpoint and startup CORS validation.
+- Shared package: `@project-maker/contracts`.
+- Runtime topology: Nginx-hosted SPA, internal API, and PostgreSQL through Compose.
+- Product/domain source of truth: `docs/product-domain.md`.
 
-## Current Position
+## Current delivery state
 
-Phase: 02 (Felmérési flow és coaching) — EXECUTING
-Plan: 3 of 8
-Status: Ready to execute
-Last activity: 2026-07-09 — Phase 02 execution started
+Task 1 establishes the runnable foundation only. The Angular shell, NestJS health API, package gates, and static Compose topology exist. Product workflows, persistence, authentication, migrations, scoring execution, exports, and full PWA behavior are not implemented in this new platform baseline unless separately delivered and verified.
 
-Progress: [░░░░░░░░░░] 0%
+The deleted React, RxDB, IndexedDB, Vite, Tauri, Rust, and desktop-installer files are not current implementation. Their reusable product meaning is preserved in `docs/product-domain.md`; implementation recovery remains possible through the `legacy-desktop-v0.1.2` tag.
 
-## Performance Metrics
+## Next gate
 
-**Velocity:**
-
-- Total plans completed: 5
-- Average duration: - min
-- Total execution time: 0.0 hours
-
-**By Phase:**
-
-| Phase | Plans | Total | Avg/Plan |
-|-------|-------|-------|----------|
-| 01 | 5 | - | - |
-
-**Recent Trend:**
-
-- Last 5 plans: -
-- Trend: -
-
-*Updated after each plan completion*
-| Phase 01 P01 | 28min | 4 tasks | 15 files |
-| Phase 01 P02 | 20min | 2 tasks | 6 files |
-| Phase 01 P04 | 15min | 2 tasks | 10 files |
-| Phase 01 P05 | ~10min | 2 tasks | 5 files |
-| Phase 01 P03 | 20min | 2 tasks | 7 files |
-| Phase 02 P01 | 5min | 3 tasks | 5 files |
-| Phase 02 P02 | 15min | 3 tasks | 10 files |
-
-## Accumulated Context
-
-### Decisions
-
-Decisions are logged in PROJECT.md Key Decisions table.
-Recent decisions affecting current work:
-
-- [Roadmap]: Web/PWA platform (el a desktoptól); a stack nyitott, a kutatás javasolja (RxDB + React 19 + Mantine + hexagonális portok).
-- [Roadmap]: Az adatmodell/perzisztencia + portok NEM halasztható, blokkoló első fázis (a legdrágábban visszamenőleg javítható döntések).
-- [Roadmap]: A legacy Tauri-MVP migráció (MIG-01) a Phase 1 része — a domain-modell + Zod + backup/restore természetes testvére (5 fázisos roadmap).
-- [Roadmap]: A Markdown spec a kanonikus forrás — a spec-generálás (Phase 3) megelőzi az exportot (Phase 4).
-- [Roadmap]: Élő LLM-adapter és tényleges sync a mérföldkövön KÍVÜL (v2); most csak Noop-portok + sync-envelope. Minden fázis „AI és sync nélkül is teljes" (mvp mód).
-- [Phase 01]: 01-01: Installed rxdb/rxjs/zod/react-router during Task 2 (ahead of Task 3's literal pnpm add step) since Task 1's human checkpoint had already approved all 4 packages
-- [Phase 01]: 01-01: tsconfig.json moduleResolution changed Node -> Bundler to resolve react-router/dom conditional subpath export
-- [Phase 01]: 01-01: ProjectListView obtains StoragePort via a module-level lazy singleton (getStorage()) exported from src/main.tsx, avoiding repeated RxDB database opens
-- [Phase 01-02]: db.test.ts proves RxDB migration via two createRxDatabase() calls sharing a name over getRxStorageMemory(); discovered addCollections() auto-runs migratePromise() internally (autoMigrate default true) before its own promise resolves, so no explicit trigger call was needed in the test
-- [Phase 01-02]: softDelete() reuses the existing deletedAt null<->missing-key mapping helpers unchanged (deletedAt is always non-null in softDelete, so no null-omission branch was needed there)
-- [Phase 01-04]: Task 1 (LlmPort/SyncPort + Noop adapters) followed strict RED->GREEN TDD (intentionally-wrong placeholders, then fixed) since the plan marked tdd="true"
-- [Phase 01-04]: container.test.ts closes the RxdbStorageAdapter's private db field via a test-only cast in afterEach, because removeRxDatabase() does not clear RxDB's USED_DATABASE_NAMES registry and createContainer() does not expose the db handle
-- [Phase 01-05]: InMemoryStorageAdapter implements the full current StoragePort (list/get/put/softDelete), not just 3 methods — StoragePort gained softDelete in 01-02 before this plan ran
-- [Phase 01-05]: Fixture loaded via native ESM JSON import (resolveJsonModule) instead of fs.readFileSync+fileURLToPath, which threw under this project's Vite/Vitest pipeline
-- [Phase 01-03]: TDD RED confirmed by temporarily reverting StoragePort/StorageAdapter/backup.ts before writing backup.test.ts, verifying 2 real failures, then re-applying the implementation for GREEN
-- [Phase 01-03]: InMemoryStorageAdapter (01-05 test double) extended with exportBackup/importBackup reusing backup.ts helpers, after tsc flagged it as incorrectly implementing the widened StoragePort
-- [Phase 01-03]: importBackup() restore writes bypass put() and call collection.upsert() directly, preserving original revision/updatedAt/updatedBy instead of bumping them
-- [Phase 01-03]: ProjectListView.test.tsx assigns URL.createObjectURL/revokeObjectURL directly on the real URL class rather than vi.stubGlobal, since stubbing a plain object copy breaks new URL() elsewhere (react-router)
-- [Phase 02-01]: @types/react/@types/react-dom bumped to @19 alongside react/react-dom runtime bump (required for tsc --noEmit against React 19, not in RESEARCH.md's literal install command but plan flagged it explicitly)
-- [Phase 02-01]: Package legitimacy for @mantine/core, @mantine/hooks, react-hook-form confirmed via npm registry metadata (repository.url/maintainers) before human approval; all matched audited source repos, no typosquat indicators
-- [Phase 02-01]: MantineProvider wraps existing RouterProvider in src/main.tsx without touching router config (createBrowserRouter/single route unchanged) per plan scope boundary
-- [Phase 02-02]: createEmptyProject's playbookId is a mandatory first positional param, never defaulted (D-03); 3 existing call sites pass literal general until 02-05's real playbook-select flow
-- [Phase 02-02]: RxDBMigrationSchemaPlugin registered in db.ts itself (not only test files) so migrationStrategies[1] actually runs in production browser use
-- [Phase 02-02]: legacyImport.ts backfills playbookId: general before ProjectSchema.safeParse, mirroring db.ts's RxDB migration at a second independent data-entry point
-
-### Pending Todos
-
-[From .planning/todos/pending/ — ideas captured during sessions]
-
-None yet.
-
-### Blockers/Concerns
-
-[Issues that affect future work]
-
-- [Phase 4]: Végleges PDF-lib döntés (@react-pdf/renderer vs pdfmake) worst-case, magyar ékezetes fixtúrán zárandó; ExcelJS pontos verzióra pinnelendő.
-- [Phase 2-3]: Determinisztikus coaching/minőség-heurisztika konkrét mintái MEDIUM confidence — kevés precedens, planning során iterálni.
-
-## Deferred Items
-
-Items acknowledged and carried forward from previous milestone close:
-
-| Category | Item | Status | Deferred At |
-|----------|------|--------|-------------|
-| AI | Élő LLM-adapter (AI-01, AI-02) — v2 | Deferred | 2026-07-08 |
-| Sync | Multi-user felhő-sync + auth + konfliktus-feloldás (SYNC-01..03) — v2 | Deferred | 2026-07-08 |
-| Input | Interjú-jegyzet / hang-input transzkripció (INPUT-01) — v2 | Deferred | 2026-07-08 |
-
-## Session Continuity
-
-Last session: 2026-07-09T21:57:18.121Z
-Stopped at: Completed 02-02-PLAN.md
-Resume file: 
-None
+Continue from the approved web-platform implementation plan. Before any repository decision or edit, refresh `WORK_STATE`; do not infer current branch, HEAD, worktree, upstream, or PR state from this document.

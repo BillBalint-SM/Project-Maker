@@ -1,0 +1,293 @@
+<section aria-labelledby="question-bank-title">
+  <div class="heading-row">
+    <div class="page-heading">
+      <span class="eyebrow">Settings</span>
+      <h1 id="question-bank-title">Base question bank</h1>
+      <p>Maintain the active question set used by new project interview schemas.</p>
+    </div>
+    @if (!showForm() && !loading() && !loadError()) {
+      <p-button
+        label="New base question"
+        data-testid="new-base-question-button"
+        (onClick)="openCreateForm()"
+      />
+    }
+  </div>
+
+  @if (actionError()) {
+    <p-message severity="error" role="alert" data-testid="question-bank-action-error">
+      {{ actionError() }}
+    </p-message>
+  }
+  @if (feedback()) {
+    <p-message severity="success" role="status" data-testid="question-bank-success">
+      {{ feedback() }}
+    </p-message>
+  }
+
+  @if (showForm()) {
+    <p-card styleClass="question-form-card">
+      <ng-template #title>{{ isEditing() ? 'Edit base question' : 'New base question' }}</ng-template>
+      <ng-template #subtitle>
+        Every field is saved into a new immutable bank version.
+      </ng-template>
+      <form
+        class="question-form"
+        [formGroup]="questionForm"
+        (ngSubmit)="saveQuestion()"
+        data-testid="base-question-form"
+      >
+        <fieldset class="form-fields" [disabled]="saving()">
+        <div class="form-grid">
+          <div class="field">
+            <label for="question-stable-key">Stable key</label>
+            <input
+              id="question-stable-key"
+              class="full-width"
+              formControlName="stableKey"
+              autocomplete="off"
+              required
+              data-testid="base-question-stable-key"
+              [attr.aria-invalid]="questionForm.controls.stableKey.invalid && questionForm.controls.stableKey.touched"
+              [attr.aria-describedby]="questionForm.controls.stableKey.invalid && questionForm.controls.stableKey.touched ? 'question-stable-key-error' : null"
+            />
+            <small>Lowercase letters, numbers, and hyphens only.</small>
+            @if (questionForm.controls.stableKey.invalid && questionForm.controls.stableKey.touched) {
+              <small class="field-error" id="question-stable-key-error">
+                @if (questionForm.controls.stableKey.hasError('nonBlank')) {
+                  Enter a stable key.
+                } @else {
+                  Use lowercase letters, numbers, and hyphens only (up to 100 characters).
+                }
+              </small>
+            }
+          </div>
+
+          <div class="field">
+            <label for="question-topic">Topic</label>
+            <input
+              id="question-topic"
+              class="full-width"
+              formControlName="topic"
+              required
+              data-testid="base-question-topic"
+              [attr.aria-invalid]="questionForm.controls.topic.invalid && questionForm.controls.topic.touched"
+              [attr.aria-describedby]="questionForm.controls.topic.invalid && questionForm.controls.topic.touched ? 'question-topic-error' : null"
+            />
+            @if (questionForm.controls.topic.invalid && questionForm.controls.topic.touched) {
+              <small class="field-error" id="question-topic-error">
+                @if (questionForm.controls.topic.hasError('nonBlank')) {
+                  Enter a topic.
+                } @else {
+                  Topic must be 255 characters or fewer.
+                }
+              </small>
+            }
+          </div>
+
+          <div class="field">
+            <label for="question-control-point">Control point</label>
+            <input
+              id="question-control-point"
+              class="full-width"
+              formControlName="controlPoint"
+              required
+              data-testid="base-question-control-point"
+              [attr.aria-invalid]="questionForm.controls.controlPoint.invalid && questionForm.controls.controlPoint.touched"
+              [attr.aria-describedby]="questionForm.controls.controlPoint.invalid && questionForm.controls.controlPoint.touched ? 'question-control-point-error' : null"
+            />
+            @if (questionForm.controls.controlPoint.invalid && questionForm.controls.controlPoint.touched) {
+              <small class="field-error" id="question-control-point-error">Enter a control point.</small>
+            }
+          </div>
+
+          <div class="field">
+            <label for="question-type">Question type</label>
+            <p-select
+              inputId="question-type"
+              styleClass="full-width"
+              formControlName="type"
+              [options]="questionTypes"
+              required
+              data-testid="base-question-type"
+              (onChange)="handleTypeChange()"
+            />
+          </div>
+
+          <div class="field field-wide">
+            <label for="question-text">Question text</label>
+            <textarea
+              id="question-text"
+              class="full-width"
+              rows="4"
+              formControlName="text"
+              required
+              data-testid="base-question-text"
+              [attr.aria-invalid]="questionForm.controls.text.invalid && questionForm.controls.text.touched"
+              [attr.aria-describedby]="questionForm.controls.text.invalid && questionForm.controls.text.touched ? 'question-text-error' : null"
+            ></textarea>
+            @if (questionForm.controls.text.invalid && questionForm.controls.text.touched) {
+              <small class="field-error" id="question-text-error">Enter question text.</small>
+            }
+          </div>
+
+          <div class="field">
+            <label for="question-order">Order</label>
+            <input
+              id="question-order"
+              type="number"
+              min="1"
+              step="1"
+              class="full-width"
+              formControlName="order"
+              required
+              data-testid="base-question-order"
+              [attr.aria-invalid]="questionForm.controls.order.invalid && questionForm.controls.order.touched"
+              [attr.aria-describedby]="questionForm.controls.order.invalid && questionForm.controls.order.touched ? 'question-order-error' : null"
+            />
+            @if (questionForm.controls.order.invalid && questionForm.controls.order.touched) {
+              <small class="field-error" id="question-order-error">Order must be a whole number greater than zero.</small>
+            }
+          </div>
+
+          <div class="field field-wide">
+            <label for="question-hint">Hint (optional)</label>
+            <textarea
+              id="question-hint"
+              class="full-width"
+              rows="2"
+              formControlName="hint"
+              data-testid="base-question-hint"
+            ></textarea>
+          </div>
+
+          @if (isSelectType()) {
+            <div class="field field-wide">
+              <label for="question-options">Options</label>
+              <textarea
+                id="question-options"
+                class="full-width"
+                rows="4"
+                formControlName="options"
+                data-testid="base-question-options"
+                aria-describedby="question-options-help"
+              ></textarea>
+              <small id="question-options-help">One option per line. Blank lines are ignored.</small>
+            </div>
+          }
+        </div>
+
+        <fieldset class="checkbox-grid">
+          <legend>Question behavior</legend>
+          <label>
+            <input type="checkbox" formControlName="required" data-testid="base-question-required" />
+            Required
+          </label>
+          <label>
+            <input type="checkbox" formControlName="requiredForEstimate" data-testid="base-question-required-estimate" />
+            Required for estimate
+          </label>
+          <label>
+            <input type="checkbox" formControlName="blocking" data-testid="base-question-blocking" />
+            Blocking
+          </label>
+          <label>
+            <input type="checkbox" formControlName="active" data-testid="base-question-active" />
+            Active
+          </label>
+        </fieldset>
+        </fieldset>
+
+        <div class="form-actions">
+          <p-button
+            type="submit"
+            [label]="isEditing() ? 'Save changes' : 'Create question'"
+            [loading]="saving()"
+            [disabled]="saving()"
+            data-testid="save-base-question-button"
+          />
+          <p-button
+            type="button"
+            label="Cancel"
+            severity="secondary"
+            [text]="true"
+            [disabled]="saving()"
+            data-testid="cancel-base-question-button"
+            (onClick)="cancelForm()"
+          />
+        </div>
+      </form>
+    </p-card>
+  }
+
+  @if (loading()) {
+    <div class="state-panel" data-testid="question-bank-loading" aria-live="polite">
+      <p-progress-spinner ariaLabel="Loading base question bank" />
+      <p>Loading question bank…</p>
+    </div>
+  } @else if (loadError()) {
+    <div class="state-panel" data-testid="question-bank-error" role="alert">
+      <h2>Question bank could not be loaded</h2>
+      <p>{{ loadError() }}</p>
+      <p-button
+        label="Try again"
+        severity="secondary"
+        data-testid="retry-question-bank-button"
+        (onClick)="loadBank()"
+      />
+    </div>
+  } @else if (bank(); as currentBank) {
+    <div class="bank-meta" data-testid="question-bank-meta">
+      <span>Published version <strong>{{ currentBank.version }}</strong></span>
+      <span>{{ currentBank.questions.length }} questions</span>
+    </div>
+
+    @if (currentBank.questions.length === 0) {
+      <div class="state-panel" data-testid="question-bank-empty">
+        <h2>No base questions yet</h2>
+        <p>Add the first question to make a project interview schema possible.</p>
+        @if (!showForm()) {
+          <p-button label="Create a question" (onClick)="openCreateForm()" />
+        }
+      </div>
+    } @else {
+      <div class="question-list" data-testid="question-bank-list">
+        @for (question of currentBank.questions; track question.id) {
+          <article class="question-item" [attr.data-testid]="'base-question-' + question.id">
+            <div class="question-item-heading">
+              <div>
+                <span class="question-key">{{ question.stableKey }}</span>
+                <h2>{{ question.text }}</h2>
+              </div>
+              <div class="question-tags">
+                <p-tag [value]="question.type" />
+                <p-tag [value]="question.active ? 'ACTIVE' : 'ARCHIVED'" [severity]="question.active ? 'success' : 'secondary'" />
+              </div>
+            </div>
+            <dl class="question-details">
+              <div><dt>Topic</dt><dd>{{ question.topic }}</dd></div>
+              <div><dt>Control point</dt><dd>{{ question.controlPoint }}</dd></div>
+              <div><dt>Order</dt><dd>{{ question.order }}</dd></div>
+              <div><dt>Required</dt><dd>{{ question.required ? 'Yes' : 'No' }}</dd></div>
+              @if (question.options?.length) {
+                <div class="detail-wide"><dt>Options</dt><dd>{{ question.options.join(' · ') }}</dd></div>
+              }
+            </dl>
+            @if (question.hint) {
+              <p class="question-hint"><strong>Hint:</strong> {{ question.hint }}</p>
+            }
+            <div class="item-actions">
+              <p-button
+                label="Edit"
+                severity="secondary"
+                [outlined]="true"
+                [attr.data-testid]="'edit-base-question-' + question.id"
+                (onClick)="editQuestion(question)"
+              />
+            </div>
+          </article>
+        }
+      </div>
+    }
+  }
+</section>

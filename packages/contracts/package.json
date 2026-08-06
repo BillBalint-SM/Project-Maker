@@ -1,0 +1,28 @@
+{
+  "name": "@project-maker/contracts",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./runtime": {
+      "types": "./dist/projects.d.ts",
+      "import": "./dist/projects.js",
+      "require": "./dist/runtime-cjs/projects.js"
+    }
+  },
+  "files": ["dist", "playbooks"],
+  "scripts": {
+    "build": "tsc --project tsconfig.json && tsc --project tsconfig.runtime.json && node scripts/prepare-cjs-runtime.mjs",
+    "test": "pnpm build && node --test test/*.test.mjs",
+    "typecheck": "tsc --project tsconfig.json --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "6.0.3"
+  }
+}

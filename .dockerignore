@@ -1,0 +1,16 @@
+.angular
+.env
+.env.*
+.git
+.planning
+.superpowers
+apps/*/dist
+apps/*/dist-test
+apps/*/node_modules
+coverage
+docs
+node_modules
+packages/*/dist
+playwright-report
+test-results
+*.log

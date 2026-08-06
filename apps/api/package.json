@@ -1,0 +1,41 @@
+{
+  "name": "@project-maker/api",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "build": "nest build && node scripts/copy-general-playbook.mjs",
+    "start": "nest start",
+    "start:dev": "nest start --watch",
+    "start:prod": "node dist/main.js",
+    "migration:run": "typeorm-ts-node-commonjs -d src/database/migration-data-source.ts migration:run",
+    "migration:revert": "typeorm-ts-node-commonjs -d src/database/migration-data-source.ts migration:revert",
+    "migration:show": "typeorm-ts-node-commonjs -d src/database/migration-data-source.ts migration:show",
+    "test": "tsc --project ./test/tsconfig.json && node --test ./dist-test/test/*.spec.js ./dist-test/test/*e2e-spec.js",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@nestjs/common": "11.1.28",
+    "@nestjs/config": "4.0.4",
+    "@nestjs/core": "11.1.28",
+    "@nestjs/platform-express": "11.1.28",
+    "@nestjs/terminus": "11.1.1",
+    "@nestjs/typeorm": "11.0.3",
+    "@project-maker/contracts": "workspace:*",
+    "class-transformer": "0.5.1",
+    "class-validator": "0.14.2",
+    "pg": "8.22.0",
+    "reflect-metadata": "0.2.2",
+    "rxjs": "7.8.2",
+    "typeorm": "1.1.0"
+  },
+  "devDependencies": {
+    "@nestjs/cli": "11.0.24",
+    "@nestjs/testing": "11.1.28",
+    "@types/node": "26.1.2",
+    "@types/pg": "8.20.3",
+    "@types/supertest": "7.2.1",
+    "supertest": "7.2.2",
+    "ts-node": "10.9.2",
+    "typescript": "6.0.3"
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "declaration": true,
+    "declarationMap": true,
+    "module": "CommonJS",
+    "moduleResolution": "Node",
+    "outDir": "dist/runtime-cjs",
+    "rootDir": "src",
+    "ignoreDeprecations": "6.0",
+    "verbatimModuleSyntax": false
+  },
+  "include": ["src/projects.ts"]
+}
