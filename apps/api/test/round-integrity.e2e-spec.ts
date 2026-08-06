@@ -5,6 +5,7 @@ import { DataSource } from 'typeorm';
 
 import { Core0001Core1785916800000 } from '../src/migrations/0001-core';
 import { QuestionsRounds0002QuestionsRounds1786003200000 } from '../src/migrations/0002-questions-rounds';
+import { InitialIntakeOpenRound0005InitialIntakeOpenRound1786262400000 } from '../src/migrations/0005-initial-intake-open-round';
 
 interface RoundFixture {
   readonly openRoundId: string;
@@ -68,6 +69,23 @@ async function insertRound(
   return { roundId, snapshotId };
 }
 
+async function insertOpenInitialIntakeRound(
+  dataSource: DataSource,
+  projectId: string,
+  schemaId: string,
+): Promise<string> {
+  const roundId = randomUUID();
+
+  await dataSource.query(
+    `INSERT INTO "interview_rounds" (
+      "id", "project_id", "project_schema_id", "type", "source"
+    ) VALUES ($1, $2, $3, 'INITIAL_INTAKE', 'DIRECT_SQL_PROOF')`,
+    [roundId, projectId, schemaId],
+  );
+
+  return roundId;
+}
+
 async function insertMoveFixture(dataSource: DataSource): Promise<RoundFixture> {
   const { projectId, schemaId, baseQuestionId } = await insertProjectSchema(
     dataSource,
@@ -109,6 +127,7 @@ describe('Round integrity database boundary (PostgreSQL)', () => {
       migrations: [
         Core0001Core1785916800000,
         QuestionsRounds0002QuestionsRounds1786003200000,
+        InitialIntakeOpenRound0005InitialIntakeOpenRound1786262400000,
       ],
     });
     await dataSource.initialize();
@@ -172,5 +191,54 @@ describe('Round integrity database boundary (PostgreSQL)', () => {
       [round.roundId],
     );
     assert.deepEqual(roundRows, [{ completedAt: null, status: 'OPEN' }]);
+  });
+
+  it('rejects a second open INITIAL_INTAKE round for the same project', async () => {
+    const { projectId, schemaId } = await insertProjectSchema(
+      dataSource,
+      `R2 open initial uniqueness ${Date.now()}`,
+    );
+    await insertOpenInitialIntakeRound(dataSource, projectId, schemaId);
+
+    await assert.rejects(
+      dataSource.query(
+        `INSERT INTO "interview_rounds" (
+          "id", "project_id", "project_schema_id", "type", "source"
+        ) VALUES ($1, $2, $3, 'INITIAL_INTAKE', 'DIRECT_SQL_PROOF')`,
+        [randomUUID(), projectId, schemaId],
+      ),
+      (error: { code?: string; constraint?: string }) => {
+        assert.equal(error.code, '23505');
+        assert.equal(error.constraint, 'uq_interview_rounds_open_initial_intake');
+        return true;
+      },
+    );
+  });
+
+  it('allows a later open INITIAL_INTAKE round after the prior one is completed', async () => {
+    const { projectId, schemaId } = await insertProjectSchema(
+      dataSource,
+      `R2 completed then open initial ${Date.now()}`,
+    );
+    const completedRoundId = await insertOpenInitialIntakeRound(dataSource, projectId, schemaId);
+
+    await dataSource.query(
+      'UPDATE "interview_rounds" SET "status" = \'COMPLETED\', "completed_at" = CURRENT_TIMESTAMP WHERE "id" = $1',
+      [completedRoundId],
+    );
+
+    const laterOpenRoundId = await insertOpenInitialIntakeRound(dataSource, projectId, schemaId);
+    const roundRows = await dataSource.query<Array<{ id: string; status: string; type: string }>>(
+      `SELECT "id", "status", "type"
+       FROM "interview_rounds"
+       WHERE "project_id" = $1
+       ORDER BY "created_at" ASC`,
+      [projectId],
+    );
+
+    assert.deepEqual(roundRows, [
+      { id: completedRoundId, status: 'COMPLETED', type: 'INITIAL_INTAKE' },
+      { id: laterOpenRoundId, status: 'OPEN', type: 'INITIAL_INTAKE' },
+    ]);
   });
 });

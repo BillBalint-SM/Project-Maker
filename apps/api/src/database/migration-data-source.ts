@@ -8,6 +8,7 @@ import { Core0001Core1785916800000 } from '../migrations/0001-core';
 import { QuestionsRounds0002QuestionsRounds1786003200000 } from '../migrations/0002-questions-rounds';
 import { MarkdownRevisions0003MarkdownRevisions1786089600000 } from '../migrations/0003-markdown-revisions';
 import { CustomerFollowUps0004CustomerFollowUps1786176000000 } from '../migrations/0004-customer-follow-ups';
+import { InitialIntakeOpenRound0005InitialIntakeOpenRound1786262400000 } from '../migrations/0005-initial-intake-open-round';
 
 const runtime = globalThis as typeof globalThis & {
   readonly process: { readonly env: Readonly<Record<string, string | undefined>> };
@@ -22,6 +23,7 @@ const dataSource = new DataSource({
     QuestionsRounds0002QuestionsRounds1786003200000,
     MarkdownRevisions0003MarkdownRevisions1786089600000,
     CustomerFollowUps0004CustomerFollowUps1786176000000,
+    InitialIntakeOpenRound0005InitialIntakeOpenRound1786262400000,
   ],
 });
 
