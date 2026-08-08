@@ -85,6 +85,7 @@ ordered TypeORM migrations registered in
 2. `0002-questions-rounds.ts` — base questions, project schemas, immutable interview snapshots.
 3. `0003-markdown-revisions.ts` — versioned Markdown revisions and immutability guard.
 4. `0004-customer-follow-ups.ts` — follow-up state, delivery status, and scheduling fields.
+5. `0005-initial-intake-open-round.ts` — partial unique index for at most one open `INITIAL_INTAKE` round per project; it fails fast when existing data contains duplicates.
 
 The deployed API image contains the compiled migration classes, but not the
 TypeScript migration source tree used by the development-only
@@ -135,7 +136,7 @@ docker compose --env-file .env exec -T api node -e $migrationStatusScript
 
 `pending: false` means that all migration classes in the running image are
 recorded in the database. The `applied` array is the database's migration
-history; the four expected names are listed above.
+history; the five expected names are listed above.
 
 There is no safe arbitrary migration selector in the runtime image. A
 controlled revert can undo only the latest applied migration through a
@@ -155,6 +156,10 @@ again will automatically run the reverted migration forward, so this is a
 recovery/inspection operation, not a supported permanent application
 downgrade. A permanent downgrade requires a separately built, compatibility-
 reviewed image and a restore plan owned by the deployment team.
+
+Reverting `0005` removes only its partial unique index; it does not remove
+interview-round rows. Before any revert, inspect the migration and choose the
+rollback procedure appropriate to the affected objects.
 
 ### PostgreSQL backup
 
@@ -194,6 +199,9 @@ perform the health/smoke gates before allowing normal users back in.
   creates immutable interview rounds, records answers, and completes rounds.
 - A completed round keeps the question text/order/schema version that existed
   when the round started; later question-bank edits do not rewrite that round.
+- The cockpit can archive and restore a project. It exposes permanent deletion
+  only for an eligible bare `DRAFT`; a project with persisted activity is
+  retained and must be archived.
 
 ### Markdown execution-plan revisions
 
@@ -238,6 +246,10 @@ These are intentionally separate flows:
   one exists, records `lastPingAt`, `nextPingAt`, `lastDeliveryStatus`, and a
   non-sensitive error code, and can be disabled or given an expiry time.
 
+The follow-up state in this section is an email-delivery schedule. It is not the
+unimplemented `INTAKE-04` feature for managing discovery follow-ups with owner,
+due date, answer/decision, and next step.
+
 Relevant API routes:
 
 ```text
@@ -264,7 +276,7 @@ pnpm compose:up
 ```
 
 The Compose smoke gate should confirm `/api/health`, base-question seeding,
-all four migrations, Markdown download headers/content, and the expected
+all five migrations, Markdown download headers/content, and the expected
 `503` response when SMTP is intentionally disabled. A local SMTP-capture
 container can be used to verify manual review, manual ping, and due-timer
 delivery without using production credentials.

@@ -16,6 +16,12 @@ The platform-neutral product workflow, vocabulary, domain data intent, general i
 The current runtime, migration, backup/restore, SMTP, VPN boundary, and
 verification handoff is documented in [`docs/operations-handoff.md`](docs/operations-handoff.md).
 
+## Documentation
+
+Start with the [documentation index](docs/README.md). The
+[roadmap](docs/roadmap.md) is the current delivery-status source; the product
+domain describes intended behavior and must not be read as a release record.
+
 ## Prerequisites
 
 - Node.js `^22.22.3`, `^24.15.0`, or `>=26.0.0`
