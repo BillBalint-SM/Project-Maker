@@ -101,7 +101,7 @@
           (ngSubmit)="saveWorkspace()"
           data-testid="workspace-form"
         >
-          <fieldset class="workspace-fields" [disabled]="saving() || transitioning() || deleting() || isArchived()">
+          <fieldset class="workspace-fields" [disabled]="saving() || transitioning() || deleting() || discoveryFollowUpSaving() || isArchived()">
           <div class="field">
             <label for="project-status">Lifecycle status</label>
             <p-select
@@ -171,7 +171,7 @@
             type="submit"
             label="Save workspace"
             [loading]="saving()"
-            [disabled]="saving() || transitioning() || deleting() || isArchived()"
+            [disabled]="saving() || transitioning() || deleting() || discoveryFollowUpSaving() || isArchived()"
             data-testid="save-workspace-button"
           />
         </form>
@@ -414,7 +414,7 @@
             <p-button
               label="Restore project"
               [loading]="transitioning()"
-              [disabled]="transitioning() || deleting()"
+              [disabled]="transitioning() || deleting() || discoveryFollowUpSaving()"
               data-testid="restore-project-button"
               (onClick)="restoreProject()"
             />
@@ -425,7 +425,7 @@
               severity="danger"
               [outlined]="true"
               [loading]="transitioning()"
-              [disabled]="transitioning() || deleting() || saving() || pinging() || reviewSending()"
+              [disabled]="transitioning() || deleting() || saving() || discoveryFollowUpSaving() || pinging() || reviewSending()"
               data-testid="archive-project-button"
               (onClick)="archiveProject()"
             />
@@ -441,32 +441,183 @@
               severity="danger"
               [outlined]="true"
               [loading]="deleting()"
-              [disabled]="deleting() || transitioning() || saving() || followUpSaving() || pinging() || reviewSending()"
+              [disabled]="deleting() || transitioning() || saving() || followUpSaving() || discoveryFollowUpSaving() || pinging() || reviewSending()"
               data-testid="delete-project-button"
               (onClick)="requestProjectDeletion()"
             />
           </p-card>
         }
 
-        <p-confirmdialog #projectDeletionDialog key="project-delete" [defaultFocus]="'none'">
-          <ng-template #footer>
-            <div data-testid="project-delete-confirmation">
-              <p-button
-                label="Cancel"
-                [autofocus]="true"
-                data-testid="cancel-project-delete-button"
-                (onClick)="projectDeletionDialog.onReject()"
-              />
-              <p-button
-                label="Delete project"
-                severity="danger"
-                data-testid="confirm-project-delete-button"
-                (onClick)="projectDeletionDialog.onAccept()"
-              />
-            </div>
-          </ng-template>
-        </p-confirmdialog>
       </aside>
     </div>
+
+    <p-card data-testid="discovery-follow-ups-card">
+      <ng-template #title>Discovery follow-ups</ng-template>
+      <ng-template #subtitle>
+        Record one accountable unresolved discovery item. Archived projects remain readable.
+      </ng-template>
+
+      <form
+        class="discovery-follow-up-form"
+        [formGroup]="discoveryFollowUpForm"
+        (ngSubmit)="createDiscoveryFollowUp()"
+        data-testid="discovery-follow-up-form"
+      >
+        <fieldset
+          class="discovery-follow-up-fields"
+          [disabled]="discoveryFollowUpControlsDisabled()"
+        >
+          <legend class="sr-only">Create discovery follow-up</legend>
+          <div class="field">
+            <label for="discovery-follow-up-category">Category</label>
+            <p-select
+              inputId="discovery-follow-up-category"
+              styleClass="full-width"
+              formControlName="category"
+              [options]="discoveryFollowUpCategoryOptions"
+              optionLabel="label"
+              optionValue="value"
+              data-testid="discovery-follow-up-category-select"
+            />
+            @if (
+              discoveryFollowUpForm.controls.category.invalid &&
+              discoveryFollowUpForm.controls.category.touched
+            ) {
+              <small class="field-error">Choose a category.</small>
+            }
+          </div>
+          <div class="field">
+            <label for="discovery-follow-up-question">Question</label>
+            <textarea
+              pTextarea
+              id="discovery-follow-up-question"
+              class="full-width"
+              rows="3"
+              formControlName="question"
+              data-testid="discovery-follow-up-question-input"
+            ></textarea>
+            @if (
+              discoveryFollowUpForm.controls.question.hasError('maxlength') &&
+              discoveryFollowUpForm.controls.question.touched
+            ) {
+              <small class="field-error">Question must be 10,000 characters or fewer.</small>
+            } @else if (
+              discoveryFollowUpForm.controls.question.invalid &&
+              discoveryFollowUpForm.controls.question.touched
+            ) {
+              <small class="field-error">Question is required.</small>
+            }
+          </div>
+          <div class="field">
+            <label for="discovery-follow-up-owner">Owner</label>
+            <input
+              pInputText
+              id="discovery-follow-up-owner"
+              class="full-width"
+              formControlName="owner"
+              data-testid="discovery-follow-up-owner-input"
+            />
+            @if (
+              discoveryFollowUpForm.controls.owner.hasError('maxlength') &&
+              discoveryFollowUpForm.controls.owner.touched
+            ) {
+              <small class="field-error">Owner must be 255 characters or fewer.</small>
+            } @else if (
+              discoveryFollowUpForm.controls.owner.invalid &&
+              discoveryFollowUpForm.controls.owner.touched
+            ) {
+              <small class="field-error">Owner is required.</small>
+            }
+          </div>
+          <div class="field">
+            <label for="discovery-follow-up-due-date">Due date</label>
+            <p-datepicker
+              inputId="discovery-follow-up-due-date"
+              styleClass="full-width"
+              formControlName="dueDate"
+              [dateFormat]="'yy-mm-dd'"
+              [showIcon]="true"
+              [appendTo]="'body'"
+              data-testid="discovery-follow-up-due-date-input"
+            />
+            @if (
+              discoveryFollowUpForm.controls.dueDate.invalid &&
+              discoveryFollowUpForm.controls.dueDate.touched
+            ) {
+              <small class="field-error">Enter a due date as YYYY-MM-DD.</small>
+            }
+          </div>
+          <div class="field">
+            <label for="discovery-follow-up-next-step">Next step</label>
+            <textarea
+              pTextarea
+              id="discovery-follow-up-next-step"
+              class="full-width"
+              rows="3"
+              formControlName="nextStep"
+              data-testid="discovery-follow-up-next-step-input"
+            ></textarea>
+            @if (
+              discoveryFollowUpForm.controls.nextStep.hasError('maxlength') &&
+              discoveryFollowUpForm.controls.nextStep.touched
+            ) {
+              <small class="field-error">Next step must be 10,000 characters or fewer.</small>
+            } @else if (
+              discoveryFollowUpForm.controls.nextStep.invalid &&
+              discoveryFollowUpForm.controls.nextStep.touched
+            ) {
+              <small class="field-error">Next step is required.</small>
+            }
+          </div>
+        </fieldset>
+        <p-button
+          type="submit"
+          label="Create discovery follow-up"
+          [loading]="discoveryFollowUpSaving()"
+          [disabled]="discoveryFollowUpControlsDisabled()"
+          data-testid="create-discovery-follow-up-button"
+        />
+      </form>
+
+      @if (current.discoveryFollowUps.length === 0) {
+        <p class="discovery-follow-up-empty">No discovery follow-ups recorded.</p>
+      } @else {
+        <ol class="audit-events discovery-follow-up-list" data-testid="discovery-follow-ups-list">
+          @for (followUp of current.discoveryFollowUps; track followUp.id) {
+            <li class="discovery-follow-up-item" data-testid="discovery-follow-up-item">
+              <div class="discovery-follow-up-meta">
+                <strong>{{ followUp.category }}</strong>
+                <p-tag [value]="followUp.status" data-testid="discovery-follow-up-status" />
+                <time [attr.datetime]="followUp.dueDate" data-testid="discovery-follow-up-due-date">
+                  {{ followUp.dueDate }}
+                </time>
+              </div>
+              <p>{{ followUp.question }}</p>
+              <p><strong>Owner:</strong> {{ followUp.owner }}</p>
+              <p><strong>Next step:</strong> {{ followUp.nextStep }}</p>
+            </li>
+          }
+        </ol>
+      }
+    </p-card>
+
+    <p-confirmdialog #projectDeletionDialog key="project-delete" [defaultFocus]="'none'">
+      <ng-template #footer>
+        <div data-testid="project-delete-confirmation">
+          <p-button
+            label="Cancel"
+            [autofocus]="true"
+            data-testid="cancel-project-delete-button"
+            (onClick)="projectDeletionDialog.onReject()"
+          />
+          <p-button
+            label="Delete project"
+            severity="danger"
+            data-testid="confirm-project-delete-button"
+            (onClick)="projectDeletionDialog.onAccept()"
+          />
+        </div>
+      </ng-template>
+    </p-confirmdialog>
   </section>
 }

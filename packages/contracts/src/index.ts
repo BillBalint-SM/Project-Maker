@@ -5,6 +5,7 @@ export * from './question-bank.js';
 export * from './interviews.js';
 export * from './markdown-revisions.js';
 export * from './follow-ups.js';
+export * from './discovery-follow-ups.js';
 export * from './audit.js';
 
 export const generalPlaybookV1SourcePath = 'playbooks/general.v1.json' as const;

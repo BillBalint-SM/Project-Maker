@@ -16,6 +16,8 @@
 - [Strict-deletion implementation plan](superpowers/plans/2026-08-07-strict-project-deletion.md)
 - [Roadmap/documentation synchronization design](superpowers/specs/2026-08-08-roadmap-documentation-sync-design.md)
 - [Roadmap/documentation synchronization plan](superpowers/plans/2026-08-08-roadmap-documentation-sync.md)
+- [Discovery follow-ups design](superpowers/specs/2026-08-08-intake-04-discovery-follow-ups-design.md)
+- [Discovery follow-ups implementation plan](superpowers/plans/2026-08-08-intake-04-discovery-follow-ups.md)
 
 ## End-user guidance
 

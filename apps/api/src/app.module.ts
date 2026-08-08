@@ -5,6 +5,7 @@ import { TerminusModule } from '@nestjs/terminus';
 
 import { AuditModule } from './audit/audit.module';
 import { DatabaseModule } from './database/database.module';
+import { DiscoveryFollowUpsModule } from './discovery-follow-ups/discovery-follow-ups.module';
 import { CustomerFollowUpModule } from './follow-ups/follow-up.module';
 import { HealthController } from './health.controller';
 import { InterviewsModule } from './interviews/interviews.module';
@@ -23,6 +24,7 @@ import { QuestionBankModule } from './question-bank/question-bank.module';
     InterviewsModule,
     MarkdownModule,
     CustomerFollowUpModule,
+    DiscoveryFollowUpsModule,
   ],
   controllers: [HealthController],
   providers: [

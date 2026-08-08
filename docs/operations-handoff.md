@@ -86,6 +86,7 @@ ordered TypeORM migrations registered in
 3. `0003-markdown-revisions.ts` — versioned Markdown revisions and immutability guard.
 4. `0004-customer-follow-ups.ts` — follow-up state, delivery status, and scheduling fields.
 5. `0005-initial-intake-open-round.ts` — partial unique index for at most one open `INITIAL_INTAKE` round per project; it fails fast when existing data contains duplicates.
+6. `0006-discovery-follow-ups.ts` — project-owned discovery follow-ups, a category enum, date-order index, update trigger, and retained-project foreign key.
 
 The deployed API image contains the compiled migration classes, but not the
 TypeScript migration source tree used by the development-only
@@ -136,7 +137,7 @@ docker compose --env-file .env exec -T api node -e $migrationStatusScript
 
 `pending: false` means that all migration classes in the running image are
 recorded in the database. The `applied` array is the database's migration
-history; the five expected names are listed above.
+history; the six expected names are listed above.
 
 There is no safe arbitrary migration selector in the runtime image. A
 controlled revert can undo only the latest applied migration through a
@@ -150,8 +151,9 @@ docker compose --env-file .env up --build --wait
 ```
 
 Each `down` implementation drops the objects owned by that migration (and
-therefore its data); for example, reverting `0004` drops follow-up state and
-reverting `0003` drops all Markdown revisions. Starting the same API image
+therefore its data); for example, reverting `0006` drops discovery follow-ups,
+reverting `0004` drops customer email follow-up state, and reverting `0003`
+drops all Markdown revisions. Starting the same API image
 again will automatically run the reverted migration forward, so this is a
 recovery/inspection operation, not a supported permanent application
 downgrade. A permanent downgrade requires a separately built, compatibility-
@@ -203,6 +205,26 @@ perform the health/smoke gates before allowing normal users back in.
   only for an eligible bare `DRAFT`; a project with persisted activity is
   retained and must be archived.
 
+### Discovery follow-up semantics
+
+Discovery follow-ups are project-owned unresolved work items, not customer
+email schedules. The cockpit lists them in deterministic due-date order and can
+create one with a closed category, question, owner, date-only due date, and next
+step. The API assigns the canonical initial status `Nyitott` and writes one
+creation audit event with only `followUpId`, category, due date, and status;
+question, owner, and next-step text are not copied into the audit payload.
+
+```text
+GET  /api/projects/{projectId}/discovery-follow-ups
+POST /api/projects/{projectId}/discovery-follow-ups
+```
+
+An empty `GET` does not create a row. Archived projects remain readable but
+`POST` returns `409`; restoring the project re-enables creation. A persisted
+discovery follow-up is retained project activity, so a `DRAFT` project with one
+cannot be permanently deleted and the database foreign key also restricts a
+late deletion race.
+
 ### Markdown execution-plan revisions
 
 The cockpit’s **Markdown** page (`/projects/:projectId/markdown`) supports a
@@ -247,8 +269,8 @@ These are intentionally separate flows:
   non-sensitive error code, and can be disabled or given an expiry time.
 
 The follow-up state in this section is an email-delivery schedule. It is not the
-unimplemented `INTAKE-04` feature for managing discovery follow-ups with owner,
-due date, answer/decision, and next step.
+delivered `INTAKE-04.1` discovery-follow-up work-item slice; edit, resolve,
+source linkage, and answer/decision behavior remain later discovery work.
 
 Relevant API routes:
 
@@ -276,7 +298,7 @@ pnpm compose:up
 ```
 
 The Compose smoke gate should confirm `/api/health`, base-question seeding,
-all five migrations, Markdown download headers/content, and the expected
+all six migrations, Markdown download headers/content, and the expected
 `503` response when SMTP is intentionally disabled. A local SMTP-capture
 container can be used to verify manual review, manual ping, and due-timer
 delivery without using production credentials.

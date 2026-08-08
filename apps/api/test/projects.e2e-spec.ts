@@ -158,6 +158,293 @@ describe('ProjectsController (e2e)', () => {
     assert.equal(afterPatch[0]?.count, '1');
   });
 
+  it('lists no discovery follow-ups for an existing project without writing a row', async () => {
+    const projectId = await createProject('discovery-follow-ups-empty');
+
+    const response = await request(app.getHttpServer())
+      .get(`/projects/${projectId}/discovery-follow-ups`)
+      .expect(200);
+
+    assert.deepEqual(response.body, []);
+    const rows = await dataSource.query<Array<{ count: string }>>(
+      'SELECT COUNT(*)::text AS "count" FROM "discovery_follow_ups" WHERE "project_id" = $1',
+      [projectId],
+    );
+    assert.equal(rows[0]?.count, '0');
+  });
+
+  it('returns 404 when listing discovery follow-ups for a missing project', async () => {
+    await request(app.getHttpServer())
+      .get('/projects/00000000-0000-4000-8000-000000000000/discovery-follow-ups')
+      .expect(404);
+  });
+
+  it('creates discovery follow-ups with the canonical initial status and deterministic list order', async () => {
+    const projectId = await createProject('discovery-follow-up-create');
+
+    const later = await request(app.getHttpServer())
+      .post(`/projects/${projectId}/discovery-follow-ups`)
+      .send({
+        category: 'TECHNICAL',
+        question: '  Which API version is supported?  ',
+        owner: '  API team  ',
+        dueDate: '2026-09-17',
+        nextStep: '  Confirm against the vendor contract.  ',
+      })
+      .expect(201);
+    const earlier = await request(app.getHttpServer())
+      .post(`/projects/${projectId}/discovery-follow-ups`)
+      .send({
+        category: 'BUSINESS',
+        question: 'What approval is required?',
+        owner: 'Product owner',
+        dueDate: '2026-09-16',
+        nextStep: 'Book an approval decision.',
+      })
+      .expect(201);
+
+    assert.equal(later.body.status, 'Nyitott');
+    assert.equal(later.body.question, 'Which API version is supported?');
+    assert.equal(later.body.owner, 'API team');
+    assert.equal(later.body.nextStep, 'Confirm against the vendor contract.');
+    assert.equal(later.body.dueDate, '2026-09-17');
+
+    const list = await request(app.getHttpServer())
+      .get(`/projects/${projectId}/discovery-follow-ups`)
+      .expect(200);
+    assert.deepEqual(
+      list.body.map((value: { id: string; dueDate: string }) => ({
+        id: value.id,
+        dueDate: value.dueDate,
+      })),
+      [
+        { id: earlier.body.id, dueDate: '2026-09-16' },
+        { id: later.body.id, dueDate: '2026-09-17' },
+      ],
+    );
+
+    const auditRows = await dataSource.query<
+      Array<{ event_type: string; payload: Record<string, unknown> }>
+    >(
+      'SELECT "event_type", "payload" FROM "audit_events" WHERE "project_id" = $1 AND "event_type" = $2 ORDER BY "created_at" ASC, "id" ASC',
+      [projectId, 'DISCOVERY_FOLLOW_UP_CREATED'],
+    );
+    assert.deepEqual(auditRows, [
+      {
+        event_type: 'DISCOVERY_FOLLOW_UP_CREATED',
+        payload: {
+          followUpId: later.body.id,
+          category: 'TECHNICAL',
+          dueDate: '2026-09-17',
+          status: 'Nyitott',
+        },
+      },
+      {
+        event_type: 'DISCOVERY_FOLLOW_UP_CREATED',
+        payload: {
+          followUpId: earlier.body.id,
+          category: 'BUSINESS',
+          dueDate: '2026-09-16',
+          status: 'Nyitott',
+        },
+      },
+    ]);
+    assert.doesNotMatch(JSON.stringify(auditRows), /API team|vendor contract|approval decision/);
+  });
+
+  it('rejects invalid discovery follow-up input without echoing submitted values', async () => {
+    const projectId = await createProject('discovery-follow-up-validation');
+    const tooLongQuestion = 'Q'.repeat(10_001);
+    const tooLongOwner = 'O'.repeat(256);
+    const tooLongNextStep = 'N'.repeat(10_001);
+    const invalidBodies: ReadonlyArray<{
+      readonly body: Record<string, string>;
+      readonly forbidden: readonly string[];
+    }> = [
+      {
+        body: {
+          category: 'NOT_A_CATEGORY',
+          question: 'unknown-category-question-sentinel',
+          owner: 'Owner',
+          dueDate: '2026-09-16',
+          nextStep: 'Next',
+        },
+        forbidden: ['NOT_A_CATEGORY', 'unknown-category-question-sentinel'],
+      },
+      {
+        body: {
+          question: 'missing-category-question-sentinel',
+          owner: 'Owner',
+          dueDate: '2026-09-16',
+          nextStep: 'Next',
+        },
+        forbidden: ['missing-category-question-sentinel'],
+      },
+      {
+        body: {
+          category: 'BUSINESS',
+          question: '   ',
+          owner: 'Owner',
+          dueDate: '2026-09-16',
+          nextStep: 'blank-question-next-step-sentinel',
+        },
+        forbidden: ['blank-question-next-step-sentinel'],
+      },
+      {
+        body: {
+          category: 'BUSINESS',
+          question: 'blank-owner-question-sentinel',
+          owner: '   ',
+          dueDate: '2026-09-16',
+          nextStep: 'Next',
+        },
+        forbidden: ['blank-owner-question-sentinel'],
+      },
+      {
+        body: {
+          category: 'BUSINESS',
+          question: 'blank-next-step-question-sentinel',
+          owner: 'Owner',
+          dueDate: '2026-09-16',
+          nextStep: '   ',
+        },
+        forbidden: ['blank-next-step-question-sentinel'],
+      },
+      {
+        body: {
+          category: 'BUSINESS',
+          question: 'missing-next-step-question-sentinel',
+          owner: 'Owner',
+          dueDate: '2026-09-16',
+        },
+        forbidden: ['missing-next-step-question-sentinel'],
+      },
+      {
+        body: {
+          category: 'BUSINESS',
+          question: 'missing-due-date-question-sentinel',
+          owner: 'Owner',
+          nextStep: 'Next',
+        },
+        forbidden: ['missing-due-date-question-sentinel'],
+      },
+      {
+        body: {
+          category: 'BUSINESS',
+          question: 'owner-limit-question-sentinel',
+          owner: tooLongOwner,
+          dueDate: '2026-09-16',
+          nextStep: 'Next',
+        },
+        forbidden: ['owner-limit-question-sentinel', tooLongOwner],
+      },
+      {
+        body: {
+          category: 'BUSINESS',
+          question: tooLongQuestion,
+          owner: 'Owner',
+          dueDate: '2026-09-16',
+          nextStep: 'Next',
+        },
+        forbidden: [tooLongQuestion],
+      },
+      {
+        body: {
+          category: 'BUSINESS',
+          question: 'impossible-date-question-sentinel',
+          owner: 'Owner',
+          dueDate: '2026-02-30',
+          nextStep: 'Next',
+        },
+        forbidden: ['impossible-date-question-sentinel', '2026-02-30'],
+      },
+      {
+        body: {
+          category: 'BUSINESS',
+          question: 'next-step-limit-question-sentinel',
+          owner: 'Owner',
+          dueDate: '2026-09-16',
+          nextStep: tooLongNextStep,
+        },
+        forbidden: ['next-step-limit-question-sentinel', tooLongNextStep],
+      },
+      {
+        body: {
+          category: 'BUSINESS',
+          question: 'malformed-date-question-sentinel',
+          owner: 'Owner',
+          dueDate: 'not-a-date',
+          nextStep: 'Next',
+        },
+        forbidden: ['malformed-date-question-sentinel', 'not-a-date'],
+      },
+      {
+        body: {
+          category: 'BUSINESS',
+          question: 'unexpected-status-question-sentinel',
+          owner: 'Owner',
+          dueDate: '2026-09-16',
+          nextStep: 'unexpected-status-next-step-sentinel',
+          status: 'Folyamatban',
+        },
+        forbidden: [
+          'unexpected-status-question-sentinel',
+          'unexpected-status-next-step-sentinel',
+          'Folyamatban',
+        ],
+      },
+    ];
+
+    for (const { body, forbidden } of invalidBodies) {
+      const response = await request(app.getHttpServer())
+        .post(`/projects/${projectId}/discovery-follow-ups`)
+        .send(body)
+        .expect(400);
+      for (const value of forbidden) {
+        assertNoSubmittedValues(response.body, value);
+      }
+    }
+  });
+
+  it('keeps discovery follow-ups readable while archived and permits creation after restore', async () => {
+    const projectId = await createProject('discovery-follow-up-archive');
+    await request(app.getHttpServer())
+      .post(`/projects/${projectId}/discovery-follow-ups`)
+      .send({
+        category: 'OPERATIONS',
+        question: 'Who owns operational handoff?',
+        owner: 'Delivery lead',
+        dueDate: '2026-09-18',
+        nextStep: 'Assign an owner.',
+      })
+      .expect(201);
+    await request(app.getHttpServer()).post(`/projects/${projectId}/archive`).expect(201);
+    await request(app.getHttpServer())
+      .get(`/projects/${projectId}/discovery-follow-ups`)
+      .expect(200);
+    await request(app.getHttpServer())
+      .post(`/projects/${projectId}/discovery-follow-ups`)
+      .send({
+        category: 'OPERATIONS',
+        question: 'Blocked while archived',
+        owner: 'Delivery lead',
+        dueDate: '2026-09-19',
+        nextStep: 'Restore first.',
+      })
+      .expect(409);
+    await request(app.getHttpServer()).post(`/projects/${projectId}/restore`).expect(201);
+    await request(app.getHttpServer())
+      .post(`/projects/${projectId}/discovery-follow-ups`)
+      .send({
+        category: 'OPERATIONS',
+        question: 'Created after restore',
+        owner: 'Delivery lead',
+        dueDate: '2026-09-19',
+        nextStep: 'Continue handoff.',
+      })
+      .expect(201);
+  });
+
   it('deletes a bare DRAFT project and makes it unreachable', async () => {
     const projectId = await createProject('delete-empty-draft');
 
@@ -201,6 +488,49 @@ describe('ProjectsController (e2e)', () => {
       .expect(200);
     await clearProjectAuditEvents(followUpProjectId);
     await expectProjectDeletionConflict(followUpProjectId);
+  });
+
+  it('rejects deletion for a DRAFT project with a persisted discovery follow-up before issuing DELETE', async () => {
+    const projectId = await createProject('delete-discovery-follow-up');
+    await request(app.getHttpServer())
+      .post(`/projects/${projectId}/discovery-follow-ups`)
+      .send({
+        category: 'SECURITY',
+        question: 'Which security approval is required?',
+        owner: 'Security lead',
+        dueDate: '2026-09-20',
+        nextStep: 'Schedule the review.',
+      })
+      .expect(201);
+    await clearProjectAuditEvents(projectId);
+
+    try {
+      await dataSource.query(`
+        CREATE OR REPLACE FUNCTION "e2e_fail_discovery_follow_up_project_delete"()
+        RETURNS trigger
+        LANGUAGE plpgsql
+        AS $$
+        BEGIN
+          RAISE EXCEPTION 'Discovery follow-up deletion guard did not stop DELETE' USING ERRCODE = '55000';
+        END;
+        $$
+      `);
+      await dataSource.query(`
+        CREATE TRIGGER "trg_e2e_fail_discovery_follow_up_project_delete"
+        BEFORE DELETE ON "projects"
+        FOR EACH ROW
+        EXECUTE FUNCTION "e2e_fail_discovery_follow_up_project_delete"()
+      `);
+
+      await expectProjectDeletionConflict(projectId);
+    } finally {
+      await dataSource.query(
+        'DROP TRIGGER IF EXISTS "trg_e2e_fail_discovery_follow_up_project_delete" ON "projects"',
+      );
+      await dataSource.query(
+        'DROP FUNCTION IF EXISTS "e2e_fail_discovery_follow_up_project_delete"()',
+      );
+    }
   });
 
   it('rejects deletion for a project with a published question schema', async () => {
