@@ -23,7 +23,8 @@ The canonical workflow is:
 - **Intake:** the structured first assessment used to decide whether an initiative is clear enough to estimate or develop.
 - **Playbook:** a versioned question set with its own readiness and decision-scoring weights. A project stores the selected playbook ID.
 - **Checklist answer:** the answer and operational state for one playbook item, including owner, due date, open question, and next step.
-- **Follow-up:** an unresolved question with a responsible owner, due date, status, answer/decision, and next step.
+- **Discovery follow-up:** a project-owned unresolved discovery work item with a responsible owner, due date, status, answer/decision, and next step. The delivered `INTAKE-04.1` slice records category, question, owner, date-only due date, canonical initial status, and next step; answer/decision and source linkage remain later work.
+- **Customer email follow-up:** an outbound communication cadence/schedule. It may send pings, but it is not a discovery work item and does not replace discovery follow-ups.
 - **Completion:** progress through relevant playbook items. Items marked not relevant are excluded from the denominator.
 - **Readiness:** a weighted measure of whether the project has enough business, ownership, checklist, and follow-up information for estimation or development.
 - **Readiness gap / gap list:** information that blocks or weakens estimation or a decision, classified as Critical, Important, or Clarification.
@@ -56,9 +57,9 @@ The model below records semantic intent, not a database schema. Stable IDs and e
 
 Each answer preserves `status`, `owner`, `dueDate`, free-text `answer`, `openQuestion`, `nextStep`, and `updatedAt`.
 
-### Follow-up
+### Discovery follow-up
 
-Each follow-up preserves a stable `id`, optional source checklist item ID, `category`, `question`, `owner`, `dueDate`, `status`, `decisionOrAnswer`, and `nextStep`.
+Each discovery follow-up ultimately preserves a stable `id`, optional source checklist item ID, `category`, `question`, `owner`, `dueDate`, `status`, `decisionOrAnswer`, and `nextStep`. Customer email follow-up state is a separate scheduling concern and is not part of this entity.
 
 ### Readiness gap
 

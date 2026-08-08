@@ -54,12 +54,14 @@
   grid-template-columns: minmax(0, 2fr) minmax(17rem, 1fr);
 }
 
-.workspace-form {
+.workspace-form,
+.discovery-follow-up-form {
   display: grid;
   gap: 1.25rem;
 }
 
-.workspace-fields {
+.workspace-fields,
+.discovery-follow-up-fields {
   border: 0;
   display: grid;
   gap: 1.25rem;
@@ -80,6 +82,24 @@
   margin: 0;
   min-inline-size: 0;
   padding: 0;
+}
+
+.discovery-follow-up-list {
+  gap: 1rem;
+  margin: 1.5rem 0 0;
+}
+
+.discovery-follow-up-item {
+  border: 1px solid var(--p-content-border-color);
+  border-radius: 0.75rem;
+  padding: 1rem;
+}
+
+.discovery-follow-up-meta {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
 }
 
 .follow-up-toggle {
