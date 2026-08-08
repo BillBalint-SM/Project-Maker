@@ -14,9 +14,13 @@ import type {
   ProjectStatus,
   ProjectWorkspace,
 } from '@project-maker/contracts';
-import { DataSource, EntityManager, Repository } from 'typeorm';
+import { DataSource, EntityManager, QueryFailedError, Repository } from 'typeorm';
 
 import { AuditEvent, type AuditPayload } from '../audit/audit-event.entity';
+import { CustomerFollowUpEntity } from '../follow-ups/follow-up.entity';
+import { InterviewRoundEntity } from '../interviews/interview-round.entity';
+import { MarkdownRevisionEntity } from '../markdown/markdown-revision.entity';
+import { ProjectQuestionSchemaEntity } from '../question-bank/project-question-schema.entity';
 import { MarkdownService } from '../markdown/markdown.service';
 import { CreateProjectDto } from './dto/create-project.dto';
 import { UpdateProjectWorkspaceDto } from './dto/update-project-workspace.dto';
@@ -24,6 +28,9 @@ import { Project } from './project.entity';
 
 const archivedStatus: ProjectStatus = 'ARCHIVED';
 const draftStatus: ProjectStatus = 'DRAFT';
+const projectDeletionConflictMessage =
+  'This project has persisted activity and cannot be deleted. Archive it instead.';
+const projectDeletionReferentialIntegrityCodes = new Set(['23001', '23503']);
 const readyForPlanningStatus: ProjectStatus = 'READY_FOR_PLANNING';
 const readyForPlanningRevision: CreateMarkdownRevisionInput = {
   reason: 'MILESTONE',
@@ -169,6 +176,26 @@ export class ProjectsService {
     });
   }
 
+  async delete(projectId: string): Promise<void> {
+    try {
+      await this.dataSource.transaction(async (manager) => {
+        const project = await findLockedProject(manager, projectId);
+        if (project.status !== draftStatus) {
+          throw new ConflictException(projectDeletionConflictMessage);
+        }
+        if (await hasPersistedProjectActivity(manager, projectId)) {
+          throw new ConflictException(projectDeletionConflictMessage);
+        }
+        await manager.getRepository(Project).remove(project);
+      });
+    } catch (error) {
+      if (isProjectDeletionReferentialIntegrityViolation(error)) {
+        throw new ConflictException(projectDeletionConflictMessage);
+      }
+      throw error;
+    }
+  }
+
   private async findProject(projectId: string): Promise<Project> {
     const project = await this.projectRepository.findOneBy({ id: projectId });
     if (!project) {
@@ -187,6 +214,36 @@ async function findLockedProject(manager: EntityManager, projectId: string): Pro
     throw new NotFoundException('Project not found.');
   }
   return project;
+}
+
+async function hasPersistedProjectActivity(
+  manager: EntityManager,
+  projectId: string,
+): Promise<boolean> {
+  if (await manager.getRepository(AuditEvent).existsBy({ projectId })) {
+    return true;
+  }
+  if (await manager.getRepository(ProjectQuestionSchemaEntity).existsBy({ projectId })) {
+    return true;
+  }
+  if (await manager.getRepository(InterviewRoundEntity).existsBy({ projectId })) {
+    return true;
+  }
+  if (await manager.getRepository(MarkdownRevisionEntity).existsBy({ projectId })) {
+    return true;
+  }
+  return manager.getRepository(CustomerFollowUpEntity).existsBy({ projectId });
+}
+
+function isProjectDeletionReferentialIntegrityViolation(error: unknown): boolean {
+  if (!(error instanceof QueryFailedError)) {
+    return false;
+  }
+  const driverError = error.driverError as { readonly code?: unknown };
+  return (
+    typeof driverError.code === 'string' &&
+    projectDeletionReferentialIntegrityCodes.has(driverError.code)
+  );
 }
 
 function hasField(

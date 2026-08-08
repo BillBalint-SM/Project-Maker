@@ -1,7 +1,10 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
+  HttpCode,
+  HttpStatus,
   Param,
   ParseUUIDPipe,
   Patch,
@@ -54,5 +57,13 @@ export class ProjectsController {
     @Param('projectId', new ParseUUIDPipe()) projectId: string,
   ): Promise<ProjectWorkspace> {
     return this.projectsService.restore(projectId);
+  }
+
+  @Delete(':projectId')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  deleteProject(
+    @Param('projectId', new ParseUUIDPipe()) projectId: string,
+  ): Promise<void> {
+    return this.projectsService.delete(projectId);
   }
 }

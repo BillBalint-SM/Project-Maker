@@ -137,6 +137,12 @@ export class ProjectApiService {
       .pipe(catchError((error: unknown) => this.fail(error, 'save the workspace')));
   }
 
+  deleteProject(projectId: string): Observable<void> {
+    return this.http
+      .delete<void>(`/api/projects/${encodeURIComponent(projectId)}`)
+      .pipe(catchError((error: unknown) => this.fail(error, 'delete the project')));
+  }
+
   archiveProject(projectId: string): Observable<ProjectWorkspace> {
     return this.http
       .post<ProjectWorkspace>(
@@ -196,6 +202,9 @@ function toActionableError(error: unknown, action: string): ActionableError {
 
 function followUpErrorNextStep(status: number, action: string): string {
   if (status === 409) {
+    if (action === 'delete the project') {
+      return 'The project now has persisted activity and cannot be deleted. Archive it instead.';
+    }
     if (action === 'save follow-up settings') {
       return 'The project may be archived or changed. Refresh the cockpit and try again.';
     }
