@@ -17,6 +17,7 @@ import type {
 import { DataSource, EntityManager, QueryFailedError, Repository } from 'typeorm';
 
 import { AuditEvent, type AuditPayload } from '../audit/audit-event.entity';
+import { DiscoveryFollowUpEntity } from '../discovery-follow-ups/discovery-follow-up.entity';
 import { CustomerFollowUpEntity } from '../follow-ups/follow-up.entity';
 import { InterviewRoundEntity } from '../interviews/interview-round.entity';
 import { MarkdownRevisionEntity } from '../markdown/markdown-revision.entity';
@@ -230,6 +231,9 @@ async function hasPersistedProjectActivity(
     return true;
   }
   if (await manager.getRepository(MarkdownRevisionEntity).existsBy({ projectId })) {
+    return true;
+  }
+  if (await manager.getRepository(DiscoveryFollowUpEntity).existsBy({ projectId })) {
     return true;
   }
   return manager.getRepository(CustomerFollowUpEntity).existsBy({ projectId });
