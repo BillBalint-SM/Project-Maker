@@ -2,8 +2,9 @@
 
 This is the current delivery baseline. Checked items are verified in the
 Angular/NestJS monorepo; unchecked items remain future delivery work.
-The guided-intake Task 6 verification evidence is tracked in
-`.superpowers/sdd/2026-08-06-guided-intake-persistence/task-6-report.md`.
+Current delivery status is maintained in [`docs/roadmap.md`](../docs/roadmap.md).
+The historical guided-intake execution record is preserved in the tracked
+[guided-intake plan](../docs/superpowers/plans/2026-08-06-guided-intake-persistence.md).
 
 ## Foundation
 
@@ -17,7 +18,7 @@ The guided-intake Task 6 verification evidence is tracked in
 ## Product domain and intake
 
 - [x] **DOMAIN-01:** Product workflow, domain terms, the version-1 playbook, and scoring contract are defined in `docs/product-domain.md` and `packages/contracts`.
-- [ ] **INTAKE-01:** Users can create, list, edit, archive, reopen, and explicitly delete projects.
+- [x] **INTAKE-01:** Users can create, list, edit, archive, restore, and explicitly delete projects. A bare `DRAFT` is physically deleted; any persisted activity returns a generic conflict and the project must be archived instead.
 - [x] **INTAKE-02:** Users can run the versioned guided interview/checklist and record answers. Verified for the first `INITIAL_INTAKE` slice: a published project question schema starts exactly one open round, records answers, rejects duplicate open starts with HTTP 409, validates completion server-side, keeps completed rounds immutable, and allows a later initial round after completion.
 - [x] **INTAKE-03:** Answers autosave and remain recoverable after restart. Verified for persisted answers in the first `INITIAL_INTAKE` slice: text autosaves after the 750 ms quiet period, discrete values save immediately, failed saves keep the draft and expose retry, reload/API restart/Compose-backed recovery return the same active round and answer from PostgreSQL.
 - [ ] **INTAKE-04:** Users can manage follow-ups with owner, due date, status, answer/decision, and next step.
@@ -29,12 +30,14 @@ The guided-intake Task 6 verification evidence is tracked in
 - [ ] **OUTPUT-01:** Structured Markdown is the canonical generated specification.
 - [ ] **OUTPUT-02:** Acceptance criteria and user stories derive from the canonical specification.
 - [ ] **OUTPUT-03:** PDF and spreadsheet exports derive from the canonical specification and handle Hungarian text and dynamic content.
+- [x] **DOC-00:** A Git-tracked roadmap and documentation index distinguish delivered behavior, planned work, opportunities, improvements, and historical delivery evidence.
 
 ## Data and platform evolution
 
 - [ ] **DATA-01:** PostgreSQL schema preserves stable IDs, timestamps, archived state, selected playbook version, answers, follow-ups, and derived-state provenance.
 - [ ] **DATA-02:** Schema migrations are explicit, versioned, and reversible where practical.
 - [ ] **DATA-03:** Backup and restore are implemented and verified on the current platform.
+- [ ] **DOC-01:** A Hungarian end-user guide explains the stable delivered workflows without presenting planned domain behavior as available functionality.
 - [ ] **MIG-01:** Supported project exports can be imported non-destructively and idempotently.
 - [ ] **PWA-01:** The Angular application is installable and its offline/update behavior is verified.
 - [ ] **SEC-01:** Authentication and authorization are defined before multi-user data access is enabled.
