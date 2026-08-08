@@ -18,6 +18,12 @@ and guarded strict project deletion.
 - Follow-up read boundary: a first `GET /projects/:projectId/follow-up` returns
   unsaved defaults without creating a persistence row; the first explicit
   `PATCH` creates the row.
+- Discovery follow-ups: `INTAKE-04.1` creates and lists a separate project-owned
+  work item through `GET`/`POST /projects/:projectId/discovery-follow-ups` with
+  a canonical `Nyitott` initial status, category, owner, date-only due date,
+  question, and next step. Creation writes one safe audit event; archived
+  projects remain readable, reject creation, and allow it again after restore.
+  A persisted discovery follow-up also prevents permanent project deletion.
 - Guided intake: a published project question schema can start one open
   `INITIAL_INTAKE` round, recover that active round, persist answers, complete
   after server validation, and keep completed rounds immutable.
@@ -48,10 +54,11 @@ preserve their approved pre-execution task lists; their delivery-status notices
 and the roadmap explain what is actually shipped.
 
 The verified guided-intake scope is intentionally limited to `INITIAL_INTAKE`.
-Operational follow-up management, scoring/readiness calculations, canonical
-structured output, authentication, authorization, backup operations, and export
-coverage remain separate delivery work until their requirements and verification
-evidence are complete.
+`INTAKE-04.1` is the first discovery-follow-up vertical slice only: editing,
+resolving, source linkage, answer/decision recording, and scoring/readiness
+integration remain separate delivery work. Canonical structured output,
+authentication, authorization, backup operations, and export coverage also
+remain separate until their requirements and verification evidence are complete.
 
 ## Next gate
 

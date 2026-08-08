@@ -14,6 +14,16 @@
       "types": "./dist/projects.d.ts",
       "import": "./dist/projects.js",
       "require": "./dist/runtime-cjs/projects.js"
+    },
+    "./discovery-follow-ups": {
+      "types": "./dist/discovery-follow-ups.d.ts",
+      "import": "./dist/discovery-follow-ups.js",
+      "require": "./dist/runtime-cjs/discovery-follow-ups.js"
+    },
+    "./general-playbook-runtime": {
+      "types": "./dist/general-playbook-runtime.d.ts",
+      "import": "./dist/general-playbook-runtime.js",
+      "require": "./dist/runtime-cjs/general-playbook-runtime.js"
     }
   },
   "files": ["dist", "playbooks"],

@@ -2,6 +2,7 @@ import type {
   AuditEventPage,
   AuditEventRecord,
   CustomerFollowUpState,
+  DiscoveryFollowUp,
   ProjectCockpit,
   ProjectStatus,
   ProjectWorkspace,
@@ -29,6 +30,7 @@ export interface CockpitView {
   readonly project: ProjectWorkspace;
   readonly cockpit: ProjectCockpit;
   readonly followUp: CustomerFollowUpState;
+  readonly discoveryFollowUps: readonly DiscoveryFollowUp[];
 }
 
 export interface StatusOption {

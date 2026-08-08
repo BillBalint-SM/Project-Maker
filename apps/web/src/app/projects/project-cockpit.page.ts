@@ -18,11 +18,15 @@ import { ProgressSpinnerModule } from 'primeng/progressspinner';
 import { SelectModule } from 'primeng/select';
 import { TagModule } from 'primeng/tag';
 import { TextareaModule } from 'primeng/textarea';
-import type {
-  CustomerFollowUpState,
-  ProjectStatus,
-  ProjectWorkspace,
-  UpdateCustomerFollowUpInput,
+import {
+  discoveryFollowUpCategories,
+  type CreateDiscoveryFollowUpInput,
+  type CustomerFollowUpState,
+  type DiscoveryFollowUp,
+  type DiscoveryFollowUpCategory,
+  type ProjectStatus,
+  type ProjectWorkspace,
+  type UpdateCustomerFollowUpInput,
 } from '@project-maker/contracts';
 
 import type { AuditEventPage, CockpitView, StatusOption } from './project-api.models';
@@ -76,6 +80,7 @@ export class ProjectCockpitPage implements OnInit {
   readonly saving = signal(false);
   readonly transitioning = signal(false);
   readonly followUpSaving = signal(false);
+  readonly discoveryFollowUpSaving = signal(false);
   readonly pinging = signal(false);
   readonly reviewSending = signal(false);
   readonly deleting = signal(false);
@@ -84,6 +89,9 @@ export class ProjectCockpitPage implements OnInit {
   readonly auditError = signal<string | null>(null);
   private auditRequestOffset = 0;
   private auditRequestToken = 0;
+  readonly discoveryFollowUpCategoryOptions = discoveryFollowUpCategories.map(
+    (value) => ({ label: value, value }),
+  );
 
   readonly workspaceForm = new FormGroup({
     status: new FormControl<ActiveProjectStatus>('DRAFT', {
@@ -115,6 +123,39 @@ export class ProjectCockpitPage implements OnInit {
       ],
     }),
     expiresAt: new FormControl<Date | null>(null),
+  });
+
+  readonly discoveryFollowUpForm = new FormGroup({
+    category: new FormControl<DiscoveryFollowUpCategory | null>(null, {
+      validators: [Validators.required],
+    }),
+    question: new FormControl('', {
+      nonNullable: true,
+      validators: [
+        Validators.required,
+        Validators.pattern(/\S/),
+        Validators.maxLength(10_000),
+      ],
+    }),
+    owner: new FormControl('', {
+      nonNullable: true,
+      validators: [
+        Validators.required,
+        Validators.pattern(/\S/),
+        Validators.maxLength(255),
+      ],
+    }),
+    dueDate: new FormControl<Date | null>(null, {
+      validators: [Validators.required],
+    }),
+    nextStep: new FormControl('', {
+      nonNullable: true,
+      validators: [
+        Validators.required,
+        Validators.pattern(/\S/),
+        Validators.maxLength(10_000),
+      ],
+    }),
   });
 
   ngOnInit(): void {
@@ -218,6 +259,7 @@ export class ProjectCockpitPage implements OnInit {
     if (
       this.workspaceForm.invalid ||
       this.saving() ||
+      this.discoveryFollowUpSaving() ||
       this.deleting() ||
       this.isArchived()
     ) {
@@ -283,6 +325,55 @@ export class ProjectCockpitPage implements OnInit {
     });
   }
 
+  createDiscoveryFollowUp(): void {
+    this.discoveryFollowUpForm.markAllAsTouched();
+    const current = this.view();
+    const value = this.discoveryFollowUpForm.getRawValue();
+    if (
+      !current ||
+      this.discoveryFollowUpControlsDisabled() ||
+      !value.category ||
+      !value.dueDate ||
+      this.discoveryFollowUpForm.invalid
+    ) {
+      return;
+    }
+
+    const input: CreateDiscoveryFollowUpInput = {
+      category: value.category,
+      question: value.question.trim(),
+      owner: value.owner.trim(),
+      dueDate: toLocalDateOnly(value.dueDate),
+      nextStep: value.nextStep.trim(),
+    };
+    this.discoveryFollowUpSaving.set(true);
+    this.actionError.set(null);
+    this.feedback.set(null);
+    this.api.createDiscoveryFollowUp(this.projectId, input).subscribe({
+      next: (created) => {
+        this.view.update((existing) =>
+          existing
+            ? {
+                ...existing,
+                discoveryFollowUps: sortDiscoveryFollowUps([
+                  ...existing.discoveryFollowUps,
+                  created,
+                ]),
+              }
+            : existing,
+        );
+        this.resetDiscoveryFollowUpForm();
+        this.feedback.set('Discovery follow-up created.');
+        this.discoveryFollowUpSaving.set(false);
+        this.refreshAuditEvents();
+      },
+      error: (error: Error) => {
+        this.actionError.set(error.message);
+        this.discoveryFollowUpSaving.set(false);
+      },
+    });
+  }
+
   sendFollowUpPing(): void {
     if (this.deleting() || this.emailActionsDisabled() || !this.view()) {
       return;
@@ -335,6 +426,7 @@ export class ProjectCockpitPage implements OnInit {
       this.transitioning() ||
       this.deleting() ||
       this.isArchived() ||
+      this.discoveryFollowUpSaving() ||
       this.pinging() ||
       this.reviewSending()
     ) {
@@ -358,7 +450,12 @@ export class ProjectCockpitPage implements OnInit {
   }
 
   restoreProject(): void {
-    if (this.transitioning() || this.deleting() || !this.isArchived()) {
+    if (
+      this.transitioning() ||
+      this.deleting() ||
+      this.discoveryFollowUpSaving() ||
+      !this.isArchived()
+    ) {
       return;
     }
     this.transitioning.set(true);
@@ -389,6 +486,7 @@ export class ProjectCockpitPage implements OnInit {
       this.transitioning() ||
       this.saving() ||
       this.followUpSaving() ||
+      this.discoveryFollowUpSaving() ||
       this.pinging() ||
       this.reviewSending()
     ) {
@@ -410,6 +508,7 @@ export class ProjectCockpitPage implements OnInit {
       this.transitioning() ||
       this.saving() ||
       this.followUpSaving() ||
+      this.discoveryFollowUpSaving() ||
       this.pinging() ||
       this.reviewSending()
     ) {
@@ -439,6 +538,7 @@ export class ProjectCockpitPage implements OnInit {
       this.followUpSaving() ||
       this.pinging() ||
       this.reviewSending() ||
+      this.discoveryFollowUpSaving() ||
       this.saving() ||
       this.transitioning() ||
       this.deleting() ||
@@ -450,10 +550,24 @@ export class ProjectCockpitPage implements OnInit {
     return this.followUpControlsDisabled() || this.followUpForm.dirty;
   }
 
+  discoveryFollowUpControlsDisabled(): boolean {
+    return (
+      this.discoveryFollowUpSaving() ||
+      this.saving() ||
+      this.followUpSaving() ||
+      this.pinging() ||
+      this.reviewSending() ||
+      this.transitioning() ||
+      this.deleting() ||
+      this.isArchived()
+    );
+  }
+
   private setView(view: CockpitView): void {
     this.view.set(view);
     this.resetForm(view.project);
     this.resetFollowUpForm(view.followUp);
+    this.resetDiscoveryFollowUpForm();
   }
 
   private applyWorkspaceResponse(project: ProjectWorkspace): void {
@@ -471,6 +585,7 @@ export class ProjectCockpitPage implements OnInit {
         dueAt: project.dueAt,
       },
       followUp: current.followUp,
+      discoveryFollowUps: current.discoveryFollowUps,
     });
     this.resetForm(project);
   }
@@ -507,9 +622,37 @@ export class ProjectCockpitPage implements OnInit {
       expiresAt: followUp.expiresAt ? new Date(followUp.expiresAt) : null,
     });
   }
+
+  private resetDiscoveryFollowUpForm(): void {
+    this.discoveryFollowUpForm.reset({
+      category: null,
+      question: '',
+      owner: '',
+      dueDate: null,
+      nextStep: '',
+    });
+  }
 }
 
 function emptyToNull(value: string): string | null {
   const trimmed = value.trim();
   return trimmed ? trimmed : null;
+}
+
+function toLocalDateOnly(value: Date): string {
+  const year = String(value.getFullYear()).padStart(4, '0');
+  const month = String(value.getMonth() + 1).padStart(2, '0');
+  const day = String(value.getDate()).padStart(2, '0');
+  return year + '-' + month + '-' + day;
+}
+
+function sortDiscoveryFollowUps(
+  values: readonly DiscoveryFollowUp[],
+): readonly DiscoveryFollowUp[] {
+  return [...values].sort(
+    (left, right) =>
+      left.dueDate.localeCompare(right.dueDate) ||
+      left.createdAt.localeCompare(right.createdAt) ||
+      left.id.localeCompare(right.id),
+  );
 }

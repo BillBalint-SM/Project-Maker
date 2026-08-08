@@ -10,5 +10,5 @@
     "ignoreDeprecations": "6.0",
     "verbatimModuleSyntax": false
   },
-  "include": ["src/projects.ts"]
+  "include": ["src/projects.ts", "src/discovery-follow-ups.ts"]
 }
