@@ -6,9 +6,11 @@ import {
   ReactiveFormsModule,
   Validators,
 } from '@angular/forms';
-import { ActivatedRoute, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { ConfirmationService } from 'primeng/api';
 import { ButtonModule } from 'primeng/button';
 import { CardModule } from 'primeng/card';
+import { ConfirmDialog } from 'primeng/confirmdialog';
 import { DatePickerModule } from 'primeng/datepicker';
 import { InputTextModule } from 'primeng/inputtext';
 import { MessageModule } from 'primeng/message';
@@ -41,6 +43,7 @@ const statusOptions: StatusOption[] = [
   imports: [
     ButtonModule,
     CardModule,
+    ConfirmDialog,
     DatePipe,
     DatePickerModule,
     InputTextModule,
@@ -53,12 +56,15 @@ const statusOptions: StatusOption[] = [
     TagModule,
     TextareaModule,
   ],
+  providers: [ConfirmationService],
   templateUrl: './project-cockpit.page.html',
   styleUrl: './project-cockpit.page.scss',
 })
 export class ProjectCockpitPage implements OnInit {
   private readonly api = inject(ProjectApiService);
   private readonly route = inject(ActivatedRoute);
+  private readonly confirmationService = inject(ConfirmationService);
+  private readonly router = inject(Router);
 
   readonly projectId = this.route.snapshot.paramMap.get('projectId') ?? '';
   readonly statusOptions = statusOptions;
@@ -72,6 +78,7 @@ export class ProjectCockpitPage implements OnInit {
   readonly followUpSaving = signal(false);
   readonly pinging = signal(false);
   readonly reviewSending = signal(false);
+  readonly deleting = signal(false);
   readonly auditPage = signal<AuditEventPage | null>(null);
   readonly auditLoading = signal(false);
   readonly auditError = signal<string | null>(null);
@@ -208,7 +215,12 @@ export class ProjectCockpitPage implements OnInit {
 
   saveWorkspace(): void {
     this.workspaceForm.markAllAsTouched();
-    if (this.workspaceForm.invalid || this.saving() || this.isArchived()) {
+    if (
+      this.workspaceForm.invalid ||
+      this.saving() ||
+      this.deleting() ||
+      this.isArchived()
+    ) {
       return;
     }
 
@@ -241,6 +253,7 @@ export class ProjectCockpitPage implements OnInit {
     this.followUpForm.markAllAsTouched();
     if (
       this.followUpForm.invalid ||
+      this.deleting() ||
       this.followUpControlsDisabled() ||
       !this.view()
     ) {
@@ -271,7 +284,7 @@ export class ProjectCockpitPage implements OnInit {
   }
 
   sendFollowUpPing(): void {
-    if (this.emailActionsDisabled() || !this.view()) {
+    if (this.deleting() || this.emailActionsDisabled() || !this.view()) {
       return;
     }
 
@@ -294,7 +307,7 @@ export class ProjectCockpitPage implements OnInit {
   }
 
   sendCustomerReviewEmail(): void {
-    if (this.emailActionsDisabled() || !this.view()) {
+    if (this.deleting() || this.emailActionsDisabled() || !this.view()) {
       return;
     }
 
@@ -318,7 +331,13 @@ export class ProjectCockpitPage implements OnInit {
   }
 
   archiveProject(): void {
-    if (this.transitioning() || this.isArchived() || this.pinging() || this.reviewSending()) {
+    if (
+      this.transitioning() ||
+      this.deleting() ||
+      this.isArchived() ||
+      this.pinging() ||
+      this.reviewSending()
+    ) {
       return;
     }
     this.transitioning.set(true);
@@ -339,7 +358,7 @@ export class ProjectCockpitPage implements OnInit {
   }
 
   restoreProject(): void {
-    if (this.transitioning() || !this.isArchived()) {
+    if (this.transitioning() || this.deleting() || !this.isArchived()) {
       return;
     }
     this.transitioning.set(true);
@@ -363,6 +382,58 @@ export class ProjectCockpitPage implements OnInit {
     return this.view()?.cockpit.status === 'ARCHIVED';
   }
 
+  requestProjectDeletion(): void {
+    if (
+      !this.isDeletableDraft() ||
+      this.deleting() ||
+      this.transitioning() ||
+      this.saving() ||
+      this.followUpSaving() ||
+      this.pinging() ||
+      this.reviewSending()
+    ) {
+      return;
+    }
+    this.confirmationService.confirm({
+      key: 'project-delete',
+      header: 'Delete project?',
+      message: 'Deletion is permanent. It succeeds only while this draft has no persisted activity.',
+      defaultFocus: 'none',
+      accept: () => this.deleteProject(),
+    });
+  }
+
+  deleteProject(): void {
+    if (
+      !this.isDeletableDraft() ||
+      this.deleting() ||
+      this.transitioning() ||
+      this.saving() ||
+      this.followUpSaving() ||
+      this.pinging() ||
+      this.reviewSending()
+    ) {
+      return;
+    }
+    this.deleting.set(true);
+    this.actionError.set(null);
+    this.feedback.set(null);
+    this.api.deleteProject(this.projectId).subscribe({
+      next: () => {
+        this.deleting.set(false);
+        void this.router.navigate(['/']);
+      },
+      error: (error: Error) => {
+        this.actionError.set(error.message);
+        this.deleting.set(false);
+      },
+    });
+  }
+
+  isDeletableDraft(): boolean {
+    return this.view()?.cockpit.status === 'DRAFT';
+  }
+
   followUpControlsDisabled(): boolean {
     return (
       this.followUpSaving() ||
@@ -370,6 +441,7 @@ export class ProjectCockpitPage implements OnInit {
       this.reviewSending() ||
       this.saving() ||
       this.transitioning() ||
+      this.deleting() ||
       this.isArchived()
     );
   }

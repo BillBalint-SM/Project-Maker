@@ -103,23 +103,7 @@ export class CustomerFollowUpService implements OnModuleInit, OnModuleDestroy {
   async get(projectId: string): Promise<CustomerFollowUpState> {
     await this.findProject(this.dataSource.manager, projectId, false);
     const existing = await this.followUpRepository.findOneBy({ projectId });
-    if (existing) {
-      return toState(existing);
-    }
-
-    try {
-      const created = await this.followUpRepository.save(createDefaultState(projectId));
-      return toState(created);
-    } catch (error) {
-      if (!isUniqueViolation(error)) {
-        throw error;
-      }
-      const concurrentState = await this.followUpRepository.findOneBy({ projectId });
-      if (!concurrentState) {
-        throw new InternalServerErrorException('Customer follow-up state could not be initialized.');
-      }
-      return toState(concurrentState);
-    }
+    return toState(existing ?? createDefaultState(projectId));
   }
 
   async update(projectId: string, input: UpdateFollowUpDto): Promise<CustomerFollowUpState> {
@@ -540,12 +524,4 @@ function toIsoOrNull(value: Date | null, field: string): string | null {
     throw new InternalServerErrorException(`Stored ${field} is invalid.`);
   }
   return date.toISOString();
-}
-
-function isUniqueViolation(error: unknown): boolean {
-  if (!(error instanceof Error) || !('driverError' in error)) {
-    return false;
-  }
-  const driverError = (error as Error & { driverError?: { code?: unknown } }).driverError;
-  return driverError?.code === '23505';
 }

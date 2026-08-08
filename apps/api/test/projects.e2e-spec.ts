@@ -123,6 +123,216 @@ describe('ProjectsController (e2e)', () => {
     assertNoSubmittedValues(invalidWorkspaceResponse.body, 'NOT_A_STATUS');
   });
 
+  it('returns an unsaved default follow-up state and persists only after PATCH', async () => {
+    const projectId = await createProject('follow-up-read-only');
+
+    const getResponse = await request(app.getHttpServer())
+      .get(`/projects/${projectId}/follow-up`)
+      .expect(200);
+    assert.deepEqual(getResponse.body, {
+      projectId,
+      enabled: false,
+      intervalMinutes: 10_080,
+      expiresAt: null,
+      lastPingAt: null,
+      nextPingAt: null,
+      lastDeliveryStatus: 'NEVER',
+      lastDeliveryError: null,
+    });
+
+    const beforePatch = await dataSource.query<Array<{ count: string }>>(
+      'SELECT COUNT(*)::text AS "count" FROM "customer_follow_ups" WHERE "project_id" = $1',
+      [projectId],
+    );
+    assert.equal(beforePatch[0]?.count, '0');
+
+    await request(app.getHttpServer())
+      .patch(`/projects/${projectId}/follow-up`)
+      .send({ enabled: false, intervalMinutes: 10_080, expiresAt: null })
+      .expect(200);
+
+    const afterPatch = await dataSource.query<Array<{ count: string }>>(
+      'SELECT COUNT(*)::text AS "count" FROM "customer_follow_ups" WHERE "project_id" = $1',
+      [projectId],
+    );
+    assert.equal(afterPatch[0]?.count, '1');
+  });
+
+  it('deletes a bare DRAFT project and makes it unreachable', async () => {
+    const projectId = await createProject('delete-empty-draft');
+
+    await request(app.getHttpServer()).delete(`/projects/${projectId}`).expect(204);
+    await request(app.getHttpServer()).get(`/projects/${projectId}/cockpit`).expect(404);
+
+    const listResponse = await request(app.getHttpServer()).get('/projects').expect(200);
+    assert.equal(listResponse.body.some((project: { id: string }) => project.id === projectId), false);
+  });
+
+  it('rejects deletion for a non-DRAFT project and for a DRAFT with audit history', async () => {
+    const nonDraftProjectId = await createProject('delete-non-draft');
+    await request(app.getHttpServer())
+      .patch(`/projects/${nonDraftProjectId}/workspace`)
+      .send({ status: 'WAITING_INTERNAL' })
+      .expect(200);
+    await expectProjectDeletionConflict(nonDraftProjectId);
+
+    const retainedProjectId = await createProject('delete-audit-history');
+    await request(app.getHttpServer()).post(`/projects/${retainedProjectId}/archive`).expect(201);
+    await request(app.getHttpServer()).post(`/projects/${retainedProjectId}/restore`).expect(201);
+    await expectProjectDeletionConflict(retainedProjectId);
+  });
+
+  it('rejects deletion for DRAFT projects with Markdown and follow-up persistence', async () => {
+    const markdownProjectId = await createProject('delete-markdown');
+    await request(app.getHttpServer())
+      .patch(`/projects/${markdownProjectId}/workspace`)
+      .send({ status: 'READY_FOR_PLANNING' })
+      .expect(200);
+    await request(app.getHttpServer())
+      .patch(`/projects/${markdownProjectId}/workspace`)
+      .send({ status: 'DRAFT' })
+      .expect(200);
+    await expectProjectDeletionConflict(markdownProjectId);
+
+    const followUpProjectId = await createProject('delete-follow-up');
+    await request(app.getHttpServer())
+      .patch(`/projects/${followUpProjectId}/follow-up`)
+      .send({ enabled: false, intervalMinutes: 10_080, expiresAt: null })
+      .expect(200);
+    await clearProjectAuditEvents(followUpProjectId);
+    await expectProjectDeletionConflict(followUpProjectId);
+  });
+
+  it('rejects deletion for a project with a published question schema', async () => {
+    const projectId = await createProject('delete-schema');
+    const bankResponse = await request(app.getHttpServer()).get('/settings/base-questions').expect(200);
+    const stableKey = bankResponse.body.questions[0]?.stableKey as string | undefined;
+    if (!stableKey) {
+      throw new Error('The seeded question bank did not return a stable key.');
+    }
+
+    await request(app.getHttpServer())
+      .post(`/projects/${projectId}/question-schema`)
+      .send({ questions: [{ stableKey, required: true, blocking: true }] })
+      .expect(201);
+    await clearProjectAuditEvents(projectId);
+    await expectProjectDeletionConflict(projectId);
+  });
+
+  it('serializes concurrent deletes to one 204 and one 404', async () => {
+    const projectId = await createProject('concurrent-delete');
+    try {
+      await dataSource.query(`
+        CREATE OR REPLACE FUNCTION "e2e_delay_project_delete"()
+        RETURNS trigger
+        LANGUAGE plpgsql
+        AS $$
+        BEGIN
+          PERFORM pg_sleep(0.2);
+          RETURN OLD;
+        END;
+        $$
+      `);
+      await dataSource.query(`
+        CREATE TRIGGER "trg_e2e_delay_project_delete"
+        BEFORE DELETE ON "projects"
+        FOR EACH ROW
+        EXECUTE FUNCTION "e2e_delay_project_delete"()
+      `);
+
+      const [first, second] = await Promise.all([
+        request(app.getHttpServer()).delete(`/projects/${projectId}`),
+        request(app.getHttpServer()).delete(`/projects/${projectId}`),
+      ]);
+      assert.deepEqual(
+        [first.status, second.status].sort((left, right) => left - right),
+        [204, 404],
+      );
+    } finally {
+      await dataSource.query('DROP TRIGGER IF EXISTS "trg_e2e_delay_project_delete" ON "projects"');
+      await dataSource.query('DROP FUNCTION IF EXISTS "e2e_delay_project_delete"()');
+    }
+  });
+
+  it('maps a late restrict-violation deletion race to a conflict and retains the project', async () => {
+    const projectId = await createProject('late-delete-blocker');
+    try {
+      await dataSource.query(`
+        CREATE OR REPLACE FUNCTION "e2e_add_project_delete_blocker"()
+        RETURNS trigger
+        LANGUAGE plpgsql
+        AS $$
+        BEGIN
+          INSERT INTO "customer_follow_ups" ("id", "project_id")
+          VALUES ('00000000-0000-4000-8000-000000000001', OLD."id");
+          RETURN OLD;
+        END;
+        $$
+      `);
+      await dataSource.query(`
+        CREATE TRIGGER "trg_e2e_add_project_delete_blocker"
+        BEFORE DELETE ON "projects"
+        FOR EACH ROW
+        EXECUTE FUNCTION "e2e_add_project_delete_blocker"()
+      `);
+
+      const response = await request(app.getHttpServer()).delete(`/projects/${projectId}`);
+      assert.equal(response.status, 409);
+      assert.equal(response.body.message, projectDeletionConflictMessage);
+      await request(app.getHttpServer()).get(`/projects/${projectId}/cockpit`).expect(200);
+    } finally {
+      await dataSource.query(
+        'DROP TRIGGER IF EXISTS "trg_e2e_add_project_delete_blocker" ON "projects"',
+      );
+      await dataSource.query('DROP FUNCTION IF EXISTS "e2e_add_project_delete_blocker"()');
+    }
+  });
+
+  it('maps a late foreign-key violation deletion race to a conflict and retains the project', async () => {
+    const projectId = await createProject('late-delete-fk-blocker');
+    try {
+      await dataSource.query(`
+        CREATE OR REPLACE FUNCTION "e2e_add_deleted_project_fk_blocker"()
+        RETURNS trigger
+        LANGUAGE plpgsql
+        AS $$
+        BEGIN
+          INSERT INTO "customer_follow_ups" ("id", "project_id")
+          VALUES ('00000000-0000-4000-8000-000000000002', OLD."id");
+          RETURN OLD;
+        END;
+        $$
+      `);
+      await dataSource.query(`
+        CREATE TRIGGER "trg_e2e_add_deleted_project_fk_blocker"
+        AFTER DELETE ON "projects"
+        FOR EACH ROW
+        EXECUTE FUNCTION "e2e_add_deleted_project_fk_blocker"()
+      `);
+
+      const response = await request(app.getHttpServer()).delete(`/projects/${projectId}`);
+      assert.equal(response.status, 409);
+      assert.equal(response.body.message, projectDeletionConflictMessage);
+      await request(app.getHttpServer()).get(`/projects/${projectId}/cockpit`).expect(200);
+    } finally {
+      await dataSource.query(
+        'DROP TRIGGER IF EXISTS "trg_e2e_add_deleted_project_fk_blocker" ON "projects"',
+      );
+      await dataSource.query('DROP FUNCTION IF EXISTS "e2e_add_deleted_project_fk_blocker"()');
+    }
+  });
+
+  it('returns 404 for a missing project and 400 without echoing a malformed project id', async () => {
+    const missingProjectId = '00000000-0000-4000-8000-000000000000';
+    await request(app.getHttpServer()).delete(`/projects/${missingProjectId}`).expect(404);
+
+    const invalidProjectId = 'not-a-project-uuid';
+    const invalidResponse = await request(app.getHttpServer())
+      .delete(`/projects/${invalidProjectId}`)
+      .expect(400);
+    assertNoSubmittedValues(invalidResponse.body, invalidProjectId);
+  });
+
   it('rejects empty patches, archived updates, duplicate archives, active restores, and missing projects', async () => {
     const projectId = await createProject('negative');
 
@@ -207,7 +417,19 @@ describe('ProjectsController (e2e)', () => {
 
     return response.body.id as string;
   }
+
+  async function expectProjectDeletionConflict(projectId: string): Promise<void> {
+    const response = await request(app.getHttpServer()).delete(`/projects/${projectId}`).expect(409);
+    assert.equal(response.body.message, projectDeletionConflictMessage);
+  }
+
+  async function clearProjectAuditEvents(projectId: string): Promise<void> {
+    await dataSource.query('DELETE FROM "audit_events" WHERE "project_id" = $1', [projectId]);
+  }
 });
+
+const projectDeletionConflictMessage =
+  'This project has persisted activity and cannot be deleted. Archive it instead.';
 
 function assertProjectResponse(value: unknown, expectedStatus: string): void {
   if (value === null || typeof value !== 'object') {
