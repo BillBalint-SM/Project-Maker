@@ -215,13 +215,22 @@ test.describe.serial('guided intake real Hungarian browser flow', () => {
     await expect(page).toHaveURL(new RegExp(`/projects/${fixture.projectId}/interview$`));
     const restartButton = await nativeButton(page, 'create-interview-round-button');
     await expect(restartButton).toBeEnabled();
+    const restartRoundResponsePromise = page.waitForResponse(
+      (response) =>
+        response.request().method() === 'POST' &&
+        new URL(response.url()).pathname === `/api/projects/${fixture.projectId}/rounds`,
+    );
     await restartButton.click();
+    const restartRoundResponse = await restartRoundResponsePromise;
+    expect(restartRoundResponse.status()).toBe(201);
+    const restartedRound = (await restartRoundResponse.json()) as InterviewRound;
+    expect(restartedRound.id).not.toBe(startedRound.id);
     await expect
       .poll(async () => {
         const activeRound = await getActiveRound(request, fixture.projectId);
-        return activeRound !== null && activeRound.id !== startedRound.id;
+        return activeRound?.id;
       })
-      .toBe(true);
+      .toBe(restartedRound.id);
   });
 
   test('blocks the initial intake start when the project has no published schema', async ({
@@ -491,12 +500,9 @@ async function withE2eDatabase(
 }
 
 async function nativeButton(page: Page, testId: string): Promise<Locator> {
-  const host = page.getByTestId(testId);
-  const nestedButton = host.locator('button').first();
-  if ((await nestedButton.count()) > 0) {
-    return nestedButton;
-  }
-  return host;
+  const button = page.getByTestId(testId).locator('button');
+  await expect(button).toHaveCount(1);
+  return button;
 }
 
 function requireQuestion(round: InterviewRound, stableKey: string): RoundQuestionSnapshot {

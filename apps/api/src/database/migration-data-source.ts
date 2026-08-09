@@ -10,6 +10,7 @@ import { MarkdownRevisions0003MarkdownRevisions1786089600000 } from '../migratio
 import { CustomerFollowUps0004CustomerFollowUps1786176000000 } from '../migrations/0004-customer-follow-ups';
 import { InitialIntakeOpenRound0005InitialIntakeOpenRound1786262400000 } from '../migrations/0005-initial-intake-open-round';
 import { DiscoveryFollowUps0006DiscoveryFollowUps1786348800000 } from '../migrations/0006-discovery-follow-ups';
+import { DiscoveryFollowUpResolution0007DiscoveryFollowUpResolution1786435200000 } from '../migrations/0007-discovery-follow-up-resolution';
 
 const runtime = globalThis as typeof globalThis & {
   readonly process: { readonly env: Readonly<Record<string, string | undefined>> };
@@ -26,6 +27,7 @@ const dataSource = new DataSource({
     CustomerFollowUps0004CustomerFollowUps1786176000000,
     InitialIntakeOpenRound0005InitialIntakeOpenRound1786262400000,
     DiscoveryFollowUps0006DiscoveryFollowUps1786348800000,
+    DiscoveryFollowUpResolution0007DiscoveryFollowUpResolution1786435200000,
   ],
 });
 
