@@ -101,7 +101,10 @@
           (ngSubmit)="saveWorkspace()"
           data-testid="workspace-form"
         >
-          <fieldset class="workspace-fields" [disabled]="saving() || transitioning() || deleting() || discoveryFollowUpMutationInProgress() || isArchived()">
+          <fieldset
+            class="workspace-fields"
+            [disabled]="cockpitMutationInProgress() || isArchived()"
+          >
           <div class="field">
             <label for="project-status">Lifecycle status</label>
             <p-select
@@ -171,7 +174,7 @@
             type="submit"
             label="Save workspace"
             [loading]="saving()"
-            [disabled]="saving() || transitioning() || deleting() || discoveryFollowUpMutationInProgress() || isArchived()"
+            [disabled]="cockpitMutationInProgress() || isArchived()"
             data-testid="save-workspace-button"
           />
         </form>
@@ -414,7 +417,7 @@
             <p-button
               label="Restore project"
               [loading]="transitioning()"
-              [disabled]="transitioning() || deleting() || discoveryFollowUpMutationInProgress()"
+              [disabled]="cockpitMutationInProgress()"
               data-testid="restore-project-button"
               (onClick)="restoreProject()"
             />
@@ -425,7 +428,7 @@
               severity="danger"
               [outlined]="true"
               [loading]="transitioning()"
-              [disabled]="transitioning() || deleting() || saving() || discoveryFollowUpMutationInProgress() || pinging() || reviewSending()"
+              [disabled]="cockpitMutationInProgress() || isArchived()"
               data-testid="archive-project-button"
               (onClick)="archiveProject()"
             />
@@ -441,7 +444,7 @@
               severity="danger"
               [outlined]="true"
               [loading]="deleting()"
-              [disabled]="deleting() || transitioning() || saving() || followUpSaving() || discoveryFollowUpMutationInProgress() || pinging() || reviewSending()"
+              [disabled]="cockpitMutationInProgress()"
               data-testid="delete-project-button"
               (onClick)="requestProjectDeletion()"
             />
