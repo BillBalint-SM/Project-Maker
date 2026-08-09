@@ -18,9 +18,12 @@ verification handoff is documented in [`docs/operations-handoff.md`](docs/operat
 
 ## Documentation
 
-Start with the [documentation index](docs/README.md). The
-[roadmap](docs/roadmap.md) is the current delivery-status source; the product
-domain describes intended behavior and must not be read as a release record.
+For day-to-day business use, start with the
+[Hungarian end-user guide](docs/user-guide.md). The
+[documentation index](docs/README.md) connects the remaining sources: the
+[roadmap](docs/roadmap.md) is the current delivery-status record, the
+[product domain](docs/product-domain.md) describes intended behavior, and the
+[operations handoff](docs/operations-handoff.md) covers runtime responsibilities.
 
 ## Prerequisites
 

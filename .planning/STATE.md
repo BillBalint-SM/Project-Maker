@@ -1,8 +1,10 @@
 # Project state
 
-**Verified delivery baseline:** Angular 22.1 web platform with licensed PrimeNG
-22.0.0 at merged `main` commit `b4d4c9b`, including guided `INITIAL_INTAKE`
-and guarded strict project deletion.
+**Verified delivery baseline:** the Angular 22.1 web platform with licensed
+PrimeNG 22.0.0 and the delivered application workflows is based on `main`
+commit `82a5449`. The `DOC-01` content baseline is guide commit `51518d5` in
+this bounded delivery; a final merge identity is intentionally not predicted
+or used as live Git-state evidence here.
 
 ## Current implementation
 
@@ -42,6 +44,10 @@ and guarded strict project deletion.
   text answers after 750 ms, saves discrete values immediately, keeps failed
   drafts visible with retry, and renders deterministic Hungarian coaching from
   persisted question metadata.
+- End-user documentation: `docs/user-guide.md` teaches every stable delivered
+  route and business workflow with six sanitized application screenshots,
+  three state/workflow diagrams, recovery guidance, and explicit unavailable
+  capability boundaries.
 
 ## Current delivery state
 
@@ -52,10 +58,20 @@ repository `verify`, Compose health and migration status, and active-round
 recovery after an API restart. Aggregate suite counts belong here only when a
 matching receipt is tracked at the baseline or freshly rerun.
 
+The `DOC-01` verification surface also includes exact heading and action
+coverage, local-link and image-target checks, original-resolution screenshot
+inspection, Mermaid structure review, placeholder and planned-as-delivered
+scans, documentation secret hygiene, and the normal repository gates.
+
 The [guided-intake plan](../docs/superpowers/plans/2026-08-06-guided-intake-persistence.md)
 and [strict-deletion plan](../docs/superpowers/plans/2026-08-07-strict-project-deletion.md)
 preserve their approved pre-execution task lists; their delivery-status notices
 and the roadmap explain what is actually shipped.
+
+The [Hungarian end-user guide design](../docs/superpowers/specs/2026-08-09-user-guide-design.md)
+and [implementation plan](../docs/superpowers/plans/2026-08-09-user-guide.md)
+define `DOC-01` scope and evidence; the
+[guide](../docs/user-guide.md) is the employee-facing source.
 
 The verified guided-intake scope is intentionally limited to `INITIAL_INTAKE`.
 `INTAKE-04.1` and `INTAKE-04.2` deliver discovery-follow-up creation, review,

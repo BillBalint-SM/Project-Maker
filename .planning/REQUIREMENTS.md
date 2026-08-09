@@ -37,7 +37,7 @@ The historical guided-intake execution record is preserved in the tracked
 - [ ] **DATA-01:** PostgreSQL schema preserves stable IDs, timestamps, archived state, selected playbook version, answers, follow-ups, and derived-state provenance.
 - [ ] **DATA-02:** Schema migrations are explicit, versioned, and reversible where practical.
 - [ ] **DATA-03:** Backup and restore are implemented and verified on the current platform.
-- [ ] **DOC-01:** A Hungarian end-user guide explains the stable delivered workflows without presenting planned domain behavior as available functionality.
+- [x] **DOC-01:** A Hungarian end-user guide explains the stable delivered workflows without presenting planned domain behavior as available functionality.
 - [ ] **MIG-01:** Supported project exports can be imported non-destructively and idempotently.
 - [ ] **PWA-01:** The Angular application is installable and its offline/update behavior is verified.
 - [ ] **SEC-01:** Authentication and authorization are defined before multi-user data access is enabled.
