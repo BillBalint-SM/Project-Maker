@@ -10,7 +10,7 @@
 
 ## Global Constraints
 
-- Begin only after the operation-policy PR is merged, a fresh WORK_STATE preflight proves its reviewed commit is on clean main, and the new branch dev-discovery-follow-up-module is created from that main. Do not reuse dev-cockpit-operation-policy.
+- The operation-policy prerequisite is satisfied by merge commit `f0b4564dc3413da2dbd299afe0d56bf25b96aa12`. Begin from a fresh, clean `main` that descends from that commit, then create `dev-discovery-follow-up-module`; do not reuse `dev-cockpit-operation-policy`.
 - Keep Discovery follow-ups and Customer email follow-up as separate domains. Do not create a generic Follow-up module, shared form model, or shared adapter.
 - The Discovery module owns its list, create and resolution forms, validation, adapter, loading, errors, retry, success feedback, markup, and SCSS.
 - The Cockpit shell owns route identity, canonical project lifecycle state, navigation, lifecycle commands, global mutation policy, and audit orchestration.
@@ -22,10 +22,12 @@
 - Pass canonical ProjectStatus from the shell. ARCHIVED keeps the list readable, disables Discovery mutations, and clears an open resolution draft. Preserve the creation draft across archive/restore; do not silently discard typed creation work.
 - Keep one cohesive public module. Create/list/resolve may use private functions, but do not introduce public submodules for visual sections.
 - Move every Discovery-specific style into the Discovery module. Do not move styles to src/styles.scss and do not change the 4 kB warning or 8 kB error budgets.
+- The verified production-build baseline is `project-cockpit.page.scss` at 4.17 kB, 175 B over the unchanged 4 kB warning threshold. Measure acceptance from Angular's compiled build output, not the source-file byte count; the completed slice must emit no `anyComponentStyle` warning.
 - Preserve every existing Discovery data-testid except the accepted local feedback change: replace Cockpit-level success assertions with discovery-follow-up-action-success and add discovery-follow-up-action-error, discovery-follow-ups-loading, discovery-follow-ups-error, and retry-discovery-follow-ups-button.
 - Add no dependency, make no backend/contract/database change, and do not modify pnpm-lock.yaml.
 - Use input.required and output for the shell seam. Read required inputs only in a reactive context or ngOnInit. Use an explicit DestroyRef with takeUntilDestroyed in method-started subscriptions.
 - Context7 evidence: Angular required signal inputs are valid in templates, computed, effects, and ngOnInit; component providers are inherited by descendants; takeUntilDestroyed with explicit DestroyRef is the supported method-call pattern.
+- The current Windows browser launcher resolves bare `pnpm` through PATH inside `apps/web/e2e/start-api-for-e2e.mjs`. Until that separate DX defect is repaired, every task agent that runs Playwright creates and removes its own external, temporary `pnpm.cmd` shim with the per-task harness below. The shim is verification infrastructure only: never add it to the repository, rely on another agent's PATH, or change the launcher in this slice.
 - Merge only after the existing five Discovery workflows, four deletion workflows, the new failure-isolation workflow, web unit tests, typecheck, repository verify, and full browser E2E are green.
 
 ---
@@ -102,7 +104,59 @@ $cachedPnpm = 'C:\Users\littl\AppData\Local\npm-cache\_npx\90ee57dca4845993\node
 & $runtimeNode $cachedPnpm --version
 ~~~
 
-Expected: clean main includes the merged operation-policy module; Node satisfies the repository range; pnpm reports 11.20.0; the new branch has no upstream or PR. Stop before editing on any mismatch.
+Expected: clean main descends from the merged operation-policy module; Node satisfies the repository range; pnpm reports 11.20.0; the new branch has no upstream or PR. Stop before editing on any mismatch.
+
+## Per-task browser runtime harness
+
+Every fresh task agent that starts a Playwright command must run this setup in
+the same PowerShell process before starting its named disposable database.
+Keep that process alive through its database cleanup, then run the matching
+cleanup block. Do not carry the shim or `$env:Path` across tasks.
+
+~~~powershell
+$priorPath = $env:Path
+$pnpmShimDirectory = Join-Path ([System.IO.Path]::GetTempPath()) (
+  'project-maker-pnpm-shim-' + [Guid]::NewGuid().ToString('N')
+)
+$pnpmShimPath = Join-Path $pnpmShimDirectory 'pnpm.cmd'
+New-Item -ItemType Directory -Path $pnpmShimDirectory | Out-Null
+$pnpmShimContents =
+  '@echo off' + [Environment]::NewLine +
+  '"' + $runtimeNode + '" "' + $cachedPnpm + '" %*' + [Environment]::NewLine
+[System.IO.File]::WriteAllText(
+  $pnpmShimPath,
+  $pnpmShimContents,
+  [System.Text.Encoding]::ASCII,
+)
+$env:Path = $pnpmShimDirectory + [System.IO.Path]::PathSeparator + $priorPath
+$shimVersion = (cmd.exe /d /c pnpm --version).Trim()
+if ($shimVersion -ne '11.20.0') {
+  throw "The temporary Playwright pnpm shim resolved $shimVersion instead of 11.20.0."
+}
+~~~
+
+Expected: `cmd.exe` resolves the external shim to pnpm 11.20.0. The shim is
+outside the repository and lives only for the current task's browser run.
+
+After that task stops its identity-checked database and restores
+`DATABASE_URL`, run:
+
+~~~powershell
+$env:Path = $priorPath
+if (-not (Test-Path -LiteralPath $pnpmShimPath -PathType Leaf)) {
+  throw "Expected temporary pnpm shim file is missing: $pnpmShimPath"
+}
+Remove-Item -LiteralPath $pnpmShimPath
+if (-not (Test-Path -LiteralPath $pnpmShimDirectory -PathType Container)) {
+  throw "Expected temporary pnpm shim directory is missing: $pnpmShimDirectory"
+}
+Remove-Item -LiteralPath $pnpmShimDirectory
+Remove-Variable priorPath, pnpmShimDirectory, pnpmShimPath, pnpmShimContents
+~~~
+
+Expected: PATH is restored exactly; the exact shim file and its now-empty
+directory are removed. If a task terminates before cleanup, preserve the
+directory as evidence and resolve it explicitly before starting another task.
 
 ### Task 1: Specify local failure isolation and feedback in the browser
 
@@ -115,6 +169,10 @@ Expected: clean main includes the merged operation-policy module; Node satisfies
 - Consumes: existing createProject, createDiscoveryFollowUp, nativeButton, real API server, and browser proxy.
 - Produces: one deterministic network-failure workflow without fake response data.
 - Preserves: the five existing business workflows and all existing stable selectors except the accepted success-message location.
+
+**Runtime:** Run the Per-task browser runtime harness before Step 3 and its
+cleanup after Step 5, in the same PowerShell process as this task's database
+and Playwright command.
 
 - [ ] **Step 1: Move the two success assertions to the accepted local selector.**
 
@@ -238,9 +296,19 @@ if ($null -eq $priorDatabaseUrl) {
   $env:DATABASE_URL = $priorDatabaseUrl
 }
 Remove-Variable characterizationContainer, characterizationDatabase, characterizationPort, priorDatabaseUrl
+$env:Path = $priorPath
+if (-not (Test-Path -LiteralPath $pnpmShimPath -PathType Leaf)) {
+  throw "Expected temporary pnpm shim file is missing: $pnpmShimPath"
+}
+Remove-Item -LiteralPath $pnpmShimPath
+if (-not (Test-Path -LiteralPath $pnpmShimDirectory -PathType Container)) {
+  throw "Expected temporary pnpm shim directory is missing: $pnpmShimDirectory"
+}
+Remove-Item -LiteralPath $pnpmShimDirectory
+Remove-Variable priorPath, pnpmShimDirectory, pnpmShimPath, pnpmShimContents
 ~~~
 
-Expected: only project-maker-discovery-characterization-e2e is removed and DATABASE_URL is restored exactly.
+Expected: only project-maker-discovery-characterization-e2e is removed; DATABASE_URL and PATH are restored exactly; the exact temporary shim file and its now-empty directory are removed.
 
 ### Task 2: Create the Discovery-owned HTTP adapter
 
@@ -907,6 +975,10 @@ Expected: PASS. The new component compiles with required inputs, local provider,
 - Produces: the exact shell seam in Produced Interfaces.
 - Removes: every Discovery form, signal, method, helper, HTTP method, aggregate property, inline markup block, and parent style selector.
 
+**Runtime:** Run the Per-task browser runtime harness before Step 5 and its
+cleanup after Step 7, in the same PowerShell process as this task's database
+and Playwright command.
+
 - [ ] **Step 1: Remove Discovery from the Cockpit aggregate adapter.**
 
 In project-api.models.ts remove the DiscoveryFollowUp import and this property:
@@ -1050,9 +1122,19 @@ if ($null -eq $priorDatabaseUrl) {
   $env:DATABASE_URL = $priorDatabaseUrl
 }
 Remove-Variable focusedContainer, focusedDatabase, focusedPort, priorDatabaseUrl
+$env:Path = $priorPath
+if (-not (Test-Path -LiteralPath $pnpmShimPath -PathType Leaf)) {
+  throw "Expected temporary pnpm shim file is missing: $pnpmShimPath"
+}
+Remove-Item -LiteralPath $pnpmShimPath
+if (-not (Test-Path -LiteralPath $pnpmShimDirectory -PathType Container)) {
+  throw "Expected temporary pnpm shim directory is missing: $pnpmShimDirectory"
+}
+Remove-Item -LiteralPath $pnpmShimDirectory
+Remove-Variable priorPath, pnpmShimDirectory, pnpmShimPath, pnpmShimContents
 ~~~
 
-Expected: only project-maker-discovery-focused-e2e is removed and DATABASE_URL is restored exactly.
+Expected: only project-maker-discovery-focused-e2e is removed; DATABASE_URL and PATH are restored exactly; the exact temporary shim file and its now-empty directory are removed.
 
 - [ ] **Step 8: Review and commit the complete extraction.**
 
@@ -1076,6 +1158,9 @@ Expected: one cohesive Discovery directory, one narrow shell seam, no Discovery 
 
 - Consumes: the complete Discovery deep-module slice.
 - Produces: repository, browser, budget, scope, secrecy, and Git evidence.
+
+**Runtime:** Run the Per-task browser runtime harness before Step 1 and keep
+it in this task's PowerShell process through Step 3.
 
 - [ ] **Step 1: Start the named disposable browser database.**
 
@@ -1117,7 +1202,7 @@ Expected: the exact loopback-only disposable database starts and its name contai
 
 Expected: PASS. The full suite uses the real API/database/browser stack and the production build contains no Cockpit component-style warning.
 
-- [ ] **Step 3: Stop only the named database and restore environment state.**
+- [ ] **Step 3: Stop only the named database and restore runtime environment state.**
 
 ~~~powershell
 $resolvedContainer = docker inspect --format '{{.Name}}' $discoveryDatabaseContainer
@@ -1132,9 +1217,19 @@ if ($null -eq $priorDatabaseUrl) {
   $env:DATABASE_URL = $priorDatabaseUrl
 }
 Remove-Variable discoveryDatabaseContainer, discoveryDatabaseName, discoveryDatabasePort, priorDatabaseUrl
+$env:Path = $priorPath
+if (-not (Test-Path -LiteralPath $pnpmShimPath -PathType Leaf)) {
+  throw "Expected temporary pnpm shim file is missing: $pnpmShimPath"
+}
+Remove-Item -LiteralPath $pnpmShimPath
+if (-not (Test-Path -LiteralPath $pnpmShimDirectory -PathType Container)) {
+  throw "Expected temporary pnpm shim directory is missing: $pnpmShimDirectory"
+}
+Remove-Item -LiteralPath $pnpmShimDirectory
+Remove-Variable priorPath, pnpmShimDirectory, pnpmShimPath, pnpmShimContents
 ~~~
 
-Expected: only project-maker-discovery-module-e2e is stopped and auto-removed; DATABASE_URL is restored exactly.
+Expected: only project-maker-discovery-module-e2e is stopped and auto-removed; DATABASE_URL and PATH are restored exactly; the exact temporary shim file and its now-empty directory are removed.
 
 - [ ] **Step 4: Run final scope, deletion-test, and secrecy review.**
 

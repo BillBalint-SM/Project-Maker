@@ -6,12 +6,9 @@ import type {
   AuditEventPage,
   CustomerEmailDelivery,
   CustomerFollowUpState,
-  CreateDiscoveryFollowUpInput,
   CreateProjectInput,
-  DiscoveryFollowUp,
   ProjectCockpit,
   ProjectWorkspace,
-  ResolveDiscoveryFollowUpInput,
   SendCustomerReviewEmailInput,
   SendFollowUpPingInput,
   UpdateCustomerFollowUpInput,
@@ -66,24 +63,15 @@ export class ProjectApiService {
             this.fail(error, 'load project follow-up settings'),
           ),
         ),
-      discoveryFollowUps: this.http
-        .get<readonly DiscoveryFollowUp[]>(
-          `/api/projects/${encodedProjectId}/discovery-follow-ups`,
-        )
-        .pipe(
-          catchError((error: unknown) =>
-            this.fail(error, 'load discovery follow-ups'),
-          ),
-        ),
     }).pipe(
-      map(({ cockpit, projects, followUp, discoveryFollowUps }) => {
+      map(({ cockpit, projects, followUp }) => {
         const project = projects.find((candidate) => candidate.id === projectId);
         if (!project) {
           throw new Error(
             'The cockpit loaded, but its project is missing from the project list. Refresh the page; if the problem continues, check the API data.',
           );
         }
-        return { cockpit, project, followUp, discoveryFollowUps };
+        return { cockpit, project, followUp };
       }),
       catchError((error: unknown) => this.fail(error, 'load the project cockpit')),
     );
@@ -101,43 +89,6 @@ export class ProjectApiService {
       .pipe(
         catchError((error: unknown) =>
           this.fail(error, 'save follow-up settings'),
-        ),
-      );
-  }
-
-  createDiscoveryFollowUp(
-    projectId: string,
-    input: CreateDiscoveryFollowUpInput,
-  ): Observable<DiscoveryFollowUp> {
-    return this.http
-      .post<DiscoveryFollowUp>(
-        `/api/projects/${encodeURIComponent(projectId)}/discovery-follow-ups`,
-        input,
-      )
-      .pipe(
-        catchError((error: unknown) =>
-          this.fail(error, 'create a discovery follow-up'),
-        ),
-      );
-  }
-
-  resolveDiscoveryFollowUp(
-    projectId: string,
-    followUpId: string,
-    input: ResolveDiscoveryFollowUpInput,
-  ): Observable<DiscoveryFollowUp> {
-    return this.http
-      .post<DiscoveryFollowUp>(
-        '/api/projects/' +
-          encodeURIComponent(projectId) +
-          '/discovery-follow-ups/' +
-          encodeURIComponent(followUpId) +
-          '/resolve',
-        input,
-      )
-      .pipe(
-        catchError((error: unknown) =>
-          this.fail(error, 'resolve a discovery follow-up'),
         ),
       );
   }
@@ -263,9 +214,6 @@ function followUpErrorNextStep(status: number, action: string): string {
     if (action === 'send the customer review email') {
       return 'The project may be archived or have no Markdown revision. Open Markdown or restore the project, then try again.';
     }
-    if (action === 'create a discovery follow-up') {
-      return 'The project may be archived or changed. Refresh the cockpit and try again.';
-    }
     return 'Refresh the project to see its latest lifecycle state.';
   }
 
@@ -285,9 +233,6 @@ function followUpErrorNextStep(status: number, action: string): string {
 
   if (action === 'save follow-up settings') {
     return 'Use a whole-number cadence from 1 to 525,600 minutes and a future expiry, then try again.';
-  }
-  if (status === 400 && action === 'create a discovery follow-up') {
-    return 'Choose a category, enter the required text, and use a real due date, then try again.';
   }
   return 'Review the entered values and try again.';
 }

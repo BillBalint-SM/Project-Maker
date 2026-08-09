@@ -119,7 +119,9 @@ test('resolves a discovery follow-up in the cockpit and persists its decision af
   await saveResolutionButton.click();
   expect((await resolutionResponse).status()).toBe(200);
 
-  await expect(page.getByTestId('cockpit-action-success')).toBeVisible();
+  await expect(
+    page.getByTestId('discovery-follow-up-action-success'),
+  ).toBeVisible();
   await expect(page.getByTestId('discovery-follow-up-status')).toHaveText('Megválaszolva');
   await expect(
     page.getByTestId('discovery-follow-up-decision-or-answer'),
@@ -228,7 +230,9 @@ test('creates a discovery follow-up, preserves its local date after reload, and 
   await nativeButton(page, 'create-discovery-follow-up-button').click();
   expect((await createResponse).status()).toBe(201);
 
-  await expect(page.getByTestId('cockpit-action-success')).toBeVisible();
+  await expect(
+    page.getByTestId('discovery-follow-up-action-success'),
+  ).toBeVisible();
   await expect(page.getByTestId('discovery-follow-up-item')).toHaveCount(1);
   await expect(page.getByTestId('discovery-follow-up-status')).toHaveText('Nyitott');
   await expect(page.getByTestId('discovery-follow-up-due-date')).toHaveText(
@@ -283,4 +287,53 @@ test('keeps the discovery list visible while archived and re-enables creation af
   ).toBe(201);
   await page.reload();
   await expect(nativeButton(page, 'create-discovery-follow-up-button')).toBeEnabled();
+});
+
+test('keeps the cockpit usable when Discovery loading fails and retries the real request', async ({
+  page,
+  request,
+}) => {
+  const project = await createProject(
+    request,
+    'Discovery follow-up isolated load failure',
+  );
+  await createDiscoveryFollowUp(request, project.id);
+  let abortNextDiscoveryRead = true;
+
+  await page.route(
+    '**/api/projects/' + project.id + '/discovery-follow-ups',
+    async (route) => {
+      if (
+        abortNextDiscoveryRead &&
+        route.request().method() === 'GET'
+      ) {
+        abortNextDiscoveryRead = false;
+        await route.abort('failed');
+        return;
+      }
+      await route.continue();
+    },
+  );
+
+  await page.goto('/projects/' + project.id);
+
+  await expect(page.getByTestId('workspace-form')).toBeVisible();
+  await expect(page.getByTestId('cockpit-error')).toHaveCount(0);
+  await expect(page.getByTestId('discovery-follow-ups-error')).toBeVisible();
+
+  const retryResponse = page.waitForResponse(
+    (response) =>
+      response.request().method() === 'GET' &&
+      response
+        .url()
+        .endsWith(
+          '/api/projects/' + project.id + '/discovery-follow-ups',
+        ),
+  );
+  await nativeButton(page, 'retry-discovery-follow-ups-button').click();
+
+  expect((await retryResponse).status()).toBe(200);
+  await expect(page.getByTestId('discovery-follow-ups-error')).toHaveCount(0);
+  await expect(page.getByTestId('discovery-follow-up-item')).toHaveCount(1);
+  await expect(page.getByTestId('workspace-form')).toBeVisible();
 });
