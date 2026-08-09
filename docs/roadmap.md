@@ -29,6 +29,7 @@ completion percentages, or effort calculations.
 | `AUDIT-01` | Explain important project changes | bounded cockpit audit history and milestone trace | `d1043aa`, [operations handoff](operations-handoff.md) |
 | `OUTPUT-00` | Preserve revisioned project snapshots | manual and milestone-triggered Markdown revisions with download | `d1043aa`, [operations handoff](operations-handoff.md) |
 | `COMM-01` | Send controlled customer communication | manual customer review and configurable follow-up ping delivery; this is not operational follow-up management | [operations handoff](operations-handoff.md), [follow-up routes](../apps/api/src/follow-ups/follow-up.controller.ts) |
+| `DOC-01` | Teach employees every stable delivered workflow | Hungarian business-functional guide for all current routes, actions, states, side effects, recovery branches, and limitations, supported by six sanitized screenshots and three workflow diagrams | [user guide](user-guide.md), [design](superpowers/specs/2026-08-09-user-guide-design.md), [implementation plan](superpowers/plans/2026-08-09-user-guide.md), [guided-intake E2E](../apps/web/e2e/guided-intake.spec.ts), [discovery E2E](../apps/web/e2e/discovery-follow-ups.spec.ts), [deletion E2E](../apps/web/e2e/project-delete.spec.ts) |
 
 For `INTAKE-01`, `DELETE /projects/:projectId` returns `204` only for a bare
 `DRAFT`. Any retained activity maps to a generic `409` and the project must be
@@ -46,7 +47,6 @@ archived instead. This is not a project-list bulk-delete capability.
 | `DATA-01` | Preserve complete discovery and derived-state provenance | Current tables support the delivered slice but do not prove storage for every planned field | [requirements](../.planning/REQUIREMENTS.md); depends on planned feature data |
 | `DATA-02` | Evolve the schema through explicit, versioned migrations with reversible intent | The existing seven migrations do not satisfy every future evolution and reversal need | [requirements](../.planning/REQUIREMENTS.md); depends on planned schema changes |
 | `DATA-03` | Implement and verify platform backup and restore | A named Compose volume is not a proven backup or restore capability | [requirements](../.planning/REQUIREMENTS.md); operationalized by `OPS-01` |
-| `DOC-01` | Publish a Hungarian end-user guide for stable delivered workflows | This roadmap and index are not the end-user guide | [requirements](../.planning/REQUIREMENTS.md); depends on stable user flows and documentation review |
 
 ## OPPORTUNITY
 
@@ -82,5 +82,7 @@ gates. They do not postpone their underlying security or operational needs.
 `docs/roadmap.md` is the current delivery-status source. The
 [product domain](product-domain.md) defines domain intent rather than delivered
 behavior. Historical plans preserve their pre-execution task lists and carry a
-delivery-status notice when their work is complete. `DOC-01` will become the
-Hungarian end-user guide once the relevant user flows are stable.
+delivery-status notice when their work is complete. The
+[Hungarian end-user guide](user-guide.md) is the canonical daily-work manual for
+the delivered user workflows; roadmap-only behavior remains explicitly outside
+its available-function boundary.
