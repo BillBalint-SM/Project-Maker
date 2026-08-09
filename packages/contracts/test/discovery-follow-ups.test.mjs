@@ -45,3 +45,22 @@ test('general playbook runtime loader returns the canonical initial follow-up st
 
   assert.equal(generalPlaybookV1.statuses.followUp[0], 'Nyitott');
 });
+
+test('discovery follow-ups expose the canonical resolved status policy', async () => {
+  const {
+    generalPlaybookV1,
+    resolvedDiscoveryFollowUpStatuses,
+  } = await import('../dist/index.js');
+
+  assert.deepEqual(
+    resolvedDiscoveryFollowUpStatuses,
+    generalPlaybookV1.scoring.readiness.resolvedFollowUpStatuses,
+  );
+  assert.deepEqual(resolvedDiscoveryFollowUpStatuses, [
+    'Megválaszolva',
+    'Nem releváns',
+  ]);
+  for (const status of resolvedDiscoveryFollowUpStatuses) {
+    assert.ok(generalPlaybookV1.statuses.followUp.includes(status));
+  }
+});

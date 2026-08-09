@@ -102,6 +102,20 @@
   gap: 0.65rem;
 }
 
+.discovery-follow-up-resolution-form {
+  border-top: 1px solid var(--p-content-border-color);
+  display: grid;
+  gap: 1rem;
+  margin-top: 1rem;
+  padding-top: 1rem;
+}
+
+.discovery-follow-up-resolution-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+}
+
 .follow-up-toggle {
   align-items: center;
   display: flex;

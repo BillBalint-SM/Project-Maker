@@ -208,6 +208,7 @@ describe('ProjectsController (e2e)', () => {
     assert.equal(later.body.owner, 'API team');
     assert.equal(later.body.nextStep, 'Confirm against the vendor contract.');
     assert.equal(later.body.dueDate, '2026-09-17');
+    assert.equal(later.body.decisionOrAnswer, null);
 
     const list = await request(app.getHttpServer())
       .get(`/projects/${projectId}/discovery-follow-ups`)
@@ -222,6 +223,13 @@ describe('ProjectsController (e2e)', () => {
         { id: later.body.id, dueDate: '2026-09-17' },
       ],
     );
+    const reloadedLater = list.body.find(
+      (value: { id: string }) => value.id === later.body.id,
+    ) as { decisionOrAnswer: string | null } | undefined;
+    if (!reloadedLater) {
+      throw new Error('created discovery follow-up was not returned after reload');
+    }
+    assert.equal(reloadedLater.decisionOrAnswer, null);
 
     const auditRows = await dataSource.query<
       Array<{ event_type: string; payload: Record<string, unknown> }>
@@ -250,6 +258,213 @@ describe('ProjectsController (e2e)', () => {
       },
     ]);
     assert.doesNotMatch(JSON.stringify(auditRows), /API team|vendor contract|approval decision/);
+  });
+
+  it('resolves discovery follow-ups with a persisted answer and a redacted audit event', async () => {
+    const projectId = await createProject('discovery-follow-up-resolve');
+    const created = await request(app.getHttpServer())
+      .post(`/projects/${projectId}/discovery-follow-ups`)
+      .send({
+        category: 'BUSINESS',
+        question: 'Which sponsor decision is required?',
+        owner: 'Programme sponsor',
+        dueDate: '2026-09-22',
+        nextStep: 'Record the sponsor decision.',
+      })
+      .expect(201);
+
+    const resolutionResponse = await request(app.getHttpServer())
+      .post(
+        '/projects/' +
+          projectId +
+          '/discovery-follow-ups/' +
+          created.body.id +
+          '/resolve',
+      )
+      .send({
+        status: 'Megválaszolva',
+        decisionOrAnswer: '  Sponsor approval is recorded in CAB-42.  ',
+      })
+      .expect(200);
+
+    assert.equal(resolutionResponse.body.status, 'Megválaszolva');
+    assert.equal(
+      resolutionResponse.body.decisionOrAnswer,
+      'Sponsor approval is recorded in CAB-42.',
+    );
+
+    const reloaded = await request(app.getHttpServer())
+      .get(`/projects/${projectId}/discovery-follow-ups`)
+      .expect(200);
+    const reloadedFollowUp = reloaded.body.find(
+      (value: { id: string }) => value.id === created.body.id,
+    ) as { status: string; decisionOrAnswer: string | null } | undefined;
+    if (!reloadedFollowUp) {
+      throw new Error('resolved discovery follow-up was not returned after reload');
+    }
+    assert.equal(reloadedFollowUp.status, 'Megválaszolva');
+    assert.equal(
+      reloadedFollowUp.decisionOrAnswer,
+      'Sponsor approval is recorded in CAB-42.',
+    );
+
+    const resolutionAuditRows = await dataSource.query<
+      Array<{ event_type: string; payload: Record<string, unknown> }>
+    >(
+      'SELECT "event_type", "payload" FROM "audit_events" WHERE "project_id" = $1 AND "event_type" = $2 ORDER BY "created_at" ASC, "id" ASC',
+      [projectId, 'DISCOVERY_FOLLOW_UP_RESOLVED'],
+    );
+    assert.deepEqual(resolutionAuditRows, [
+      {
+        event_type: 'DISCOVERY_FOLLOW_UP_RESOLVED',
+        payload: {
+          followUpId: created.body.id,
+          status: 'Megválaszolva',
+        },
+      },
+    ]);
+    assert.doesNotMatch(
+      JSON.stringify(resolutionAuditRows),
+      /Sponsor approval|CAB-42|Which sponsor decision|Programme sponsor|Record the sponsor decision/,
+    );
+
+    const second = await createDiscoveryFollowUp(projectId, 'resolve-nem-relevans');
+    const secondResolution = await request(app.getHttpServer())
+      .post(`/projects/${projectId}/discovery-follow-ups/${second.id}/resolve`)
+      .send({
+        status: 'Nem releváns',
+        decisionOrAnswer: 'This dependency does not apply to the delivery scope.',
+      })
+      .expect(200);
+    assert.equal(secondResolution.body.status, 'Nem releváns');
+  });
+
+  it('rejects invalid discovery follow-up resolution input without echoing submitted values', async () => {
+    const projectId = await createProject('discovery-follow-up-resolution-validation');
+    const tooLongAnswer = 'A'.repeat(10_001);
+    const invalidBodies: ReadonlyArray<{
+      readonly body: Record<string, string>;
+      readonly forbidden: readonly string[];
+    }> = [
+      {
+        body: { status: 'Folyamatban', decisionOrAnswer: 'invalid-status-sentinel' },
+        forbidden: ['Folyamatban', 'invalid-status-sentinel'],
+      },
+      {
+        body: { status: 'Megválaszolva', decisionOrAnswer: '   ' },
+        forbidden: ['Megválaszolva'],
+      },
+      {
+        body: { status: 'Megválaszolva', decisionOrAnswer: tooLongAnswer },
+        forbidden: [tooLongAnswer],
+      },
+      {
+        body: { decisionOrAnswer: 'missing-status-sentinel' },
+        forbidden: ['missing-status-sentinel'],
+      },
+      {
+        body: { status: 'Megválaszolva' },
+        forbidden: ['Megválaszolva'],
+      },
+      {
+        body: {
+          status: 'Megválaszolva',
+          decisionOrAnswer: 'unexpected-answer-sentinel',
+          ignored: 'unexpected-field-sentinel',
+        },
+        forbidden: ['unexpected-answer-sentinel', 'unexpected-field-sentinel'],
+      },
+    ];
+
+    for (const [index, { body, forbidden }] of invalidBodies.entries()) {
+      const followUp = await createDiscoveryFollowUp(projectId, `resolution-invalid-${index}`);
+      const response = await request(app.getHttpServer())
+        .post(`/projects/${projectId}/discovery-follow-ups/${followUp.id}/resolve`)
+        .send(body)
+        .expect(400);
+      for (const value of forbidden) {
+        assertNoSubmittedValues(response.body, value);
+      }
+    }
+  });
+
+  it('returns 400 for malformed resolution ids and 404 for missing resolution resources', async () => {
+    const projectId = await createProject('discovery-follow-up-resolution-missing');
+    const validRequest = {
+      status: 'Megválaszolva',
+      decisionOrAnswer: 'The missing resource test uses a valid resolution body.',
+    };
+
+    const invalidFollowUpId = 'not-a-follow-up-uuid';
+    const invalidResponse = await request(app.getHttpServer())
+      .post(`/projects/${projectId}/discovery-follow-ups/${invalidFollowUpId}/resolve`)
+      .send(validRequest)
+      .expect(400);
+    assertNoSubmittedValues(invalidResponse.body, invalidFollowUpId);
+
+    await request(app.getHttpServer())
+      .post(
+        `/projects/${projectId}/discovery-follow-ups/00000000-0000-4000-8000-000000000000/resolve`,
+      )
+      .send(validRequest)
+      .expect(404);
+
+    await request(app.getHttpServer())
+      .post(
+        '/projects/00000000-0000-4000-8000-000000000000/discovery-follow-ups/00000000-0000-4000-8000-000000000000/resolve',
+      )
+      .send(validRequest)
+      .expect(404);
+  });
+
+  it('rejects resolution while archived and permits it after restoration', async () => {
+    const projectId = await createProject('discovery-follow-up-resolution-archive');
+    const followUp = await createDiscoveryFollowUp(projectId, 'resolution-archive');
+    const resolutionBody = {
+      status: 'Megválaszolva',
+      decisionOrAnswer: 'The archived project was restored before resolution.',
+    };
+
+    await request(app.getHttpServer()).post(`/projects/${projectId}/archive`).expect(201);
+    await request(app.getHttpServer())
+      .post(`/projects/${projectId}/discovery-follow-ups/${followUp.id}/resolve`)
+      .send(resolutionBody)
+      .expect(409);
+    await request(app.getHttpServer()).post(`/projects/${projectId}/restore`).expect(201);
+    await request(app.getHttpServer())
+      .post(`/projects/${projectId}/discovery-follow-ups/${followUp.id}/resolve`)
+      .send(resolutionBody)
+      .expect(200);
+
+    const resolutionAuditRows = await dataSource.query<Array<{ event_type: string }>>(
+      'SELECT "event_type" FROM "audit_events" WHERE "project_id" = $1 AND "event_type" = $2',
+      [projectId, 'DISCOVERY_FOLLOW_UP_RESOLVED'],
+    );
+    assert.deepEqual(resolutionAuditRows, [{ event_type: 'DISCOVERY_FOLLOW_UP_RESOLVED' }]);
+  });
+
+  it('rejects a duplicate discovery follow-up resolution without another audit event', async () => {
+    const projectId = await createProject('discovery-follow-up-resolution-duplicate');
+    const followUp = await createDiscoveryFollowUp(projectId, 'resolution-duplicate');
+    const resolutionBody = {
+      status: 'Nem releváns',
+      decisionOrAnswer: 'The duplicate command must not create another audit event.',
+    };
+
+    await request(app.getHttpServer())
+      .post(`/projects/${projectId}/discovery-follow-ups/${followUp.id}/resolve`)
+      .send(resolutionBody)
+      .expect(200);
+    await request(app.getHttpServer())
+      .post(`/projects/${projectId}/discovery-follow-ups/${followUp.id}/resolve`)
+      .send(resolutionBody)
+      .expect(409);
+
+    const resolutionAuditRows = await dataSource.query<Array<{ count: string }>>(
+      'SELECT COUNT(*)::text AS "count" FROM "audit_events" WHERE "project_id" = $1 AND "event_type" = $2',
+      [projectId, 'DISCOVERY_FOLLOW_UP_RESOLVED'],
+    );
+    assert.equal(resolutionAuditRows[0]?.count, '1');
   });
 
   it('rejects invalid discovery follow-up input without echoing submitted values', async () => {
@@ -746,6 +961,24 @@ describe('ProjectsController (e2e)', () => {
       .expect(201);
 
     return response.body.id as string;
+  }
+
+  async function createDiscoveryFollowUp(
+    projectId: string,
+    label: string,
+  ): Promise<{ id: string }> {
+    const response = await request(app.getHttpServer())
+      .post(`/projects/${projectId}/discovery-follow-ups`)
+      .send({
+        category: 'OPERATIONS',
+        question: `Question for ${label}`,
+        owner: 'Delivery lead',
+        dueDate: '2026-09-23',
+        nextStep: `Next step for ${label}`,
+      })
+      .expect(201);
+
+    return { id: response.body.id as string };
   }
 
   async function expectProjectDeletionConflict(projectId: string): Promise<void> {

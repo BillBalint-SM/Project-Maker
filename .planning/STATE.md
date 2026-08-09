@@ -21,9 +21,13 @@ and guarded strict project deletion.
 - Discovery follow-ups: `INTAKE-04.1` creates and lists a separate project-owned
   work item through `GET`/`POST /projects/:projectId/discovery-follow-ups` with
   a canonical `Nyitott` initial status, category, owner, date-only due date,
-  question, and next step. Creation writes one safe audit event; archived
-  projects remain readable, reject creation, and allow it again after restore.
-  A persisted discovery follow-up also prevents permanent project deletion.
+  question, and next step. `INTAKE-04.2` resolves an unresolved work item through
+  `POST /projects/:projectId/discovery-follow-ups/:followUpId/resolve` to the
+  canonical `Megválaszolva` or `Nem releváns` status with a required persisted
+  answer/decision. Creation and resolution each write a safe audit event;
+  archived projects remain readable, reject creation and resolution, and allow
+  both again after restore. A persisted discovery follow-up also prevents
+  permanent project deletion.
 - Guided intake: a published project question schema can start one open
   `INITIAL_INTAKE` round, recover that active round, persist answers, complete
   after server validation, and keep completed rounds immutable.
@@ -54,9 +58,9 @@ preserve their approved pre-execution task lists; their delivery-status notices
 and the roadmap explain what is actually shipped.
 
 The verified guided-intake scope is intentionally limited to `INITIAL_INTAKE`.
-`INTAKE-04.1` is the first discovery-follow-up vertical slice only: editing,
-resolving, source linkage, answer/decision recording, and scoring/readiness
-integration remain separate delivery work. Canonical structured output,
+`INTAKE-04.1` and `INTAKE-04.2` deliver discovery-follow-up creation, review,
+and resolution. General editing, source linkage, scoring/readiness integration,
+and later follow-up work remain separate delivery work. Canonical structured output,
 authentication, authorization, backup operations, and export coverage also
 remain separate until their requirements and verification evidence are complete.
 

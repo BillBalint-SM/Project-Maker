@@ -32,6 +32,9 @@ export class DiscoveryFollowUpEntity {
   @Column({ type: 'varchar', length: 100 })
   status!: string;
 
+  @Column({ name: 'decision_or_answer', type: 'text', nullable: true })
+  decisionOrAnswer!: string | null;
+
   @Column({ name: 'next_step', type: 'text' })
   nextStep!: string;
 

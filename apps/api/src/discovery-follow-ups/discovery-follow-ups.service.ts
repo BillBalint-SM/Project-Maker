@@ -10,6 +10,7 @@ import {
 import type {
   CreateDiscoveryFollowUpInput,
   DiscoveryFollowUp,
+  ResolveDiscoveryFollowUpInput,
 } from '@project-maker/contracts';
 import { loadGeneralPlaybookV1 } from '@project-maker/contracts/general-playbook-runtime';
 import { DataSource, EntityManager } from 'typeorm';
@@ -46,10 +47,39 @@ export class DiscoveryFollowUpsService {
         owner: normalizeRequiredText(input.owner, 'owner must not be blank.'),
         dueDate: parseDueDate(input.dueDate),
         status: await initialDiscoveryFollowUpStatus(),
+        decisionOrAnswer: null,
         nextStep: normalizeRequiredText(input.nextStep, 'nextStep must not be blank.'),
       });
       const followUp = toDiscoveryFollowUp(saved);
       await saveDiscoveryFollowUpAuditEvent(manager, followUp);
+      return followUp;
+    });
+  }
+
+  async resolve(
+    projectId: string,
+    followUpId: string,
+    input: ResolveDiscoveryFollowUpInput,
+  ): Promise<DiscoveryFollowUp> {
+    return this.dataSource.transaction(async (manager) => {
+      const project = await findLockedProject(manager, projectId);
+      rejectArchivedProjectForResolution(project);
+
+      const entity = await findLockedDiscoveryFollowUp(manager, projectId, followUpId);
+      const resolvedStatuses = await loadResolvedDiscoveryFollowUpStatuses();
+      if (resolvedStatuses.includes(entity.status)) {
+        throw new ConflictException('Discovery follow-up is already resolved.');
+      }
+
+      entity.status = requireResolvedDiscoveryFollowUpStatus(input.status, resolvedStatuses);
+      entity.decisionOrAnswer = normalizeRequiredText(
+        input.decisionOrAnswer,
+        'decisionOrAnswer must not be blank.',
+      );
+
+      const saved = await manager.getRepository(DiscoveryFollowUpEntity).save(entity);
+      const followUp = toDiscoveryFollowUp(saved);
+      await saveDiscoveryFollowUpResolutionAuditEvent(manager, followUp);
       return followUp;
     });
   }
@@ -86,6 +116,27 @@ function rejectArchivedProject(project: Project): void {
   }
 }
 
+function rejectArchivedProjectForResolution(project: Project): void {
+  if (project.status === 'ARCHIVED') {
+    throw new ConflictException('Archived projects cannot resolve discovery follow-ups.');
+  }
+}
+
+async function findLockedDiscoveryFollowUp(
+  manager: EntityManager,
+  projectId: string,
+  followUpId: string,
+): Promise<DiscoveryFollowUpEntity> {
+  const followUp = await manager.getRepository(DiscoveryFollowUpEntity).findOne({
+    where: { id: followUpId, projectId },
+    lock: { mode: 'pessimistic_write' },
+  });
+  if (!followUp) {
+    throw new NotFoundException('Discovery follow-up not found.');
+  }
+  return followUp;
+}
+
 function normalizeRequiredText(value: string, errorMessage: string): string {
   const normalized = value.trim();
   if (!normalized) {
@@ -113,6 +164,32 @@ async function initialDiscoveryFollowUpStatus(): Promise<string> {
   return status;
 }
 
+async function loadResolvedDiscoveryFollowUpStatuses(): Promise<readonly string[]> {
+  const generalPlaybookV1 = await loadGeneralPlaybookV1();
+  const statuses = generalPlaybookV1.scoring.readiness.resolvedFollowUpStatuses;
+  if (
+    statuses.length === 0 ||
+    statuses.some((status) => !generalPlaybookV1.statuses.followUp.includes(status))
+  ) {
+    throw new InternalServerErrorException(
+      'Canonical resolved follow-up status configuration is invalid.',
+    );
+  }
+  return statuses;
+}
+
+function requireResolvedDiscoveryFollowUpStatus(
+  value: string,
+  allowedStatuses: readonly string[],
+): string {
+  if (!allowedStatuses.includes(value)) {
+    throw new BadRequestException(
+      'status must be a canonical resolved follow-up status.',
+    );
+  }
+  return value;
+}
+
 async function saveDiscoveryFollowUpAuditEvent(
   manager: EntityManager,
   followUp: DiscoveryFollowUp,
@@ -131,6 +208,22 @@ async function saveDiscoveryFollowUpAuditEvent(
   });
 }
 
+async function saveDiscoveryFollowUpResolutionAuditEvent(
+  manager: EntityManager,
+  followUp: DiscoveryFollowUp,
+): Promise<void> {
+  const payload: AuditPayload = {
+    followUpId: followUp.id,
+    status: followUp.status,
+  };
+  await manager.getRepository(AuditEvent).save({
+    id: randomUUID(),
+    projectId: followUp.projectId,
+    eventType: 'DISCOVERY_FOLLOW_UP_RESOLVED',
+    payload,
+  });
+}
+
 function toDiscoveryFollowUp(value: DiscoveryFollowUpEntity): DiscoveryFollowUp {
   return {
     id: value.id,
@@ -140,6 +233,7 @@ function toDiscoveryFollowUp(value: DiscoveryFollowUpEntity): DiscoveryFollowUp 
     owner: value.owner,
     dueDate: value.dueDate,
     status: value.status,
+    decisionOrAnswer: value.decisionOrAnswer,
     nextStep: value.nextStep,
     createdAt: value.createdAt.toISOString(),
     updatedAt: value.updatedAt.toISOString(),
