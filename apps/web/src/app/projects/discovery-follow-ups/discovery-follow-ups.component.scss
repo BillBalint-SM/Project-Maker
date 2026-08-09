@@ -1,0 +1,68 @@
+:host {
+  display: block;
+}
+
+.discovery-follow-up-form,
+.discovery-follow-up-fields {
+  display: grid;
+  gap: 1.25rem;
+}
+
+.discovery-follow-up-fields {
+  border: 0;
+  margin: 0;
+  min-inline-size: 0;
+  padding: 0;
+}
+
+.discovery-follow-up-state {
+  align-items: center;
+  color: var(--p-text-muted-color);
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  justify-content: center;
+  line-height: 1.5;
+  min-height: 8rem;
+  text-align: center;
+}
+
+.discovery-follow-up-list {
+  display: grid;
+  gap: 1rem;
+  list-style: none;
+  margin: 1.5rem 0 0;
+  padding: 0;
+}
+
+.discovery-follow-up-item {
+  border: 1px solid var(--p-content-border-color);
+  border-radius: 0.75rem;
+  padding: 1rem;
+}
+
+.discovery-follow-up-meta {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+}
+
+.discovery-follow-up-resolution-form {
+  border-top: 1px solid var(--p-content-border-color);
+  display: grid;
+  gap: 1rem;
+  margin-top: 1rem;
+  padding-top: 1rem;
+}
+
+.discovery-follow-up-resolution-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+}
+
+p-message {
+  display: block;
+  margin-bottom: 0.75rem;
+}
