@@ -1,5 +1,6 @@
 import { DatePipe, JsonPipe } from '@angular/common';
-import { Component, inject, OnInit, signal } from '@angular/core';
+import { Component, computed, DestroyRef, inject, OnInit, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import {
   FormControl,
   FormGroup,
@@ -30,7 +31,14 @@ import {
   type ResolveDiscoveryFollowUpInput,
   type UpdateCustomerFollowUpInput,
 } from '@project-maker/contracts';
+import { finalize } from 'rxjs';
 
+import {
+  COCKPIT_OPERATION_POLICY,
+  provideCockpitOperationPolicy,
+  releaseCockpitOperationOnFinalize,
+  type CockpitOperationId,
+} from './cockpit-operation-policy';
 import type { AuditEventPage, CockpitView, StatusOption } from './project-api.models';
 import { ProjectApiService } from './project-api.service';
 
@@ -62,7 +70,7 @@ const statusOptions: StatusOption[] = [
     TagModule,
     TextareaModule,
   ],
-  providers: [ConfirmationService],
+  providers: [ConfirmationService, provideCockpitOperationPolicy()],
   templateUrl: './project-cockpit.page.html',
   styleUrl: './project-cockpit.page.scss',
 })
@@ -71,6 +79,8 @@ export class ProjectCockpitPage implements OnInit {
   private readonly route = inject(ActivatedRoute);
   private readonly confirmationService = inject(ConfirmationService);
   private readonly router = inject(Router);
+  readonly operationPolicy = inject(COCKPIT_OPERATION_POLICY);
+  private readonly destroyRef = inject(DestroyRef);
 
   readonly projectId = this.route.snapshot.paramMap.get('projectId') ?? '';
   readonly statusOptions = statusOptions;
@@ -79,15 +89,35 @@ export class ProjectCockpitPage implements OnInit {
   readonly loadError = signal<string | null>(null);
   readonly actionError = signal<string | null>(null);
   readonly feedback = signal<string | null>(null);
-  readonly saving = signal(false);
-  readonly transitioning = signal(false);
-  readonly followUpSaving = signal(false);
-  readonly discoveryFollowUpSaving = signal(false);
   readonly openedDiscoveryFollowUpResolutionId = signal<string | null>(null);
   readonly savingDiscoveryFollowUpResolutionId = signal<string | null>(null);
-  readonly pinging = signal(false);
-  readonly reviewSending = signal(false);
-  readonly deleting = signal(false);
+  readonly saving = computed(
+    () => this.operationPolicy.activeOperation() === 'workspace-save',
+  );
+  readonly transitioning = computed(() => {
+    const operation = this.operationPolicy.activeOperation();
+    return operation === 'project-archive' || operation === 'project-restore';
+  });
+  readonly followUpSaving = computed(
+    () => this.operationPolicy.activeOperation() === 'customer-follow-up-save',
+  );
+  readonly discoveryFollowUpSaving = computed(
+    () => this.operationPolicy.activeOperation() === 'discovery-create',
+  );
+  readonly pinging = computed(
+    () => this.operationPolicy.activeOperation() === 'customer-follow-up-ping',
+  );
+  readonly reviewSending = computed(
+    () => this.operationPolicy.activeOperation() === 'customer-review-email',
+  );
+  readonly deleting = computed(
+    () => this.operationPolicy.activeOperation() === 'project-delete',
+  );
+  readonly discoveryFollowUpMutationInProgress = computed(() => {
+    const operation = this.operationPolicy.activeOperation();
+    return operation === 'discovery-create' || operation === 'discovery-resolve';
+  });
+  readonly cockpitMutationInProgress = this.operationPolicy.busy;
   readonly auditPage = signal<AuditEventPage | null>(null);
   readonly auditLoading = signal(false);
   readonly auditError = signal<string | null>(null);
@@ -278,35 +308,39 @@ export class ProjectCockpitPage implements OnInit {
     this.workspaceForm.markAllAsTouched();
     if (
       this.workspaceForm.invalid ||
-      this.saving() ||
-      this.discoveryFollowUpMutationInProgress() ||
-      this.deleting() ||
+      this.cockpitMutationInProgress() ||
       this.isArchived()
     ) {
       return;
     }
 
     const value = this.workspaceForm.getRawValue();
-    this.saving.set(true);
+    const input = {
+      status: value.status,
+      ballOwner: emptyToNull(value.ballOwner),
+      nextAction: emptyToNull(value.nextAction),
+      dueAt: value.dueAt?.toISOString() ?? null,
+    };
+    const lease = this.operationPolicy.tryAcquire('workspace-save');
+    if (!lease) {
+      return;
+    }
     this.actionError.set(null);
     this.feedback.set(null);
     this.api
-      .updateWorkspace(this.projectId, {
-        status: value.status,
-        ballOwner: emptyToNull(value.ballOwner),
-        nextAction: emptyToNull(value.nextAction),
-        dueAt: value.dueAt?.toISOString() ?? null,
-      })
+      .updateWorkspace(this.projectId, input)
+      .pipe(
+        releaseCockpitOperationOnFinalize(lease),
+        takeUntilDestroyed(this.destroyRef),
+      )
       .subscribe({
         next: (project) => {
           this.applyWorkspaceResponse(project);
           this.feedback.set('Workspace saved.');
-          this.saving.set(false);
           this.refreshAuditEvents();
         },
         error: (error: Error) => {
           this.actionError.set(error.message);
-          this.saving.set(false);
         },
       });
   }
@@ -328,21 +362,28 @@ export class ProjectCockpitPage implements OnInit {
       intervalMinutes: value.intervalMinutes,
       expiresAt: value.expiresAt?.toISOString() ?? null,
     };
-    this.followUpSaving.set(true);
+    const lease = this.operationPolicy.tryAcquire('customer-follow-up-save');
+    if (!lease) {
+      return;
+    }
     this.actionError.set(null);
     this.feedback.set(null);
-    this.api.updateFollowUp(this.projectId, input).subscribe({
-      next: (followUp) => {
-        this.applyFollowUpResponse(followUp);
-        this.feedback.set('Customer follow-up settings saved.');
-        this.followUpSaving.set(false);
-        this.refreshAuditEvents();
-      },
-      error: (error: Error) => {
-        this.actionError.set(error.message);
-        this.followUpSaving.set(false);
-      },
-    });
+    this.api
+      .updateFollowUp(this.projectId, input)
+      .pipe(
+        releaseCockpitOperationOnFinalize(lease),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe({
+        next: (followUp) => {
+          this.applyFollowUpResponse(followUp);
+          this.feedback.set('Customer follow-up settings saved.');
+          this.refreshAuditEvents();
+        },
+        error: (error: Error) => {
+          this.actionError.set(error.message);
+        },
+      });
   }
 
   createDiscoveryFollowUp(): void {
@@ -366,32 +407,39 @@ export class ProjectCockpitPage implements OnInit {
       dueDate: toLocalDateOnly(value.dueDate),
       nextStep: value.nextStep.trim(),
     };
-    this.discoveryFollowUpSaving.set(true);
+    const lease = this.operationPolicy.tryAcquire('discovery-create');
+    if (!lease) {
+      return;
+    }
     this.actionError.set(null);
     this.feedback.set(null);
-    this.api.createDiscoveryFollowUp(this.projectId, input).subscribe({
-      next: (created) => {
-        this.view.update((existing) =>
-          existing
-            ? {
-                ...existing,
-                discoveryFollowUps: sortDiscoveryFollowUps([
-                  ...existing.discoveryFollowUps,
-                  created,
-                ]),
-              }
-            : existing,
-        );
-        this.resetDiscoveryFollowUpForm();
-        this.feedback.set('Discovery follow-up created.');
-        this.discoveryFollowUpSaving.set(false);
-        this.refreshAuditEvents();
-      },
-      error: (error: Error) => {
-        this.actionError.set(error.message);
-        this.discoveryFollowUpSaving.set(false);
-      },
-    });
+    this.api
+      .createDiscoveryFollowUp(this.projectId, input)
+      .pipe(
+        releaseCockpitOperationOnFinalize(lease),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe({
+        next: (created) => {
+          this.view.update((existing) =>
+            existing
+              ? {
+                  ...existing,
+                  discoveryFollowUps: sortDiscoveryFollowUps([
+                    ...existing.discoveryFollowUps,
+                    created,
+                  ]),
+                }
+              : existing,
+          );
+          this.resetDiscoveryFollowUpForm();
+          this.feedback.set('Discovery follow-up created.');
+          this.refreshAuditEvents();
+        },
+        error: (error: Error) => {
+          this.actionError.set(error.message);
+        },
+      });
   }
 
   openDiscoveryFollowUpResolution(followUpId: string): void {
@@ -443,11 +491,20 @@ export class ProjectCockpitPage implements OnInit {
       status: value.status,
       decisionOrAnswer: value.decisionOrAnswer.trim(),
     };
+    const lease = this.operationPolicy.tryAcquire('discovery-resolve');
+    if (!lease) {
+      return;
+    }
     this.savingDiscoveryFollowUpResolutionId.set(followUpId);
     this.actionError.set(null);
     this.feedback.set(null);
     this.api
       .resolveDiscoveryFollowUp(this.projectId, followUpId, input)
+      .pipe(
+        finalize(() => this.savingDiscoveryFollowUpResolutionId.set(null)),
+        releaseCockpitOperationOnFinalize(lease),
+        takeUntilDestroyed(this.destroyRef),
+      )
       .subscribe({
         next: (resolved) => {
           this.view.update((current) =>
@@ -463,14 +520,12 @@ export class ProjectCockpitPage implements OnInit {
               : current,
           );
           this.openedDiscoveryFollowUpResolutionId.set(null);
-          this.savingDiscoveryFollowUpResolutionId.set(null);
           this.resetDiscoveryFollowUpResolutionForm();
           this.feedback.set('Discovery follow-up resolved.');
           this.refreshAuditEvents();
         },
         error: (error: Error) => {
           this.actionError.set(error.message);
-          this.savingDiscoveryFollowUpResolutionId.set(null);
         },
       });
   }
@@ -484,33 +539,21 @@ export class ProjectCockpitPage implements OnInit {
   }
 
   isDiscoveryFollowUpResolutionSaving(followUpId: string): boolean {
-    return this.savingDiscoveryFollowUpResolutionId() === followUpId;
-  }
-
-  discoveryFollowUpMutationInProgress(): boolean {
     return (
-      this.discoveryFollowUpSaving() ||
-      this.savingDiscoveryFollowUpResolutionId() !== null
+      this.operationPolicy.activeOperation() === 'discovery-resolve' &&
+      this.savingDiscoveryFollowUpResolutionId() === followUpId
     );
   }
 
   discoveryFollowUpResolutionControlsDisabled(): boolean {
-    return (
-      this.discoveryFollowUpMutationInProgress() ||
-      this.saving() ||
-      this.followUpSaving() ||
-      this.pinging() ||
-      this.reviewSending() ||
-      this.transitioning() ||
-      this.deleting() ||
-      this.isArchived()
-    );
+    return this.cockpitMutationInProgress() || this.isArchived();
   }
 
   discoveryFollowUpResolveControlDisabled(): boolean {
     return (
+      this.cockpitMutationInProgress() ||
       this.openedDiscoveryFollowUpResolutionId() !== null ||
-      this.discoveryFollowUpResolutionControlsDisabled()
+      this.isArchived()
     );
   }
 
@@ -519,22 +562,30 @@ export class ProjectCockpitPage implements OnInit {
       return;
     }
 
-    this.pinging.set(true);
+    const input = {};
+    const lease = this.operationPolicy.tryAcquire('customer-follow-up-ping');
+    if (!lease) {
+      return;
+    }
     this.actionError.set(null);
     this.feedback.set(null);
-    this.api.sendFollowUpPing(this.projectId, {}).subscribe({
-      next: (followUp) => {
-        this.applyFollowUpStatus(followUp);
-        this.feedback.set('Customer follow-up ping sent.');
-        this.pinging.set(false);
-        this.refreshAuditEvents();
-      },
-      error: (error: Error) => {
-        this.actionError.set(error.message);
-        this.pinging.set(false);
-        this.refreshAuditEvents();
-      },
-    });
+    this.api
+      .sendFollowUpPing(this.projectId, input)
+      .pipe(
+        releaseCockpitOperationOnFinalize(lease),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe({
+        next: (followUp) => {
+          this.applyFollowUpStatus(followUp);
+          this.feedback.set('Customer follow-up ping sent.');
+          this.refreshAuditEvents();
+        },
+        error: (error: Error) => {
+          this.actionError.set(error.message);
+          this.refreshAuditEvents();
+        },
+      });
   }
 
   sendCustomerReviewEmail(): void {
@@ -542,77 +593,93 @@ export class ProjectCockpitPage implements OnInit {
       return;
     }
 
-    this.reviewSending.set(true);
+    const input = {};
+    const lease = this.operationPolicy.tryAcquire('customer-review-email');
+    if (!lease) {
+      return;
+    }
     this.actionError.set(null);
     this.feedback.set(null);
-    this.api.sendCustomerReviewEmail(this.projectId, {}).subscribe({
-      next: (delivery) => {
-        this.feedback.set(
-          `Customer review email sent using Markdown revision v${delivery.revisionVersion}.`,
-        );
-        this.reviewSending.set(false);
-        this.refreshAuditEvents();
-      },
-      error: (error: Error) => {
-        this.actionError.set(error.message);
-        this.reviewSending.set(false);
-        this.refreshAuditEvents();
-      },
-    });
+    this.api
+      .sendCustomerReviewEmail(this.projectId, input)
+      .pipe(
+        releaseCockpitOperationOnFinalize(lease),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe({
+        next: (delivery) => {
+          this.feedback.set(
+            `Customer review email sent using Markdown revision v${delivery.revisionVersion}.`,
+          );
+          this.refreshAuditEvents();
+        },
+        error: (error: Error) => {
+          this.actionError.set(error.message);
+          this.refreshAuditEvents();
+        },
+      });
   }
 
   archiveProject(): void {
     if (
-      this.transitioning() ||
-      this.deleting() ||
-      this.isArchived() ||
-      this.discoveryFollowUpMutationInProgress() ||
-      this.pinging() ||
-      this.reviewSending()
+      this.cockpitMutationInProgress() ||
+      this.isArchived()
     ) {
       return;
     }
-    this.transitioning.set(true);
+    const lease = this.operationPolicy.tryAcquire('project-archive');
+    if (!lease) {
+      return;
+    }
     this.actionError.set(null);
     this.feedback.set(null);
-    this.api.archiveProject(this.projectId).subscribe({
-      next: (project) => {
-        this.applyWorkspaceResponse(project);
-        this.feedback.set('Project archived.');
-        this.transitioning.set(false);
-        this.refreshAuditEvents();
-      },
-      error: (error: Error) => {
-        this.actionError.set(error.message);
-        this.transitioning.set(false);
-      },
-    });
+    this.api
+      .archiveProject(this.projectId)
+      .pipe(
+        releaseCockpitOperationOnFinalize(lease),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe({
+        next: (project) => {
+          this.applyWorkspaceResponse(project);
+          this.feedback.set('Project archived.');
+          this.refreshAuditEvents();
+        },
+        error: (error: Error) => {
+          this.actionError.set(error.message);
+        },
+      });
   }
 
   restoreProject(): void {
     if (
-      this.transitioning() ||
-      this.deleting() ||
-      this.discoveryFollowUpMutationInProgress() ||
+      this.cockpitMutationInProgress() ||
       !this.isArchived()
     ) {
       return;
     }
-    this.transitioning.set(true);
+    const lease = this.operationPolicy.tryAcquire('project-restore');
+    if (!lease) {
+      return;
+    }
     this.actionError.set(null);
     this.feedback.set(null);
-    this.api.restoreProject(this.projectId).subscribe({
-      next: (project) => {
-        this.applyWorkspaceResponse(project);
-        this.feedback.set('Project restored to DRAFT.');
-        this.transitioning.set(false);
-        this.refreshAuditEvents();
-      },
-      error: (error: Error) => {
-        this.actionError.set(error.message);
-        this.transitioning.set(false);
-      },
-    });
+    this.api
+      .restoreProject(this.projectId)
+      .pipe(
+        releaseCockpitOperationOnFinalize(lease),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe({
+        next: (project) => {
+          this.applyWorkspaceResponse(project);
+          this.feedback.set('Project restored to DRAFT.');
+          this.refreshAuditEvents();
+        },
+        error: (error: Error) => {
+          this.actionError.set(error.message);
+        },
+      });
   }
 
   isArchived(): boolean {
@@ -622,13 +689,7 @@ export class ProjectCockpitPage implements OnInit {
   requestProjectDeletion(): void {
     if (
       !this.isDeletableDraft() ||
-      this.deleting() ||
-      this.transitioning() ||
-      this.saving() ||
-      this.followUpSaving() ||
-      this.discoveryFollowUpMutationInProgress() ||
-      this.pinging() ||
-      this.reviewSending()
+      this.cockpitMutationInProgress()
     ) {
       return;
     }
@@ -644,29 +705,30 @@ export class ProjectCockpitPage implements OnInit {
   deleteProject(): void {
     if (
       !this.isDeletableDraft() ||
-      this.deleting() ||
-      this.transitioning() ||
-      this.saving() ||
-      this.followUpSaving() ||
-      this.discoveryFollowUpMutationInProgress() ||
-      this.pinging() ||
-      this.reviewSending()
+      this.cockpitMutationInProgress()
     ) {
       return;
     }
-    this.deleting.set(true);
+    const lease = this.operationPolicy.tryAcquire('project-delete');
+    if (!lease) {
+      return;
+    }
     this.actionError.set(null);
     this.feedback.set(null);
-    this.api.deleteProject(this.projectId).subscribe({
-      next: () => {
-        this.deleting.set(false);
-        void this.router.navigate(['/']);
-      },
-      error: (error: Error) => {
-        this.actionError.set(error.message);
-        this.deleting.set(false);
-      },
-    });
+    this.api
+      .deleteProject(this.projectId)
+      .pipe(
+        releaseCockpitOperationOnFinalize(lease),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe({
+        next: () => {
+          void this.router.navigate(['/']);
+        },
+        error: (error: Error) => {
+          this.actionError.set(error.message);
+        },
+      });
   }
 
   isDeletableDraft(): boolean {
@@ -674,16 +736,7 @@ export class ProjectCockpitPage implements OnInit {
   }
 
   followUpControlsDisabled(): boolean {
-    return (
-      this.followUpSaving() ||
-      this.pinging() ||
-      this.reviewSending() ||
-      this.discoveryFollowUpMutationInProgress() ||
-      this.saving() ||
-      this.transitioning() ||
-      this.deleting() ||
-      this.isArchived()
-    );
+    return this.cockpitMutationInProgress() || this.isArchived();
   }
 
   emailActionsDisabled(): boolean {
@@ -691,16 +744,7 @@ export class ProjectCockpitPage implements OnInit {
   }
 
   discoveryFollowUpControlsDisabled(): boolean {
-    return (
-      this.discoveryFollowUpMutationInProgress() ||
-      this.saving() ||
-      this.followUpSaving() ||
-      this.pinging() ||
-      this.reviewSending() ||
-      this.transitioning() ||
-      this.deleting() ||
-      this.isArchived()
-    );
+    return this.cockpitMutationInProgress() || this.isArchived();
   }
 
   private setView(view: CockpitView): void {
