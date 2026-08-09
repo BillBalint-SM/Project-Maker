@@ -406,3 +406,6 @@ function deepFreeze<Value>(value: Value): Value {
 }
 
 export const generalPlaybookV1 = deepFreeze(validateGeneralPlaybook(generalPlaybookData));
+
+export const resolvedDiscoveryFollowUpStatuses =
+  generalPlaybookV1.scoring.readiness.resolvedFollowUpStatuses;

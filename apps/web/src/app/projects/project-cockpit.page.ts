@@ -20,12 +20,14 @@ import { TagModule } from 'primeng/tag';
 import { TextareaModule } from 'primeng/textarea';
 import {
   discoveryFollowUpCategories,
+  resolvedDiscoveryFollowUpStatuses,
   type CreateDiscoveryFollowUpInput,
   type CustomerFollowUpState,
   type DiscoveryFollowUp,
   type DiscoveryFollowUpCategory,
   type ProjectStatus,
   type ProjectWorkspace,
+  type ResolveDiscoveryFollowUpInput,
   type UpdateCustomerFollowUpInput,
 } from '@project-maker/contracts';
 
@@ -81,6 +83,8 @@ export class ProjectCockpitPage implements OnInit {
   readonly transitioning = signal(false);
   readonly followUpSaving = signal(false);
   readonly discoveryFollowUpSaving = signal(false);
+  readonly openedDiscoveryFollowUpResolutionId = signal<string | null>(null);
+  readonly savingDiscoveryFollowUpResolutionId = signal<string | null>(null);
   readonly pinging = signal(false);
   readonly reviewSending = signal(false);
   readonly deleting = signal(false);
@@ -92,6 +96,8 @@ export class ProjectCockpitPage implements OnInit {
   readonly discoveryFollowUpCategoryOptions = discoveryFollowUpCategories.map(
     (value) => ({ label: value, value }),
   );
+  readonly resolvedDiscoveryFollowUpStatusOptions =
+    resolvedDiscoveryFollowUpStatuses.map((value) => ({ label: value, value }));
 
   readonly workspaceForm = new FormGroup({
     status: new FormControl<ActiveProjectStatus>('DRAFT', {
@@ -149,6 +155,20 @@ export class ProjectCockpitPage implements OnInit {
       validators: [Validators.required],
     }),
     nextStep: new FormControl('', {
+      nonNullable: true,
+      validators: [
+        Validators.required,
+        Validators.pattern(/\S/),
+        Validators.maxLength(10_000),
+      ],
+    }),
+  });
+
+  readonly discoveryFollowUpResolutionForm = new FormGroup({
+    status: new FormControl<string | null>(null, {
+      validators: [Validators.required],
+    }),
+    decisionOrAnswer: new FormControl('', {
       nonNullable: true,
       validators: [
         Validators.required,
@@ -259,7 +279,7 @@ export class ProjectCockpitPage implements OnInit {
     if (
       this.workspaceForm.invalid ||
       this.saving() ||
-      this.discoveryFollowUpSaving() ||
+      this.discoveryFollowUpMutationInProgress() ||
       this.deleting() ||
       this.isArchived()
     ) {
@@ -374,6 +394,126 @@ export class ProjectCockpitPage implements OnInit {
     });
   }
 
+  openDiscoveryFollowUpResolution(followUpId: string): void {
+    const followUp = this.view()?.discoveryFollowUps.find(
+      (candidate) => candidate.id === followUpId,
+    );
+    if (
+      !followUp ||
+      this.isDiscoveryFollowUpResolved(followUp) ||
+      this.openedDiscoveryFollowUpResolutionId() !== null ||
+      this.discoveryFollowUpResolutionControlsDisabled()
+    ) {
+      return;
+    }
+
+    this.actionError.set(null);
+    this.openedDiscoveryFollowUpResolutionId.set(followUpId);
+    this.resetDiscoveryFollowUpResolutionForm();
+  }
+
+  cancelDiscoveryFollowUpResolution(): void {
+    if (this.savingDiscoveryFollowUpResolutionId() !== null) {
+      return;
+    }
+
+    this.openedDiscoveryFollowUpResolutionId.set(null);
+    this.resetDiscoveryFollowUpResolutionForm();
+  }
+
+  resolveDiscoveryFollowUp(followUpId: string): void {
+    this.discoveryFollowUpResolutionForm.markAllAsTouched();
+    const followUp = this.view()?.discoveryFollowUps.find(
+      (candidate) => candidate.id === followUpId,
+    );
+    const value = this.discoveryFollowUpResolutionForm.getRawValue();
+    if (
+      !followUp ||
+      this.openedDiscoveryFollowUpResolutionId() !== followUpId ||
+      this.isDiscoveryFollowUpResolved(followUp) ||
+      !value.status ||
+      !resolvedDiscoveryFollowUpStatuses.includes(value.status) ||
+      this.discoveryFollowUpResolutionForm.invalid ||
+      this.discoveryFollowUpResolutionControlsDisabled()
+    ) {
+      return;
+    }
+
+    const input: ResolveDiscoveryFollowUpInput = {
+      status: value.status,
+      decisionOrAnswer: value.decisionOrAnswer.trim(),
+    };
+    this.savingDiscoveryFollowUpResolutionId.set(followUpId);
+    this.actionError.set(null);
+    this.feedback.set(null);
+    this.api
+      .resolveDiscoveryFollowUp(this.projectId, followUpId, input)
+      .subscribe({
+        next: (resolved) => {
+          this.view.update((current) =>
+            current
+              ? {
+                  ...current,
+                  discoveryFollowUps: sortDiscoveryFollowUps(
+                    current.discoveryFollowUps.map((candidate) =>
+                      candidate.id === resolved.id ? resolved : candidate,
+                    ),
+                  ),
+                }
+              : current,
+          );
+          this.openedDiscoveryFollowUpResolutionId.set(null);
+          this.savingDiscoveryFollowUpResolutionId.set(null);
+          this.resetDiscoveryFollowUpResolutionForm();
+          this.feedback.set('Discovery follow-up resolved.');
+          this.refreshAuditEvents();
+        },
+        error: (error: Error) => {
+          this.actionError.set(error.message);
+          this.savingDiscoveryFollowUpResolutionId.set(null);
+        },
+      });
+  }
+
+  isDiscoveryFollowUpResolved(followUp: DiscoveryFollowUp): boolean {
+    return resolvedDiscoveryFollowUpStatuses.includes(followUp.status);
+  }
+
+  isDiscoveryFollowUpResolutionOpen(followUpId: string): boolean {
+    return this.openedDiscoveryFollowUpResolutionId() === followUpId;
+  }
+
+  isDiscoveryFollowUpResolutionSaving(followUpId: string): boolean {
+    return this.savingDiscoveryFollowUpResolutionId() === followUpId;
+  }
+
+  discoveryFollowUpMutationInProgress(): boolean {
+    return (
+      this.discoveryFollowUpSaving() ||
+      this.savingDiscoveryFollowUpResolutionId() !== null
+    );
+  }
+
+  discoveryFollowUpResolutionControlsDisabled(): boolean {
+    return (
+      this.discoveryFollowUpMutationInProgress() ||
+      this.saving() ||
+      this.followUpSaving() ||
+      this.pinging() ||
+      this.reviewSending() ||
+      this.transitioning() ||
+      this.deleting() ||
+      this.isArchived()
+    );
+  }
+
+  discoveryFollowUpResolveControlDisabled(): boolean {
+    return (
+      this.openedDiscoveryFollowUpResolutionId() !== null ||
+      this.discoveryFollowUpResolutionControlsDisabled()
+    );
+  }
+
   sendFollowUpPing(): void {
     if (this.deleting() || this.emailActionsDisabled() || !this.view()) {
       return;
@@ -426,7 +566,7 @@ export class ProjectCockpitPage implements OnInit {
       this.transitioning() ||
       this.deleting() ||
       this.isArchived() ||
-      this.discoveryFollowUpSaving() ||
+      this.discoveryFollowUpMutationInProgress() ||
       this.pinging() ||
       this.reviewSending()
     ) {
@@ -453,7 +593,7 @@ export class ProjectCockpitPage implements OnInit {
     if (
       this.transitioning() ||
       this.deleting() ||
-      this.discoveryFollowUpSaving() ||
+      this.discoveryFollowUpMutationInProgress() ||
       !this.isArchived()
     ) {
       return;
@@ -486,7 +626,7 @@ export class ProjectCockpitPage implements OnInit {
       this.transitioning() ||
       this.saving() ||
       this.followUpSaving() ||
-      this.discoveryFollowUpSaving() ||
+      this.discoveryFollowUpMutationInProgress() ||
       this.pinging() ||
       this.reviewSending()
     ) {
@@ -508,7 +648,7 @@ export class ProjectCockpitPage implements OnInit {
       this.transitioning() ||
       this.saving() ||
       this.followUpSaving() ||
-      this.discoveryFollowUpSaving() ||
+      this.discoveryFollowUpMutationInProgress() ||
       this.pinging() ||
       this.reviewSending()
     ) {
@@ -538,7 +678,7 @@ export class ProjectCockpitPage implements OnInit {
       this.followUpSaving() ||
       this.pinging() ||
       this.reviewSending() ||
-      this.discoveryFollowUpSaving() ||
+      this.discoveryFollowUpMutationInProgress() ||
       this.saving() ||
       this.transitioning() ||
       this.deleting() ||
@@ -552,7 +692,7 @@ export class ProjectCockpitPage implements OnInit {
 
   discoveryFollowUpControlsDisabled(): boolean {
     return (
-      this.discoveryFollowUpSaving() ||
+      this.discoveryFollowUpMutationInProgress() ||
       this.saving() ||
       this.followUpSaving() ||
       this.pinging() ||
@@ -565,9 +705,11 @@ export class ProjectCockpitPage implements OnInit {
 
   private setView(view: CockpitView): void {
     this.view.set(view);
+    this.openedDiscoveryFollowUpResolutionId.set(null);
     this.resetForm(view.project);
     this.resetFollowUpForm(view.followUp);
     this.resetDiscoveryFollowUpForm();
+    this.resetDiscoveryFollowUpResolutionForm();
   }
 
   private applyWorkspaceResponse(project: ProjectWorkspace): void {
@@ -575,6 +717,7 @@ export class ProjectCockpitPage implements OnInit {
     if (!current) {
       return;
     }
+    const lifecycleStatusChanged = current.project.status !== project.status;
     this.view.set({
       project,
       cockpit: {
@@ -588,6 +731,10 @@ export class ProjectCockpitPage implements OnInit {
       discoveryFollowUps: current.discoveryFollowUps,
     });
     this.resetForm(project);
+    if (lifecycleStatusChanged) {
+      this.openedDiscoveryFollowUpResolutionId.set(null);
+      this.resetDiscoveryFollowUpResolutionForm();
+    }
   }
 
   private applyFollowUpResponse(followUp: CustomerFollowUpState): void {
@@ -630,6 +777,13 @@ export class ProjectCockpitPage implements OnInit {
       owner: '',
       dueDate: null,
       nextStep: '',
+    });
+  }
+
+  private resetDiscoveryFollowUpResolutionForm(): void {
+    this.discoveryFollowUpResolutionForm.reset({
+      status: null,
+      decisionOrAnswer: '',
     });
   }
 }
