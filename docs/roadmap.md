@@ -14,6 +14,15 @@ completion percentages, or effort calculations.
 - `OPPORTUNITY`: viable product possibility that is not committed for delivery.
 - `IMPROVEMENT`: security, reliability, usability, operations, or documentation hardening.
 
+## Reconciliation note
+
+The `PLANNED` catalogue below was reconciled after the merged Discovery
+follow-up deep-module delivery. That delivery improved module ownership,
+independent loading failure recovery, and style locality for already-delivered
+follow-up workflows; it did not add a new business outcome. No `PLANNED` item
+therefore changes status in this reconciliation. Each row records the delivered
+foundation separately from the remaining accepted scope.
+
 ## DELIVERED
 
 | ID | Outcome | Delivered scope | Evidence |
@@ -37,16 +46,16 @@ archived instead. This is not a project-list bulk-delete capability.
 
 ## PLANNED
 
-| ID | Outcome | Boundary | Source/dependency |
+| ID | Outcome | Current implementation state and remaining boundary | Source/dependency |
 | --- | --- | --- | --- |
-| `INTAKE-04` | Complete discovery-follow-up management | Creation, review, and resolution are delivered; general edit and source linkage remain planned. Scoring/readiness integration remains separate. Does not replace customer email scheduling or project lifecycle. | [requirements](../.planning/REQUIREMENTS.md); depends on project and intake data |
-| `SCORE-01` | Show completion, readiness, gaps, Decision Score, and recommended action | Behavioral domain implementation, not static documentation | [requirements](../.planning/REQUIREMENTS.md); depends on answers and `INTAKE-04` |
-| `OUTPUT-01` | Generate the canonical structured Markdown specification | Does not replace manual revision history or stored snapshots | [requirements](../.planning/REQUIREMENTS.md); depends on readiness and decision behavior |
-| `OUTPUT-02` | Derive acceptance criteria and user stories from the canonical specification | Derived content starts only after `OUTPUT-01` | [requirements](../.planning/REQUIREMENTS.md); depends on `OUTPUT-01` |
-| `OUTPUT-03` | Produce Hungarian-safe PDF and spreadsheet exports | No separate authoring source runs beside the canonical specification | [requirements](../.planning/REQUIREMENTS.md); depends on `OUTPUT-01` |
-| `DATA-01` | Preserve complete discovery and derived-state provenance | Current tables support the delivered slice but do not prove storage for every planned field | [requirements](../.planning/REQUIREMENTS.md); depends on planned feature data |
-| `DATA-02` | Evolve the schema through explicit, versioned migrations with reversible intent | The existing seven migrations do not satisfy every future evolution and reversal need | [requirements](../.planning/REQUIREMENTS.md); depends on planned schema changes |
-| `DATA-03` | Implement and verify platform backup and restore | A named Compose volume is not a proven backup or restore capability | [requirements](../.planning/REQUIREMENTS.md); operationalized by `OPS-01` |
+| `INTAKE-04` | Complete discovery-follow-up management | `INTAKE-04.1` and `INTAKE-04.2` already deliver creation, review, and resolution. The current resource exposes list, create, and resolve only; general editing and optional source linkage remain planned. Scoring/readiness integration stays separate, and this work does not replace customer email scheduling or project lifecycle. | [requirements](../.planning/REQUIREMENTS.md); [delivered creation](superpowers/plans/2026-08-08-intake-04-discovery-follow-ups.md); [delivered resolution](superpowers/plans/2026-08-08-intake-04-follow-up-resolution.md); depends on project and intake data |
+| `SCORE-01` | Show completion, readiness, gaps, Decision Score, and recommended action | The immutable playbook contains the scoring policy, but there is no delivered behavioral calculation, readiness/gap review surface, recommended-action flow, or behavioral test evidence. | [requirements](../.planning/REQUIREMENTS.md); depends on answers and `INTAKE-04` |
+| `OUTPUT-01` | Generate the canonical structured Markdown specification | `OUTPUT-00` already stores manual and milestone Markdown revisions, but that history is not the canonical structured specification. A generator driven by readiness and decision behavior remains planned. | [requirements](../.planning/REQUIREMENTS.md); depends on readiness and decision behavior |
+| `OUTPUT-02` | Derive acceptance criteria and user stories from the canonical specification | No derivation pipeline exists. It starts only after `OUTPUT-01` establishes the canonical source. | [requirements](../.planning/REQUIREMENTS.md); depends on `OUTPUT-01` |
+| `OUTPUT-03` | Produce Hungarian-safe PDF and spreadsheet exports | No PDF or spreadsheet export pipeline exists. It must derive from `OUTPUT-01`, not introduce a parallel authoring source. | [requirements](../.planning/REQUIREMENTS.md); depends on `OUTPUT-01` |
+| `DATA-01` | Preserve complete discovery and derived-state provenance | Current entities preserve the delivered project, intake, follow-up, and Markdown-revision slices. Storage for every future derived-state and provenance field is not yet proven. | [requirements](../.planning/REQUIREMENTS.md); depends on planned feature data |
+| `DATA-02` | Evolve the schema through explicit, versioned migrations with reversible intent | Seven explicit migrations support the delivered slices. A durable policy for every future evolution and reversal remains planned and must accompany the relevant schema change. | [requirements](../.planning/REQUIREMENTS.md); depends on planned schema changes |
+| `DATA-03` | Implement and verify platform backup and restore | The operations handoff documents manual PostgreSQL backup and controlled restore commands, but retention, rotation, and a verified restore drill remain unproven. | [requirements](../.planning/REQUIREMENTS.md); [operations handoff](operations-handoff.md); operationalized by `OPS-01` |
 
 ## OPPORTUNITY
 
