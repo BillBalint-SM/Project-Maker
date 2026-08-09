@@ -24,6 +24,8 @@
 - [Discovery follow-ups implementation plan](superpowers/plans/2026-08-08-intake-04-discovery-follow-ups.md)
 - [Discovery follow-up resolution design](superpowers/specs/2026-08-08-intake-04-follow-up-resolution-design.md)
 - [Discovery follow-up resolution implementation plan](superpowers/plans/2026-08-08-intake-04-follow-up-resolution.md)
+- [Discovery follow-up editing design](superpowers/specs/2026-08-10-intake-04-discovery-follow-up-editing-design.md)
+- [Discovery follow-up editing implementation plan](superpowers/plans/2026-08-10-intake-04-discovery-follow-up-editing.md)
 - [Hungarian end-user guide design](superpowers/specs/2026-08-09-user-guide-design.md)
 - [Hungarian end-user guide implementation plan](superpowers/plans/2026-08-09-user-guide.md)
 
