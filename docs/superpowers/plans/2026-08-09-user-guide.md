@@ -103,7 +103,7 @@ The data must contain no production-looking hostname, company secret, real custo
 Run an exact named, loopback-only container with a randomly generated password held only in the current PowerShell process:
 
 ```powershell
-$guideDbPassword = [Convert]::ToBase64String([Security.Cryptography.RandomNumberGenerator]::GetBytes(32))
+$guideDbPassword = [Convert]::ToHexString([Security.Cryptography.RandomNumberGenerator]::GetBytes(32))
 docker run --rm --detach `
   --name project-maker-user-guide-capture `
   --publish 127.0.0.1:55461:5432 `
