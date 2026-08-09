@@ -20,6 +20,11 @@ export interface CreateDiscoveryFollowUpInput {
   readonly nextStep: string;
 }
 
+export interface ResolveDiscoveryFollowUpInput {
+  readonly status: string;
+  readonly decisionOrAnswer: string;
+}
+
 export interface DiscoveryFollowUp {
   readonly id: string;
   readonly projectId: string;
@@ -28,6 +33,7 @@ export interface DiscoveryFollowUp {
   readonly owner: string;
   readonly dueDate: string;
   readonly status: string;
+  readonly decisionOrAnswer: string | null;
   readonly nextStep: string;
   readonly createdAt: string;
   readonly updatedAt: string;

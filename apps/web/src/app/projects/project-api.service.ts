@@ -11,6 +11,7 @@ import type {
   DiscoveryFollowUp,
   ProjectCockpit,
   ProjectWorkspace,
+  ResolveDiscoveryFollowUpInput,
   SendCustomerReviewEmailInput,
   SendFollowUpPingInput,
   UpdateCustomerFollowUpInput,
@@ -116,6 +117,27 @@ export class ProjectApiService {
       .pipe(
         catchError((error: unknown) =>
           this.fail(error, 'create a discovery follow-up'),
+        ),
+      );
+  }
+
+  resolveDiscoveryFollowUp(
+    projectId: string,
+    followUpId: string,
+    input: ResolveDiscoveryFollowUpInput,
+  ): Observable<DiscoveryFollowUp> {
+    return this.http
+      .post<DiscoveryFollowUp>(
+        '/api/projects/' +
+          encodeURIComponent(projectId) +
+          '/discovery-follow-ups/' +
+          encodeURIComponent(followUpId) +
+          '/resolve',
+        input,
+      )
+      .pipe(
+        catchError((error: unknown) =>
+          this.fail(error, 'resolve a discovery follow-up'),
         ),
       );
   }

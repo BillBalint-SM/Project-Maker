@@ -87,6 +87,7 @@ ordered TypeORM migrations registered in
 4. `0004-customer-follow-ups.ts` — follow-up state, delivery status, and scheduling fields.
 5. `0005-initial-intake-open-round.ts` — partial unique index for at most one open `INITIAL_INTAKE` round per project; it fails fast when existing data contains duplicates.
 6. `0006-discovery-follow-ups.ts` — project-owned discovery follow-ups, a category enum, date-order index, update trigger, and retained-project foreign key.
+7. `0007-discovery-follow-up-resolution.ts` — nullable persisted discovery-follow-up answer/decision content.
 
 The deployed API image contains the compiled migration classes, but not the
 TypeScript migration source tree used by the development-only
@@ -137,7 +138,7 @@ docker compose --env-file .env exec -T api node -e $migrationStatusScript
 
 `pending: false` means that all migration classes in the running image are
 recorded in the database. The `applied` array is the database's migration
-history; the six expected names are listed above.
+history; the seven expected names are listed above.
 
 There is no safe arbitrary migration selector in the runtime image. A
 controlled revert can undo only the latest applied migration through a
@@ -160,8 +161,9 @@ downgrade. A permanent downgrade requires a separately built, compatibility-
 reviewed image and a restore plan owned by the deployment team.
 
 Reverting `0005` removes only its partial unique index; it does not remove
-interview-round rows. Before any revert, inspect the migration and choose the
-rollback procedure appropriate to the affected objects.
+interview-round rows. Reverting `0007` drops the persisted discovery-follow-up
+answer/decision column and its content. Before any revert, inspect the migration
+and choose the rollback procedure appropriate to the affected objects.
 
 ### PostgreSQL backup
 
@@ -207,23 +209,28 @@ perform the health/smoke gates before allowing normal users back in.
 
 ### Discovery follow-up semantics
 
-Discovery follow-ups are project-owned unresolved work items, not customer
-email schedules. The cockpit lists them in deterministic due-date order and can
-create one with a closed category, question, owner, date-only due date, and next
-step. The API assigns the canonical initial status `Nyitott` and writes one
-creation audit event with only `followUpId`, category, due date, and status;
-question, owner, and next-step text are not copied into the audit payload.
+Discovery follow-ups are project-owned work items, not customer email schedules.
+The cockpit lists them in deterministic due-date order and can create one with a
+closed category, question, owner, date-only due date, and next step. The API
+assigns the canonical initial status `Nyitott` and writes one creation audit event
+with only `followUpId`, category, due date, and status; question, owner, and
+next-step text are not copied into the audit payload.
 
 ```text
 GET  /api/projects/{projectId}/discovery-follow-ups
 POST /api/projects/{projectId}/discovery-follow-ups
+POST /api/projects/{projectId}/discovery-follow-ups/{followUpId}/resolve
 ```
 
 An empty `GET` does not create a row. Archived projects remain readable but
-`POST` returns `409`; restoring the project re-enables creation. A persisted
-discovery follow-up is retained project activity, so a `DRAFT` project with one
-cannot be permanently deleted and the database foreign key also restricts a
-late deletion race.
+creation and resolution return `409`; restoring the project re-enables both.
+The explicit resolution command returns `200`, accepts only canonical terminal
+statuses, and requires a persisted nonblank answer/decision. It rejects an
+already-resolved work item. Its `DISCOVERY_FOLLOW_UP_RESOLVED` audit payload has
+only `followUpId` and `status`, so the answer/decision and other free text are
+not copied into audit history. A persisted discovery follow-up is retained
+project activity, so a `DRAFT` project with one cannot be permanently deleted
+and the database foreign key also restricts a late deletion race.
 
 ### Markdown execution-plan revisions
 
@@ -269,8 +276,8 @@ These are intentionally separate flows:
   non-sensitive error code, and can be disabled or given an expiry time.
 
 The follow-up state in this section is an email-delivery schedule. It is not the
-delivered `INTAKE-04.1` discovery-follow-up work-item slice; edit, resolve,
-source linkage, and answer/decision behavior remain later discovery work.
+delivered `INTAKE-04.1`/`INTAKE-04.2` discovery-follow-up work-item slices;
+general editing and source linkage remain later discovery work.
 
 Relevant API routes:
 
@@ -298,7 +305,7 @@ pnpm compose:up
 ```
 
 The Compose smoke gate should confirm `/api/health`, base-question seeding,
-all six migrations, Markdown download headers/content, and the expected
+all seven migrations, Markdown download headers/content, and the expected
 `503` response when SMTP is intentionally disabled. A local SMTP-capture
 container can be used to verify manual review, manual ping, and due-timer
 delivery without using production credentials.
