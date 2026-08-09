@@ -2,6 +2,7 @@
 
 ## Start here
 
+- [Hungarian end-user guide](user-guide.md) — daily business workflows, state meanings, safe recovery, and current limitations for employees.
 - [Current roadmap](roadmap.md) — delivered capability, planned work, opportunities, and improvements.
 - [Product domain](product-domain.md) — platform-neutral intent and vocabulary; not a delivery-status record.
 - [Operations handoff](operations-handoff.md) — runtime, recovery, email, and verification guidance.
@@ -20,9 +21,10 @@
 - [Discovery follow-ups implementation plan](superpowers/plans/2026-08-08-intake-04-discovery-follow-ups.md)
 - [Discovery follow-up resolution design](superpowers/specs/2026-08-08-intake-04-follow-up-resolution-design.md)
 - [Discovery follow-up resolution implementation plan](superpowers/plans/2026-08-08-intake-04-follow-up-resolution.md)
+- [Hungarian end-user guide design](superpowers/specs/2026-08-09-user-guide-design.md)
+- [Hungarian end-user guide implementation plan](superpowers/plans/2026-08-09-user-guide.md)
 
 ## End-user guidance
 
-The Hungarian end-user guide is planned as `DOC-01`. Until the stable core
-workflows are documented end-to-end, use the roadmap to distinguish delivered
-behavior from intended domain behavior.
+The [Hungarian end-user guide](user-guide.md) is the canonical daily-work
+manual for PM, PO, BA, and discovery workers using the stable delivered webapp.
