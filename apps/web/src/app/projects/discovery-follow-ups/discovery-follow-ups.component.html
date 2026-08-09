@@ -1,0 +1,279 @@
+<p-card data-testid="discovery-follow-ups-card">
+  <ng-template #title>Discovery follow-ups</ng-template>
+  <ng-template #subtitle>
+    Record one accountable unresolved discovery item. Archived projects remain readable.
+  </ng-template>
+
+  @if (loading()) {
+    <div
+      class="discovery-follow-up-state"
+      data-testid="discovery-follow-ups-loading"
+      aria-live="polite"
+    >
+      <p-progress-spinner ariaLabel="Loading discovery follow-ups" />
+      <p>Loading Discovery follow-ups…</p>
+    </div>
+  } @else if (loadError(); as error) {
+    <div
+      class="discovery-follow-up-state"
+      data-testid="discovery-follow-ups-error"
+      role="alert"
+    >
+      <p>{{ error }}</p>
+      <p-button
+        label="Retry"
+        data-testid="retry-discovery-follow-ups-button"
+        (onClick)="loadFollowUps()"
+      />
+    </div>
+  } @else {
+    @if (actionError(); as error) {
+      <p-message
+        severity="error"
+        data-testid="discovery-follow-up-action-error"
+      >
+        {{ error }}
+      </p-message>
+    }
+    @if (feedback(); as message) {
+      <p-message
+        severity="success"
+        data-testid="discovery-follow-up-action-success"
+      >
+        {{ message }}
+      </p-message>
+    }
+
+    <form
+      class="discovery-follow-up-form"
+      [formGroup]="creationForm"
+      (ngSubmit)="createFollowUp()"
+      data-testid="discovery-follow-up-form"
+    >
+      <fieldset
+        class="discovery-follow-up-fields"
+        [disabled]="mutationDisabled()"
+      >
+        <legend class="sr-only">Create discovery follow-up</legend>
+        <div class="field">
+          <label for="discovery-follow-up-category">Category</label>
+          <p-select
+            inputId="discovery-follow-up-category"
+            styleClass="full-width"
+            formControlName="category"
+            [options]="categoryOptions"
+            optionLabel="label"
+            optionValue="value"
+            data-testid="discovery-follow-up-category-select"
+          />
+          @if (
+            creationForm.controls.category.invalid &&
+            creationForm.controls.category.touched
+          ) {
+            <small class="field-error">Choose a category.</small>
+          }
+        </div>
+        <div class="field">
+          <label for="discovery-follow-up-question">Question</label>
+          <textarea
+            pTextarea
+            id="discovery-follow-up-question"
+            class="full-width"
+            rows="3"
+            formControlName="question"
+            data-testid="discovery-follow-up-question-input"
+          ></textarea>
+          @if (
+            creationForm.controls.question.hasError('maxlength') &&
+            creationForm.controls.question.touched
+          ) {
+            <small class="field-error">Question must be 10,000 characters or fewer.</small>
+          } @else if (
+            creationForm.controls.question.invalid &&
+            creationForm.controls.question.touched
+          ) {
+            <small class="field-error">Question is required.</small>
+          }
+        </div>
+        <div class="field">
+          <label for="discovery-follow-up-owner">Owner</label>
+          <input
+            pInputText
+            id="discovery-follow-up-owner"
+            class="full-width"
+            formControlName="owner"
+            data-testid="discovery-follow-up-owner-input"
+          />
+          @if (
+            creationForm.controls.owner.hasError('maxlength') &&
+            creationForm.controls.owner.touched
+          ) {
+            <small class="field-error">Owner must be 255 characters or fewer.</small>
+          } @else if (
+            creationForm.controls.owner.invalid &&
+            creationForm.controls.owner.touched
+          ) {
+            <small class="field-error">Owner is required.</small>
+          }
+        </div>
+        <div class="field">
+          <label for="discovery-follow-up-due-date">Due date</label>
+          <p-datepicker
+            inputId="discovery-follow-up-due-date"
+            styleClass="full-width"
+            formControlName="dueDate"
+            [dateFormat]="'yy-mm-dd'"
+            [showIcon]="true"
+            [appendTo]="'body'"
+            data-testid="discovery-follow-up-due-date-input"
+          />
+          @if (
+            creationForm.controls.dueDate.invalid &&
+            creationForm.controls.dueDate.touched
+          ) {
+            <small class="field-error">Enter a due date as YYYY-MM-DD.</small>
+          }
+        </div>
+        <div class="field">
+          <label for="discovery-follow-up-next-step">Next step</label>
+          <textarea
+            pTextarea
+            id="discovery-follow-up-next-step"
+            class="full-width"
+            rows="3"
+            formControlName="nextStep"
+            data-testid="discovery-follow-up-next-step-input"
+          ></textarea>
+          @if (
+            creationForm.controls.nextStep.hasError('maxlength') &&
+            creationForm.controls.nextStep.touched
+          ) {
+            <small class="field-error">Next step must be 10,000 characters or fewer.</small>
+          } @else if (
+            creationForm.controls.nextStep.invalid &&
+            creationForm.controls.nextStep.touched
+          ) {
+            <small class="field-error">Next step is required.</small>
+          }
+        </div>
+      </fieldset>
+      <p-button
+        type="submit"
+        label="Create discovery follow-up"
+        [loading]="creating()"
+        [disabled]="mutationDisabled()"
+        data-testid="create-discovery-follow-up-button"
+      />
+    </form>
+
+    @if (followUps().length === 0) {
+      <p class="discovery-follow-up-empty">No discovery follow-ups recorded.</p>
+    } @else {
+      <ol class="discovery-follow-up-list" data-testid="discovery-follow-ups-list">
+        @for (followUp of followUps(); track followUp.id) {
+          <li class="discovery-follow-up-item" data-testid="discovery-follow-up-item">
+            <div class="discovery-follow-up-meta">
+              <strong>{{ followUp.category }}</strong>
+              <p-tag [value]="followUp.status" data-testid="discovery-follow-up-status" />
+              <time [attr.datetime]="followUp.dueDate" data-testid="discovery-follow-up-due-date">
+                {{ followUp.dueDate }}
+              </time>
+            </div>
+            <p>{{ followUp.question }}</p>
+            <p><strong>Owner:</strong> {{ followUp.owner }}</p>
+            <p><strong>Next step:</strong> {{ followUp.nextStep }}</p>
+            @if (followUp.decisionOrAnswer) {
+              <p data-testid="discovery-follow-up-decision-or-answer">
+                <strong>Decision or answer:</strong> {{ followUp.decisionOrAnswer }}
+              </p>
+            }
+            @if (!isResolved(followUp)) {
+              <p-button
+                label="Resolve"
+                [disabled]="resolveControlDisabled()"
+                data-testid="resolve-discovery-follow-up-button"
+                (onClick)="openResolution(followUp.id)"
+              />
+            }
+            @if (isResolutionOpen(followUp.id)) {
+              <form
+                class="discovery-follow-up-resolution-form"
+                [formGroup]="resolutionForm"
+                (ngSubmit)="resolveFollowUp(followUp.id)"
+              >
+                <fieldset
+                  class="discovery-follow-up-fields"
+                  [disabled]="resolutionControlsDisabled()"
+                >
+                  <legend class="sr-only">Resolve discovery follow-up</legend>
+                  <div class="field">
+                    <label for="discovery-follow-up-resolution-status">Status</label>
+                    <p-select
+                      inputId="discovery-follow-up-resolution-status"
+                      styleClass="full-width"
+                      formControlName="status"
+                      [options]="resolvedStatusOptions"
+                      optionLabel="label"
+                      optionValue="value"
+                      data-testid="discovery-follow-up-resolution-status-select"
+                    />
+                    @if (
+                      resolutionForm.controls.status.invalid &&
+                      resolutionForm.controls.status.touched
+                    ) {
+                      <small class="field-error">Choose a resolution status.</small>
+                    }
+                  </div>
+                  <div class="field">
+                    <label for="discovery-follow-up-decision-or-answer">
+                      Decision or answer
+                    </label>
+                    <textarea
+                      pTextarea
+                      id="discovery-follow-up-decision-or-answer"
+                      class="full-width"
+                      rows="3"
+                      formControlName="decisionOrAnswer"
+                      data-testid="discovery-follow-up-decision-or-answer-input"
+                    ></textarea>
+                    @if (
+                      resolutionForm.controls.decisionOrAnswer.hasError('maxlength') &&
+                      resolutionForm.controls.decisionOrAnswer.touched
+                    ) {
+                      <small class="field-error">
+                        Decision or answer must be 10,000 characters or fewer.
+                      </small>
+                    } @else if (
+                      resolutionForm.controls.decisionOrAnswer.invalid &&
+                      resolutionForm.controls.decisionOrAnswer.touched
+                    ) {
+                      <small class="field-error">Decision or answer is required.</small>
+                    }
+                  </div>
+                </fieldset>
+                <div class="discovery-follow-up-resolution-actions">
+                  <p-button
+                    type="submit"
+                    label="Save resolution"
+                    [loading]="isResolutionSaving(followUp.id)"
+                    [disabled]="resolutionControlsDisabled()"
+                    data-testid="save-discovery-follow-up-resolution-button"
+                  />
+                  <p-button
+                    type="button"
+                    label="Cancel"
+                    severity="secondary"
+                    [outlined]="true"
+                    [disabled]="resolutionControlsDisabled()"
+                    data-testid="cancel-discovery-follow-up-resolution-button"
+                    (onClick)="cancelResolution()"
+                  />
+                </div>
+              </form>
+            }
+          </li>
+        }
+      </ol>
+    }
+  }
+</p-card>

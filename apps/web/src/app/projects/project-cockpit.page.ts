@@ -20,25 +20,18 @@ import { SelectModule } from 'primeng/select';
 import { TagModule } from 'primeng/tag';
 import { TextareaModule } from 'primeng/textarea';
 import {
-  discoveryFollowUpCategories,
-  resolvedDiscoveryFollowUpStatuses,
-  type CreateDiscoveryFollowUpInput,
   type CustomerFollowUpState,
-  type DiscoveryFollowUp,
-  type DiscoveryFollowUpCategory,
   type ProjectStatus,
   type ProjectWorkspace,
-  type ResolveDiscoveryFollowUpInput,
   type UpdateCustomerFollowUpInput,
 } from '@project-maker/contracts';
-import { finalize } from 'rxjs';
 
 import {
   COCKPIT_OPERATION_POLICY,
   provideCockpitOperationPolicy,
   releaseCockpitOperationOnFinalize,
-  type CockpitOperationId,
 } from './cockpit-operation-policy';
+import { DiscoveryFollowUpsComponent } from './discovery-follow-ups/discovery-follow-ups.component';
 import type { AuditEventPage, CockpitView, StatusOption } from './project-api.models';
 import { ProjectApiService } from './project-api.service';
 
@@ -60,6 +53,7 @@ const statusOptions: StatusOption[] = [
     ConfirmDialog,
     DatePipe,
     DatePickerModule,
+    DiscoveryFollowUpsComponent,
     InputTextModule,
     MessageModule,
     ProgressSpinnerModule,
@@ -89,8 +83,6 @@ export class ProjectCockpitPage implements OnInit {
   readonly loadError = signal<string | null>(null);
   readonly actionError = signal<string | null>(null);
   readonly feedback = signal<string | null>(null);
-  readonly openedDiscoveryFollowUpResolutionId = signal<string | null>(null);
-  readonly savingDiscoveryFollowUpResolutionId = signal<string | null>(null);
   readonly saving = computed(
     () => this.operationPolicy.activeOperation() === 'workspace-save',
   );
@@ -101,9 +93,6 @@ export class ProjectCockpitPage implements OnInit {
   readonly followUpSaving = computed(
     () => this.operationPolicy.activeOperation() === 'customer-follow-up-save',
   );
-  readonly discoveryFollowUpSaving = computed(
-    () => this.operationPolicy.activeOperation() === 'discovery-create',
-  );
   readonly pinging = computed(
     () => this.operationPolicy.activeOperation() === 'customer-follow-up-ping',
   );
@@ -113,21 +102,12 @@ export class ProjectCockpitPage implements OnInit {
   readonly deleting = computed(
     () => this.operationPolicy.activeOperation() === 'project-delete',
   );
-  readonly discoveryFollowUpMutationInProgress = computed(() => {
-    const operation = this.operationPolicy.activeOperation();
-    return operation === 'discovery-create' || operation === 'discovery-resolve';
-  });
   readonly cockpitMutationInProgress = this.operationPolicy.busy;
   readonly auditPage = signal<AuditEventPage | null>(null);
   readonly auditLoading = signal(false);
   readonly auditError = signal<string | null>(null);
   private auditRequestOffset = 0;
   private auditRequestToken = 0;
-  readonly discoveryFollowUpCategoryOptions = discoveryFollowUpCategories.map(
-    (value) => ({ label: value, value }),
-  );
-  readonly resolvedDiscoveryFollowUpStatusOptions =
-    resolvedDiscoveryFollowUpStatuses.map((value) => ({ label: value, value }));
 
   readonly workspaceForm = new FormGroup({
     status: new FormControl<ActiveProjectStatus>('DRAFT', {
@@ -159,53 +139,6 @@ export class ProjectCockpitPage implements OnInit {
       ],
     }),
     expiresAt: new FormControl<Date | null>(null),
-  });
-
-  readonly discoveryFollowUpForm = new FormGroup({
-    category: new FormControl<DiscoveryFollowUpCategory | null>(null, {
-      validators: [Validators.required],
-    }),
-    question: new FormControl('', {
-      nonNullable: true,
-      validators: [
-        Validators.required,
-        Validators.pattern(/\S/),
-        Validators.maxLength(10_000),
-      ],
-    }),
-    owner: new FormControl('', {
-      nonNullable: true,
-      validators: [
-        Validators.required,
-        Validators.pattern(/\S/),
-        Validators.maxLength(255),
-      ],
-    }),
-    dueDate: new FormControl<Date | null>(null, {
-      validators: [Validators.required],
-    }),
-    nextStep: new FormControl('', {
-      nonNullable: true,
-      validators: [
-        Validators.required,
-        Validators.pattern(/\S/),
-        Validators.maxLength(10_000),
-      ],
-    }),
-  });
-
-  readonly discoveryFollowUpResolutionForm = new FormGroup({
-    status: new FormControl<string | null>(null, {
-      validators: [Validators.required],
-    }),
-    decisionOrAnswer: new FormControl('', {
-      nonNullable: true,
-      validators: [
-        Validators.required,
-        Validators.pattern(/\S/),
-        Validators.maxLength(10_000),
-      ],
-    }),
   });
 
   ngOnInit(): void {
@@ -384,177 +317,6 @@ export class ProjectCockpitPage implements OnInit {
           this.actionError.set(error.message);
         },
       });
-  }
-
-  createDiscoveryFollowUp(): void {
-    this.discoveryFollowUpForm.markAllAsTouched();
-    const current = this.view();
-    const value = this.discoveryFollowUpForm.getRawValue();
-    if (
-      !current ||
-      this.discoveryFollowUpControlsDisabled() ||
-      !value.category ||
-      !value.dueDate ||
-      this.discoveryFollowUpForm.invalid
-    ) {
-      return;
-    }
-
-    const input: CreateDiscoveryFollowUpInput = {
-      category: value.category,
-      question: value.question.trim(),
-      owner: value.owner.trim(),
-      dueDate: toLocalDateOnly(value.dueDate),
-      nextStep: value.nextStep.trim(),
-    };
-    const lease = this.operationPolicy.tryAcquire('discovery-create');
-    if (!lease) {
-      return;
-    }
-    this.actionError.set(null);
-    this.feedback.set(null);
-    this.api
-      .createDiscoveryFollowUp(this.projectId, input)
-      .pipe(
-        releaseCockpitOperationOnFinalize(lease),
-        takeUntilDestroyed(this.destroyRef),
-      )
-      .subscribe({
-        next: (created) => {
-          this.view.update((existing) =>
-            existing
-              ? {
-                  ...existing,
-                  discoveryFollowUps: sortDiscoveryFollowUps([
-                    ...existing.discoveryFollowUps,
-                    created,
-                  ]),
-                }
-              : existing,
-          );
-          this.resetDiscoveryFollowUpForm();
-          this.feedback.set('Discovery follow-up created.');
-          this.refreshAuditEvents();
-        },
-        error: (error: Error) => {
-          this.actionError.set(error.message);
-        },
-      });
-  }
-
-  openDiscoveryFollowUpResolution(followUpId: string): void {
-    const followUp = this.view()?.discoveryFollowUps.find(
-      (candidate) => candidate.id === followUpId,
-    );
-    if (
-      !followUp ||
-      this.isDiscoveryFollowUpResolved(followUp) ||
-      this.openedDiscoveryFollowUpResolutionId() !== null ||
-      this.discoveryFollowUpResolutionControlsDisabled()
-    ) {
-      return;
-    }
-
-    this.actionError.set(null);
-    this.openedDiscoveryFollowUpResolutionId.set(followUpId);
-    this.resetDiscoveryFollowUpResolutionForm();
-  }
-
-  cancelDiscoveryFollowUpResolution(): void {
-    if (this.savingDiscoveryFollowUpResolutionId() !== null) {
-      return;
-    }
-
-    this.openedDiscoveryFollowUpResolutionId.set(null);
-    this.resetDiscoveryFollowUpResolutionForm();
-  }
-
-  resolveDiscoveryFollowUp(followUpId: string): void {
-    this.discoveryFollowUpResolutionForm.markAllAsTouched();
-    const followUp = this.view()?.discoveryFollowUps.find(
-      (candidate) => candidate.id === followUpId,
-    );
-    const value = this.discoveryFollowUpResolutionForm.getRawValue();
-    if (
-      !followUp ||
-      this.openedDiscoveryFollowUpResolutionId() !== followUpId ||
-      this.isDiscoveryFollowUpResolved(followUp) ||
-      !value.status ||
-      !resolvedDiscoveryFollowUpStatuses.includes(value.status) ||
-      this.discoveryFollowUpResolutionForm.invalid ||
-      this.discoveryFollowUpResolutionControlsDisabled()
-    ) {
-      return;
-    }
-
-    const input: ResolveDiscoveryFollowUpInput = {
-      status: value.status,
-      decisionOrAnswer: value.decisionOrAnswer.trim(),
-    };
-    const lease = this.operationPolicy.tryAcquire('discovery-resolve');
-    if (!lease) {
-      return;
-    }
-    this.savingDiscoveryFollowUpResolutionId.set(followUpId);
-    this.actionError.set(null);
-    this.feedback.set(null);
-    this.api
-      .resolveDiscoveryFollowUp(this.projectId, followUpId, input)
-      .pipe(
-        finalize(() => this.savingDiscoveryFollowUpResolutionId.set(null)),
-        releaseCockpitOperationOnFinalize(lease),
-        takeUntilDestroyed(this.destroyRef),
-      )
-      .subscribe({
-        next: (resolved) => {
-          this.view.update((current) =>
-            current
-              ? {
-                  ...current,
-                  discoveryFollowUps: sortDiscoveryFollowUps(
-                    current.discoveryFollowUps.map((candidate) =>
-                      candidate.id === resolved.id ? resolved : candidate,
-                    ),
-                  ),
-                }
-              : current,
-          );
-          this.openedDiscoveryFollowUpResolutionId.set(null);
-          this.resetDiscoveryFollowUpResolutionForm();
-          this.feedback.set('Discovery follow-up resolved.');
-          this.refreshAuditEvents();
-        },
-        error: (error: Error) => {
-          this.actionError.set(error.message);
-        },
-      });
-  }
-
-  isDiscoveryFollowUpResolved(followUp: DiscoveryFollowUp): boolean {
-    return resolvedDiscoveryFollowUpStatuses.includes(followUp.status);
-  }
-
-  isDiscoveryFollowUpResolutionOpen(followUpId: string): boolean {
-    return this.openedDiscoveryFollowUpResolutionId() === followUpId;
-  }
-
-  isDiscoveryFollowUpResolutionSaving(followUpId: string): boolean {
-    return (
-      this.operationPolicy.activeOperation() === 'discovery-resolve' &&
-      this.savingDiscoveryFollowUpResolutionId() === followUpId
-    );
-  }
-
-  discoveryFollowUpResolutionControlsDisabled(): boolean {
-    return this.cockpitMutationInProgress() || this.isArchived();
-  }
-
-  discoveryFollowUpResolveControlDisabled(): boolean {
-    return (
-      this.cockpitMutationInProgress() ||
-      this.openedDiscoveryFollowUpResolutionId() !== null ||
-      this.isArchived()
-    );
   }
 
   sendFollowUpPing(): void {
@@ -743,17 +505,10 @@ export class ProjectCockpitPage implements OnInit {
     return this.followUpControlsDisabled() || this.followUpForm.dirty;
   }
 
-  discoveryFollowUpControlsDisabled(): boolean {
-    return this.cockpitMutationInProgress() || this.isArchived();
-  }
-
   private setView(view: CockpitView): void {
     this.view.set(view);
-    this.openedDiscoveryFollowUpResolutionId.set(null);
     this.resetForm(view.project);
     this.resetFollowUpForm(view.followUp);
-    this.resetDiscoveryFollowUpForm();
-    this.resetDiscoveryFollowUpResolutionForm();
   }
 
   private applyWorkspaceResponse(project: ProjectWorkspace): void {
@@ -761,7 +516,6 @@ export class ProjectCockpitPage implements OnInit {
     if (!current) {
       return;
     }
-    const lifecycleStatusChanged = current.project.status !== project.status;
     this.view.set({
       project,
       cockpit: {
@@ -772,13 +526,8 @@ export class ProjectCockpitPage implements OnInit {
         dueAt: project.dueAt,
       },
       followUp: current.followUp,
-      discoveryFollowUps: current.discoveryFollowUps,
     });
     this.resetForm(project);
-    if (lifecycleStatusChanged) {
-      this.openedDiscoveryFollowUpResolutionId.set(null);
-      this.resetDiscoveryFollowUpResolutionForm();
-    }
   }
 
   private applyFollowUpResponse(followUp: CustomerFollowUpState): void {
@@ -814,43 +563,9 @@ export class ProjectCockpitPage implements OnInit {
     });
   }
 
-  private resetDiscoveryFollowUpForm(): void {
-    this.discoveryFollowUpForm.reset({
-      category: null,
-      question: '',
-      owner: '',
-      dueDate: null,
-      nextStep: '',
-    });
-  }
-
-  private resetDiscoveryFollowUpResolutionForm(): void {
-    this.discoveryFollowUpResolutionForm.reset({
-      status: null,
-      decisionOrAnswer: '',
-    });
-  }
 }
 
 function emptyToNull(value: string): string | null {
   const trimmed = value.trim();
   return trimmed ? trimmed : null;
-}
-
-function toLocalDateOnly(value: Date): string {
-  const year = String(value.getFullYear()).padStart(4, '0');
-  const month = String(value.getMonth() + 1).padStart(2, '0');
-  const day = String(value.getDate()).padStart(2, '0');
-  return year + '-' + month + '-' + day;
-}
-
-function sortDiscoveryFollowUps(
-  values: readonly DiscoveryFollowUp[],
-): readonly DiscoveryFollowUp[] {
-  return [...values].sort(
-    (left, right) =>
-      left.dueDate.localeCompare(right.dueDate) ||
-      left.createdAt.localeCompare(right.createdAt) ||
-      left.id.localeCompare(right.id),
-  );
 }
