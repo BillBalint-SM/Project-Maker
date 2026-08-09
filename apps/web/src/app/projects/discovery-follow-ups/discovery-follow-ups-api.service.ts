@@ -76,11 +76,9 @@ export class DiscoveryFollowUpsApiService {
   ): Observable<never> {
     const action = discoveryActions[operation];
     if (!(error instanceof HttpErrorResponse)) {
-      const message =
-        error instanceof Error
-          ? error.message
-          : 'Could not ' + action + '. Refresh the page and try again.';
-      return throwError(() => new Error(message));
+      return throwError(
+        () => new Error('Could not ' + action + '. Refresh the page and try again.'),
+      );
     }
 
     console.error('Discovery follow-up request failed.', {
