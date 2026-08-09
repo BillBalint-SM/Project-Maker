@@ -1,5 +1,7 @@
 # Hungarian End-User Guide Implementation Plan
 
+> **Delivery status:** Implemented through the dedicated guide content commit `51518d5` in the bounded `dev-user-guide` delivery. The unchecked task list below is preserved as the approved pre-execution plan; current delivery scope is maintained in [`docs/roadmap.md`](../../roadmap.md), while final Git and pull-request state must be read from a fresh `WORK_STATE` rather than predicted here.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Publish a complete Hungarian, business-functional Project Maker guide that teaches a new employee every delivered workflow with real application screenshots, focused diagrams, error recovery, and honest current limitations.
@@ -107,11 +109,11 @@ $guideDbPassword = [Convert]::ToHexString([Security.Cryptography.RandomNumberGen
 docker run --rm --detach `
   --name project-maker-user-guide-capture `
   --publish 127.0.0.1:55461:5432 `
-  --env POSTGRES_DB=project_maker_user_guide `
+  --env POSTGRES_DB=project_maker_user_guide_capture_e2e `
   --env POSTGRES_USER=project_maker `
   --env "POSTGRES_PASSWORD=$guideDbPassword" `
   postgres:18.4-alpine
-$env:DATABASE_URL = "postgresql://project_maker:$guideDbPassword@127.0.0.1:55461/project_maker_user_guide"
+$env:DATABASE_URL = "postgresql://project_maker:$guideDbPassword@127.0.0.1:55461/project_maker_user_guide_capture_e2e"
 ```
 
 Expected: only the exact container `project-maker-user-guide-capture` is started; the password is not printed or persisted.
