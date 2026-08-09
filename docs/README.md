@@ -9,6 +9,9 @@
 
 ## Planning and delivery evidence
 
+- [Project Cockpit architecture decision](adr/0001-domain-aligned-project-cockpit.md)
+- [Cockpit operation-policy implementation plan](superpowers/plans/2026-08-09-cockpit-operation-policy.md)
+- [Discovery follow-up deep-module implementation plan](superpowers/plans/2026-08-09-discovery-follow-up-deep-module.md)
 - [Current requirement checklist](../.planning/REQUIREMENTS.md) — checked only with delivery evidence.
 - [Current planning baseline](../.planning/STATE.md) — historical project context; verify Git decisions with a fresh `WORK_STATE` check.
 - [Guided-intake prioritization handoff](../.planning/planning-show/product-delivery/guided-intake/standalone/2026-08-06-planning-show-handoff.md)
