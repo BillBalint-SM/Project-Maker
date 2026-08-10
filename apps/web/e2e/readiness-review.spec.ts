@@ -79,6 +79,7 @@ test.describe.serial('SCORE-01 readiness employee workflow', () => {
     const answerResponse = waitForAnswerPatch(page, fixture.projectId, partialQuestion.id);
     await saveBrowserAnswer(page, partialQuestion);
     expect((await answerResponse).status()).toBe(200);
+    await saveAllOtherRequiredAnswers(request, fixture, partialQuestion.id);
 
     const partialResponse = waitForAssessmentMutation(
       page,
@@ -133,8 +134,6 @@ test.describe.serial('SCORE-01 readiness employee workflow', () => {
       'Nem releváns',
     );
 
-    await saveAllOtherRequiredAnswers(request, fixture, partialQuestion.id);
-
     const completedResponse = waitForRoundCompletion(
       page,
       fixture.projectId,
@@ -153,7 +152,7 @@ test.describe.serial('SCORE-01 readiness employee workflow', () => {
     await expect(nativeButton(page, `reset-round-assessment-${partialQuestion.id}`)).toBeDisabled();
 
     const remediationRound = await createInitialIntakeRound(request, fixture.projectId);
-    const checklistGapQuestion = requireOptionalQuestion(remediationRound.questions, partialQuestion.id);
+    const checklistGapQuestion = requireOptionalQuestion(remediationRound.questions);
     await saveAllOtherRequiredAnswers(
       request,
       { projectId: fixture.projectId, round: remediationRound },
@@ -171,8 +170,16 @@ test.describe.serial('SCORE-01 readiness employee workflow', () => {
       initialReadiness.factors.length,
     );
     await expect(page.getByTestId('readiness-review-gap')).toHaveCount(initialReadiness.gaps.length);
-    const initialOwnershipPercentage = readinessFactor(initialReadiness, 'ownership').percentage;
-    expect(initialReadiness.gaps.some((gap) => gap.id === 'overview-ball-owner')).toBe(true);
+    const initialOwnershipFactor = readinessFactor(initialReadiness, 'ownership');
+    const initialOwnerGap = requireReadinessGap(initialReadiness, 'overview-ball-owner');
+    const initialOwnerGapAction = nativeButton(
+      page,
+      `readiness-review-gap-action-${initialOwnerGap.id}`,
+    );
+    await expect(readinessFactorItem(page, initialOwnershipFactor)).toContainText(
+      `${initialOwnershipFactor.label}: ${initialOwnershipFactor.percentage}%`,
+    );
+    await expect(initialOwnerGapAction).toBeVisible();
 
     const workspaceSaveResponse = page.waitForResponse(
       (response) =>
@@ -186,43 +193,18 @@ test.describe.serial('SCORE-01 readiness employee workflow', () => {
     const ownerRefreshedReadiness = requireAvailableReadiness(
       (await (await ownerRefreshResponse).json()) as ProjectReadiness,
     );
-    expect(readinessFactor(ownerRefreshedReadiness, 'ownership').percentage).toBeGreaterThan(
-      initialOwnershipPercentage,
+    const ownerRefreshedFactor = readinessFactor(ownerRefreshedReadiness, 'ownership');
+    expect(ownerRefreshedFactor.percentage).toBeGreaterThan(
+      initialOwnershipFactor.percentage,
     );
     expect(ownerRefreshedReadiness.gaps.some((gap) => gap.id === 'overview-ball-owner')).toBe(false);
-
-    const categorySelect = page
-      .getByTestId('discovery-follow-up-category-select')
-      .getByRole('combobox');
-    await categorySelect.click();
-    await categorySelect.press('ArrowDown');
-    await categorySelect.press('Enter');
-    await page
-      .getByTestId('discovery-follow-up-question-input')
-      .fill('Which delivery assumption needs confirmation?');
-    await page.getByTestId('discovery-follow-up-owner-input').fill('Readiness workflow owner');
-    const dueDateInput = page
-      .getByTestId('discovery-follow-up-due-date-input')
-      .locator('input');
-    await dueDateInput.fill('');
-    await dueDateInput.click();
-    await dueDateInput.pressSequentially('2026-09-21');
-    await dueDateInput.press('Tab');
-    await page
-      .getByTestId('discovery-follow-up-next-step-input')
-      .fill('Confirm the delivery assumption with the accountable stakeholder.');
-    const createFollowUpResponse = page.waitForResponse(
-      (response) =>
-        response.request().method() === 'POST' &&
-        response
-          .url()
-          .endsWith(`/api/projects/${fixture.projectId}/discovery-follow-ups`),
+    await expect(readinessFactorItem(page, ownerRefreshedFactor)).toContainText(
+      `${ownerRefreshedFactor.label}: ${ownerRefreshedFactor.percentage}%`,
     );
+    await expect(initialOwnerGapAction).toHaveCount(0);
+
     const followUpRefreshResponse = waitForReadiness(page, fixture.projectId);
-    await nativeButton(page, 'create-discovery-follow-up-button').click();
-    const createdFollowUpResponse = await createFollowUpResponse;
-    expect(createdFollowUpResponse.status()).toBe(201);
-    const createdFollowUp = (await createdFollowUpResponse.json()) as DiscoveryFollowUp;
+    const createdFollowUp = await createDiscoveryFollowUp(page, fixture.projectId);
     const followUpRefreshedReadiness = requireAvailableReadiness(
       (await (await followUpRefreshResponse).json()) as ProjectReadiness,
     );
@@ -236,6 +218,10 @@ test.describe.serial('SCORE-01 readiness employee workflow', () => {
 
     const discoveryAnchor = page.locator('#discovery-follow-ups');
     await expect(discoveryAnchor).toHaveCount(1);
+    const workspaceAnchor = page.locator('#workspace');
+    await expect(workspaceAnchor).toHaveCount(1);
+    await workspaceAnchor.scrollIntoViewIfNeeded();
+    await expect(discoveryAnchor).not.toBeInViewport();
     await nativeButton(page, `readiness-review-gap-action-${followUpGap.id}`).click();
     await expect(discoveryAnchor).toBeInViewport();
 
@@ -313,13 +299,8 @@ function requireRequiredQuestion(
   return question;
 }
 
-function requireOptionalQuestion(
-  questions: readonly ReadinessRoundQuestion[],
-  excludedSnapshotId: string,
-): ReadinessRoundQuestion {
-  const question = questions.find(
-    (candidate) => !candidate.required && candidate.id !== excludedSnapshotId,
-  );
+function requireOptionalQuestion(questions: readonly ReadinessRoundQuestion[]): ReadinessRoundQuestion {
+  const question = questions.find((candidate) => !candidate.required);
   if (!question) {
     throw new Error('The canonical readiness fixture has no optional question for checklist-gap proof.');
   }
@@ -355,6 +336,41 @@ async function saveBrowserAnswer(page: Page, question: ReadinessRoundQuestion): 
     return;
   }
   throw new Error(`Question ${question.stableKey} has an unsupported browser control.`);
+}
+
+async function createDiscoveryFollowUp(
+  page: Page,
+  projectId: string,
+): Promise<DiscoveryFollowUp> {
+  const categorySelect = page
+    .getByTestId('discovery-follow-up-category-select')
+    .getByRole('combobox');
+  await categorySelect.click();
+  await categorySelect.press('ArrowDown');
+  await categorySelect.press('Enter');
+  await page
+    .getByTestId('discovery-follow-up-question-input')
+    .fill('Which delivery assumption needs confirmation?');
+  await page.getByTestId('discovery-follow-up-owner-input').fill('Readiness workflow owner');
+  const dueDateInput = page
+    .getByTestId('discovery-follow-up-due-date-input')
+    .locator('input');
+  await dueDateInput.fill('');
+  await dueDateInput.click();
+  await dueDateInput.pressSequentially('2026-09-21');
+  await dueDateInput.press('Tab');
+  await page
+    .getByTestId('discovery-follow-up-next-step-input')
+    .fill('Confirm the delivery assumption with the accountable stakeholder.');
+  const createFollowUpResponse = page.waitForResponse(
+    (response) =>
+      response.request().method() === 'POST' &&
+      response.url().endsWith(`/api/projects/${projectId}/discovery-follow-ups`),
+  );
+  await nativeButton(page, 'create-discovery-follow-up-button').click();
+  const response = await createFollowUpResponse;
+  expect(response.status()).toBe(201);
+  return (await response.json()) as DiscoveryFollowUp;
 }
 
 function answerControl(page: Page, question: ReadinessRoundQuestion): Locator {
@@ -486,6 +502,15 @@ function readinessFactor(
   return factor;
 }
 
+function readinessFactorItem(
+  page: Page,
+  factor: AvailableReadiness['factors'][number],
+): Locator {
+  return page.getByTestId('readiness-review-factor').filter({
+    hasText: factor.label + ':',
+  });
+}
+
 function requireReadinessGap(
   readiness: AvailableReadiness,
   gapId: string,
@@ -533,6 +558,7 @@ test('shows and retries readiness states without blocking Workspace or Discovery
 
   releaseFirstResponse?.();
   await expect(page.getByTestId('readiness-review-error')).toBeVisible();
+  await expect(nativeButton(page, 'save-workspace-button')).toBeEnabled();
   await page.unroute(readinessRoute);
   const retryReadinessResponse = page.waitForResponse(
     (response) =>
@@ -550,7 +576,32 @@ test('shows and retries readiness states without blocking Workspace or Discovery
   await expect(
     page.getByTestId('readiness-review-unavailable-no-initial-intake'),
   ).toBeVisible();
+  const noInitialIntakeState = page.getByTestId(
+    'readiness-review-unavailable-no-initial-intake',
+  );
+  await expect(noInitialIntakeState).toContainText('Még nincs kezdő interjú');
+  await expect(noInitialIntakeState).toContainText(
+    'Indíts kezdő interjút a felkészültségi értékelés elkészítéséhez.',
+  );
   await expect(page.getByTestId('readiness-review-summary')).toHaveCount(0);
+  await expect(nativeButton(page, 'save-workspace-button')).toBeEnabled();
+  await expect(page.getByTestId('discovery-follow-up-form')).toBeVisible();
+
+  const discoveryRefreshResponse = waitForReadiness(page, project.id);
+  await createDiscoveryFollowUp(page, project.id);
+  const discoveryRefresh = await discoveryRefreshResponse;
+  expect(discoveryRefresh.status()).toBe(200);
+  expect((await discoveryRefresh.json()) as ProjectReadiness).toEqual({
+    available: false,
+    projectId: project.id,
+    reason: 'NO_INITIAL_INTAKE',
+  });
+  await expect(page.getByTestId('discovery-follow-up-item')).toHaveCount(1);
+  await expect(noInitialIntakeState).toContainText('Még nincs kezdő interjú');
+  await expect(page.getByTestId('readiness-review-summary')).toHaveCount(0);
+  await expect(page.getByTestId('cockpit-error')).toHaveCount(0);
+  await expect(page.getByTestId('cockpit-action-error')).toHaveCount(0);
+  await expect(page.getByTestId('discovery-follow-up-action-error')).toHaveCount(0);
   expect(readinessRequestCount).toBe(1);
 });
 
