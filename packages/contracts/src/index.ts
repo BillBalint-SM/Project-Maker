@@ -7,6 +7,7 @@ export * from './markdown-revisions.js';
 export * from './follow-ups.js';
 export * from './discovery-follow-ups.js';
 export * from './audit.js';
+export * from './readiness.js';
 
 export const generalPlaybookV1SourcePath = 'playbooks/general.v1.json' as const;
 
@@ -49,6 +50,12 @@ export interface GeneralPlaybookScoring {
       readonly estimatePreparationFrom: number;
       readonly estimateReadyFrom: number;
       readonly developmentReadyFrom: number;
+    };
+    readonly inputBindings: {
+      readonly baseInfoProjectFields: readonly string[];
+      readonly businessChecklistItemIds: readonly number[];
+      readonly ownershipProjectFields: readonly string[];
+      readonly ownershipChecklistItemIds: readonly number[];
     };
   };
   readonly decision: {
@@ -148,6 +155,16 @@ function assertStringArray(value: unknown, path: string): asserts value is strin
 
   for (const [index, item] of value.entries()) {
     assertString(item, `${path}[${index}]`);
+  }
+}
+
+function assertNumberArray(value: unknown, path: string): asserts value is number[] {
+  if (!Array.isArray(value) || value.length === 0) {
+    failValidation(path, 'a non-empty number array');
+  }
+
+  for (const [index, item] of value.entries()) {
+    assertNumber(item, `${path}[${index}]`);
   }
 }
 
@@ -318,6 +335,23 @@ function assertScoring(value: unknown, canonicalValue: unknown): asserts value i
   for (const [key, threshold] of Object.entries(value.readiness.thresholds)) {
     assertPercentage(threshold, `$.scoring.readiness.thresholds.${key}`);
   }
+  assertRecord(value.readiness.inputBindings, '$.scoring.readiness.inputBindings');
+  assertStringArray(
+    value.readiness.inputBindings.baseInfoProjectFields,
+    '$.scoring.readiness.inputBindings.baseInfoProjectFields'
+  );
+  assertNumberArray(
+    value.readiness.inputBindings.businessChecklistItemIds,
+    '$.scoring.readiness.inputBindings.businessChecklistItemIds'
+  );
+  assertStringArray(
+    value.readiness.inputBindings.ownershipProjectFields,
+    '$.scoring.readiness.inputBindings.ownershipProjectFields'
+  );
+  assertNumberArray(
+    value.readiness.inputBindings.ownershipChecklistItemIds,
+    '$.scoring.readiness.inputBindings.ownershipChecklistItemIds'
+  );
   assertRecord(value.decision, '$.scoring.decision');
   assertRecord(value.decision.weights, '$.scoring.decision.weights');
   assertUnitIntervalFields(value.decision.weights, '$.scoring.decision.weights', [
