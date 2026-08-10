@@ -10,6 +10,7 @@ import { InterviewRoundEntity } from './interview-round.entity';
 import { InterviewsController } from './interviews.controller';
 import { InterviewsService } from './interviews.service';
 import { RoundAnswerEntity } from './round-answer.entity';
+import { RoundQuestionAssessmentOverrideEntity } from './round-question-assessment-override.entity';
 import { RoundQuestionSnapshotEntity } from './round-question-snapshot.entity';
 
 @Module({
@@ -18,6 +19,7 @@ import { RoundQuestionSnapshotEntity } from './round-question-snapshot.entity';
       InterviewRoundEntity,
       RoundQuestionSnapshotEntity,
       RoundAnswerEntity,
+      RoundQuestionAssessmentOverrideEntity,
       ProjectQuestionSchemaEntity,
       ProjectSchemaQuestionEntity,
       BaseQuestionEntity,
