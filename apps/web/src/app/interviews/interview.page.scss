@@ -225,6 +225,39 @@
   color: var(--p-red-600, #b91c1c);
 }
 
+.assessment-block {
+  border-top: 1px solid var(--p-content-border-color);
+  display: grid;
+  gap: 0.75rem;
+  margin-top: 1rem;
+  padding-top: 1rem;
+}
+
+.assessment-header,
+.assessment-actions,
+.assessment-save-state {
+  align-items: center;
+  display: flex;
+  gap: 0.65rem;
+}
+
+.assessment-header,
+.assessment-save-state {
+  justify-content: space-between;
+}
+
+.assessment-actions {
+  flex-wrap: wrap;
+}
+
+.assessment-rationale {
+  max-width: 42rem;
+}
+
+.assessment-save-state--error {
+  color: var(--p-red-600, #b91c1c);
+}
+
 .complete-row {
   border-top: 1px solid var(--p-content-border-color);
   justify-content: flex-end;
@@ -246,7 +279,9 @@
 @media (max-width: 38rem) {
   .schema-status,
   .round-header,
-  .answer-actions {
+  .answer-actions,
+  .assessment-header,
+  .assessment-save-state {
     align-items: flex-start;
     flex-direction: column;
   }

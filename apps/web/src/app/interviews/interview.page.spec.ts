@@ -41,6 +41,247 @@ describe('InterviewPage', () => {
     expect(schemaCheckbox?.disabled).toBe(true);
   });
 
+  it('renders server-projected missing and complete assessment status tags with stable fragment targets', async () => {
+    const missingQuestion = buildOptionalTextQuestion({
+      checklistStatus: 'Nincs meg',
+    });
+    const completeQuestion = buildTextQuestion({
+      id: 'snapshot-complete',
+      checklistStatus: 'Kész',
+    });
+    const questionBankApi = createQuestionBankApi(null, null);
+    const interviewApi = createInterviewApi(
+      buildOpenRoundWithQuestions([missingQuestion, completeQuestion]),
+      null,
+    );
+
+    const page = await renderInterviewPage('project-123', questionBankApi, interviewApi);
+    const missingArticle = page.nativeElement.querySelector(
+      '[data-testid="round-question-snapshot-optional"]',
+    ) as HTMLElement | null;
+    const completeStatus = page.nativeElement.querySelector(
+      '[data-testid="round-assessment-status-snapshot-complete"]',
+    ) as HTMLElement | null;
+
+    expect(missingArticle?.id).toBe('round-question-snapshot-optional');
+    expect(
+      page.nativeElement.querySelector('[data-testid="round-assessment-status-snapshot-optional"]')
+        ?.textContent,
+    ).toContain('Nincs meg');
+    expect(completeStatus?.textContent).toContain('Kész');
+  });
+
+  it('does not allow partial assessment before a persisted valid answer exists', async () => {
+    const question = buildOptionalTextQuestion({
+      answer: null,
+      answeredAt: null,
+      checklistStatus: 'Nincs meg',
+    });
+    const questionBankApi = createQuestionBankApi(buildOptionalTextBank(), buildOptionalTextSchema());
+    const interviewApi = createInterviewApi(buildOpenRound(question), null);
+
+    const page = await renderInterviewPage('project-123', questionBankApi, interviewApi);
+    const partialButton = findButton(
+      page.nativeElement,
+      '[data-testid="set-partial-assessment-snapshot-optional"]',
+    );
+
+    expect(partialButton?.disabled).toBe(true);
+    partialButton?.click();
+    expect(interviewApi.setAssessment).not.toHaveBeenCalled();
+  });
+
+  it('retains a not-relevant rationale after a failed save and retries the same assessment', async () => {
+    const userMessage =
+      'Nem sikerült elmenteni az értékelést (HTTP 409). Frissítsd az oldalt, hogy a legfrissebb interjúállapotot lásd, majd próbáld újra.';
+    const savedQuestion = buildTextQuestion({
+      checklistStatus: 'Nem releváns',
+      assessmentRationale: 'A kérdés nem kapcsolódik a projekthez.',
+    });
+    const setAssessment = vi
+      .fn()
+      .mockReturnValueOnce(
+        throwError(() => Object.assign(new Error(userMessage), { brand: interviewApiErrorBrand })),
+      )
+      .mockReturnValueOnce(of(savedQuestion));
+    const questionBankApi = createQuestionBankApi(null, null);
+    const interviewApi = {
+      ...createInterviewApi(buildOpenRound(buildTextQuestion({})), null),
+      setAssessment,
+    };
+
+    const page = await renderInterviewPage('project-123', questionBankApi, interviewApi);
+    findButton(page.nativeElement, '[data-testid="set-not-relevant-assessment-snapshot-1"]')?.click();
+    page.fixture.detectChanges();
+    const rationale = page.nativeElement.querySelector(
+      '[data-testid="round-assessment-rationale-snapshot-1"]',
+    ) as HTMLTextAreaElement;
+
+    setInputValue(rationale, 'A kérdés nem kapcsolódik a projekthez.');
+    page.fixture.detectChanges();
+    findButton(page.nativeElement, '[data-testid="save-not-relevant-assessment-snapshot-1"]')?.click();
+    await page.fixture.whenStable();
+    page.fixture.detectChanges();
+
+    expect(rationale.value).toBe('A kérdés nem kapcsolódik a projekthez.');
+    expect(
+      page.nativeElement.querySelector('[data-testid="retry-round-assessment-snapshot-1"]'),
+    ).not.toBeNull();
+
+    findButton(page.nativeElement, '[data-testid="retry-round-assessment-snapshot-1"]')?.click();
+    await page.fixture.whenStable();
+    page.fixture.detectChanges();
+
+    expect(setAssessment).toHaveBeenCalledTimes(2);
+    expect(setAssessment).toHaveBeenNthCalledWith(
+      2,
+      'project-123',
+      'round-1',
+      'snapshot-1',
+      { status: 'Nem releváns', rationale: 'A kérdés nem kapcsolódik a projekthez.' },
+    );
+    expect(
+      page.nativeElement.querySelector('[data-testid="round-assessment-status-snapshot-1"]')
+        ?.textContent,
+    ).toContain('Nem releváns');
+  });
+
+  it('replaces answer and assessment state from a returned snapshot after answer clearing', async () => {
+    const clearedQuestion = buildTextQuestion({
+      answer: null,
+      answeredAt: null,
+      checklistStatus: 'Nincs meg',
+      assessmentRationale: null,
+    });
+    const setAssessment = vi.fn().mockReturnValue(of(clearedQuestion));
+    const questionBankApi = createQuestionBankApi(null, null);
+    const interviewApi = {
+      ...createInterviewApi(buildOpenRound(buildTextQuestion({ checklistStatus: 'Részben megvan' })), null),
+      setAssessment,
+    };
+
+    const page = await renderInterviewPage('project-123', questionBankApi, interviewApi);
+    findButton(page.nativeElement, '[data-testid="set-partial-assessment-snapshot-1"]')?.click();
+    await page.fixture.whenStable();
+    page.fixture.detectChanges();
+
+    const answerInput = page.nativeElement.querySelector(
+      '[data-testid="round-answer-input-snapshot-1"]',
+    ) as HTMLInputElement;
+
+    expect(answerInput.value).toBe('');
+    expect(
+      page.nativeElement
+        .querySelector('[data-testid="set-partial-assessment-snapshot-1"]')
+        ?.getAttribute('aria-pressed'),
+    ).toBe('false');
+    expect(
+      page.nativeElement.querySelector('[data-testid="round-assessment-status-snapshot-1"]')
+        ?.textContent,
+    ).toContain('Nincs meg');
+  });
+
+  it('resets an assessment through DELETE and returns to its server-projected automatic status', async () => {
+    const resetQuestion = buildTextQuestion({
+      checklistStatus: 'Kész',
+      assessmentRationale: null,
+    });
+    const resetAssessment = vi.fn().mockReturnValue(of(resetQuestion));
+    const questionBankApi = createQuestionBankApi(null, null);
+    const interviewApi = {
+      ...createInterviewApi(
+        buildOpenRound(
+          buildTextQuestion({
+            checklistStatus: 'Részben megvan',
+            assessmentRationale: null,
+          }),
+        ),
+        null,
+      ),
+      resetAssessment,
+    };
+
+    const page = await renderInterviewPage('project-123', questionBankApi, interviewApi);
+    findButton(page.nativeElement, '[data-testid="reset-round-assessment-snapshot-1"]')?.click();
+    await page.fixture.whenStable();
+    page.fixture.detectChanges();
+
+    expect(resetAssessment).toHaveBeenCalledWith('project-123', 'round-1', 'snapshot-1');
+    expect(
+      page.nativeElement.querySelector('[data-testid="round-assessment-status-snapshot-1"]')
+        ?.textContent,
+    ).toContain('Kész');
+  });
+
+  it('blocks completion while assessment work is pending or failed until retry succeeds', async () => {
+    const pendingAssessment = new Subject<RoundQuestionSnapshot>();
+    const userMessage = 'Nem sikerült elmenteni az értékelést. Próbáld újra.';
+    const savedQuestion = buildTextQuestion({
+      checklistStatus: 'Részben megvan',
+      assessmentRationale: null,
+    });
+    const setAssessment = vi
+      .fn()
+      .mockReturnValueOnce(pendingAssessment.asObservable())
+      .mockReturnValueOnce(of(savedQuestion));
+    const completeRound = vi.fn().mockReturnValue(of(buildCompletedRound(savedQuestion)));
+    const questionBankApi = createQuestionBankApi(null, null);
+    const interviewApi = {
+      ...createInterviewApi(buildOpenRound(buildTextQuestion({})), null),
+      setAssessment,
+      completeRound,
+    };
+
+    const page = await renderInterviewPage('project-123', questionBankApi, interviewApi);
+    findButton(page.nativeElement, '[data-testid="set-partial-assessment-snapshot-1"]')?.click();
+    page.fixture.detectChanges();
+
+    expect(findButton(page.nativeElement, '[data-testid="complete-interview-round-button"]')?.disabled).toBe(
+      true,
+    );
+    expect(
+      page.nativeElement.querySelector('[data-testid="complete-round-blocked-message"]')?.textContent,
+    ).toContain('értékelés mentése');
+
+    pendingAssessment.error(new Error(userMessage));
+    await page.fixture.whenStable();
+    page.fixture.detectChanges();
+
+    expect(findButton(page.nativeElement, '[data-testid="complete-interview-round-button"]')?.disabled).toBe(
+      true,
+    );
+    expect(
+      page.nativeElement.querySelector('[data-testid="retry-round-assessment-snapshot-1"]'),
+    ).not.toBeNull();
+
+    findButton(page.nativeElement, '[data-testid="retry-round-assessment-snapshot-1"]')?.click();
+    await page.fixture.whenStable();
+    page.fixture.detectChanges();
+
+    expect(findButton(page.nativeElement, '[data-testid="complete-interview-round-button"]')?.disabled).toBe(
+      false,
+    );
+    expect(completeRound).not.toHaveBeenCalled();
+  });
+
+  it('disables every assessment control in a completed round', async () => {
+    const completedQuestion = buildTextQuestion({ checklistStatus: 'Kész' });
+    const questionBankApi = createQuestionBankApi(null, null);
+    const interviewApi = createInterviewApi(buildCompletedRound(completedQuestion), null);
+
+    const page = await renderInterviewPage('project-123', questionBankApi, interviewApi);
+
+    expect(findButton(page.nativeElement, '[data-testid="reset-round-assessment-snapshot-1"]')?.disabled).toBe(
+      true,
+    );
+    expect(findButton(page.nativeElement, '[data-testid="set-partial-assessment-snapshot-1"]')?.disabled).toBe(
+      true,
+    );
+    expect(
+      findButton(page.nativeElement, '[data-testid="set-not-relevant-assessment-snapshot-1"]')?.disabled,
+    ).toBe(true);
+  });
+
   it('autosaves text answers after exactly 750 ms and removes the normal manual save control', async () => {
     const savedQuestion = buildTextQuestion({
       answer: 'Friss válasz',
@@ -455,6 +696,8 @@ async function renderInterviewPage(
     readonly getActiveInitialIntake: ReturnType<typeof vi.fn>;
     readonly createRound: ReturnType<typeof vi.fn>;
     readonly updateAnswer: ReturnType<typeof vi.fn>;
+    readonly setAssessment: ReturnType<typeof vi.fn>;
+    readonly resetAssessment: ReturnType<typeof vi.fn>;
     readonly completeRound: ReturnType<typeof vi.fn>;
   },
 ): Promise<{ readonly fixture: ComponentFixture<InterviewPage>; readonly nativeElement: HTMLElement }> {
@@ -513,12 +756,16 @@ function createInterviewApi(
   readonly getActiveInitialIntake: ReturnType<typeof vi.fn>;
   readonly createRound: ReturnType<typeof vi.fn>;
   readonly updateAnswer: ReturnType<typeof vi.fn>;
+  readonly setAssessment: ReturnType<typeof vi.fn>;
+  readonly resetAssessment: ReturnType<typeof vi.fn>;
   readonly completeRound: ReturnType<typeof vi.fn>;
 } {
   return {
     getActiveInitialIntake: vi.fn().mockReturnValue(of(activeRound)),
     createRound: vi.fn(),
     updateAnswer: updateAnswer ?? vi.fn(),
+    setAssessment: vi.fn(),
+    resetAssessment: vi.fn(),
     completeRound: vi.fn(),
   };
 }
@@ -526,6 +773,11 @@ function createInterviewApi(
 function setInputValue(input: HTMLInputElement | HTMLTextAreaElement, value: string): void {
   input.value = value;
   input.dispatchEvent(new Event('input'));
+}
+
+function findButton(root: HTMLElement, selector: string): HTMLButtonElement | null {
+  const host = root.querySelector(selector);
+  return host?.querySelector('button') as HTMLButtonElement | null;
 }
 
 function buildBank(): BaseQuestionBank {
@@ -557,6 +809,15 @@ function buildOpenRound(question: RoundQuestionSnapshot): InterviewRound {
     createdAt: '2026-08-06T10:10:00.000Z',
     completedAt: null,
     questions: [question],
+  };
+}
+
+function buildOpenRoundWithQuestions(
+  questions: readonly RoundQuestionSnapshot[],
+): InterviewRound {
+  return {
+    ...buildOpenRound(questions[0]),
+    questions,
   };
 }
 
@@ -634,6 +895,8 @@ function buildTextQuestion(overrides: Partial<RoundQuestionSnapshot>): RoundQues
     options: null,
     answer: 'Meglévő válasz',
     answeredAt: '2026-08-06T10:12:00.000Z',
+    checklistStatus: 'Kész',
+    assessmentRationale: null,
     ...overrides,
   };
 }
@@ -662,6 +925,8 @@ function buildBooleanQuestion(
     options: null,
     answer: false,
     answeredAt: '2026-08-06T10:12:00.000Z',
+    checklistStatus: 'Kész',
+    assessmentRationale: null,
     ...overrides,
   };
 }
@@ -684,6 +949,8 @@ function buildOptionalTextQuestion(
     options: null,
     answer: null,
     answeredAt: null,
+    checklistStatus: 'Nincs meg',
+    assessmentRationale: null,
     ...overrides,
   };
 }
@@ -706,6 +973,8 @@ function buildLongTextQuestion(
     options: null,
     answer: null,
     answeredAt: null,
+    checklistStatus: 'Nincs meg',
+    assessmentRationale: null,
     ...overrides,
   };
 }
