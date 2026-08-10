@@ -209,6 +209,8 @@ describe('ProjectsController (e2e)', () => {
     assert.equal(later.body.nextStep, 'Confirm against the vendor contract.');
     assert.equal(later.body.dueDate, '2026-09-17');
     assert.equal(later.body.decisionOrAnswer, null);
+    assert.equal(later.body.version, 1);
+    assert.equal(earlier.body.version, 1);
 
     const list = await request(app.getHttpServer())
       .get(`/projects/${projectId}/discovery-follow-ups`)
@@ -225,11 +227,12 @@ describe('ProjectsController (e2e)', () => {
     );
     const reloadedLater = list.body.find(
       (value: { id: string }) => value.id === later.body.id,
-    ) as { decisionOrAnswer: string | null } | undefined;
+    ) as { decisionOrAnswer: string | null; version: number } | undefined;
     if (!reloadedLater) {
       throw new Error('created discovery follow-up was not returned after reload');
     }
     assert.equal(reloadedLater.decisionOrAnswer, null);
+    assert.equal(reloadedLater.version, 1);
 
     const auditRows = await dataSource.query<
       Array<{ event_type: string; payload: Record<string, unknown> }>
@@ -258,6 +261,412 @@ describe('ProjectsController (e2e)', () => {
       },
     ]);
     assert.doesNotMatch(JSON.stringify(auditRows), /API team|vendor contract|approval decision/);
+  });
+
+  it('edits an open discovery follow-up with normalization, fixed-order audit data, and a safe no-op', async () => {
+    const projectId = await createProject('discovery-follow-up-edit');
+    const created = await request(app.getHttpServer())
+      .post(`/projects/${projectId}/discovery-follow-ups`)
+      .send({
+        category: 'BUSINESS',
+        question: 'Which API version is supported?',
+        owner: 'API team',
+        dueDate: '2026-09-17',
+        nextStep: 'Confirm against the vendor contract.',
+      })
+      .expect(201);
+
+    const edited = await request(app.getHttpServer())
+      .patch(`/projects/${projectId}/discovery-follow-ups/${created.body.id}`)
+      .send({
+        category: 'TECHNICAL',
+        question: '  Which API version is supported now?  ',
+        owner: '  Platform team  ',
+        dueDate: '2026-09-15',
+        nextStep: '  Confirm the supported version.  ',
+        expectedVersion: created.body.version,
+      })
+      .expect(200);
+
+    assert.equal(edited.body.category, 'TECHNICAL');
+    assert.equal(edited.body.question, 'Which API version is supported now?');
+    assert.equal(edited.body.owner, 'Platform team');
+    assert.equal(edited.body.dueDate, '2026-09-15');
+    assert.equal(edited.body.nextStep, 'Confirm the supported version.');
+    assert.equal(edited.body.status, 'Nyitott');
+    assert.equal(edited.body.decisionOrAnswer, null);
+    assert.equal(edited.body.version, created.body.version + 1);
+
+    const list = await request(app.getHttpServer())
+      .get(`/projects/${projectId}/discovery-follow-ups`)
+      .expect(200);
+    const reloaded = list.body.find(
+      (value: { id: string }) => value.id === created.body.id,
+    ) as
+      | {
+          category: string;
+          question: string;
+          owner: string;
+          dueDate: string;
+          nextStep: string;
+          version: number;
+        }
+      | undefined;
+    if (!reloaded) {
+      throw new Error('edited discovery follow-up was not returned after reload');
+    }
+    assert.deepEqual(
+      {
+        category: reloaded.category,
+        question: reloaded.question,
+        owner: reloaded.owner,
+        dueDate: reloaded.dueDate,
+        nextStep: reloaded.nextStep,
+        version: reloaded.version,
+      },
+      {
+        category: 'TECHNICAL',
+        question: 'Which API version is supported now?',
+        owner: 'Platform team',
+        dueDate: '2026-09-15',
+        nextStep: 'Confirm the supported version.',
+        version: edited.body.version,
+      },
+    );
+
+    const updateAuditRows = await dataSource.query<
+      Array<{ event_type: string; payload: Record<string, unknown> }>
+    >(
+      'SELECT "event_type", "payload" FROM "audit_events" WHERE "project_id" = $1 AND "event_type" = $2 ORDER BY "created_at" ASC, "id" ASC',
+      [projectId, 'DISCOVERY_FOLLOW_UP_UPDATED'],
+    );
+    assert.deepEqual(updateAuditRows, [
+      {
+        event_type: 'DISCOVERY_FOLLOW_UP_UPDATED',
+        payload: {
+          followUpId: created.body.id,
+          changedFields: 'category,question,owner,dueDate,nextStep',
+        },
+      },
+    ]);
+    for (const submittedValue of [
+      'Which API version is supported?',
+      'Which API version is supported now?',
+      'API team',
+      'Platform team',
+      'Confirm against the vendor contract.',
+      'Confirm the supported version.',
+      'decisionOrAnswer',
+      'expectedVersion',
+      'version',
+    ]) {
+      assertNoSubmittedValues(updateAuditRows, submittedValue);
+    }
+
+    const noOp = await request(app.getHttpServer())
+      .patch(`/projects/${projectId}/discovery-follow-ups/${created.body.id}`)
+      .send({
+        category: 'TECHNICAL',
+        question: '  Which API version is supported now?  ',
+        owner: ' Platform team ',
+        dueDate: '2026-09-15',
+        nextStep: ' Confirm the supported version. ',
+        expectedVersion: edited.body.version,
+      })
+      .expect(200);
+    assert.equal(noOp.body.version, edited.body.version);
+    assert.equal(await countDiscoveryFollowUpUpdateAudit(projectId), 1);
+  });
+
+  it('rejects invalid discovery follow-up edits without echoing submitted values', async () => {
+    const projectId = await createProject('discovery-follow-up-edit-validation');
+    const tooLongQuestion = 'E'.repeat(10_001);
+    const tooLongOwner = 'R'.repeat(256);
+    const tooLongNextStep = 'T'.repeat(10_001);
+    const invalidBodies: ReadonlyArray<{
+      readonly body: Record<string, unknown>;
+      readonly forbidden: readonly string[];
+      readonly messageOnlyForbidden?: readonly string[];
+      readonly rejectedFields?: readonly string[];
+    }> = [
+      {
+        body: {
+          category: 'BUSINESS',
+          question: 'missing-version-question-sentinel',
+          owner: 'Owner',
+          dueDate: '2026-09-16',
+          nextStep: 'Next',
+        },
+        forbidden: ['missing-version-question-sentinel'],
+        rejectedFields: ['expectedVersion'],
+      },
+      {
+        body: discoveryFollowUpUpdateBody(0, 'zero-version-sentinel'),
+        forbidden: ['zero-version-sentinel'],
+        messageOnlyForbidden: ['0'],
+        rejectedFields: ['expectedVersion'],
+      },
+      {
+        body: discoveryFollowUpUpdateBody(1.5, 'fractional-version-sentinel'),
+        forbidden: ['fractional-version-sentinel', '1.5'],
+        rejectedFields: ['expectedVersion'],
+      },
+      {
+        body: {
+          ...discoveryFollowUpUpdateBody(1, 'extra-status-sentinel'),
+          status: 'unexpected-status-value-sentinel',
+        },
+        forbidden: ['extra-status-sentinel', 'unexpected-status-value-sentinel'],
+        rejectedFields: ['status'],
+      },
+      {
+        body: {
+          ...discoveryFollowUpUpdateBody(1, 'extra-answer-sentinel'),
+          decisionOrAnswer: 'unexpected-answer-value-sentinel',
+        },
+        forbidden: ['extra-answer-sentinel', 'unexpected-answer-value-sentinel'],
+        rejectedFields: ['decisionOrAnswer'],
+      },
+      {
+        body: {
+          ...discoveryFollowUpUpdateBody(1, 'extra-project-sentinel'),
+          projectId: 'unexpected-project-value-sentinel',
+        },
+        forbidden: ['extra-project-sentinel', 'unexpected-project-value-sentinel'],
+        rejectedFields: ['projectId'],
+      },
+      {
+        body: {
+          ...discoveryFollowUpUpdateBody(1, 'extra-source-sentinel'),
+          sourceChecklistItemId: 'unexpected-source-value-sentinel',
+        },
+        forbidden: ['extra-source-sentinel', 'unexpected-source-value-sentinel'],
+        rejectedFields: ['sourceChecklistItemId'],
+      },
+      {
+        body: {
+          ...discoveryFollowUpUpdateBody(1, 'unknown-category-sentinel'),
+          category: 'NOT_A_CATEGORY',
+        },
+        forbidden: ['unknown-category-sentinel', 'NOT_A_CATEGORY'],
+        rejectedFields: ['category'],
+      },
+      {
+        body: {
+          ...discoveryFollowUpUpdateBody(1, 'blank-question-sentinel'),
+          question: '   ',
+        },
+        forbidden: ['blank-question-sentinel'],
+        rejectedFields: ['question'],
+      },
+      {
+        body: {
+          ...discoveryFollowUpUpdateBody(1, 'blank-owner-sentinel'),
+          owner: '   ',
+        },
+        forbidden: ['blank-owner-sentinel'],
+        rejectedFields: ['owner'],
+      },
+      {
+        body: {
+          ...discoveryFollowUpUpdateBody(1, 'blank-next-step-sentinel'),
+          nextStep: '   ',
+        },
+        forbidden: ['blank-next-step-sentinel'],
+        rejectedFields: ['nextStep'],
+      },
+      {
+        body: {
+          ...discoveryFollowUpUpdateBody(1, 'long-question-sentinel'),
+          question: tooLongQuestion,
+        },
+        forbidden: ['long-question-sentinel', tooLongQuestion],
+        rejectedFields: ['question'],
+      },
+      {
+        body: {
+          ...discoveryFollowUpUpdateBody(1, 'long-owner-sentinel'),
+          owner: tooLongOwner,
+        },
+        forbidden: ['long-owner-sentinel', tooLongOwner],
+        rejectedFields: ['owner'],
+      },
+      {
+        body: {
+          ...discoveryFollowUpUpdateBody(1, 'long-next-step-sentinel'),
+          nextStep: tooLongNextStep,
+        },
+        forbidden: ['long-next-step-sentinel', tooLongNextStep],
+        rejectedFields: ['nextStep'],
+      },
+      {
+        body: {
+          ...discoveryFollowUpUpdateBody(1, 'impossible-date-sentinel'),
+          dueDate: '2026-02-30',
+        },
+        forbidden: ['impossible-date-sentinel', '2026-02-30'],
+        rejectedFields: ['dueDate'],
+      },
+    ];
+
+    for (const [index, invalid] of invalidBodies.entries()) {
+      const followUp = await createDiscoveryFollowUp(
+        projectId,
+        `edit-invalid-${index}`,
+      );
+      const response = await request(app.getHttpServer())
+        .patch(`/projects/${projectId}/discovery-follow-ups/${followUp.id}`)
+        .send(invalid.body)
+        .expect(400);
+      for (const value of invalid.forbidden) {
+        assertNoSubmittedValues(response.body, value);
+      }
+      for (const value of invalid.messageOnlyForbidden ?? []) {
+        assertNoSubmittedValues(response.body.message, value);
+      }
+      for (const field of invalid.rejectedFields ?? []) {
+        assert.equal(response.body.fields.includes(field), true);
+      }
+    }
+  });
+
+  it('returns 400 for malformed edit ids and 404 for missing or mismatched edit resources', async () => {
+    const projectId = await createProject('discovery-follow-up-edit-missing');
+    const otherProjectId = await createProject('discovery-follow-up-edit-other-project');
+    const otherFollowUp = await createDiscoveryFollowUp(
+      otherProjectId,
+      'edit-other-project',
+    );
+    const validBody = discoveryFollowUpUpdateBody(1, 'edit-missing-resource');
+    const malformedFollowUpId = 'not-an-edit-follow-up-uuid';
+
+    const malformedResponse = await request(app.getHttpServer())
+      .patch(`/projects/${projectId}/discovery-follow-ups/${malformedFollowUpId}`)
+      .send(validBody)
+      .expect(400);
+    assertNoSubmittedValues(malformedResponse.body, malformedFollowUpId);
+
+    await request(app.getHttpServer())
+      .patch(
+        '/projects/00000000-0000-4000-8000-000000000000/discovery-follow-ups/00000000-0000-4000-8000-000000000000',
+      )
+      .send(validBody)
+      .expect(404);
+    await request(app.getHttpServer())
+      .patch(
+        `/projects/${projectId}/discovery-follow-ups/00000000-0000-4000-8000-000000000000`,
+      )
+      .send(validBody)
+      .expect(404);
+    await request(app.getHttpServer())
+      .patch(`/projects/${projectId}/discovery-follow-ups/${otherFollowUp.id}`)
+      .send(validBody)
+      .expect(404);
+  });
+
+  it('rejects editing while archived and permits a matching-version edit after restore', async () => {
+    const projectId = await createProject('discovery-follow-up-edit-archive');
+    const followUp = await createDiscoveryFollowUp(projectId, 'edit-archive');
+    const updateBody = discoveryFollowUpUpdateBody(
+      followUp.version,
+      'edit-after-restore',
+    );
+
+    await request(app.getHttpServer()).post(`/projects/${projectId}/archive`).expect(201);
+    await request(app.getHttpServer())
+      .patch(`/projects/${projectId}/discovery-follow-ups/${followUp.id}`)
+      .send(updateBody)
+      .expect(409);
+    await request(app.getHttpServer()).post(`/projects/${projectId}/restore`).expect(201);
+    const edited = await request(app.getHttpServer())
+      .patch(`/projects/${projectId}/discovery-follow-ups/${followUp.id}`)
+      .send(updateBody)
+      .expect(200);
+
+    assert.equal(edited.body.question, 'Question for edit-after-restore');
+    assert.equal(edited.body.version, followUp.version + 1);
+    assert.equal(await countDiscoveryFollowUpUpdateAudit(projectId), 1);
+  });
+
+  it('rejects editing a resolved discovery follow-up without an update audit', async () => {
+    const projectId = await createProject('discovery-follow-up-edit-resolved');
+    const followUp = await createDiscoveryFollowUp(projectId, 'edit-resolved');
+    const resolved = await request(app.getHttpServer())
+      .post(`/projects/${projectId}/discovery-follow-ups/${followUp.id}/resolve`)
+      .send({
+        status: 'Megválaszolva',
+        decisionOrAnswer: 'Terminal answer retained after rejected edit.',
+      })
+      .expect(200);
+
+    const response = await request(app.getHttpServer())
+      .patch(`/projects/${projectId}/discovery-follow-ups/${followUp.id}`)
+      .send(discoveryFollowUpUpdateBody(resolved.body.version, 'edit-resolved-rejected'))
+      .expect(409);
+    assert.equal(response.body.message, 'Discovery follow-up is not open.');
+    assert.equal(await countDiscoveryFollowUpUpdateAudit(projectId), 0);
+  });
+
+  it('rejects a stale edit without overwriting the first update or duplicating its audit', async () => {
+    const projectId = await createProject('discovery-follow-up-edit-stale');
+    const followUp = await createDiscoveryFollowUp(projectId, 'edit-stale');
+    const firstBody = discoveryFollowUpUpdateBody(followUp.version, 'first-stale-edit');
+    const secondBody = discoveryFollowUpUpdateBody(followUp.version, 'second-stale-edit');
+
+    const first = await request(app.getHttpServer())
+      .patch(`/projects/${projectId}/discovery-follow-ups/${followUp.id}`)
+      .send(firstBody)
+      .expect(200);
+    const stale = await request(app.getHttpServer())
+      .patch(`/projects/${projectId}/discovery-follow-ups/${followUp.id}`)
+      .send(secondBody)
+      .expect(409);
+
+    assert.equal(first.body.question, 'Question for first-stale-edit');
+    assert.equal(stale.body.message, 'Discovery follow-up has changed.');
+    const list = await request(app.getHttpServer())
+      .get(`/projects/${projectId}/discovery-follow-ups`)
+      .expect(200);
+    const reloaded = list.body.find(
+      (value: { id: string }) => value.id === followUp.id,
+    ) as { question: string; version: number } | undefined;
+    assert.equal(reloaded?.question, 'Question for first-stale-edit');
+    assert.equal(reloaded?.version, followUp.version + 1);
+    assert.equal(await countDiscoveryFollowUpUpdateAudit(projectId), 1);
+  });
+
+  it('prioritizes terminal state over a stale edit and retains the resolution', async () => {
+    const projectId = await createProject('discovery-follow-up-edit-terminal-stale');
+    const followUp = await createDiscoveryFollowUp(projectId, 'edit-terminal-stale');
+    const terminalAnswer = 'Resolved answer must survive a stale edit.';
+    await request(app.getHttpServer())
+      .post(`/projects/${projectId}/discovery-follow-ups/${followUp.id}/resolve`)
+      .send({ status: 'Megválaszolva', decisionOrAnswer: terminalAnswer })
+      .expect(200);
+
+    const response = await request(app.getHttpServer())
+      .patch(`/projects/${projectId}/discovery-follow-ups/${followUp.id}`)
+      .send(
+        discoveryFollowUpUpdateBody(
+          followUp.version,
+          'terminal-stale-edit-rejected',
+        ),
+      )
+      .expect(409);
+    assert.equal(response.body.message, 'Discovery follow-up is not open.');
+
+    const list = await request(app.getHttpServer())
+      .get(`/projects/${projectId}/discovery-follow-ups`)
+      .expect(200);
+    const reloaded = list.body.find(
+      (value: { id: string }) => value.id === followUp.id,
+    ) as
+      | { status: string; decisionOrAnswer: string | null; version: number }
+      | undefined;
+    assert.equal(reloaded?.status, 'Megválaszolva');
+    assert.equal(reloaded?.decisionOrAnswer, terminalAnswer);
+    assert.equal(reloaded?.version, followUp.version + 1);
+    assert.equal(await countDiscoveryFollowUpUpdateAudit(projectId), 0);
   });
 
   it('resolves discovery follow-ups with a persisted answer and a redacted audit event', async () => {
@@ -292,6 +701,7 @@ describe('ProjectsController (e2e)', () => {
       resolutionResponse.body.decisionOrAnswer,
       'Sponsor approval is recorded in CAB-42.',
     );
+    assert.equal(resolutionResponse.body.version, 2);
 
     const reloaded = await request(app.getHttpServer())
       .get(`/projects/${projectId}/discovery-follow-ups`)
@@ -966,7 +1376,7 @@ describe('ProjectsController (e2e)', () => {
   async function createDiscoveryFollowUp(
     projectId: string,
     label: string,
-  ): Promise<{ id: string }> {
+  ): Promise<{ id: string; version: number }> {
     const response = await request(app.getHttpServer())
       .post(`/projects/${projectId}/discovery-follow-ups`)
       .send({
@@ -978,7 +1388,20 @@ describe('ProjectsController (e2e)', () => {
       })
       .expect(201);
 
-    return { id: response.body.id as string };
+    return {
+      id: response.body.id as string,
+      version: response.body.version as number,
+    };
+  }
+
+  async function countDiscoveryFollowUpUpdateAudit(
+    projectId: string,
+  ): Promise<number> {
+    const rows = await dataSource.query<Array<{ count: string }>>(
+      'SELECT COUNT(*)::text AS "count" FROM "audit_events" WHERE "project_id" = $1 AND "event_type" = $2',
+      [projectId, 'DISCOVERY_FOLLOW_UP_UPDATED'],
+    );
+    return Number(rows[0]?.count);
   }
 
   async function expectProjectDeletionConflict(projectId: string): Promise<void> {
@@ -1012,4 +1435,18 @@ function assertNoSubmittedValues(value: unknown, submittedValue: string): void {
   if (JSON.stringify(value).includes(submittedValue)) {
     throw new Error('validation response echoed a submitted value');
   }
+}
+
+function discoveryFollowUpUpdateBody(
+  expectedVersion: number,
+  label: string,
+): Record<string, unknown> {
+  return {
+    category: 'OPERATIONS',
+    question: `Question for ${label}`,
+    owner: 'Delivery lead',
+    dueDate: '2026-09-24',
+    nextStep: `Next step for ${label}`,
+    expectedVersion,
+  };
 }

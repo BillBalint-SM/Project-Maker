@@ -13,6 +13,7 @@ export const cockpitOperationIds = [
   'customer-follow-up-ping',
   'customer-review-email',
   'discovery-create',
+  'discovery-update',
   'discovery-resolve',
   'project-archive',
   'project-restore',

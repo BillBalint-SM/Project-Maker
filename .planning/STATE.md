@@ -26,9 +26,11 @@ or used as live Git-state evidence here.
   question, and next step. `INTAKE-04.2` resolves an unresolved work item through
   `POST /projects/:projectId/discovery-follow-ups/:followUpId/resolve` to the
   canonical `Megválaszolva` or `Nem releváns` status with a required persisted
-  answer/decision. Creation and resolution each write a safe audit event;
-  archived projects remain readable, reject creation and resolution, and allow
-  both again after restore. A persisted discovery follow-up also prevents
+  answer/decision. Verified `INTAKE-04.3a` adds a version-checked `PATCH` for the
+  five open working fields; stale edits conflict, equivalent edits are no-ops, and
+  real edits write a safe field-name-only audit event. Archived projects remain
+  readable, reject creation, editing, and resolution, and allow eligible open-item
+  actions again after restore. A persisted discovery follow-up also prevents
   permanent project deletion.
 - Guided intake: a published project question schema can start one open
   `INITIAL_INTAKE` round, recover that active round, persist answers, complete
@@ -74,11 +76,12 @@ define `DOC-01` scope and evidence; the
 [guide](../docs/user-guide.md) is the employee-facing source.
 
 The verified guided-intake scope is intentionally limited to `INITIAL_INTAKE`.
-`INTAKE-04.1` and `INTAKE-04.2` deliver discovery-follow-up creation, review,
-and resolution. General editing, source linkage, scoring/readiness integration,
-and later follow-up work remain separate delivery work. Canonical structured output,
-authentication, authorization, backup operations, and export coverage also
-remain separate until their requirements and verification evidence are complete.
+`INTAKE-04.1`, `INTAKE-04.2`, and `INTAKE-04.3a` deliver discovery-follow-up
+creation, review, resolution, and conflict-safe editing of open items. Optional
+source linkage remains planned; scoring/readiness integration and wider multi-user
+work remain incomplete. Canonical structured output, authentication, authorization,
+backup operations, and export coverage also remain separate until their requirements
+and verification evidence are complete.
 
 ## Next gate
 

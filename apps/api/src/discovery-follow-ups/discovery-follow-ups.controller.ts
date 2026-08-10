@@ -6,12 +6,14 @@ import {
   HttpStatus,
   Param,
   ParseUUIDPipe,
+  Patch,
   Post,
 } from '@nestjs/common';
 import type { DiscoveryFollowUp } from '@project-maker/contracts';
 
 import { CreateDiscoveryFollowUpDto } from './dto/create-discovery-follow-up.dto';
 import { ResolveDiscoveryFollowUpDto } from './dto/resolve-discovery-follow-up.dto';
+import { UpdateDiscoveryFollowUpDto } from './dto/update-discovery-follow-up.dto';
 import { DiscoveryFollowUpsService } from './discovery-follow-ups.service';
 
 @Controller('projects/:projectId/discovery-follow-ups')
@@ -31,6 +33,16 @@ export class DiscoveryFollowUpsController {
     @Body() input: CreateDiscoveryFollowUpDto,
   ): Promise<DiscoveryFollowUp> {
     return this.discoveryFollowUpsService.create(projectId, input);
+  }
+
+  @Patch(':followUpId')
+  @HttpCode(HttpStatus.OK)
+  update(
+    @Param('projectId', new ParseUUIDPipe()) projectId: string,
+    @Param('followUpId', new ParseUUIDPipe()) followUpId: string,
+    @Body() input: UpdateDiscoveryFollowUpDto,
+  ): Promise<DiscoveryFollowUp> {
+    return this.discoveryFollowUpsService.update(projectId, followUpId, input);
   }
 
   @Post(':followUpId/resolve')

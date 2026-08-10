@@ -88,6 +88,7 @@ ordered TypeORM migrations registered in
 5. `0005-initial-intake-open-round.ts` — partial unique index for at most one open `INITIAL_INTAKE` round per project; it fails fast when existing data contains duplicates.
 6. `0006-discovery-follow-ups.ts` — project-owned discovery follow-ups, a category enum, date-order index, update trigger, and retained-project foreign key.
 7. `0007-discovery-follow-up-resolution.ts` — nullable persisted discovery-follow-up answer/decision content.
+8. `0008-discovery-follow-up-edit-version.ts` — positive persisted discovery-follow-up version for conflict-safe open-item edits.
 
 The deployed API image contains the compiled migration classes, but not the
 TypeScript migration source tree used by the development-only
@@ -138,7 +139,7 @@ docker compose --env-file .env exec -T api node -e $migrationStatusScript
 
 `pending: false` means that all migration classes in the running image are
 recorded in the database. The `applied` array is the database's migration
-history; the seven expected names are listed above.
+history; the eight expected names are listed above.
 
 There is no safe arbitrary migration selector in the runtime image. A
 controlled revert can undo only the latest applied migration through a
@@ -162,8 +163,10 @@ reviewed image and a restore plan owned by the deployment team.
 
 Reverting `0005` removes only its partial unique index; it does not remove
 interview-round rows. Reverting `0007` drops the persisted discovery-follow-up
-answer/decision column and its content. Before any revert, inspect the migration
-and choose the rollback procedure appropriate to the affected objects.
+answer/decision column and its content. Reverting `0008` drops its positive-version
+constraint and version column; it removes only edit-concurrency metadata, not a
+business follow-up field. Before any revert, inspect the migration and choose the
+rollback procedure appropriate to the affected objects.
 
 ### PostgreSQL backup
 
@@ -219,11 +222,22 @@ next-step text are not copied into the audit payload.
 ```text
 GET  /api/projects/{projectId}/discovery-follow-ups
 POST /api/projects/{projectId}/discovery-follow-ups
+PATCH /api/projects/{projectId}/discovery-follow-ups/{followUpId}
 POST /api/projects/{projectId}/discovery-follow-ups/{followUpId}/resolve
 ```
 
 An empty `GET` does not create a row. Archived projects remain readable but
-creation and resolution return `409`; restoring the project re-enables both.
+creation, editing, and resolution return `409`; restoring the project re-enables
+eligible open-item actions. `PATCH` accepts the complete five-field editable
+state (`category`, `question`, `owner`, `dueDate`, and `nextStep`) plus a positive
+`expectedVersion`. The server compares that version while the follow-up is locked:
+a stale version, archived project, or non-open record returns `409` without
+overwriting the record. An equivalent normalized request returns the existing row
+without a write, version increment, or update audit event. A real update advances
+the version and writes one `DISCOVERY_FOLLOW_UP_UPDATED` audit payload with exactly
+`followUpId` and ordered `changedFields`; it contains field names only, never field
+values, answers, versions, or user data.
+
 The explicit resolution command returns `200`, accepts only canonical terminal
 statuses, and requires a persisted nonblank answer/decision. It rejects an
 already-resolved work item. Its `DISCOVERY_FOLLOW_UP_RESOLVED` audit payload has
@@ -276,8 +290,8 @@ These are intentionally separate flows:
   non-sensitive error code, and can be disabled or given an expiry time.
 
 The follow-up state in this section is an email-delivery schedule. It is not the
-delivered `INTAKE-04.1`/`INTAKE-04.2` discovery-follow-up work-item slices;
-general editing and source linkage remain later discovery work.
+delivered `INTAKE-04.1`/`INTAKE-04.2`/`INTAKE-04.3a` discovery-follow-up work-item
+slices; optional source linkage remains later discovery work.
 
 Relevant API routes:
 
@@ -305,7 +319,7 @@ pnpm compose:up
 ```
 
 The Compose smoke gate should confirm `/api/health`, base-question seeding,
-all seven migrations, Markdown download headers/content, and the expected
+all eight migrations, Markdown download headers/content, and the expected
 `503` response when SMTP is intentionally disabled. A local SMTP-capture
 container can be used to verify manual review, manual ping, and due-timer
 delivery without using production credentials.

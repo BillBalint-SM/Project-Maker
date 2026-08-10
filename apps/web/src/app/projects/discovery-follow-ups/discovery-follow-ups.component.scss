@@ -62,6 +62,20 @@
   gap: 0.65rem;
 }
 
+.discovery-follow-up-edit-form {
+  border-top: 1px solid var(--p-content-border-color);
+  display: grid;
+  gap: 1rem;
+  margin-top: 1rem;
+  padding-top: 1rem;
+}
+
+.discovery-follow-up-edit-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+}
+
 p-message {
   display: block;
   margin-bottom: 0.75rem;

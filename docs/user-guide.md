@@ -570,7 +570,7 @@ A discovery follow-up olyan tisztázandó üzleti tétel, amelynek van egyértel
 
 ![Egy megválaszolt üzleti és egy nyitott integrációs discovery follow-up felelőssel, dátummal és következő lépéssel](assets/user-guide/05-discovery-follow-ups.png)
 
-*A lista külön mutatja a terminális döntést és a még nyitott, `Resolve` műveletre váró tisztázást.*
+*A lista külön mutatja a terminális döntést és a még nyitott, `Edit` vagy `Resolve` műveletre váró tisztázást.*
 
 ### Kategóriák
 
@@ -600,6 +600,19 @@ Siker esetén az űrlap kiürül, zöld sikerüzenet jelenik meg, és az új té
 
 A lista a legkorábbi `Due date` szerint rendez. Azonos dátumnál a korábban létrehozott elem kerül előre. A rendszer jelenleg nem emeli ki automatikusan a lejárt tételt, ezért a dátumok napi ellenőrzése a munkát végző csapat feladata.
 
+### Nyitott follow-up napi szerkesztése
+
+Csak `Nyitott` follow-up szerkeszthető. A kívánt sorban válaszd az `Edit` gombot, majd szükség szerint módosítsd az öt munkamezőt: `Category`, `Question`, `Owner`, `Due date` és `Next step`. A státusz, a terminális döntés/válasz és az elem azonosítója nem szerkeszthető.
+
+1. Ellenőrizd a sorba betöltött értékeket, és javítsd a szükséges mezőket.
+2. A `Due date` mezőbe valódi naptári dátumot adj meg; ez nem időpont.
+3. Válaszd a `Save changes` gombot. Siker esetén a lista az új dátum szerint rendeződik, és újratöltés után is a mentett értékeket mutatja.
+4. Ha nem akarod megtartani a helyi változtatást, válaszd a `Cancel` gombot. Ez nem küld mentést.
+
+Ha az öt mező a megnyitott értékkel azonos marad, nincs mentendő változás: a `Save changes` nem indít felesleges írást, a verzió és az audit sem változik. Egy valódi szerkesztés `DISCOVERY_FOLLOW_UP_UPDATED` audit-eseményt készít; az audit csak az elem azonosítóját és a megváltozott mezők nevét tartalmazza, a kérdés, felelős és következő lépés szövegét nem.
+
+Egyszerre csak egy `Edit` vagy `Resolve` űrlap lehet nyitva. Ha más közben szerkeszti, lezárja vagy archiválja a projektet, a mentés ütközést jelezhet. Ilyenkor a beírt piszkozat megmarad, a lista a szerver aktuális állapotára frissül, és a mentés nem ír felül senkit. Ne töltsd újra általánosan az oldalt, mert ez eldobná a megőrzött helyi szerkesztőpiszkozatot. Ha a frissítés sikertelen, és megjelenik a `Retry current version refresh`, ezt válaszd először. Csak sikeres frissítés után válaszd nyitott tételnél a `Reload current version` gombot, hasonlítsd össze az értékeket, majd szükség esetén írd be újra a saját változtatásodat és mentsd el. Ha a frissített tétel már terminális, nem szerkeszthető és nem tölthető vissza szerkesztésre; nincs újraszerkesztés vagy újratöltés, a piszkozatot csak `Cancel` gombbal vetheted el.
+
 ### Follow-up lezárása
 
 Egy nyitott elem csak egyszer zárható le, két terminális státusz egyikére:
@@ -615,17 +628,15 @@ Egy nyitott elem csak egyszer zárható le, két terminális státusz egyikére:
 
 Egyszerre csak egy feloldó űrlap lehet nyitva; amíg az aktív, a többi `Resolve` gomb letiltva marad. A `Cancel` bezárja az űrlapot, és nem változtatja meg a follow-upot.
 
-Siker után a `Resolve` gomb eltűnik, megjelenik a terminális státusz és a `Decision or answer`, valamint `DISCOVERY_FOLLOW_UP_RESOLVED` audit-esemény készül. Az audit payload a státuszt és az elem azonosítóját őrzi, nem másolja bele a döntés teljes bizalmas szövegét.
+Siker után az `Edit` és a `Resolve` gomb is eltűnik, megjelenik a terminális státusz és a `Decision or answer`, valamint `DISCOVERY_FOLLOW_UP_RESOLVED` audit-esemény készül. Az audit payload a státuszt és az elem azonosítóját őrzi, nem másolja bele a döntés teljes bizalmas szövegét.
 
 ### Mi nem módosítható?
 
-A jelenlegi verzióban nincs follow-up szerkesztés, újranyitás vagy törlés. Hibás kérdés, felelős vagy dátum esetén ne zárd le hamis válasszal. Hozz létre egy új, helyes follow-upot, a hibás elemet pedig csak akkor minősítsd `Nem releváns` állapotúvá, ha az indok világosan leírja a helyesbítést.
-
-Ha valaki közben már lezárta ugyanazt az elemet, a második mentés ütközést kap. Töltsd újra a cockpitot, és a megmaradt szerverállapotból folytasd; ne hozz létre duplikált választ ellenőrzés nélkül.
+Terminális (`Megválaszolva` vagy `Nem releváns`) follow-up nem szerkeszthető és nem nyitható újra. Follow-up törlése és forráskérdéshez vagy checklist-itemhez kapcsolása sem elérhető. Hibás, még nyitott kérdés, felelős vagy dátum esetén az `Edit` folyamatot használd; lezárt tételt ne próbálj hamis válasszal helyesbíteni. Ha valóban új tisztázandó kérdés keletkezik, hozz létre új follow-upot.
 
 ### Archivált projekt
 
-Archiválás után a discovery lista olvasható marad, de az új elem létrehozása és a `Resolve` művelet letiltott. Ha archiváláskor nyitva volt egy helyi feloldó űrlap, annak be nem mentett szövege törlődik. Visszaállítás után a projekt `DRAFT` lesz, a meglévő follow-upok megmaradnak, és a műveletek újra elérhetővé válnak.
+Archiválás után a discovery lista olvasható marad, de az új elem létrehozása, az `Edit` és a `Resolve` művelet letiltott. Ha archiváláskor nyitva volt egy helyi szerkesztő- vagy feloldó űrlap, annak be nem mentett szövege törlődik. Visszaállítás után a projekt `DRAFT` lesz, a meglévő follow-upok megmaradnak, és a nyitott elemek műveletei újra elérhetővé válnak.
 
 Ha archivált állapotban kell valódi új döntést rögzíteni, előbb válaszd a `Restore project` műveletet, ellenőrizd a `DRAFT` állapotot, majd végezd el a follow-up műveletet.
 
@@ -821,6 +832,7 @@ Minden eseménynek van típusa, időpontja és egy JSON-formátumú payloadja. A
 | `ROUND_ANSWER_CLEARED` | Egy korábbi válasz értéke üres állapotra változott |
 | `INTERVIEW_ROUND_COMPLETED` | A kör a szerver ellenőrzése után lezárult |
 | `DISCOVERY_FOLLOW_UP_CREATED` | Új, felelőshöz és dátumhoz kötött discovery-tétel jött létre |
+| `DISCOVERY_FOLLOW_UP_UPDATED` | Nyitott discovery-tétel valódi módosítása; a payload csak a `followUpId` és `changedFields` mezőt tartalmazza, utóbbiban csak a megváltozott mezők neveit, szerkesztett szöveget vagy értéket nem |
 | `DISCOVERY_FOLLOW_UP_RESOLVED` | A tétel terminális státuszt kapott; a teljes döntésszöveg nincs az audit payloadban |
 | `MARKDOWN_REVISION_CREATED` | Új, változatlan Markdown-revízió készült |
 | `FOLLOW_UP_SETTINGS_UPDATED` | Az automatikus ping engedélyezése, cadence-e vagy lejárata változott |
@@ -909,7 +921,8 @@ A Project Maker gyorsan jelez, ha egy kérés nem hajtható végre. A hibaüzene
 | `Projects`, cockpit, interjú, kérdésbank vagy Markdown betöltési hiba | A betöltés nem módosít adatot | Válaszd a `Try again`, `Retry` vagy `Újrapróbálás` műveletet. Cockpit-hibánál a `Return to projects` biztonságosan visszavisz a listához; ismételt hiba esetén jelezd az üzemeltetőnek |
 | A projekt nem található | Más projekt nem változik | Térj vissza a `Projects` listára. Ellenőrizd, hogy a projektet nem törölték-e, és a listából nyisd meg újra |
 | A kiválasztott Markdown-revízió nem található | A többi revízió és projektadat megmarad | Térj vissza a revision historyhoz, és válassz létező revíziót |
-| `409` ütközés vagy elavult oldalállapot | A szerver az egyik érvényes állapotot megőrizte; az elutasított kérés nem írta felül | Töltsd újra az oldalt, olvasd el a friss állapotot, majd csak szükség esetén ismételd meg a módosítást |
+| `409` ütközés vagy elavult oldalállapot | A szerver az egyik érvényes állapotot megőrizte; az elutasított kérés nem írta felül | Discovery follow-up szerkesztési ütközésnél ne ezt az általános oldal-újratöltést használd; lásd a következő sort. Más esetben töltsd újra az oldalt, olvasd el a friss állapotot, majd csak szükség esetén ismételd meg a módosítást |
+| Discovery follow-up szerkesztési ütközés | A helyi szerkesztőpiszkozat és a szerver aktuális listája megmarad; a régi verziós mentés nem ír felül adatot | Ne töltsd újra általánosan az oldalt, mert ez eldobná a megőrzött piszkozatot. Ha a frissítés sikertelen és megjelenik a `Retry current version refresh`, ezt válaszd először. Csak sikeres frissítés után válaszd nyitott tételnél a `Reload current version` gombot, ellenőrizd az új értékeket, majd szükség esetén javítsd és mentsd újra; terminális tételnél nincs újraszerkesztés vagy újratöltés, csak `Cancel` |
 | Hibás vagy hiányzó űrlapmező | A korábban mentett állapot változatlan | Javítsd a megjelölt mezőt. Ne kerüld meg a validációt rövidebb, de félrevezető adattal |
 | `Piszkozat – automatikus mentésre vár` | A szöveg a böngészőlapon látható, de még nem szerveradat | Maradj az oldalon, és hagyj legalább 750 ms gépelési szünetet |
 | `Mentés folyamatban…` | A legutóbbi mentett érték megmarad, az új kérés még bizonytalan | Ne zárd le a kört és ne navigálj el; várd meg a végállapotot |
@@ -1008,7 +1021,7 @@ Az alábbiak nem elrejtett funkciók és nem más menüpontban találhatók; a j
 
 ### Follow-up és kommunikáció
 
-- Discovery follow-up nem szerkeszthető, nem nyitható újra, nem törölhető, és nem kapcsolható forráskérdéshez.
+- Discovery follow-up újranyitása, törlése és forráskérdéshez vagy checklist-itemhez kapcsolása nem elérhető.
 - Nincs automatikus lejártság-kiemelés vagy overdue riasztás a discovery listában.
 - Nincs címzett-felülírás, küldés előtti megerősítés, kézbesítési/olvasási visszaigazolás vagy felhasználói levélszerkesztő.
 - A levélküldés nem rendelkezik felhasználói outboxszal vagy ismételt küldést láthatóan deduplikáló kezelőfelülettel.
