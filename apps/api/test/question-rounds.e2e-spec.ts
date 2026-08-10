@@ -5,7 +5,7 @@ import { randomUUID } from 'node:crypto';
 import { after, before, describe, it } from 'node:test';
 import { setTimeout as delay } from 'node:timers/promises';
 import request from 'supertest';
-import { DataSource } from 'typeorm';
+import { DataSource, type QueryRunner } from 'typeorm';
 
 import { AppModule } from '../src/app.module';
 import { Core0001Core1785916800000 } from '../src/migrations/0001-core';
@@ -502,6 +502,168 @@ describe('Question bank and interview rounds (PostgreSQL e2e)', () => {
       'ROUND_QUESTION_ASSESSMENT_SAVED',
       'ROUND_QUESTION_ASSESSMENT_RESET',
     ]);
+  });
+
+  it('returns 404 for every foreign-project assessment route before an override lock is released', async () => {
+    const { projectId: projectAId } = await createProjectWithSingleQuestionSchema(
+      app,
+      `Assessment foreign scope A ${Date.now()}`,
+      'assessment-foreign-scope-a',
+    );
+    const { projectId: projectBId } = await createProjectWithSingleQuestionSchema(
+      app,
+      `Assessment foreign scope B ${Date.now()}`,
+      'assessment-foreign-scope-b',
+    );
+    const createdRoundResponse = await request(app.getHttpServer())
+      .post(`/projects/${projectBId}/rounds`)
+      .send({ type: 'INITIAL_INTAKE' })
+      .expect(201);
+    const roundId = createdRoundResponse.body.id as string;
+    const snapshotId = createdRoundResponse.body.questions[0].id as string;
+    const projectBAssessmentUrl =
+      `/projects/${projectBId}/rounds/${roundId}/answers/${snapshotId}/assessment`;
+    const projectAAssessmentUrl =
+      `/projects/${projectAId}/rounds/${roundId}/answers/${snapshotId}/assessment`;
+    await request(app.getHttpServer())
+      .put(projectBAssessmentUrl)
+      .send({ status: 'Nem releváns', rationale: 'Project B scope proof' })
+      .expect(200);
+
+    const overrideRunner = await lockExistingRoundQuestionAssessmentOverride(
+      controlDataSource,
+      roundId,
+      snapshotId,
+    );
+    let pendingResponse: Promise<{ status: number }> | undefined;
+    try {
+      const foreignProjectRoutes = [
+        {
+          name: 'PATCH',
+          send: async () =>
+            request(app.getHttpServer())
+              .patch(`/projects/${projectAId}/rounds/${roundId}/answers/${snapshotId}`)
+              .send({ value: null }),
+        },
+        {
+          name: 'PUT',
+          send: async () =>
+            request(app.getHttpServer())
+              .put(projectAAssessmentUrl)
+              .send({ status: 'Nem releváns', rationale: 'Foreign project must not mutate B' }),
+        },
+        {
+          name: 'DELETE',
+          send: async () => request(app.getHttpServer()).delete(projectAAssessmentUrl),
+        },
+      ] as const;
+
+      for (const route of foreignProjectRoutes) {
+        let routeOutcome: 'completed' | 'pending' | 'rejected' = 'pending';
+        pendingResponse = route.send();
+        void pendingResponse.then(
+          () => {
+            routeOutcome = 'completed';
+          },
+          () => {
+            routeOutcome = 'rejected';
+          },
+        );
+
+        const outcomeBeforeOverrideRelease = await observeApplicationOutcomeOrLockWait(
+          controlDataSource,
+          apiApplicationName,
+          () => routeOutcome,
+        );
+        assert.equal(
+          outcomeBeforeOverrideRelease,
+          'completed',
+          `${route.name} must not wait for a foreign-project override lock.`,
+        );
+        const response = await pendingResponse;
+        pendingResponse = undefined;
+        assert.equal(response.status, 404);
+      }
+    } finally {
+      if (overrideRunner.isTransactionActive) {
+        await overrideRunner.rollbackTransaction();
+      }
+      await overrideRunner.release();
+      if (pendingResponse) {
+        await pendingResponse;
+      }
+    }
+  });
+
+  it('uses an observed PostgreSQL FOR UPDATE OF override query for a matching project', async () => {
+    const { projectId } = await createProjectWithSingleQuestionSchema(
+      app,
+      `Assessment targeted override lock ${Date.now()}`,
+      'assessment-targeted-override-lock',
+    );
+    const createdRoundResponse = await request(app.getHttpServer())
+      .post(`/projects/${projectId}/rounds`)
+      .send({ type: 'INITIAL_INTAKE' })
+      .expect(201);
+    const roundId = createdRoundResponse.body.id as string;
+    const snapshotId = createdRoundResponse.body.questions[0].id as string;
+    const assessmentUrl =
+      `/projects/${projectId}/rounds/${roundId}/answers/${snapshotId}/assessment`;
+    await request(app.getHttpServer())
+      .put(assessmentUrl)
+      .send({ status: 'Nem releváns', rationale: 'Targeted lock SQL proof' })
+      .expect(200);
+
+    const overrideRunner = await lockExistingRoundQuestionAssessmentOverride(
+      controlDataSource,
+      roundId,
+      snapshotId,
+    );
+    let resetResponse: Promise<{ status: number }> | undefined;
+    try {
+      let resetOutcome: 'completed' | 'pending' | 'rejected' = 'pending';
+      resetResponse = (async () => request(app.getHttpServer()).delete(assessmentUrl))();
+      void resetResponse.then(
+        () => {
+          resetOutcome = 'completed';
+        },
+        () => {
+          resetOutcome = 'rejected';
+        },
+      );
+      const resetWait = await observeApplicationOutcomeOrLockWait(
+        controlDataSource,
+        apiApplicationName,
+        () => resetOutcome,
+      );
+      assert.equal(resetWait, 'blocked');
+
+      const lockingQuery = await loadWaitingApplicationQuery(
+        controlDataSource,
+        apiApplicationName,
+      );
+      assert.match(
+        lockingQuery,
+        /FROM "round_question_assessment_overrides" "override"\s+INNER JOIN "interview_rounds" "round"/,
+      );
+      assert.match(lockingQuery, /"round"\."id" = "override"\."round_id"/);
+      assert.match(lockingQuery, /"round"\."project_id" = \$\d+/);
+      assert.match(lockingQuery, /FOR UPDATE OF override\s*$/);
+      assert.doesNotMatch(lockingQuery, /FOR UPDATE OF round/);
+
+      await overrideRunner.rollbackTransaction();
+      const response = await resetResponse;
+      resetResponse = undefined;
+      assert.equal(response.status, 200);
+    } finally {
+      if (overrideRunner.isTransactionActive) {
+        await overrideRunner.rollbackTransaction();
+      }
+      await overrideRunner.release();
+      if (resetResponse) {
+        await resetResponse;
+      }
+    }
   });
 
   it('persists assessment commands idempotently with policy validation and redacted audit', async () => {
@@ -1259,6 +1421,52 @@ function createDatabaseUrlWithApplicationName(
   const parsedUrl = new URL(databaseUrl);
   parsedUrl.searchParams.set('application_name', applicationName);
   return parsedUrl.toString();
+}
+
+async function lockExistingRoundQuestionAssessmentOverride(
+  dataSource: DataSource,
+  roundId: string,
+  snapshotId: string,
+): Promise<QueryRunner> {
+  const overrideRunner = dataSource.createQueryRunner();
+  await overrideRunner.connect();
+  await overrideRunner.startTransaction();
+  try {
+    const overrideRows = (await overrideRunner.query(
+      `SELECT "id" FROM "round_question_assessment_overrides"
+       WHERE "round_id" = $1 AND "snapshot_id" = $2
+       FOR UPDATE`,
+      [roundId, snapshotId],
+    )) as Array<{ id: string }>;
+    assert.equal(overrideRows.length, 1);
+    return overrideRunner;
+  } catch (error) {
+    if (overrideRunner.isTransactionActive) {
+      await overrideRunner.rollbackTransaction();
+    }
+    await overrideRunner.release();
+    throw error;
+  }
+}
+
+async function loadWaitingApplicationQuery(
+  dataSource: DataSource,
+  applicationName: string,
+): Promise<string> {
+  const activityRows = await dataSource.query<Array<{ query: string | null }>>(
+    `SELECT "query"
+     FROM "pg_stat_activity"
+     WHERE "application_name" = $1
+       AND "wait_event_type" = 'Lock'
+     ORDER BY "query_start" DESC
+     LIMIT 1`,
+    [applicationName],
+  );
+  const query = activityRows[0]?.query;
+  if (query === null || query === undefined) {
+    throw new Error(`No waiting PostgreSQL query found for ${applicationName}.`);
+  }
+  return query;
 }
 
 async function serializeExistingOverrideMutation<TResponse extends { status: number; body: unknown }>(
