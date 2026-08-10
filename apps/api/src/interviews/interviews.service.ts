@@ -148,6 +148,7 @@ export class InterviewsService {
       const assessmentPolicy = await loadRoundQuestionAssessmentPolicy();
       const existingOverride = await findLockedRoundQuestionAssessmentOverride(
         manager,
+        projectId,
         roundId,
         snapshotId,
       );
@@ -224,6 +225,7 @@ export class InterviewsService {
       const assessmentPolicy = await loadRoundQuestionAssessmentPolicy();
       const existingOverride = await findLockedRoundQuestionAssessmentOverride(
         manager,
+        projectId,
         roundId,
         snapshotId,
       );
@@ -311,6 +313,7 @@ export class InterviewsService {
       const assessmentPolicy = await loadRoundQuestionAssessmentPolicy();
       const existingOverride = await findLockedRoundQuestionAssessmentOverride(
         manager,
+        projectId,
         roundId,
         snapshotId,
       );
@@ -451,13 +454,19 @@ async function findLockedRoundAnswer(
 
 async function findLockedRoundQuestionAssessmentOverride(
   manager: EntityManager,
+  projectId: string,
   roundId: string,
   snapshotId: string,
 ): Promise<RoundQuestionAssessmentOverrideEntity | null> {
-  return manager.getRepository(RoundQuestionAssessmentOverrideEntity).findOne({
-    where: { roundId, snapshotId },
-    lock: { mode: 'pessimistic_write' },
-  });
+  return manager
+    .getRepository(RoundQuestionAssessmentOverrideEntity)
+    .createQueryBuilder('override')
+    .innerJoin(InterviewRoundEntity, 'round', 'round.id = override.roundId')
+    .where('override.roundId = :roundId', { roundId })
+    .andWhere('override.snapshotId = :snapshotId', { snapshotId })
+    .andWhere('round.projectId = :projectId', { projectId })
+    .setLock('pessimistic_write', undefined, ['override'])
+    .getOne();
 }
 
 function requireEditableRound(round: InterviewRoundEntity): void {
