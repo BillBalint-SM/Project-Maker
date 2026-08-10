@@ -34,6 +34,7 @@ import {
 import { DiscoveryFollowUpsComponent } from './discovery-follow-ups/discovery-follow-ups.component';
 import type { AuditEventPage, CockpitView, StatusOption } from './project-api.models';
 import { ProjectApiService } from './project-api.service';
+import { ReadinessReviewComponent } from './readiness-review/readiness-review.component';
 
 type ActiveProjectStatus = Exclude<ProjectStatus, 'ARCHIVED'>;
 
@@ -58,6 +59,7 @@ const statusOptions: StatusOption[] = [
     MessageModule,
     ProgressSpinnerModule,
     JsonPipe,
+    ReadinessReviewComponent,
     ReactiveFormsModule,
     RouterLink,
     SelectModule,
@@ -106,6 +108,7 @@ export class ProjectCockpitPage implements OnInit {
   readonly auditPage = signal<AuditEventPage | null>(null);
   readonly auditLoading = signal(false);
   readonly auditError = signal<string | null>(null);
+  readonly readinessRefreshKey = signal(0);
   private auditRequestOffset = 0;
   private auditRequestToken = 0;
 
@@ -237,6 +240,11 @@ export class ProjectCockpitPage implements OnInit {
     }
   }
 
+  handleDiscoveryCommittedChange(): void {
+    this.readinessRefreshKey.update((value) => value + 1);
+    this.refreshAuditEvents();
+  }
+
   saveWorkspace(): void {
     this.workspaceForm.markAllAsTouched();
     if (
@@ -270,6 +278,7 @@ export class ProjectCockpitPage implements OnInit {
         next: (project) => {
           this.applyWorkspaceResponse(project);
           this.feedback.set('Workspace saved.');
+          this.readinessRefreshKey.update((value) => value + 1);
           this.refreshAuditEvents();
         },
         error: (error: Error) => {
