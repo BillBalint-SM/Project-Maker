@@ -152,7 +152,12 @@ export class InterviewsService {
         roundId,
         snapshotId,
       );
-      const existingAnswer = await findLockedRoundAnswer(manager, roundId, snapshotId);
+      const existingAnswer = await findLockedRoundAnswer(
+        manager,
+        projectId,
+        roundId,
+        snapshotId,
+      );
       const round = await findLockedRound(manager, projectId, roundId);
       if (round.status === 'COMPLETED') {
         throw new ConflictException('Completed rounds cannot be edited.');
@@ -232,7 +237,7 @@ export class InterviewsService {
       const answer =
         existingOverride?.status === assessmentPolicy.partialStatus ||
         input.status === assessmentPolicy.partialStatus
-          ? await findLockedRoundAnswer(manager, roundId, snapshotId)
+          ? await findLockedRoundAnswer(manager, projectId, roundId, snapshotId)
           : null;
       const round = await findLockedRound(manager, projectId, roundId);
       requireEditableRound(round);
@@ -443,13 +448,19 @@ async function findLockedRound(
 
 async function findLockedRoundAnswer(
   manager: EntityManager,
+  projectId: string,
   roundId: string,
   snapshotId: string,
 ): Promise<RoundAnswerEntity | null> {
-  return manager.getRepository(RoundAnswerEntity).findOne({
-    where: { roundId, snapshotId },
-    lock: { mode: 'pessimistic_write' },
-  });
+  return manager
+    .getRepository(RoundAnswerEntity)
+    .createQueryBuilder('answer')
+    .innerJoin(InterviewRoundEntity, 'round', 'round.id = answer.roundId')
+    .where('answer.roundId = :roundId', { roundId })
+    .andWhere('answer.snapshotId = :snapshotId', { snapshotId })
+    .andWhere('round.projectId = :projectId', { projectId })
+    .setLock('pessimistic_write', undefined, ['answer'])
+    .getOne();
 }
 
 async function findLockedRoundQuestionAssessmentOverride(

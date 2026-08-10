@@ -504,7 +504,7 @@ describe('Question bank and interview rounds (PostgreSQL e2e)', () => {
     ]);
   });
 
-  it('returns 404 for every foreign-project assessment route before an override lock is released', async () => {
+  it('returns 404 for every foreign-project pre-round lock branch before its lock is released', async () => {
     const { projectId: projectAId } = await createProjectWithSingleQuestionSchema(
       app,
       `Assessment foreign scope A ${Date.now()}`,
@@ -521,13 +521,19 @@ describe('Question bank and interview rounds (PostgreSQL e2e)', () => {
       .expect(201);
     const roundId = createdRoundResponse.body.id as string;
     const snapshotId = createdRoundResponse.body.questions[0].id as string;
+    const projectBAnswerUrl =
+      `/projects/${projectBId}/rounds/${roundId}/answers/${snapshotId}`;
     const projectBAssessmentUrl =
       `/projects/${projectBId}/rounds/${roundId}/answers/${snapshotId}/assessment`;
     const projectAAssessmentUrl =
       `/projects/${projectAId}/rounds/${roundId}/answers/${snapshotId}/assessment`;
     await request(app.getHttpServer())
+      .patch(projectBAnswerUrl)
+      .send({ value: 'Project B answer scope proof' })
+      .expect(200);
+    await request(app.getHttpServer())
       .put(projectBAssessmentUrl)
-      .send({ status: 'Nem releváns', rationale: 'Project B scope proof' })
+      .send({ status: 'Részben megvan', rationale: null })
       .expect(200);
 
     const overrideRunner = await lockExistingRoundQuestionAssessmentOverride(
@@ -535,18 +541,11 @@ describe('Question bank and interview rounds (PostgreSQL e2e)', () => {
       roundId,
       snapshotId,
     );
-    let pendingResponse: Promise<{ status: number }> | undefined;
+    let pendingOverrideResponse: Promise<{ status: number }> | undefined;
     try {
-      const foreignProjectRoutes = [
+      const foreignProjectOverrideRoutes = [
         {
-          name: 'PATCH',
-          send: async () =>
-            request(app.getHttpServer())
-              .patch(`/projects/${projectAId}/rounds/${roundId}/answers/${snapshotId}`)
-              .send({ value: null }),
-        },
-        {
-          name: 'PUT',
+          name: 'nonpartial PUT',
           send: async () =>
             request(app.getHttpServer())
               .put(projectAAssessmentUrl)
@@ -558,10 +557,10 @@ describe('Question bank and interview rounds (PostgreSQL e2e)', () => {
         },
       ] as const;
 
-      for (const route of foreignProjectRoutes) {
+      for (const route of foreignProjectOverrideRoutes) {
         let routeOutcome: 'completed' | 'pending' | 'rejected' = 'pending';
-        pendingResponse = route.send();
-        void pendingResponse.then(
+        pendingOverrideResponse = route.send();
+        void pendingOverrideResponse.then(
           () => {
             routeOutcome = 'completed';
           },
@@ -580,8 +579,8 @@ describe('Question bank and interview rounds (PostgreSQL e2e)', () => {
           'completed',
           `${route.name} must not wait for a foreign-project override lock.`,
         );
-        const response = await pendingResponse;
-        pendingResponse = undefined;
+        const response = await pendingOverrideResponse;
+        pendingOverrideResponse = undefined;
         assert.equal(response.status, 404);
       }
     } finally {
@@ -589,8 +588,68 @@ describe('Question bank and interview rounds (PostgreSQL e2e)', () => {
         await overrideRunner.rollbackTransaction();
       }
       await overrideRunner.release();
-      if (pendingResponse) {
-        await pendingResponse;
+      if (pendingOverrideResponse) {
+        await pendingOverrideResponse;
+      }
+    }
+
+    const answerRunner = await lockExistingRoundAnswer(
+      controlDataSource,
+      roundId,
+      snapshotId,
+    );
+    let pendingAnswerResponse: Promise<{ status: number }> | undefined;
+    try {
+      const foreignProjectAnswerRoutes = [
+        {
+          name: 'PATCH',
+          send: async () =>
+            request(app.getHttpServer())
+              .patch(`/projects/${projectAId}/rounds/${roundId}/answers/${snapshotId}`)
+              .send({ value: null }),
+        },
+        {
+          name: 'partial PUT',
+          send: async () =>
+            request(app.getHttpServer())
+              .put(projectAAssessmentUrl)
+              .send({ status: 'Részben megvan', rationale: null }),
+        },
+      ] as const;
+
+      for (const route of foreignProjectAnswerRoutes) {
+        let routeOutcome: 'completed' | 'pending' | 'rejected' = 'pending';
+        pendingAnswerResponse = route.send();
+        void pendingAnswerResponse.then(
+          () => {
+            routeOutcome = 'completed';
+          },
+          () => {
+            routeOutcome = 'rejected';
+          },
+        );
+
+        const outcomeBeforeAnswerRelease = await observeApplicationOutcomeOrLockWait(
+          controlDataSource,
+          apiApplicationName,
+          () => routeOutcome,
+        );
+        assert.equal(
+          outcomeBeforeAnswerRelease,
+          'completed',
+          `${route.name} must not wait for a foreign-project answer lock.`,
+        );
+        const response = await pendingAnswerResponse;
+        pendingAnswerResponse = undefined;
+        assert.equal(response.status, 404);
+      }
+    } finally {
+      if (answerRunner.isTransactionActive) {
+        await answerRunner.rollbackTransaction();
+      }
+      await answerRunner.release();
+      if (pendingAnswerResponse) {
+        await pendingAnswerResponse;
       }
     }
   });
@@ -662,6 +721,79 @@ describe('Question bank and interview rounds (PostgreSQL e2e)', () => {
       await overrideRunner.release();
       if (resetResponse) {
         await resetResponse;
+      }
+    }
+  });
+
+  it('uses an observed PostgreSQL FOR UPDATE OF answer query for a matching project', async () => {
+    const { projectId } = await createProjectWithSingleQuestionSchema(
+      app,
+      `Assessment targeted answer lock ${Date.now()}`,
+      'assessment-targeted-answer-lock',
+    );
+    const createdRoundResponse = await request(app.getHttpServer())
+      .post(`/projects/${projectId}/rounds`)
+      .send({ type: 'INITIAL_INTAKE' })
+      .expect(201);
+    const roundId = createdRoundResponse.body.id as string;
+    const snapshotId = createdRoundResponse.body.questions[0].id as string;
+    const answerUrl = `/projects/${projectId}/rounds/${roundId}/answers/${snapshotId}`;
+    await request(app.getHttpServer())
+      .patch(answerUrl)
+      .send({ value: 'Targeted answer lock SQL proof' })
+      .expect(200);
+
+    const answerRunner = await lockExistingRoundAnswer(
+      controlDataSource,
+      roundId,
+      snapshotId,
+    );
+    let answerResponse: Promise<{ status: number }> | undefined;
+    try {
+      let answerOutcome: 'completed' | 'pending' | 'rejected' = 'pending';
+      answerResponse = (async () =>
+        request(app.getHttpServer())
+          .patch(answerUrl)
+          .send({ value: 'Targeted answer lock SQL proof updated' }))();
+      void answerResponse.then(
+        () => {
+          answerOutcome = 'completed';
+        },
+        () => {
+          answerOutcome = 'rejected';
+        },
+      );
+      const answerWait = await observeApplicationOutcomeOrLockWait(
+        controlDataSource,
+        apiApplicationName,
+        () => answerOutcome,
+      );
+      assert.equal(answerWait, 'blocked');
+
+      const lockingQuery = await loadWaitingApplicationQuery(
+        controlDataSource,
+        apiApplicationName,
+      );
+      assert.match(
+        lockingQuery,
+        /FROM "round_answers" "answer"\s+INNER JOIN "interview_rounds" "round"/,
+      );
+      assert.match(lockingQuery, /"round"\."id" = "answer"\."round_id"/);
+      assert.match(lockingQuery, /"round"\."project_id" = \$\d+/);
+      assert.match(lockingQuery, /FOR UPDATE OF answer\s*$/);
+      assert.doesNotMatch(lockingQuery, /FOR UPDATE OF round/);
+
+      await answerRunner.rollbackTransaction();
+      const response = await answerResponse;
+      answerResponse = undefined;
+      assert.equal(response.status, 200);
+    } finally {
+      if (answerRunner.isTransactionActive) {
+        await answerRunner.rollbackTransaction();
+      }
+      await answerRunner.release();
+      if (answerResponse) {
+        await answerResponse;
       }
     }
   });
@@ -1445,6 +1577,32 @@ async function lockExistingRoundQuestionAssessmentOverride(
       await overrideRunner.rollbackTransaction();
     }
     await overrideRunner.release();
+    throw error;
+  }
+}
+
+async function lockExistingRoundAnswer(
+  dataSource: DataSource,
+  roundId: string,
+  snapshotId: string,
+): Promise<QueryRunner> {
+  const answerRunner = dataSource.createQueryRunner();
+  await answerRunner.connect();
+  await answerRunner.startTransaction();
+  try {
+    const answerRows = (await answerRunner.query(
+      `SELECT "id" FROM "round_answers"
+       WHERE "round_id" = $1 AND "snapshot_id" = $2
+       FOR UPDATE`,
+      [roundId, snapshotId],
+    )) as Array<{ id: string }>;
+    assert.equal(answerRows.length, 1);
+    return answerRunner;
+  } catch (error) {
+    if (answerRunner.isTransactionActive) {
+      await answerRunner.rollbackTransaction();
+    }
+    await answerRunner.release();
     throw error;
   }
 }
