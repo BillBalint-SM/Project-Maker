@@ -146,29 +146,69 @@ describe('InterviewPage', () => {
     ).toContain('Nem releváns');
   });
 
-  it('replaces answer and assessment state from a returned snapshot after answer clearing', async () => {
+  it('submits nonblank not-relevant rationales above the former client limit for server validation', async () => {
+    const rationaleAboveFormerClientLimit = 'x'.repeat(10_001);
+    const serverError =
+      'Nem sikerült elmenteni az értékelést (HTTP 400). Ellenőrizd az adatokat, majd próbáld újra.';
+    const setAssessment = vi.fn().mockReturnValue(throwError(() => new Error(serverError)));
+    const questionBankApi = createQuestionBankApi(null, null);
+    const interviewApi = {
+      ...createInterviewApi(buildOpenRound(buildTextQuestion({})), null),
+      setAssessment,
+    };
+
+    const page = await renderInterviewPage('project-123', questionBankApi, interviewApi);
+    findButton(page.nativeElement, '[data-testid="set-not-relevant-assessment-snapshot-1"]')?.click();
+    page.fixture.detectChanges();
+    const rationale = page.nativeElement.querySelector(
+      '[data-testid="round-assessment-rationale-snapshot-1"]',
+    ) as HTMLTextAreaElement;
+
+    setInputValue(rationale, rationaleAboveFormerClientLimit);
+    page.fixture.detectChanges();
+    const saveButton = findButton(
+      page.nativeElement,
+      '[data-testid="save-not-relevant-assessment-snapshot-1"]',
+    );
+
+    expect(saveButton?.disabled).toBe(false);
+    saveButton?.click();
+    await page.fixture.whenStable();
+    page.fixture.detectChanges();
+
+    expect(setAssessment).toHaveBeenCalledTimes(1);
+    expect(
+      page.nativeElement.querySelector('[data-testid="round-assessment-save-state-snapshot-1"]')
+        ?.textContent,
+    ).toContain(serverError);
+  });
+
+  it('replaces answer and assessment state from an answer API response after answer clearing', async () => {
     const clearedQuestion = buildTextQuestion({
       answer: null,
       answeredAt: null,
       checklistStatus: 'Nincs meg',
       assessmentRationale: null,
     });
-    const setAssessment = vi.fn().mockReturnValue(of(clearedQuestion));
+    const updateAnswer = vi.fn().mockReturnValue(of(clearedQuestion));
     const questionBankApi = createQuestionBankApi(null, null);
-    const interviewApi = {
-      ...createInterviewApi(buildOpenRound(buildTextQuestion({ checklistStatus: 'Részben megvan' })), null),
-      setAssessment,
-    };
+    const interviewApi = createInterviewApi(
+      buildOpenRound(buildTextQuestion({ checklistStatus: 'Részben megvan' })),
+      updateAnswer,
+    );
 
     const page = await renderInterviewPage('project-123', questionBankApi, interviewApi);
-    findButton(page.nativeElement, '[data-testid="set-partial-assessment-snapshot-1"]')?.click();
-    await page.fixture.whenStable();
-    page.fixture.detectChanges();
-
     const answerInput = page.nativeElement.querySelector(
       '[data-testid="round-answer-input-snapshot-1"]',
     ) as HTMLInputElement;
 
+    setInputValue(answerInput, '');
+    await page.fixture.whenStable();
+    page.fixture.detectChanges();
+
+    expect(updateAnswer).toHaveBeenCalledWith('project-123', 'round-1', 'snapshot-1', {
+      value: null,
+    });
     expect(answerInput.value).toBe('');
     expect(
       page.nativeElement
@@ -179,6 +219,90 @@ describe('InterviewPage', () => {
       page.nativeElement.querySelector('[data-testid="round-assessment-status-snapshot-1"]')
         ?.textContent,
     ).toContain('Nincs meg');
+  });
+
+  it('keeps pending and failed assessment work blocking completion when an overlapping answer save resolves', async () => {
+    const pendingAssessment = new Subject<RoundQuestionSnapshot>();
+    const pendingAnswer = new Subject<RoundQuestionSnapshot>();
+    const assessmentError = 'Nem sikerült elmenteni az értékelést. Próbáld újra.';
+    const answerResponse = buildTextQuestion({
+      answer: 'Frissített válasz',
+      answeredAt: '2026-08-06T10:22:00.000Z',
+      checklistStatus: 'Kész',
+      assessmentRationale: null,
+    });
+    const assessmentResponse = buildTextQuestion({
+      answer: 'Frissített válasz',
+      answeredAt: '2026-08-06T10:22:00.000Z',
+      checklistStatus: 'Részben megvan',
+      assessmentRationale: null,
+    });
+    const updateAnswer = vi.fn().mockReturnValue(pendingAnswer.asObservable());
+    const setAssessment = vi
+      .fn()
+      .mockReturnValueOnce(pendingAssessment.asObservable())
+      .mockReturnValueOnce(of(assessmentResponse));
+    const resetAssessment = vi.fn().mockReturnValue(of(answerResponse));
+    const questionBankApi = createQuestionBankApi(null, null);
+    const interviewApi = {
+      ...createInterviewApi(buildOpenRound(buildTextQuestion({})), updateAnswer),
+      setAssessment,
+      resetAssessment,
+    };
+
+    const page = await renderInterviewPage('project-123', questionBankApi, interviewApi);
+    findButton(page.nativeElement, '[data-testid="set-partial-assessment-snapshot-1"]')?.click();
+    const answerInput = page.nativeElement.querySelector(
+      '[data-testid="round-answer-input-snapshot-1"]',
+    ) as HTMLInputElement;
+
+    setInputValue(answerInput, 'Frissített válasz');
+    await waitForDuration(800);
+    page.fixture.detectChanges();
+    pendingAnswer.next(answerResponse);
+    pendingAnswer.complete();
+    await page.fixture.whenStable();
+    page.fixture.detectChanges();
+
+    expect(
+      page.nativeElement.querySelector('[data-testid="round-assessment-save-state-snapshot-1"]')
+        ?.textContent,
+    ).toContain('Értékelés mentése folyamatban');
+    expect(
+      page.nativeElement
+        .querySelector('[data-testid="set-partial-assessment-snapshot-1"]')
+        ?.getAttribute('aria-pressed'),
+    ).toBe('true');
+    expect(findButton(page.nativeElement, '[data-testid="complete-interview-round-button"]')?.disabled).toBe(
+      true,
+    );
+
+    pendingAssessment.error(new Error(assessmentError));
+    await page.fixture.whenStable();
+    page.fixture.detectChanges();
+
+    expect(
+      page.nativeElement.querySelector('[data-testid="round-assessment-save-state-snapshot-1"]')
+        ?.textContent,
+    ).toContain(assessmentError);
+    expect(
+      page.nativeElement
+        .querySelector('[data-testid="set-partial-assessment-snapshot-1"]')
+        ?.getAttribute('aria-pressed'),
+    ).toBe('true');
+    expect(findButton(page.nativeElement, '[data-testid="complete-interview-round-button"]')?.disabled).toBe(
+      true,
+    );
+
+    findButton(page.nativeElement, '[data-testid="retry-round-assessment-snapshot-1"]')?.click();
+    await page.fixture.whenStable();
+    page.fixture.detectChanges();
+
+    expect(setAssessment).toHaveBeenCalledTimes(2);
+    expect(resetAssessment).not.toHaveBeenCalled();
+    expect(findButton(page.nativeElement, '[data-testid="complete-interview-round-button"]')?.disabled).toBe(
+      false,
+    );
   });
 
   it('resets an assessment through DELETE and returns to its server-projected automatic status', async () => {

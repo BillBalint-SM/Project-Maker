@@ -713,7 +713,7 @@ export class InterviewPage implements OnInit, OnDestroy {
           });
     request.subscribe({
       next: (savedQuestion) => {
-        this.replaceRoundQuestion(savedQuestion);
+        this.replaceRoundQuestionFromAssessment(savedQuestion);
       },
       error: (error: Error) => {
         const current = this.assessmentState(question);
@@ -831,7 +831,7 @@ export class InterviewPage implements OnInit, OnDestroy {
       return;
     }
 
-    this.replaceRoundQuestion(savedQuestion);
+    this.replaceRoundQuestionFromAnswer(savedQuestion);
     this.setAnswerState(question.id, {
       ...state,
       persisted: cloneAnswerValue(savedQuestion.answer),
@@ -888,7 +888,7 @@ export class InterviewPage implements OnInit, OnDestroy {
     return !answersEqual(persisted, draft);
   }
 
-  private replaceRoundQuestion(question: RoundQuestionSnapshot): void {
+  private replaceRoundQuestionFromAssessment(question: RoundQuestionSnapshot): void {
     this.round.update((round) => {
       if (!round) {
         return null;
@@ -902,6 +902,35 @@ export class InterviewPage implements OnInit, OnDestroy {
     });
     this.setAnswerState(question.id, createQuestionAnswerState(question.answer, question.answeredAt));
     this.setAssessmentState(question.id, createQuestionAssessmentState(question));
+  }
+
+  private replaceRoundQuestionFromAnswer(question: RoundQuestionSnapshot): void {
+    const preserveAssessmentState = this.hasAssessmentWorkToPreserve(question);
+    this.round.update((round) => {
+      if (!round) {
+        return null;
+      }
+      return {
+        ...round,
+        questions: round.questions.map((candidate) => {
+          if (candidate.id !== question.id) {
+            return candidate;
+          }
+          if (!preserveAssessmentState) {
+            return question;
+          }
+          return {
+            ...question,
+            checklistStatus: candidate.checklistStatus,
+            assessmentRationale: candidate.assessmentRationale,
+          };
+        }),
+      };
+    });
+    this.setAnswerState(question.id, createQuestionAnswerState(question.answer, question.answeredAt));
+    if (!preserveAssessmentState) {
+      this.setAssessmentState(question.id, createQuestionAssessmentState(question));
+    }
   }
 
   private setAnswerState(snapshotId: string, state: QuestionAnswerState): void {
@@ -966,6 +995,15 @@ export class InterviewPage implements OnInit, OnDestroy {
 
   private hasAssessmentSaveErrors(): boolean {
     return [...this.assessmentStates().values()].some((state) => state.status === 'error');
+  }
+
+  private hasAssessmentWorkToPreserve(question: RoundQuestionSnapshot): boolean {
+    const state = this.assessmentState(question);
+    return (
+      state.status !== 'saved' ||
+      state.mode !== state.baselineMode ||
+      state.rationale !== state.baselineRationale
+    );
   }
 
   private savedStateFor(value: AnswerValue | null): QuestionSaveStatus {
@@ -1056,7 +1094,7 @@ function assessmentModeForSnapshot(question: RoundQuestionSnapshot): AssessmentM
 }
 
 function isValidAssessmentRationale(rationale: string): boolean {
-  return rationale.trim().length > 0 && Array.from(rationale.trim()).length <= 10_000;
+  return rationale.trim().length > 0;
 }
 
 function cloneAnswerValue(value: AnswerValue | null): AnswerValue | null {
