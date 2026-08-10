@@ -35,9 +35,19 @@ or used as live Git-state evidence here.
 - Guided intake: a published project question schema can start one open
   `INITIAL_INTAKE` round, recover that active round, persist answers, complete
   after server validation, and keep completed rounds immutable.
+- SCORE-01.1 readiness assessment: a valid answer is effective `Kész`; a
+  persisted `Részben megvan` remains a completion blocker, while justified
+  `Nem releváns` is excluded from relevant completion and checklist readiness.
+  `GET /projects/:projectId/readiness` uses the canonical eligible initial
+  intake source and returns an available review or an explicit unavailable
+  state. The Cockpit shows completion, readiness, factors, and redacted gaps
+  with Workspace, checklist, or discovery-follow-up remediation.
 - Persistence boundary: migration `InitialIntakeOpenRound0005InitialIntakeOpenRound1786262400000`
   enforces at most one open initial-intake round per project and fails fast on
   pre-existing duplicate open initial rounds.
+- Persistence boundary: migration
+  `RoundQuestionAssessmentOverrides0009RoundQuestionAssessmentOverrides1786608000000`
+  stores assessment overrides and refuses rollback while override rows exist.
 - Markdown/audit: manual and milestone-triggered Markdown revisions are stored,
   downloadable, and accompanied by bounded cockpit audit history.
 - Customer communication: manual customer review and configurable follow-up ping
@@ -47,7 +57,7 @@ or used as live Git-state evidence here.
   drafts visible with retry, and renders deterministic Hungarian coaching from
   persisted question metadata.
 - End-user documentation: `docs/user-guide.md` teaches every stable delivered
-  route and business workflow with six sanitized application screenshots,
+  route and business workflow with seven sanitized application screenshots,
   three state/workflow diagrams, recovery guidance, and explicit unavailable
   capability boundaries.
 
@@ -78,10 +88,11 @@ define `DOC-01` scope and evidence; the
 The verified guided-intake scope is intentionally limited to `INITIAL_INTAKE`.
 `INTAKE-04.1`, `INTAKE-04.2`, and `INTAKE-04.3a` deliver discovery-follow-up
 creation, review, resolution, and conflict-safe editing of open items. Optional
-source linkage remains planned; scoring/readiness integration and wider multi-user
-work remain incomplete. Canonical structured output, authentication, authorization,
-backup operations, and export coverage also remain separate until their requirements
-and verification evidence are complete.
+source linkage (`INTAKE-04.3b`) remains planned. SCORE-01.1 readiness assessment
+has browser proof: 3/3 focused and 22/22 full E2E tests passed. SCORE-01.2
+Decision Score/recommendation, canonical structured output, authentication,
+authorization, backup operations, and export coverage remain separate until their
+requirements and verification evidence are complete.
 
 ## Next gate
 
