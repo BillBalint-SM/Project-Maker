@@ -9,7 +9,9 @@ import { DataSource } from 'typeorm';
 import { AppModule } from '../src/app.module';
 import { Core0001Core1785916800000 } from '../src/migrations/0001-core';
 import { QuestionsRounds0002QuestionsRounds1786003200000 } from '../src/migrations/0002-questions-rounds';
+import { MarkdownRevisions0003MarkdownRevisions1786089600000 } from '../src/migrations/0003-markdown-revisions';
 import { InitialIntakeOpenRound0005InitialIntakeOpenRound1786262400000 } from '../src/migrations/0005-initial-intake-open-round';
+import { RoundQuestionAssessmentOverrides0009RoundQuestionAssessmentOverrides1786608000000 } from '../src/migrations/0009-round-question-assessment-overrides';
 
 describe('Question bank and interview rounds (PostgreSQL e2e)', () => {
   let app: INestApplication;
@@ -28,7 +30,9 @@ describe('Question bank and interview rounds (PostgreSQL e2e)', () => {
       migrations: [
         Core0001Core1785916800000,
         QuestionsRounds0002QuestionsRounds1786003200000,
+        MarkdownRevisions0003MarkdownRevisions1786089600000,
         InitialIntakeOpenRound0005InitialIntakeOpenRound1786262400000,
+        RoundQuestionAssessmentOverrides0009RoundQuestionAssessmentOverrides1786608000000,
       ],
     });
     await migrationDataSource.initialize();
@@ -60,6 +64,333 @@ describe('Question bank and interview rounds (PostgreSQL e2e)', () => {
       .expect(200);
 
     assert.equal(activeRoundResponse.body, null);
+  });
+
+  it('projects canonical missing and complete assessment states from answer validity', async () => {
+    const { projectId } = await createProjectWithSingleQuestionSchema(
+      app,
+      `Assessment inference ${Date.now()}`,
+      'assessment-inference',
+    );
+    const createdRoundResponse = await request(app.getHttpServer())
+      .post(`/projects/${projectId}/rounds`)
+      .send({ type: 'INITIAL_INTAKE' })
+      .expect(201);
+    const roundId = createdRoundResponse.body.id as string;
+    const snapshotId = createdRoundResponse.body.questions[0].id as string;
+
+    assert.equal(createdRoundResponse.body.questions[0].checklistStatus, 'Nincs meg');
+    assert.equal(createdRoundResponse.body.questions[0].assessmentRationale, null);
+
+    const savedAnswerResponse = await request(app.getHttpServer())
+      .patch(`/projects/${projectId}/rounds/${roundId}/answers/${snapshotId}`)
+      .send({ value: 'Canonical complete evidence' })
+      .expect(200);
+
+    assert.equal(savedAnswerResponse.body.checklistStatus, 'Kész');
+    assert.equal(savedAnswerResponse.body.assessmentRationale, null);
+
+    const activeRoundResponse = await request(app.getHttpServer())
+      .get(`/projects/${projectId}/rounds/active`)
+      .expect(200);
+    assert.equal(activeRoundResponse.body.questions[0].checklistStatus, 'Kész');
+    assert.equal(activeRoundResponse.body.questions[0].assessmentRationale, null);
+  });
+
+  it('persists assessment commands idempotently with policy validation and redacted audit', async () => {
+    const { projectId } = await createProjectWithSingleQuestionSchema(
+      app,
+      `Assessment commands ${Date.now()}`,
+      'assessment-commands',
+    );
+    const createdRoundResponse = await request(app.getHttpServer())
+      .post(`/projects/${projectId}/rounds`)
+      .send({ type: 'INITIAL_INTAKE' })
+      .expect(201);
+    const roundId = createdRoundResponse.body.id as string;
+    const snapshotId = createdRoundResponse.body.questions[0].id as string;
+    const assessmentUrl =
+      `/projects/${projectId}/rounds/${roundId}/answers/${snapshotId}/assessment`;
+
+    const missingEvidenceResponse = await request(app.getHttpServer())
+      .put(assessmentUrl)
+      .send({ status: 'Részben megvan', rationale: null })
+      .expect(400);
+    assert.doesNotMatch(JSON.stringify(missingEvidenceResponse.body), /Canonical evidence/);
+
+    await request(app.getHttpServer())
+      .put(assessmentUrl)
+      .send({ status: 'Kész', rationale: null })
+      .expect(400);
+
+    const answerText = 'Canonical evidence must remain private from assessment audit';
+    await request(app.getHttpServer())
+      .patch(`/projects/${projectId}/rounds/${roundId}/answers/${snapshotId}`)
+      .send({ value: answerText })
+      .expect(200);
+
+    const unknownPropertyResponse = await request(app.getHttpServer())
+      .put(assessmentUrl)
+      .send({ status: 'Részben megvan', rationale: null, unexpected: true })
+      .expect(400);
+    assert.deepEqual(unknownPropertyResponse.body.fields, ['unexpected']);
+    await request(app.getHttpServer())
+      .put(assessmentUrl)
+      .send({ status: 'Nem releváns' })
+      .expect(400);
+    await request(app.getHttpServer())
+      .put(assessmentUrl)
+      .send({ status: 'Nem releváns', rationale: 42 })
+      .expect(400);
+
+    const partialResponse = await request(app.getHttpServer())
+      .put(assessmentUrl)
+      .send({ status: 'Részben megvan', rationale: null })
+      .expect(200);
+    assert.equal(partialResponse.body.checklistStatus, 'Részben megvan');
+    assert.equal(partialResponse.body.assessmentRationale, null);
+
+    const firstOverrideRows = await dataSource.query<
+      Array<{ status: string; rationale: string | null; createdAt: Date; updatedAt: Date }>
+    >(
+      `SELECT "status", "rationale", "created_at" AS "createdAt", "updated_at" AS "updatedAt"
+       FROM "round_question_assessment_overrides"
+       WHERE "round_id" = $1 AND "snapshot_id" = $2`,
+      [roundId, snapshotId],
+    );
+    assert.equal(firstOverrideRows.length, 1);
+
+    await request(app.getHttpServer())
+      .put(assessmentUrl)
+      .send({ status: 'Részben megvan', rationale: null })
+      .expect(200);
+    const unchangedOverrideRows = await dataSource.query<
+      Array<{ status: string; rationale: string | null; createdAt: Date; updatedAt: Date }>
+    >(
+      `SELECT "status", "rationale", "created_at" AS "createdAt", "updated_at" AS "updatedAt"
+       FROM "round_question_assessment_overrides"
+       WHERE "round_id" = $1 AND "snapshot_id" = $2`,
+      [roundId, snapshotId],
+    );
+    assert.deepEqual(unchangedOverrideRows, firstOverrideRows);
+
+    const activeRoundResponse = await request(app.getHttpServer())
+      .get(`/projects/${projectId}/rounds/active`)
+      .expect(200);
+    assert.equal(activeRoundResponse.body.questions[0].checklistStatus, 'Részben megvan');
+
+    const resetResponse = await request(app.getHttpServer()).delete(assessmentUrl).expect(200);
+    assert.equal(resetResponse.body.checklistStatus, 'Kész');
+    assert.equal(resetResponse.body.assessmentRationale, null);
+    await request(app.getHttpServer()).delete(assessmentUrl).expect(200);
+
+    await request(app.getHttpServer())
+      .put(assessmentUrl)
+      .send({ status: 'Nem releváns', rationale: ' \t\n ' })
+      .expect(400);
+    await request(app.getHttpServer())
+      .put(assessmentUrl)
+      .send({ status: 'Nem releváns', rationale: 'x'.repeat(10_001) })
+      .expect(400);
+
+    const rationale = 'Business owner confirmed the question does not apply';
+    const notRelevantResponse = await request(app.getHttpServer())
+      .put(assessmentUrl)
+      .send({ status: 'Nem releváns', rationale: `  ${rationale}\n` })
+      .expect(200);
+    assert.equal(notRelevantResponse.body.checklistStatus, 'Nem releváns');
+    assert.equal(notRelevantResponse.body.assessmentRationale, rationale);
+    assert.equal(notRelevantResponse.body.answer, answerText);
+
+    const notRelevantReloadResponse = await request(app.getHttpServer())
+      .get(`/projects/${projectId}/rounds/active`)
+      .expect(200);
+    assert.equal(
+      notRelevantReloadResponse.body.questions[0].checklistStatus,
+      'Nem releváns',
+    );
+    assert.equal(
+      notRelevantReloadResponse.body.questions[0].assessmentRationale,
+      rationale,
+    );
+
+    const notRelevantResetResponse = await request(app.getHttpServer())
+      .delete(assessmentUrl)
+      .expect(200);
+    assert.equal(notRelevantResetResponse.body.checklistStatus, 'Kész');
+    assert.equal(notRelevantResetResponse.body.assessmentRationale, null);
+
+    const assessmentAuditRows = await dataSource.query<
+      Array<{ eventType: string; payload: Record<string, string> }>
+    >(
+      `SELECT "event_type" AS "eventType", "payload"
+       FROM "audit_events"
+       WHERE "project_id" = $1
+         AND "event_type" IN ('ROUND_QUESTION_ASSESSMENT_SAVED', 'ROUND_QUESTION_ASSESSMENT_RESET')
+       ORDER BY "created_at" ASC, "id" ASC`,
+      [projectId],
+    );
+    assert.deepEqual(assessmentAuditRows, [
+      {
+        eventType: 'ROUND_QUESTION_ASSESSMENT_SAVED',
+        payload: { roundId, snapshotId, status: 'Részben megvan' },
+      },
+      {
+        eventType: 'ROUND_QUESTION_ASSESSMENT_RESET',
+        payload: { roundId, snapshotId },
+      },
+      {
+        eventType: 'ROUND_QUESTION_ASSESSMENT_SAVED',
+        payload: { roundId, snapshotId, status: 'Nem releváns' },
+      },
+      {
+        eventType: 'ROUND_QUESTION_ASSESSMENT_RESET',
+        payload: { roundId, snapshotId },
+      },
+    ]);
+    const assessmentAuditJson = JSON.stringify(assessmentAuditRows);
+    assert.doesNotMatch(assessmentAuditJson, new RegExp(answerText));
+    assert.doesNotMatch(assessmentAuditJson, new RegExp(rationale));
+  });
+
+  it('serializes the shared effective assessment in a public Markdown revision snapshot', async () => {
+    const { projectId } = await createProjectWithSingleQuestionSchema(
+      app,
+      `Assessment Markdown ${Date.now()}`,
+      'assessment-markdown',
+    );
+    const createdRoundResponse = await request(app.getHttpServer())
+      .post(`/projects/${projectId}/rounds`)
+      .send({ type: 'INITIAL_INTAKE' })
+      .expect(201);
+    const roundId = createdRoundResponse.body.id as string;
+    const snapshotId = createdRoundResponse.body.questions[0].id as string;
+    const rationale = 'The source snapshot must preserve this assessment decision';
+
+    await request(app.getHttpServer())
+      .put(
+        `/projects/${projectId}/rounds/${roundId}/answers/${snapshotId}/assessment`,
+      )
+      .send({ status: 'Nem releváns', rationale })
+      .expect(200);
+
+    const revisionResponse = await request(app.getHttpServer())
+      .post(`/projects/${projectId}/markdown-revisions`)
+      .send({ reason: 'MANUAL' })
+      .expect(201);
+    const sourceRound = revisionResponse.body.sourceSnapshot.interviewRounds.find(
+      (round: { id: string }) => round.id === roundId,
+    ) as { questions: Array<{ id: string; checklistStatus: string; assessmentRationale: string | null }> };
+    const sourceQuestion = sourceRound.questions.find((question) => question.id === snapshotId);
+
+    assert.deepEqual(sourceQuestion, {
+      ...createdRoundResponse.body.questions[0],
+      checklistStatus: 'Nem releváns',
+      assessmentRationale: rationale,
+    });
+  });
+
+  it('keeps answer clearing, completion gates, and completed assessment immutability consistent', async () => {
+    const { projectId } = await createProjectWithSingleQuestionSchema(
+      app,
+      `Assessment lifecycle ${Date.now()}`,
+      'assessment-lifecycle',
+    );
+    const createdRoundResponse = await request(app.getHttpServer())
+      .post(`/projects/${projectId}/rounds`)
+      .send({ type: 'INITIAL_INTAKE' })
+      .expect(201);
+    const roundId = createdRoundResponse.body.id as string;
+    const snapshotId = createdRoundResponse.body.questions[0].id as string;
+    const answerUrl = `/projects/${projectId}/rounds/${roundId}/answers/${snapshotId}`;
+    const assessmentUrl = `${answerUrl}/assessment`;
+
+    await request(app.getHttpServer())
+      .patch(answerUrl)
+      .send({ value: 'Partial supporting evidence' })
+      .expect(200);
+    await request(app.getHttpServer())
+      .put(assessmentUrl)
+      .send({ status: 'Részben megvan', rationale: null })
+      .expect(200);
+
+    const partialCompletionResponse = await request(app.getHttpServer())
+      .post(`/projects/${projectId}/rounds/${roundId}/complete`)
+      .expect(409);
+    assert.deepEqual(partialCompletionResponse.body.missingSnapshotIds, [snapshotId]);
+
+    const clearedPartialResponse = await request(app.getHttpServer())
+      .patch(answerUrl)
+      .send({ value: null })
+      .expect(200);
+    assert.equal(clearedPartialResponse.body.answer, null);
+    assert.equal(clearedPartialResponse.body.checklistStatus, 'Nincs meg');
+    assert.equal(clearedPartialResponse.body.assessmentRationale, null);
+    const clearedPartialRows = await dataSource.query<Array<{ answerCount: string; overrideCount: string }>>(
+      `SELECT
+        (SELECT COUNT(*)::text FROM "round_answers" WHERE "snapshot_id" = $1) AS "answerCount",
+        (SELECT COUNT(*)::text FROM "round_question_assessment_overrides" WHERE "snapshot_id" = $1) AS "overrideCount"`,
+      [snapshotId],
+    );
+    assert.deepEqual(clearedPartialRows, [{ answerCount: '0', overrideCount: '0' }]);
+
+    await request(app.getHttpServer())
+      .patch(answerUrl)
+      .send({ value: 'Answer preserved until explicitly cleared' })
+      .expect(200);
+    const rationale = 'This required question does not apply to the project';
+    await request(app.getHttpServer())
+      .put(assessmentUrl)
+      .send({ status: 'Nem releváns', rationale })
+      .expect(200);
+
+    const clearedNotRelevantResponse = await request(app.getHttpServer())
+      .patch(answerUrl)
+      .send({ value: null })
+      .expect(200);
+    assert.equal(clearedNotRelevantResponse.body.answer, null);
+    assert.equal(clearedNotRelevantResponse.body.checklistStatus, 'Nem releváns');
+    assert.equal(clearedNotRelevantResponse.body.assessmentRationale, rationale);
+
+    const completedResponse = await request(app.getHttpServer())
+      .post(`/projects/${projectId}/rounds/${roundId}/complete`)
+      .expect(201);
+    assert.equal(completedResponse.body.status, 'COMPLETED');
+    assert.equal(completedResponse.body.questions[0].checklistStatus, 'Nem releváns');
+    assert.equal(completedResponse.body.questions[0].assessmentRationale, rationale);
+
+    const stateBeforeRejectedCommands = await dataSource.query<
+      Array<{ status: string; rationale: string; updatedAt: Date; auditCount: string }>
+    >(
+      `SELECT assessment."status", assessment."rationale", assessment."updated_at" AS "updatedAt",
+        (SELECT COUNT(*)::text FROM "audit_events"
+         WHERE "project_id" = $1
+           AND "event_type" IN ('ROUND_QUESTION_ASSESSMENT_SAVED', 'ROUND_QUESTION_ASSESSMENT_RESET')) AS "auditCount"
+       FROM "round_question_assessment_overrides" assessment
+       WHERE assessment."round_id" = $2 AND assessment."snapshot_id" = $3`,
+      [projectId, roundId, snapshotId],
+    );
+    const rejectedReplacementResponse = await request(app.getHttpServer())
+      .put(assessmentUrl)
+      .send({ status: 'Nem releváns', rationale: 'Rejected replacement' })
+      .expect(409);
+    assert.doesNotMatch(JSON.stringify(rejectedReplacementResponse.body), /Rejected replacement/);
+    const rejectedResetResponse = await request(app.getHttpServer())
+      .delete(assessmentUrl)
+      .expect(409);
+    assert.doesNotMatch(JSON.stringify(rejectedResetResponse.body), new RegExp(rationale));
+    const stateAfterRejectedCommands = await dataSource.query<
+      Array<{ status: string; rationale: string; updatedAt: Date; auditCount: string }>
+    >(
+      `SELECT assessment."status", assessment."rationale", assessment."updated_at" AS "updatedAt",
+        (SELECT COUNT(*)::text FROM "audit_events"
+         WHERE "project_id" = $1
+           AND "event_type" IN ('ROUND_QUESTION_ASSESSMENT_SAVED', 'ROUND_QUESTION_ASSESSMENT_RESET')) AS "auditCount"
+       FROM "round_question_assessment_overrides" assessment
+       WHERE assessment."round_id" = $2 AND assessment."snapshot_id" = $3`,
+      [projectId, roundId, snapshotId],
+    );
+    assert.deepEqual(stateAfterRejectedCommands, stateBeforeRejectedCommands);
   });
 
   it('recovers the open initial intake round with persisted answers', async () => {
