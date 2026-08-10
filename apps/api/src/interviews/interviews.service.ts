@@ -21,9 +21,19 @@ import { BaseQuestionEntity } from '../question-bank/base-question.entity';
 import { ProjectQuestionSchemaEntity } from '../question-bank/project-question-schema.entity';
 import { ProjectSchemaQuestionEntity } from '../question-bank/project-schema-question.entity';
 import { CreateInterviewRoundDto } from './dto/create-interview-round.dto';
+import { SetRoundQuestionAssessmentDto } from './dto/set-round-question-assessment.dto';
 import { UpdateRoundAnswerDto } from './dto/update-round-answer.dto';
 import { InterviewRoundEntity } from './interview-round.entity';
 import { RoundAnswerEntity } from './round-answer.entity';
+import {
+  assessmentRationaleMaxLength,
+  loadRoundQuestionAssessmentPolicy,
+  roundAnswerValidationError,
+  toEffectiveRoundQuestionSnapshot,
+  unicodeCodePointLength,
+  type RoundQuestionAssessmentPolicy,
+} from './round-question-assessment';
+import { RoundQuestionAssessmentOverrideEntity } from './round-question-assessment-override.entity';
 import { RoundQuestionSnapshotEntity } from './round-question-snapshot.entity';
 
 const openInitialIntakeConstraintName = 'uq_interview_rounds_open_initial_intake';
@@ -45,6 +55,7 @@ export class InterviewsService {
 
   async createRound(projectId: string, input: CreateInterviewRoundDto): Promise<InterviewRound> {
     return this.dataSource.transaction(async (manager) => {
+      const assessmentPolicy = await loadRoundQuestionAssessmentPolicy();
       await requireProject(manager, projectId, true);
       const schema = await manager.getRepository(ProjectQuestionSchemaEntity).findOne({
         where: { projectId },
@@ -123,7 +134,7 @@ export class InterviewsService {
         schemaVersion: String(schema.schemaVersion),
         questionCount: String(snapshots.length),
       });
-      return toInterviewRound(round, schema.schemaVersion, snapshots, []);
+      return toInterviewRound(round, schema.schemaVersion, snapshots, [], [], assessmentPolicy);
     });
   }
 
@@ -134,9 +145,32 @@ export class InterviewsService {
     input: UpdateRoundAnswerDto,
   ): Promise<RoundQuestionSnapshot> {
     return this.dataSource.transaction(async (manager) => {
+      const assessmentPolicy = await loadRoundQuestionAssessmentPolicy();
+      let existingOverride = await findLockedRoundQuestionAssessmentOverride(
+        manager,
+        projectId,
+        roundId,
+        snapshotId,
+      );
+      let existingAnswer = await findLockedRoundAnswer(
+        manager,
+        projectId,
+        roundId,
+        snapshotId,
+      );
       const round = await findLockedRound(manager, projectId, roundId);
       if (round.status === 'COMPLETED') {
         throw new ConflictException('Completed rounds cannot be edited.');
+      }
+      if (!existingOverride) {
+        existingOverride = await manager
+          .getRepository(RoundQuestionAssessmentOverrideEntity)
+          .findOneBy({ roundId, snapshotId });
+      }
+      if (!existingAnswer) {
+        existingAnswer = await manager
+          .getRepository(RoundAnswerEntity)
+          .findOneBy({ roundId, snapshotId });
       }
       const snapshot = await manager.getRepository(RoundQuestionSnapshotEntity).findOneBy({
         id: snapshotId,
@@ -147,16 +181,29 @@ export class InterviewsService {
       }
 
       const answerRepository = manager.getRepository(RoundAnswerEntity);
-      const existingAnswer = await answerRepository.findOneBy({ snapshotId });
+      const overrideRepository = manager.getRepository(
+        RoundQuestionAssessmentOverrideEntity,
+      );
       if (input.value === null) {
         if (existingAnswer) {
+          if (existingOverride?.status === assessmentPolicy.partialStatus) {
+            await overrideRepository.remove(existingOverride);
+            await saveAssessmentResetAuditEvent(manager, projectId, roundId, snapshotId);
+          }
           await answerRepository.remove(existingAnswer);
           await saveAuditEvent(manager, projectId, 'ROUND_ANSWER_CLEARED', {
             roundId,
             snapshotId,
           });
         }
-        return toRoundQuestionSnapshot(snapshot, null);
+        return toEffectiveRoundQuestionSnapshot(
+          snapshot,
+          null,
+          existingOverride?.status === assessmentPolicy.partialStatus
+            ? null
+            : existingOverride,
+          assessmentPolicy,
+        );
       }
 
       validateAnswer(snapshot.type, snapshot.options, input.value);
@@ -174,12 +221,148 @@ export class InterviewsService {
         snapshotId,
         answerId: savedAnswer.id,
       });
-      return toRoundQuestionSnapshot(snapshot, savedAnswer);
+      return toEffectiveRoundQuestionSnapshot(
+        snapshot,
+        savedAnswer,
+        existingOverride,
+        assessmentPolicy,
+      );
+    });
+  }
+
+  async setAssessment(
+    projectId: string,
+    roundId: string,
+    snapshotId: string,
+    input: SetRoundQuestionAssessmentDto,
+  ): Promise<RoundQuestionSnapshot> {
+    return this.dataSource.transaction(async (manager) => {
+      const assessmentPolicy = await loadRoundQuestionAssessmentPolicy();
+      let existingOverride = await findLockedRoundQuestionAssessmentOverride(
+        manager,
+        projectId,
+        roundId,
+        snapshotId,
+      );
+      const answer =
+        existingOverride?.status === assessmentPolicy.partialStatus ||
+        input.status === assessmentPolicy.partialStatus
+          ? await findLockedRoundAnswer(manager, projectId, roundId, snapshotId)
+          : null;
+      const round = await findLockedRound(manager, projectId, roundId);
+      requireEditableRound(round);
+      if (!existingOverride) {
+        existingOverride = await manager
+          .getRepository(RoundQuestionAssessmentOverrideEntity)
+          .findOneBy({ roundId, snapshotId });
+      }
+      const snapshot = await findRoundSnapshot(manager, roundId, snapshotId);
+      const loadedAnswer =
+        answer ??
+        (await manager.getRepository(RoundAnswerEntity).findOneBy({
+          roundId,
+          snapshotId,
+        }));
+      const overrideRepository = manager.getRepository(
+        RoundQuestionAssessmentOverrideEntity,
+      );
+      const assessment = normalizeAssessmentInput(
+        input,
+        snapshot,
+        loadedAnswer,
+        assessmentPolicy,
+      );
+
+      if (
+        existingOverride?.status === assessment.status &&
+        existingOverride.rationale === assessment.rationale
+      ) {
+        return toEffectiveRoundQuestionSnapshot(
+          snapshot,
+          loadedAnswer,
+          existingOverride,
+          assessmentPolicy,
+        );
+      }
+
+      const now = new Date();
+      const override =
+        existingOverride ??
+        overrideRepository.create({
+          id: randomUUID(),
+          roundId,
+          snapshotId,
+          createdAt: now,
+        });
+      Object.assign(override, {
+        status: assessment.status,
+        rationale: assessment.rationale,
+        updatedAt: now,
+      });
+      let savedOverride: RoundQuestionAssessmentOverrideEntity;
+      try {
+        savedOverride = await overrideRepository.save(override);
+      } catch (error) {
+        if (error instanceof QueryFailedError) {
+          throwAssessmentPersistenceError(error);
+        }
+        throw error;
+      }
+      await saveAssessmentSavedAuditEvent(
+        manager,
+        projectId,
+        roundId,
+        snapshotId,
+        assessment.status,
+      );
+      return toEffectiveRoundQuestionSnapshot(
+        snapshot,
+        loadedAnswer,
+        savedOverride,
+        assessmentPolicy,
+      );
+    });
+  }
+
+  async resetAssessment(
+    projectId: string,
+    roundId: string,
+    snapshotId: string,
+  ): Promise<RoundQuestionSnapshot> {
+    return this.dataSource.transaction(async (manager) => {
+      const assessmentPolicy = await loadRoundQuestionAssessmentPolicy();
+      let existingOverride = await findLockedRoundQuestionAssessmentOverride(
+        manager,
+        projectId,
+        roundId,
+        snapshotId,
+      );
+      const round = await findLockedRound(manager, projectId, roundId);
+      requireEditableRound(round);
+      if (!existingOverride) {
+        existingOverride = await manager
+          .getRepository(RoundQuestionAssessmentOverrideEntity)
+          .findOneBy({ roundId, snapshotId });
+      }
+      const snapshot = await findRoundSnapshot(manager, roundId, snapshotId);
+      const answer = await manager.getRepository(RoundAnswerEntity).findOneBy({
+        roundId,
+        snapshotId,
+      });
+      const overrideRepository = manager.getRepository(
+        RoundQuestionAssessmentOverrideEntity,
+      );
+      if (existingOverride) {
+        await overrideRepository.remove(existingOverride);
+        await saveAssessmentResetAuditEvent(manager, projectId, roundId, snapshotId);
+      }
+      return toEffectiveRoundQuestionSnapshot(snapshot, answer, null, assessmentPolicy);
     });
   }
 
   async completeRound(projectId: string, roundId: string): Promise<InterviewRound> {
     return this.dataSource.transaction(async (manager) => {
+      const assessmentPolicy = await loadRoundQuestionAssessmentPolicy();
       const round = await findLockedRound(manager, projectId, roundId);
       if (round.status === 'COMPLETED') {
         throw new ConflictException('Interview round is already completed.');
@@ -189,25 +372,34 @@ export class InterviewsService {
         order: { order: 'ASC' },
       });
       const answers = await manager.getRepository(RoundAnswerEntity).findBy({ roundId });
+      const overrides = await manager
+        .getRepository(RoundQuestionAssessmentOverrideEntity)
+        .findBy({ roundId });
       const answersBySnapshotId = new Map(
         answers.map((answer) => [answer.snapshotId, answer]),
+      );
+      const overridesBySnapshotId = new Map(
+        overrides.map((override) => [override.snapshotId, override]),
       );
       const missingSnapshotIds = snapshots
         .filter((snapshot) => snapshot.required)
         .filter((snapshot) => {
-          const answer = answersBySnapshotId.get(snapshot.id);
-          if (!answer) {
+          const override = overridesBySnapshotId.get(snapshot.id);
+          if (
+            override?.status === assessmentPolicy.notRelevantStatus &&
+            override.rationale !== null &&
+            override.rationale.trim().length > 0
+          ) {
+            return false;
+          }
+          if (override?.status === assessmentPolicy.partialStatus) {
             return true;
           }
-          try {
-            validateAnswer(snapshot.type, snapshot.options, answer.value);
-            return false;
-          } catch (error) {
-            if (error instanceof BadRequestException) {
-              return true;
-            }
-            throw error;
-          }
+          const answer = answersBySnapshotId.get(snapshot.id);
+          return (
+            !answer ||
+            roundAnswerValidationError(snapshot.type, snapshot.options, answer.value) !== null
+          );
         })
         .map((snapshot) => snapshot.id);
       if (missingSnapshotIds.length > 0) {
@@ -274,50 +466,107 @@ async function findLockedRound(
   return round;
 }
 
+async function findLockedRoundAnswer(
+  manager: EntityManager,
+  projectId: string,
+  roundId: string,
+  snapshotId: string,
+): Promise<RoundAnswerEntity | null> {
+  return manager
+    .getRepository(RoundAnswerEntity)
+    .createQueryBuilder('answer')
+    .innerJoin(InterviewRoundEntity, 'round', 'round.id = answer.roundId')
+    .where('answer.roundId = :roundId', { roundId })
+    .andWhere('answer.snapshotId = :snapshotId', { snapshotId })
+    .andWhere('round.projectId = :projectId', { projectId })
+    .setLock('pessimistic_write', undefined, ['answer'])
+    .getOne();
+}
+
+async function findLockedRoundQuestionAssessmentOverride(
+  manager: EntityManager,
+  projectId: string,
+  roundId: string,
+  snapshotId: string,
+): Promise<RoundQuestionAssessmentOverrideEntity | null> {
+  return manager
+    .getRepository(RoundQuestionAssessmentOverrideEntity)
+    .createQueryBuilder('override')
+    .innerJoin(InterviewRoundEntity, 'round', 'round.id = override.roundId')
+    .where('override.roundId = :roundId', { roundId })
+    .andWhere('override.snapshotId = :snapshotId', { snapshotId })
+    .andWhere('round.projectId = :projectId', { projectId })
+    .setLock('pessimistic_write', undefined, ['override'])
+    .getOne();
+}
+
+function requireEditableRound(round: InterviewRoundEntity): void {
+  if (round.status === 'COMPLETED') {
+    throw new ConflictException('Completed rounds cannot be edited.');
+  }
+}
+
+async function findRoundSnapshot(
+  manager: EntityManager,
+  roundId: string,
+  snapshotId: string,
+): Promise<RoundQuestionSnapshotEntity> {
+  const snapshot = await manager.getRepository(RoundQuestionSnapshotEntity).findOneBy({
+    id: snapshotId,
+    roundId,
+  });
+  if (!snapshot) {
+    throw new NotFoundException('Round question snapshot not found.');
+  }
+  return snapshot;
+}
+
+function normalizeAssessmentInput(
+  input: SetRoundQuestionAssessmentDto,
+  snapshot: RoundQuestionSnapshotEntity,
+  answer: RoundAnswerEntity | null,
+  policy: RoundQuestionAssessmentPolicy,
+): { readonly status: string; readonly rationale: string | null } {
+  if (input.status === policy.partialStatus) {
+    if (input.rationale !== null) {
+      throw new BadRequestException('Partial assessments must not include a rationale.');
+    }
+    if (
+      answer === null ||
+      roundAnswerValidationError(snapshot.type, snapshot.options, answer.value) !== null
+    ) {
+      throw new BadRequestException('Partial assessments require a valid saved answer.');
+    }
+    return { status: policy.partialStatus, rationale: null };
+  }
+  if (input.status === policy.notRelevantStatus) {
+    if (typeof input.rationale !== 'string') {
+      throw new BadRequestException('Not-relevant assessments require a rationale.');
+    }
+    const rationale = input.rationale.trim();
+    if (
+      rationale.length === 0 ||
+      unicodeCodePointLength(rationale) > assessmentRationaleMaxLength
+    ) {
+      throw new BadRequestException(
+        `Not-relevant assessment rationale must contain 1 to ${assessmentRationaleMaxLength} characters.`,
+      );
+    }
+    return { status: policy.notRelevantStatus, rationale };
+  }
+  throw new BadRequestException(
+    'Assessment status must be a persisted checklist decision from the active policy.',
+  );
+}
+
 function validateAnswer(
   type: BaseQuestionType,
   options: readonly string[] | null,
   value: AnswerValue,
 ): void {
-  if (type === 'TEXT' || type === 'LONG_TEXT') {
-    if (typeof value !== 'string' || value.trim().length === 0) {
-      throw new BadRequestException('Text answers must not be blank.');
-    }
-    return;
-  }
-  if (type === 'BOOLEAN') {
-    if (typeof value !== 'boolean') {
-      throw new BadRequestException('Boolean questions require a boolean answer.');
-    }
-    return;
-  }
-  if (type === 'NUMBER') {
-    if (typeof value !== 'number' || !Number.isFinite(value)) {
-      throw new BadRequestException('Number questions require a finite numeric answer.');
-    }
-    return;
-  }
-  if (type === 'DATE') {
-    if (typeof value !== 'string' || !isIsoCalendarDate(value)) {
-      throw new BadRequestException('Date questions require a YYYY-MM-DD answer.');
-    }
-    return;
-  }
-  if (type === 'SINGLE_SELECT') {
-    if (typeof value !== 'string' || !options?.includes(value)) {
-      throw new BadRequestException('Single-select answers must match one configured option.');
-    }
-    return;
-  }
-  if (
-    !Array.isArray(value) ||
-    value.length === 0 ||
-    !value.every((selection) => options?.includes(selection)) ||
-    new Set(value).size !== value.length
-  ) {
-    throw new BadRequestException(
-      'Multi-select answers must contain unique configured options.',
-    );
+  const validationError = roundAnswerValidationError(type, options, value);
+  if (validationError) {
+    throw new BadRequestException(validationError);
   }
 }
 
@@ -332,6 +581,32 @@ async function saveAuditEvent(
     projectId,
     eventType,
     payload,
+  });
+}
+
+async function saveAssessmentSavedAuditEvent(
+  manager: EntityManager,
+  projectId: string,
+  roundId: string,
+  snapshotId: string,
+  status: string,
+): Promise<void> {
+  await saveAuditEvent(manager, projectId, 'ROUND_QUESTION_ASSESSMENT_SAVED', {
+    roundId,
+    snapshotId,
+    status,
+  });
+}
+
+async function saveAssessmentResetAuditEvent(
+  manager: EntityManager,
+  projectId: string,
+  roundId: string,
+  snapshotId: string,
+): Promise<void> {
+  await saveAuditEvent(manager, projectId, 'ROUND_QUESTION_ASSESSMENT_RESET', {
+    roundId,
+    snapshotId,
   });
 }
 
@@ -353,7 +628,19 @@ async function loadInterviewRound(
     where: { roundId: round.id },
     order: { snapshotId: 'ASC', id: 'ASC' },
   });
-  return toInterviewRound(round, schema.schemaVersion, snapshots, answers);
+  const overrides = await manager.getRepository(RoundQuestionAssessmentOverrideEntity).find({
+    where: { roundId: round.id },
+    order: { snapshotId: 'ASC', id: 'ASC' },
+  });
+  const assessmentPolicy = await loadRoundQuestionAssessmentPolicy();
+  return toInterviewRound(
+    round,
+    schema.schemaVersion,
+    snapshots,
+    answers,
+    overrides,
+    assessmentPolicy,
+  );
 }
 
 function throwOpenInitialIntakeConflict(): never {
@@ -365,8 +652,13 @@ function toInterviewRound(
   schemaVersion: number,
   snapshots: readonly RoundQuestionSnapshotEntity[],
   answers: readonly RoundAnswerEntity[],
+  overrides: readonly RoundQuestionAssessmentOverrideEntity[],
+  assessmentPolicy: RoundQuestionAssessmentPolicy,
 ): InterviewRound {
   const answersBySnapshotId = new Map(answers.map((answer) => [answer.snapshotId, answer]));
+  const overridesBySnapshotId = new Map(
+    overrides.map((override) => [override.snapshotId, override]),
+  );
   return {
     id: round.id,
     projectId: round.projectId,
@@ -377,44 +669,14 @@ function toInterviewRound(
     createdAt: toIso(round.createdAt, 'createdAt'),
     completedAt: round.completedAt ? toIso(round.completedAt, 'completedAt') : null,
     questions: snapshots.map((snapshot) =>
-      toRoundQuestionSnapshot(snapshot, answersBySnapshotId.get(snapshot.id) ?? null),
+      toEffectiveRoundQuestionSnapshot(
+        snapshot,
+        answersBySnapshotId.get(snapshot.id) ?? null,
+        overridesBySnapshotId.get(snapshot.id) ?? null,
+        assessmentPolicy,
+      ),
     ),
   };
-}
-
-function toRoundQuestionSnapshot(
-  snapshot: RoundQuestionSnapshotEntity,
-  answer: RoundAnswerEntity | null,
-): RoundQuestionSnapshot {
-  return {
-    id: snapshot.id,
-    baseQuestionId: snapshot.baseQuestionId,
-    stableKey: snapshot.stableKey,
-    topic: snapshot.topic,
-    controlPoint: snapshot.controlPoint,
-    text: snapshot.text,
-    type: snapshot.type,
-    required: snapshot.required,
-    blocking: snapshot.blocking,
-    order: snapshot.order,
-    hint: snapshot.hint,
-    options: snapshot.options,
-    answer: answer?.value ?? null,
-    answeredAt: answer ? toIso(answer.answeredAt, 'answeredAt') : null,
-  };
-}
-
-function isIsoCalendarDate(value: string): boolean {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) {
-    return false;
-  }
-  const [year, month, day] = value.split('-').map(Number);
-  const parsed = new Date(Date.UTC(year, month - 1, day));
-  return (
-    parsed.getUTCFullYear() === year &&
-    parsed.getUTCMonth() === month - 1 &&
-    parsed.getUTCDate() === day
-  );
 }
 
 function toIso(value: Date, field: string): string {
@@ -436,5 +698,23 @@ function isOpenInitialIntakeUniqueViolation(error: unknown): boolean {
   return (
     driverError.code === '23505' &&
     driverError.constraint === openInitialIntakeConstraintName
+  );
+}
+
+function throwAssessmentPersistenceError(error: QueryFailedError): never {
+  const driverError = error.driverError as { readonly code?: unknown };
+  if (
+    driverError.code === '23505' ||
+    driverError.code === '23514' ||
+    driverError.code === '55000' ||
+    driverError.code === '40001' ||
+    driverError.code === '40P01'
+  ) {
+    throw new ConflictException(
+      'The round assessment state changed while it was being saved; reload the round and retry.',
+    );
+  }
+  throw new InternalServerErrorException(
+    'The round assessment could not be persisted because the database operation failed; retry the request.',
   );
 }

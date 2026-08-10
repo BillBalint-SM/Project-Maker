@@ -33,6 +33,8 @@ export interface RoundQuestionSnapshot {
   readonly options: readonly string[] | null;
   readonly answer: AnswerValue | null;
   readonly answeredAt: string | null;
+  readonly checklistStatus: string;
+  readonly assessmentRationale: string | null;
 }
 
 export interface InterviewRound {
@@ -49,4 +51,9 @@ export interface InterviewRound {
 
 export interface UpdateRoundAnswerInput {
   readonly value: AnswerValue | null;
+}
+
+export interface SetRoundQuestionAssessmentInput {
+  readonly status: string;
+  readonly rationale: string | null;
 }

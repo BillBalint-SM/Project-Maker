@@ -1,0 +1,113 @@
+<p-card data-testid="readiness-review-card">
+  <ng-template #title>Felkészültségi értékelés</ng-template>
+  <ng-template #subtitle>
+    Az értékelés a kezdő interjú, az ellenőrzőlista és a discovery utánkövetések aktuális állapotát foglalja össze.
+  </ng-template>
+
+  @if (loading()) {
+    <div
+      class="readiness-review-state"
+      data-testid="readiness-review-loading"
+      aria-live="polite"
+    >
+      <p-progress-spinner ariaLabel="Felkészültségi értékelés betöltése" />
+      <p>A felkészültségi értékelés betöltése folyamatban van…</p>
+    </div>
+  } @else if (loadError(); as error) {
+    <div
+      class="readiness-review-state"
+      data-testid="readiness-review-error"
+      role="alert"
+    >
+      <p>{{ error }}</p>
+      <p-button
+        label="Újrapróbálás"
+        data-testid="retry-readiness-review-button"
+        (onClick)="retry()"
+      />
+    </div>
+  } @else if (unavailable(); as readiness) {
+    @if (readiness.reason === 'NO_INITIAL_INTAKE') {
+      <div
+        class="readiness-review-state"
+        data-testid="readiness-review-unavailable-no-initial-intake"
+      >
+        <h2>Még nincs kezdő interjú</h2>
+        <p>Indíts kezdő interjút a felkészültségi értékelés elkészítéséhez.</p>
+      </div>
+    } @else {
+      <div
+        class="readiness-review-state"
+        data-testid="readiness-review-unavailable-unsupported-schema"
+      >
+        <h2>Az értékeléshez frissített interjúséma szükséges</h2>
+        <p>Frissítsd a projektsémát, majd indíts új kezdő interjút.</p>
+      </div>
+    }
+  } @else if (available(); as readiness) {
+    <div data-testid="readiness-review-available">
+      <dl class="readiness-review-summary" data-testid="readiness-review-summary">
+        <div>
+          <dt>Interjú kitöltöttsége</dt>
+          <dd>{{ readiness.completionPercentage }}% · {{ readiness.completionLabel }}</dd>
+        </div>
+        <div>
+          <dt>Felkészültség</dt>
+          <dd>{{ readiness.readinessPercentage }}% · {{ readiness.readinessBand }}</dd>
+        </div>
+      </dl>
+
+      <section aria-labelledby="readiness-review-factors-title">
+        <h2 id="readiness-review-factors-title">Értékelési tényezők</h2>
+        <ul class="readiness-review-list" data-testid="readiness-review-factors">
+          @for (factor of readiness.factors; track factor.id) {
+            <li [attr.data-testid]="'readiness-review-factor-' + factor.id">
+              <strong>{{ factor.label }}: {{ factor.percentage }}%</strong>
+              <span>{{ factor.helpText }}</span>
+            </li>
+          }
+        </ul>
+      </section>
+
+      <section aria-labelledby="readiness-review-gaps-title">
+        <h2 id="readiness-review-gaps-title">Rendezett hiányok</h2>
+        @if (readiness.gaps.length === 0) {
+          <p data-testid="readiness-review-gaps-empty">Nincs azonosított hiány.</p>
+        } @else {
+          <ol class="readiness-review-list" data-testid="readiness-review-gaps">
+            @for (gap of readiness.gaps; track gap.id) {
+              <li data-testid="readiness-review-gap">
+                <strong>{{ gap.severity }} · {{ gap.category }}</strong>
+                <p>{{ gap.message }}</p>
+                <p>{{ gap.nextStep }}</p>
+                @switch (gap.target) {
+                  @case ('overview') {
+                    <p-button
+                      label="Workspace megnyitása"
+                      [attr.data-testid]="'readiness-review-gap-action-' + gap.id"
+                      (onClick)="scrollToWorkspace()"
+                    />
+                  }
+                  @case ('checklist') {
+                    <p-button
+                      label="Kérdés megnyitása"
+                      [attr.data-testid]="'readiness-review-gap-action-' + gap.id"
+                      (onClick)="openChecklistGap(gap.snapshotId)"
+                    />
+                  }
+                  @case ('follow-ups') {
+                    <p-button
+                      label="Discovery utánkövetések megnyitása"
+                      [attr.data-testid]="'readiness-review-gap-action-' + gap.id"
+                      (onClick)="scrollToDiscoveryFollowUps()"
+                    />
+                  }
+                }
+              </li>
+            }
+          </ol>
+        }
+      </section>
+    </div>
+  }
+</p-card>

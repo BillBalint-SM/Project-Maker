@@ -140,7 +140,11 @@
             } @else {
               <div class="round-questions" data-testid="round-questions">
                 @for (question of currentRound.questions; track question.id; let index = $index) {
-                  <article class="round-question" [attr.data-testid]="'round-question-' + question.id">
+                  <article
+                    class="round-question"
+                    [id]="'round-question-' + question.id"
+                    [attr.data-testid]="'round-question-' + question.id"
+                  >
                     <div class="question-heading">
                       <span class="question-number">{{ index + 1 }}</span>
                       <div class="question-heading-copy">
@@ -282,6 +286,90 @@
                         />
                       }
                     </div>
+
+                    <section
+                      class="assessment-block"
+                      [attr.data-testid]="'round-assessment-' + question.id"
+                      [attr.aria-label]="'Értékelés: ' + question.text"
+                    >
+                      <div class="assessment-header">
+                        <strong>Értékelés</strong>
+                        <p-tag
+                          [value]="assessmentStatus(question)"
+                          severity="secondary"
+                          [attr.data-testid]="'round-assessment-status-' + question.id"
+                        />
+                      </div>
+                      <div class="assessment-actions">
+                        <p-button
+                          label="Automatikus állapot"
+                          severity="secondary"
+                          [outlined]="true"
+                          [attr.aria-pressed]="isAssessmentSelected(question, 'automatic')"
+                          [disabled]="isAssessmentControlDisabled(question, 'automatic')"
+                          [attr.data-testid]="'reset-round-assessment-' + question.id"
+                          (onClick)="resetAssessment(question)"
+                        />
+                        <p-button
+                          label="Részben megvan"
+                          severity="secondary"
+                          [outlined]="true"
+                          [attr.aria-pressed]="isAssessmentSelected(question, 'partial')"
+                          [disabled]="!canSavePartialAssessment(question)"
+                          [attr.data-testid]="'set-partial-assessment-' + question.id"
+                          (onClick)="selectPartialAssessment(question)"
+                        />
+                        <p-button
+                          label="Nem releváns"
+                          severity="secondary"
+                          [outlined]="true"
+                          [attr.aria-pressed]="isAssessmentSelected(question, 'not-relevant')"
+                          [disabled]="isAssessmentControlDisabled(question, 'not-relevant')"
+                          [attr.data-testid]="'set-not-relevant-assessment-' + question.id"
+                          (onClick)="selectNotRelevantAssessment(question)"
+                        />
+                      </div>
+                      @if (showAssessmentRationale(question)) {
+                        <div class="field assessment-rationale">
+                          <label [for]="'round-assessment-rationale-' + question.id">
+                            Indoklás, miért nem releváns
+                          </label>
+                          <textarea
+                            class="answer-control"
+                            rows="3"
+                            [id]="'round-assessment-rationale-' + question.id"
+                            [value]="assessmentRationale(question)"
+                            [disabled]="isAssessmentControlDisabled(question, 'not-relevant')"
+                            [attr.data-testid]="'round-assessment-rationale-' + question.id"
+                            (input)="setAssessmentRationale(question, $any($event.target).value)"
+                          ></textarea>
+                          <p-button
+                            label="Indoklás mentése"
+                            [disabled]="!canSaveNotRelevantAssessment(question)"
+                            [attr.data-testid]="'save-not-relevant-assessment-' + question.id"
+                            (onClick)="saveNotRelevantAssessment(question)"
+                          />
+                        </div>
+                      }
+                      <div class="assessment-save-state" aria-live="polite">
+                        <small
+                          class="muted"
+                          [class.assessment-save-state--error]="assessmentHasError(question)"
+                          [attr.data-testid]="'round-assessment-save-state-' + question.id"
+                        >
+                          {{ assessmentSaveState(question) }}
+                        </small>
+                        @if (assessmentHasError(question)) {
+                          <p-button
+                            label="Értékelés újrapróbálása"
+                            severity="secondary"
+                            [outlined]="true"
+                            [attr.data-testid]="'retry-round-assessment-' + question.id"
+                            (onClick)="retryAssessment(question)"
+                          />
+                        }
+                      </div>
+                    </section>
                     @if (showBlockingGuidance(question)) {
                       <p class="blocking-guidance" [attr.data-testid]="'round-blocking-guidance-' + question.id">
                         Ez blokkoló tisztázás. Rögzítsd a választ, mielőtt lezárod a kört.

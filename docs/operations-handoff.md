@@ -89,6 +89,8 @@ ordered TypeORM migrations registered in
 6. `0006-discovery-follow-ups.ts` — project-owned discovery follow-ups, a category enum, date-order index, update trigger, and retained-project foreign key.
 7. `0007-discovery-follow-up-resolution.ts` — nullable persisted discovery-follow-up answer/decision content.
 8. `0008-discovery-follow-up-edit-version.ts` — positive persisted discovery-follow-up version for conflict-safe open-item edits.
+9. `0009-round-question-assessment-overrides.ts` — effective `Részben megvan` and justified `Nem releváns` assessment overrides, completion/immutability guards, and their database invariants.
+10. `0010-round-answer-validation-parity.ts` — database validation parity for `TEXT` and `LONG_TEXT` answers by rejecting values made only from space, tab, line feed, carriage return, form feed, or vertical tab, matching the API rule.
 
 The deployed API image contains the compiled migration classes, but not the
 TypeScript migration source tree used by the development-only
@@ -139,7 +141,7 @@ docker compose --env-file .env exec -T api node -e $migrationStatusScript
 
 `pending: false` means that all migration classes in the running image are
 recorded in the database. The `applied` array is the database's migration
-history; the eight expected names are listed above.
+history; the ten expected names are listed above.
 
 There is no safe arbitrary migration selector in the runtime image. A
 controlled revert can undo only the latest applied migration through a
@@ -165,8 +167,15 @@ Reverting `0005` removes only its partial unique index; it does not remove
 interview-round rows. Reverting `0007` drops the persisted discovery-follow-up
 answer/decision column and its content. Reverting `0008` drops its positive-version
 constraint and version column; it removes only edit-concurrency metadata, not a
-business follow-up field. Before any revert, inspect the migration and choose the
-rollback procedure appropriate to the affected objects.
+business follow-up field. `0009` is guarded: its rollback first takes an exclusive
+lock and refuses before DDL if any assessment-override row exists. Do not remove
+those rows to make a rollback pass without an approved data operation and backup.
+Reverting `0010` redefines only the round-answer validation function with its
+previous space-only `btrim` predicate. It leaves schema objects and stored answers
+in place, but database validation then permits control-whitespace-only text that
+the forward migration rejects.
+Before any revert, inspect the migration and choose the rollback procedure
+appropriate to the affected objects.
 
 ### PostgreSQL backup
 
@@ -305,6 +314,40 @@ POST  /api/projects/{projectId}/customer-review-email
 Archived projects cannot send customer email. Expired or archived follow-up
 states are disabled and unscheduled by the worker.
 
+### SCORE-01.1 readiness operational surface
+
+The delivered readiness route is narrow and read-only:
+
+```text
+GET /api/projects/{projectId}/readiness
+```
+
+It selects the latest open `INITIAL_INTAKE` round; if none is open, it selects
+the latest completed one. The result is available only for the exact current
+30-key canonical `general` v1 source. Otherwise it returns a typed unavailable
+state: `NO_INITIAL_INTAKE` or `UNSUPPORTED_SCHEMA`. An unavailable result is not
+a score and does not disable Workspace or discovery-follow-up operations.
+
+The only assessment mutation routes are scoped to one project, round, and
+snapshot:
+
+```text
+PUT    /api/projects/{projectId}/rounds/{roundId}/answers/{snapshotId}/assessment
+DELETE /api/projects/{projectId}/rounds/{roundId}/answers/{snapshotId}/assessment
+```
+
+`PUT` persists only the supported effective assessment decision; `DELETE`
+returns the answer-derived automatic state. Completed rounds reject both
+mutations. Operators should treat a guarded `0009` rollback as a data-change
+decision, not as an API recovery action.
+
+Readiness responses and Cockpit gaps intentionally omit source answers,
+assessment rationales, contact values, owner values, follow-up content,
+decisions, and next-step values. Assessment audit events contain only the
+round/snapshot identifiers and canonical status, or identifiers for a reset;
+they do not contain answers or rationales. Preserve this redaction boundary in
+diagnostics and support material.
+
 ## Verification gates for this handoff
 
 The fast, repeatable gates used during this foundation slice are:
@@ -319,10 +362,25 @@ pnpm compose:up
 ```
 
 The Compose smoke gate should confirm `/api/health`, base-question seeding,
-all eight migrations, Markdown download headers/content, and the expected
+all ten migrations, Markdown download headers/content, and the expected
 `503` response when SMTP is intentionally disabled. A local SMTP-capture
 container can be used to verify manual review, manual ping, and due-timer
 delivery without using production credentials.
+
+The declared SCORE-01.1 browser evidence is:
+
+```powershell
+pnpm --dir apps/web exec playwright test readiness-review.spec.ts
+pnpm test:e2e
+```
+
+Both were run against fresh disposable loopback PostgreSQL fixtures: the
+focused readiness gate passed 3/3 tests and the full web E2E gate passed 22/22
+tests. The test bootstrap resets its database before migrations; use only a
+uniquely named disposable loopback test database, do not point it at a shared
+or production database, and remove the container and temporary helper after
+the run. Do not print a database URL, credentials, or synthetic fixture values
+in retained logs.
 
 The repository-wide `pnpm verify` script also runs unit tests and production
 builds. Broader test execution is deliberately deferred until the foundation
@@ -338,6 +396,6 @@ The following are deliberately not hidden in this handoff:
 - an outbox/idempotency model so SMTP I/O is not coupled to a database
   transaction;
 - STARTTLS support and provider-specific SMTP compatibility;
-- complete intake/checklist/readiness/decision-score behavior from the domain
-  contract;
+- SCORE-01.2 Decision Score and recommendation behavior from the domain
+  contract, plus OUTPUT-01 through OUTPUT-03 generated outputs;
 - backup retention/rotation and a restore drill owned by the deployment team.
