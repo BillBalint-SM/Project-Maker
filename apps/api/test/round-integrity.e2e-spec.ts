@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { after, before, describe, it } from 'node:test';
 import { setTimeout as delay } from 'node:timers/promises';
-import { DataSource } from 'typeorm';
+import { DataSource, type QueryRunner } from 'typeorm';
 
 import { Core0001Core1785916800000 } from '../src/migrations/0001-core';
 import { QuestionsRounds0002QuestionsRounds1786003200000 } from '../src/migrations/0002-questions-rounds';
@@ -145,6 +145,15 @@ function createDatabaseUrlWithName(
   return parsedUrl.toString();
 }
 
+function createDatabaseUrlWithApplicationName(
+  databaseUrl: string,
+  applicationName: string,
+): string {
+  const parsedUrl = new URL(databaseUrl);
+  parsedUrl.searchParams.set('application_name', applicationName);
+  return parsedUrl.toString();
+}
+
 async function observeQueryOutcomeOrLockWait(
   dataSource: DataSource,
   backendPid: number,
@@ -167,6 +176,32 @@ async function observeQueryOutcomeOrLockWait(
     await delay(10);
   }
   throw new Error(`PostgreSQL backend ${backendPid} did not finish or enter a lock wait.`);
+}
+
+async function observeApplicationOutcomeOrLockWait(
+  dataSource: DataSource,
+  applicationName: string,
+  getOutcome: () => 'completed' | 'pending' | 'rejected',
+): Promise<'blocked' | 'completed' | 'rejected'> {
+  for (let attempt = 0; attempt < 100; attempt += 1) {
+    const outcome = getOutcome();
+    if (outcome !== 'pending') {
+      return outcome;
+    }
+    const activityRows = await dataSource.query<Array<{ waitEventType: string | null }>>(
+      `SELECT "wait_event_type" AS "waitEventType"
+       FROM "pg_stat_activity"
+       WHERE "application_name" = $1
+       ORDER BY "backend_start" DESC
+       LIMIT 1`,
+      [applicationName],
+    );
+    if (activityRows[0]?.waitEventType === 'Lock') {
+      return 'blocked';
+    }
+    await delay(10);
+  }
+  throw new Error(`PostgreSQL application ${applicationName} did not finish or enter a lock wait.`);
 }
 
 async function insertMoveFixture(dataSource: DataSource): Promise<RoundFixture> {
@@ -544,6 +579,31 @@ describe('Round integrity database boundary (PostgreSQL)', () => {
     assert.deepEqual(rows, [{ count: '0' }]);
   });
 
+  it('rejects tab and newline only not-relevant rationales', async () => {
+    const whitespaceOnlyRationales = ['\t', '\n', '\r\n\t'];
+
+    for (const rationale of whitespaceOnlyRationales) {
+      const fixture = await insertAssessmentFixture(
+        dataSource,
+        `SCORE-01 whitespace rationale ${Date.now()} ${randomUUID()}`,
+      );
+      await assert.rejects(
+        insertAssessmentOverride(
+          dataSource,
+          fixture.roundId,
+          fixture.snapshotId,
+          'Nem releváns',
+          rationale,
+        ),
+        (error: { code?: string; constraint?: string }) => {
+          assert.equal(error.code, '23514');
+          assert.equal(error.constraint, 'chk_round_question_assessment_overrides_state');
+          return true;
+        },
+      );
+    }
+  });
+
   it('rejects partial assessment without a valid answer', async () => {
     const missingAnswerFixture = await insertAssessmentFixture(
       dataSource,
@@ -673,6 +733,35 @@ describe('Round integrity database boundary (PostgreSQL)', () => {
       [fixture.roundId],
     );
     assert.deepEqual(roundRows, [{ completedAt: null, status: 'OPEN' }]);
+  });
+
+  it('allows a justified not-relevant required snapshot to complete without an answer', async () => {
+    const fixture = await insertAssessmentFixture(
+      dataSource,
+      `SCORE-01 not-relevant completion ${Date.now()}`,
+    );
+    await insertAssessmentOverride(
+      dataSource,
+      fixture.roundId,
+      fixture.snapshotId,
+      'Nem releváns',
+      'A kérdés igazoltan nem tartozik ehhez a projekthez.',
+    );
+
+    await completeRound(dataSource, fixture.roundId);
+
+    const roundRows = await dataSource.query<Array<{ completedAt: Date | null; status: string }>>(
+      'SELECT "status", "completed_at" AS "completedAt" FROM "interview_rounds" WHERE "id" = $1',
+      [fixture.roundId],
+    );
+    const answerRows = await dataSource.query<Array<{ count: string }>>(
+      'SELECT COUNT(*)::text AS "count" FROM "round_answers" WHERE "round_id" = $1',
+      [fixture.roundId],
+    );
+    assert.equal(roundRows.length, 1);
+    assert.equal(roundRows[0].status, 'COMPLETED');
+    assert.notEqual(roundRows[0].completedAt, null);
+    assert.deepEqual(answerRows, [{ count: '0' }]);
   });
 
   it('serializes a partial assessment with concurrent round completion', async () => {
@@ -824,6 +913,121 @@ describe('Round integrity database boundary (PostgreSQL)', () => {
       [fixture.roundId, fixture.snapshotId],
     );
     assert.deepEqual(answerRows, []);
+    assert.deepEqual(overrideRows, []);
+  });
+
+  it('rejects partial assessment after a concurrent answer invalidation commits', async () => {
+    const fixture = await insertAssessmentFixture(
+      dataSource,
+      `SCORE-01 concurrent answer invalidation ${Date.now()}`,
+    );
+    const answerId = await insertValidTextAnswer(
+      dataSource,
+      fixture.roundId,
+      fixture.snapshotId,
+    );
+    const roundLockRunner = dataSource.createQueryRunner();
+    const assessmentRunner = dataSource.createQueryRunner();
+    const invalidationRunner = dataSource.createQueryRunner();
+    await roundLockRunner.connect();
+    await assessmentRunner.connect();
+    await invalidationRunner.connect();
+
+    try {
+      await roundLockRunner.startTransaction();
+      await roundLockRunner.query(
+        'SELECT "id" FROM "interview_rounds" WHERE "id" = $1 FOR UPDATE',
+        [fixture.roundId],
+      );
+
+      await invalidationRunner.startTransaction();
+      const backendRows = (await invalidationRunner.query(
+        'SELECT pg_backend_pid() AS "pid"',
+      )) as Array<{ pid: number }>;
+      let invalidationOutcome: 'completed' | 'pending' | 'rejected' = 'pending';
+      const invalidationPromise = invalidationRunner.query(
+        'UPDATE "round_answers" SET "value" = $1 WHERE "id" = $2',
+        [JSON.stringify(''), answerId],
+      );
+      void invalidationPromise.then(
+        () => {
+          invalidationOutcome = 'completed';
+        },
+        () => {
+          invalidationOutcome = 'rejected';
+        },
+      );
+
+      const observedOutcome = await observeQueryOutcomeOrLockWait(
+        dataSource,
+        backendRows[0].pid,
+        () => invalidationOutcome,
+      );
+      assert.equal(observedOutcome, 'blocked');
+
+      await assessmentRunner.startTransaction();
+      const assessmentBackendRows = (await assessmentRunner.query(
+        'SELECT pg_backend_pid() AS "pid"',
+      )) as Array<{ pid: number }>;
+      let assessmentOutcome: 'completed' | 'pending' | 'rejected' = 'pending';
+      const assessmentPromise = assessmentRunner.query(
+        `INSERT INTO "round_question_assessment_overrides" (
+          "id", "round_id", "snapshot_id", "status", "rationale"
+        ) VALUES ($1, $2, $3, 'Részben megvan', NULL)`,
+        [randomUUID(), fixture.roundId, fixture.snapshotId],
+      );
+      void assessmentPromise.then(
+        () => {
+          assessmentOutcome = 'completed';
+        },
+        () => {
+          assessmentOutcome = 'rejected';
+        },
+      );
+
+      const observedAssessmentOutcome = await observeQueryOutcomeOrLockWait(
+        dataSource,
+        assessmentBackendRows[0].pid,
+        () => assessmentOutcome,
+      );
+      assert.equal(observedAssessmentOutcome, 'blocked');
+
+      await roundLockRunner.commitTransaction();
+      await invalidationPromise;
+      await invalidationRunner.commitTransaction();
+      await assert.rejects(
+        assessmentPromise,
+        (error: { code?: string; message?: string }) => {
+          assert.equal(error.code, '23514');
+          assert.match(error.message ?? '', /partial assessment requires a valid answer/i);
+          return true;
+        },
+      );
+      await assessmentRunner.rollbackTransaction();
+    } finally {
+      if (roundLockRunner.isTransactionActive) {
+        await roundLockRunner.rollbackTransaction();
+      }
+      if (invalidationRunner.isTransactionActive) {
+        await invalidationRunner.rollbackTransaction();
+      }
+      if (assessmentRunner.isTransactionActive) {
+        await assessmentRunner.rollbackTransaction();
+      }
+      await roundLockRunner.release();
+      await invalidationRunner.release();
+      await assessmentRunner.release();
+    }
+
+    const answerRows = await dataSource.query<Array<{ value: unknown }>>(
+      'SELECT "value" FROM "round_answers" WHERE "id" = $1',
+      [answerId],
+    );
+    const overrideRows = await dataSource.query<Array<{ status: string }>>(
+      'SELECT "status" FROM "round_question_assessment_overrides" WHERE "round_id" = $1 AND "snapshot_id" = $2',
+      [fixture.roundId, fixture.snapshotId],
+    );
+    assert.deepEqual(answerRows, [{ value: '' }]);
     assert.deepEqual(overrideRows, []);
   });
 
@@ -981,6 +1185,130 @@ describe('Round integrity database boundary (PostgreSQL)', () => {
       ]);
     } finally {
       if (migrationDataSource) {
+        await migrationDataSource.destroy();
+      }
+      await dataSource.query(`DROP DATABASE IF EXISTS "${migrationDatabaseName}" WITH (FORCE)`);
+    }
+  });
+
+  it('refuses concurrent migration down after an override insert commits', async () => {
+    const migrationDatabaseName = `score01_down_race_test_${Date.now()}_${randomUUID().replaceAll('-', '')}`;
+    const migrationDatabaseUrl = createDatabaseUrlWithName(databaseUrl, migrationDatabaseName);
+    const revertApplicationName = `score01-down-${randomUUID().replaceAll('-', '')}`;
+    const revertDatabaseUrl = createDatabaseUrlWithApplicationName(
+      migrationDatabaseUrl,
+      revertApplicationName,
+    );
+    let migrationDataSource: DataSource | undefined;
+    let pendingInsertDataSource: DataSource | undefined;
+    let revertDataSource: DataSource | undefined;
+    let pendingInsertRunner: QueryRunner | undefined;
+
+    try {
+      await dataSource.query(`CREATE DATABASE "${migrationDatabaseName}"`);
+      migrationDataSource = new DataSource({
+        type: 'postgres',
+        url: migrationDatabaseUrl,
+        synchronize: false,
+        migrations: [
+          Core0001Core1785916800000,
+          QuestionsRounds0002QuestionsRounds1786003200000,
+          InitialIntakeOpenRound0005InitialIntakeOpenRound1786262400000,
+          RoundQuestionAssessmentOverrides0009RoundQuestionAssessmentOverrides1786608000000,
+        ],
+      });
+      await migrationDataSource.initialize();
+      await migrationDataSource.runMigrations();
+
+      const fixture = await insertAssessmentFixture(
+        migrationDataSource,
+        `SCORE-01 concurrent down ${Date.now()}`,
+      );
+      pendingInsertDataSource = new DataSource({
+        type: 'postgres',
+        url: migrationDatabaseUrl,
+        synchronize: false,
+      });
+      await pendingInsertDataSource.initialize();
+      pendingInsertRunner = pendingInsertDataSource.createQueryRunner();
+      await pendingInsertRunner.connect();
+      await pendingInsertRunner.startTransaction();
+      await pendingInsertRunner.query(
+        `INSERT INTO "round_question_assessment_overrides" (
+          "id", "round_id", "snapshot_id", "status", "rationale"
+        ) VALUES ($1, $2, $3, 'Nem releváns', $4)`,
+        [
+          randomUUID(),
+          fixture.roundId,
+          fixture.snapshotId,
+          'A rollback-verseny alatt megőrzendő döntés.',
+        ],
+      );
+
+      revertDataSource = new DataSource({
+        type: 'postgres',
+        url: revertDatabaseUrl,
+        synchronize: false,
+        migrations: [
+          Core0001Core1785916800000,
+          QuestionsRounds0002QuestionsRounds1786003200000,
+          InitialIntakeOpenRound0005InitialIntakeOpenRound1786262400000,
+          RoundQuestionAssessmentOverrides0009RoundQuestionAssessmentOverrides1786608000000,
+        ],
+      });
+      await revertDataSource.initialize();
+      let revertOutcome: 'completed' | 'pending' | 'rejected' = 'pending';
+      const revertPromise = revertDataSource.undoLastMigration();
+      void revertPromise.then(
+        () => {
+          revertOutcome = 'completed';
+        },
+        () => {
+          revertOutcome = 'rejected';
+        },
+      );
+
+      const observedOutcome = await observeApplicationOutcomeOrLockWait(
+        migrationDataSource,
+        revertApplicationName,
+        () => revertOutcome,
+      );
+      assert.equal(observedOutcome, 'blocked');
+
+      await pendingInsertRunner.commitTransaction();
+      await assert.rejects(
+        revertPromise,
+        /Migration 0009 cannot be reverted while assessment override rows exist/i,
+      );
+
+      const overrideRows = await migrationDataSource.query<Array<{ count: string }>>(
+        'SELECT COUNT(*)::text AS "count" FROM "round_question_assessment_overrides" WHERE "round_id" = $1',
+        [fixture.roundId],
+      );
+      const migrationRows = await migrationDataSource.query<Array<{ name: string }>>(
+        'SELECT "name" FROM "migrations" WHERE "name" = $1',
+        ['RoundQuestionAssessmentOverrides0009RoundQuestionAssessmentOverrides1786608000000'],
+      );
+      assert.deepEqual(overrideRows, [{ count: '1' }]);
+      assert.deepEqual(migrationRows, [
+        {
+          name: 'RoundQuestionAssessmentOverrides0009RoundQuestionAssessmentOverrides1786608000000',
+        },
+      ]);
+    } finally {
+      if (pendingInsertRunner?.isTransactionActive) {
+        await pendingInsertRunner.rollbackTransaction();
+      }
+      if (pendingInsertRunner) {
+        await pendingInsertRunner.release();
+      }
+      if (revertDataSource?.isInitialized) {
+        await revertDataSource.destroy();
+      }
+      if (pendingInsertDataSource?.isInitialized) {
+        await pendingInsertDataSource.destroy();
+      }
+      if (migrationDataSource?.isInitialized) {
         await migrationDataSource.destroy();
       }
       await dataSource.query(`DROP DATABASE IF EXISTS "${migrationDatabaseName}" WITH (FORCE)`);
