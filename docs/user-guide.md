@@ -274,7 +274,7 @@ A felső összefoglaló csak a legutóbb sikeresen mentett állapotot mutatja. H
 | `INTAKE_IN_PROGRESS` | Aktív igényfelmérés, workshop vagy interjú folyik | Nem jelenti, hogy minden kérdésnek van válasza |
 | `WAITING_INTERNAL` | A következő érdemi lépés belső információra vagy döntésre vár | Nem automatikus; a felelősnek kell átállítania |
 | `WAITING_CUSTOMER` | A következő érdemi lépés ügyfélválaszra vár | Nem küld automatikusan levelet pusztán a státusz miatt |
-| `READY_FOR_PLANNING` | A felhasználó üzletileg tervezésre késznek jelöli | A rendszer nem számol readiness értéket és nem igazolja a teljességet |
+| `READY_FOR_PLANNING` | A felhasználó üzletileg tervezésre késznek jelöli | A státusz kiválasztása önmagában nem számít readiness értéket, nem kapuzza a munkafolyamatot, és nem tanúsít felkészültséget vagy teljességet |
 | `ARCHIVED` | Az aktív követés lezárt, a történet megmarad | Nem törlés; visszaállítható, de mindig `DRAFT` állapotba |
 
 Az öt aktív státusz közül bármelyiket közvetlenül kiválaszthatod; nincs kényszerített státuszsorrend és nincs automatikus readiness-kapu. A csapatnak kell gondoskodnia arról, hogy a választott státusz megfeleljen a valós helyzetnek.

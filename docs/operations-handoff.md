@@ -90,6 +90,7 @@ ordered TypeORM migrations registered in
 7. `0007-discovery-follow-up-resolution.ts` — nullable persisted discovery-follow-up answer/decision content.
 8. `0008-discovery-follow-up-edit-version.ts` — positive persisted discovery-follow-up version for conflict-safe open-item edits.
 9. `0009-round-question-assessment-overrides.ts` — effective `Részben megvan` and justified `Nem releváns` assessment overrides, completion/immutability guards, and their database invariants.
+10. `0010-round-answer-validation-parity.ts` — database validation parity for `TEXT` and `LONG_TEXT` answers by rejecting values made only from space, tab, line feed, carriage return, form feed, or vertical tab, matching the API rule.
 
 The deployed API image contains the compiled migration classes, but not the
 TypeScript migration source tree used by the development-only
@@ -140,7 +141,7 @@ docker compose --env-file .env exec -T api node -e $migrationStatusScript
 
 `pending: false` means that all migration classes in the running image are
 recorded in the database. The `applied` array is the database's migration
-history; the nine expected names are listed above.
+history; the ten expected names are listed above.
 
 There is no safe arbitrary migration selector in the runtime image. A
 controlled revert can undo only the latest applied migration through a
@@ -169,6 +170,10 @@ constraint and version column; it removes only edit-concurrency metadata, not a
 business follow-up field. `0009` is guarded: its rollback first takes an exclusive
 lock and refuses before DDL if any assessment-override row exists. Do not remove
 those rows to make a rollback pass without an approved data operation and backup.
+Reverting `0010` redefines only the round-answer validation function with its
+previous space-only `btrim` predicate. It leaves schema objects and stored answers
+in place, but database validation then permits control-whitespace-only text that
+the forward migration rejects.
 Before any revert, inspect the migration and choose the rollback procedure
 appropriate to the affected objects.
 
@@ -357,7 +362,7 @@ pnpm compose:up
 ```
 
 The Compose smoke gate should confirm `/api/health`, base-question seeding,
-all nine migrations, Markdown download headers/content, and the expected
+all ten migrations, Markdown download headers/content, and the expected
 `503` response when SMTP is intentionally disabled. A local SMTP-capture
 container can be used to verify manual review, manual ping, and due-timer
 delivery without using production credentials.

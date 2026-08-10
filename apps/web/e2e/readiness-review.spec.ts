@@ -166,7 +166,7 @@ test.describe.serial('SCORE-01 readiness employee workflow', () => {
     );
     await expect(page.getByTestId('readiness-review-available')).toBeVisible();
     await expect(page.getByTestId('readiness-review-summary')).toBeVisible();
-    await expect(page.getByTestId('readiness-review-factor')).toHaveCount(
+    await expect(page.getByTestId(/^readiness-review-factor-/)).toHaveCount(
       initialReadiness.factors.length,
     );
     await expect(page.getByTestId('readiness-review-gap')).toHaveCount(initialReadiness.gaps.length);
@@ -506,9 +506,7 @@ function readinessFactorItem(
   page: Page,
   factor: AvailableReadiness['factors'][number],
 ): Locator {
-  return page.getByTestId('readiness-review-factor').filter({
-    hasText: factor.label + ':',
-  });
+  return page.getByTestId(`readiness-review-factor-${factor.id}`);
 }
 
 function requireReadinessGap(
