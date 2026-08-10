@@ -187,13 +187,196 @@
                 <strong>Decision or answer:</strong> {{ followUp.decisionOrAnswer }}
               </p>
             }
-            @if (!isResolved(followUp)) {
+            @if (isCanonicalOpen(followUp)) {
+              <p-button
+                label="Edit"
+                [disabled]="editActionDisabled()"
+                data-testid="edit-discovery-follow-up-button"
+                (onClick)="openEdit(followUp.id)"
+              />
               <p-button
                 label="Resolve"
                 [disabled]="resolveControlDisabled()"
                 data-testid="resolve-discovery-follow-up-button"
                 (onClick)="openResolution(followUp.id)"
               />
+            }
+            @if (isEditOpen(followUp.id)) {
+              <form
+                class="discovery-follow-up-edit-form"
+                [formGroup]="editForm"
+                (ngSubmit)="saveEdit(followUp.id)"
+                data-testid="discovery-follow-up-edit-form"
+              >
+                <fieldset
+                  class="discovery-follow-up-fields"
+                  [disabled]="editControlDisabled()"
+                >
+                  <legend class="sr-only">Edit discovery follow-up</legend>
+                  <div class="field">
+                    <label for="discovery-follow-up-edit-category">Category</label>
+                    <p-select
+                      inputId="discovery-follow-up-edit-category"
+                      styleClass="full-width"
+                      formControlName="category"
+                      [options]="categoryOptions"
+                      optionLabel="label"
+                      optionValue="value"
+                      data-testid="discovery-follow-up-edit-category-select"
+                    />
+                    @if (
+                      editForm.controls.category.invalid &&
+                      editForm.controls.category.touched
+                    ) {
+                      <small class="field-error">Choose a category.</small>
+                    }
+                  </div>
+                  <div class="field">
+                    <label for="discovery-follow-up-edit-question">Question</label>
+                    <textarea
+                      pTextarea
+                      id="discovery-follow-up-edit-question"
+                      class="full-width"
+                      rows="3"
+                      formControlName="question"
+                      data-testid="discovery-follow-up-edit-question-input"
+                    ></textarea>
+                    @if (
+                      editForm.controls.question.hasError('maxlength') &&
+                      editForm.controls.question.touched
+                    ) {
+                      <small class="field-error">Question must be 10,000 characters or fewer.</small>
+                    } @else if (
+                      editForm.controls.question.invalid &&
+                      editForm.controls.question.touched
+                    ) {
+                      <small class="field-error">Question is required.</small>
+                    }
+                  </div>
+                  <div class="field">
+                    <label for="discovery-follow-up-edit-owner">Owner</label>
+                    <input
+                      pInputText
+                      id="discovery-follow-up-edit-owner"
+                      class="full-width"
+                      formControlName="owner"
+                      data-testid="discovery-follow-up-edit-owner-input"
+                    />
+                    @if (
+                      editForm.controls.owner.hasError('maxlength') &&
+                      editForm.controls.owner.touched
+                    ) {
+                      <small class="field-error">Owner must be 255 characters or fewer.</small>
+                    } @else if (
+                      editForm.controls.owner.invalid &&
+                      editForm.controls.owner.touched
+                    ) {
+                      <small class="field-error">Owner is required.</small>
+                    }
+                  </div>
+                  <div class="field">
+                    <label for="discovery-follow-up-edit-due-date">Due date</label>
+                    <p-datepicker
+                      inputId="discovery-follow-up-edit-due-date"
+                      styleClass="full-width"
+                      formControlName="dueDate"
+                      [dateFormat]="'yy-mm-dd'"
+                      [showIcon]="true"
+                      [appendTo]="'body'"
+                      data-testid="discovery-follow-up-edit-due-date-input"
+                    />
+                    @if (
+                      editForm.controls.dueDate.invalid &&
+                      editForm.controls.dueDate.touched
+                    ) {
+                      <small class="field-error">Enter a due date as YYYY-MM-DD.</small>
+                    }
+                  </div>
+                  <div class="field">
+                    <label for="discovery-follow-up-edit-next-step">Next step</label>
+                    <textarea
+                      pTextarea
+                      id="discovery-follow-up-edit-next-step"
+                      class="full-width"
+                      rows="3"
+                      formControlName="nextStep"
+                      data-testid="discovery-follow-up-edit-next-step-input"
+                    ></textarea>
+                    @if (
+                      editForm.controls.nextStep.hasError('maxlength') &&
+                      editForm.controls.nextStep.touched
+                    ) {
+                      <small class="field-error">Next step must be 10,000 characters or fewer.</small>
+                    } @else if (
+                      editForm.controls.nextStep.invalid &&
+                      editForm.controls.nextStep.touched
+                    ) {
+                      <small class="field-error">Next step is required.</small>
+                    }
+                  </div>
+                </fieldset>
+                @if (editConflictId() === followUp.id) {
+                  <p-message
+                    severity="warn"
+                    data-testid="discovery-follow-up-edit-conflict"
+                  >
+                    @if (hasTerminalEditConflict(followUp.id)) {
+                      This discovery follow-up cannot be edited because it is terminal. Cancel this draft.
+                    } @else {
+                      This discovery follow-up changed on the server. Your draft is kept and reload is required before saving.
+                    }
+                  </p-message>
+                }
+                <div class="discovery-follow-up-edit-actions">
+                  <p-button
+                    type="submit"
+                    label="Save changes"
+                    [loading]="isEditSaving(followUp.id)"
+                    [disabled]="
+                      editControlDisabled() ||
+                      editForm.invalid ||
+                      !hasEditChanges()
+                    "
+                    data-testid="save-discovery-follow-up-edit-button"
+                  />
+                  <p-button
+                    type="button"
+                    label="Cancel"
+                    severity="secondary"
+                    [outlined]="true"
+                    [disabled]="isEditSaving(followUp.id)"
+                    data-testid="cancel-discovery-follow-up-edit-button"
+                    (onClick)="cancelEdit()"
+                  />
+                  @if (editConflictId() === followUp.id) {
+                    @if (canReloadEditFromCurrent(followUp.id)) {
+                      <p-button
+                        type="button"
+                        label="Reload current version"
+                        severity="secondary"
+                        [outlined]="true"
+                        [disabled]="mutationDisabled()"
+                        data-testid="reload-discovery-follow-up-edit-button"
+                        (onClick)="reloadEditFromCurrent()"
+                      />
+                    } @else if (!hasTerminalEditConflict(followUp.id)) {
+                      <p-button
+                        type="button"
+                        label="Retry current version refresh"
+                        severity="secondary"
+                        [outlined]="true"
+                        [loading]="refreshingEditConflict()"
+                        [disabled]="
+                          refreshingEditConflict() ||
+                          mutationDisabled()
+                        "
+                        data-testid="retry-discovery-follow-up-edit-refresh-button"
+                        (onClick)="retryEditConflictRefresh(followUp.id)"
+                      />
+                    }
+                  }
+                </div>
+              </form>
             }
             @if (isResolutionOpen(followUp.id)) {
               <form

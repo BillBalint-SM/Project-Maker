@@ -25,6 +25,15 @@ export interface ResolveDiscoveryFollowUpInput {
   readonly decisionOrAnswer: string;
 }
 
+export interface UpdateDiscoveryFollowUpInput {
+  readonly category: DiscoveryFollowUpCategory;
+  readonly question: string;
+  readonly owner: string;
+  readonly dueDate: string;
+  readonly nextStep: string;
+  readonly expectedVersion: number;
+}
+
 export interface DiscoveryFollowUp {
   readonly id: string;
   readonly projectId: string;
@@ -37,4 +46,5 @@ export interface DiscoveryFollowUp {
   readonly nextStep: string;
   readonly createdAt: string;
   readonly updatedAt: string;
+  readonly version: number;
 }

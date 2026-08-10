@@ -23,7 +23,7 @@ The canonical workflow is:
 - **Intake:** the structured first assessment used to decide whether an initiative is clear enough to estimate or develop.
 - **Playbook:** a versioned question set with its own readiness and decision-scoring weights. A project stores the selected playbook ID.
 - **Checklist answer:** the answer and operational state for one playbook item, including owner, due date, open question, and next step.
-- **Discovery follow-up:** a project-owned discovery work item with a responsible owner, due date, status, answer/decision, and next step. The delivered `INTAKE-04.1` and `INTAKE-04.2` slices create, review, and resolve it to a canonical terminal status with a persisted answer/decision. Source linkage and general editing remain later work.
+- **Discovery follow-up:** a project-owned discovery work item with a responsible owner, due date, status, answer/decision, and next step. The delivered `INTAKE-04.1`, `INTAKE-04.2`, and `INTAKE-04.3a` slices create, review, resolve, and edit its open working fields while retaining canonical terminal states. Optional source checklist-item linkage remains future work.
 - **Customer email follow-up:** an outbound communication cadence/schedule. It may send pings, but it is not a discovery work item and does not replace discovery follow-ups.
 - **Completion:** progress through relevant playbook items. Items marked not relevant are excluded from the denominator.
 - **Readiness:** a weighted measure of whether the project has enough business, ownership, checklist, and follow-up information for estimation or development.
@@ -59,7 +59,7 @@ Each answer preserves `status`, `owner`, `dueDate`, free-text `answer`, `openQue
 
 ### Discovery follow-up
 
-Each discovery follow-up preserves a stable `id`, `category`, `question`, `owner`, `dueDate`, `status`, `decisionOrAnswer`, and `nextStep`. Creation, review, and resolution are delivered; optional source checklist-item linkage and general editing remain future work. Customer email follow-up state is a separate scheduling concern and is not part of this entity.
+Each discovery follow-up preserves a stable `id`, `category`, `question`, `owner`, `dueDate`, `status`, `decisionOrAnswer`, and `nextStep`. Creation, review, resolution, and editing of the five open working fields are delivered; optional source checklist-item linkage remains future work. Customer email follow-up state is a separate scheduling concern and is not part of this entity.
 
 ### Readiness gap
 

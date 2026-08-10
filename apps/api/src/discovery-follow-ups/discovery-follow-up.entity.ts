@@ -1,4 +1,11 @@
-import { Column, CreateDateColumn, Entity, PrimaryColumn, UpdateDateColumn } from 'typeorm';
+import {
+  Column,
+  CreateDateColumn,
+  Entity,
+  PrimaryColumn,
+  UpdateDateColumn,
+  VersionColumn,
+} from 'typeorm';
 
 import {
   discoveryFollowUpCategories,
@@ -43,4 +50,7 @@ export class DiscoveryFollowUpEntity {
 
   @UpdateDateColumn({ name: 'updated_at', type: 'timestamptz' })
   updatedAt!: Date;
+
+  @VersionColumn({ type: 'integer' })
+  version!: number;
 }

@@ -9,15 +9,28 @@ import type {
   CreateDiscoveryFollowUpInput,
   DiscoveryFollowUp,
   ResolveDiscoveryFollowUpInput,
+  UpdateDiscoveryFollowUpInput,
 } from '@project-maker/contracts';
 
-type DiscoveryOperation = 'load' | 'create' | 'resolve';
+export type DiscoveryOperation = 'load' | 'create' | 'update' | 'resolve';
 
 const discoveryActions: Readonly<Record<DiscoveryOperation, string>> = {
   load: 'load discovery follow-ups',
   create: 'create a discovery follow-up',
+  update: 'update a discovery follow-up',
   resolve: 'resolve a discovery follow-up',
 };
+
+export class DiscoveryFollowUpsApiError extends Error {
+  constructor(
+    message: string,
+    readonly operation: DiscoveryOperation,
+    readonly status: number | null,
+  ) {
+    super(message);
+    this.name = 'DiscoveryFollowUpsApiError';
+  }
+}
 
 @Injectable()
 export class DiscoveryFollowUpsApiService {
@@ -51,6 +64,22 @@ export class DiscoveryFollowUpsApiService {
       );
   }
 
+  update(
+    projectId: string,
+    followUpId: string,
+    input: UpdateDiscoveryFollowUpInput,
+  ): Observable<DiscoveryFollowUp> {
+    return this.http
+      .patch<DiscoveryFollowUp>(
+        '/api/projects/' +
+          encodeURIComponent(projectId) +
+          '/discovery-follow-ups/' +
+          encodeURIComponent(followUpId),
+        input,
+      )
+      .pipe(catchError((error: unknown) => this.fail(error, 'update')));
+  }
+
   resolve(
     projectId: string,
     followUpId: string,
@@ -77,7 +106,12 @@ export class DiscoveryFollowUpsApiService {
     const action = discoveryActions[operation];
     if (!(error instanceof HttpErrorResponse)) {
       return throwError(
-        () => new Error('Could not ' + action + '. Refresh the page and try again.'),
+        () =>
+          new DiscoveryFollowUpsApiError(
+            'Could not ' + action + '. Refresh the page and try again.',
+            operation,
+            null,
+          ),
       );
     }
 
@@ -90,23 +124,27 @@ export class DiscoveryFollowUpsApiService {
     if (error.status === 0) {
       return throwError(
         () =>
-          new Error(
+          new DiscoveryFollowUpsApiError(
             'Could not ' +
               action +
               ' because the API is unreachable. Check that the server is running, then try again.',
+            operation,
+            error.status,
           ),
       );
     }
 
     return throwError(
       () =>
-        new Error(
+        new DiscoveryFollowUpsApiError(
           'Could not ' +
             action +
             ' (HTTP ' +
             error.status +
             '). ' +
             discoveryNextStep(error.status, operation),
+          operation,
+          error.status,
         ),
     );
   }
@@ -121,6 +159,9 @@ function discoveryNextStep(
   }
   if (status === 409 && operation === 'create') {
     return 'The project may be archived or changed. Refresh the cockpit and try again.';
+  }
+  if (status === 409 && operation === 'update') {
+    return 'The discovery follow-up may have changed. Refresh its current version and try again.';
   }
   if (status === 409) {
     return 'Refresh the project to see its latest lifecycle state.';
