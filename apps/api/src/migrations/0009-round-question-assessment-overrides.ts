@@ -29,7 +29,7 @@ export class RoundQuestionAssessmentOverrides0009RoundQuestionAssessmentOverride
           OR (
             "status" = 'Nem releváns'
             AND "rationale" IS NOT NULL
-            AND btrim("rationale") <> ''
+            AND "rationale" !~ '^[[:space:]]*$'
             AND char_length("rationale") <= 10000
           )
         ),
@@ -89,7 +89,7 @@ export class RoundQuestionAssessmentOverrides0009RoundQuestionAssessmentOverride
           WHERE snapshot."round_id" = NEW."round_id"
             AND snapshot."id" = NEW."snapshot_id"
             AND "is_valid_round_answer"(snapshot."type", snapshot."options", answer."value")
-          FOR KEY SHARE OF answer;
+          FOR NO KEY UPDATE OF answer;
           IF NOT FOUND THEN
             RAISE EXCEPTION 'Partial assessment requires a valid answer'
               USING ERRCODE = '23514';
@@ -265,6 +265,9 @@ export class RoundQuestionAssessmentOverrides0009RoundQuestionAssessmentOverride
   }
 
   async down(queryRunner: QueryRunner): Promise<void> {
+    await queryRunner.query(
+      'LOCK TABLE "round_question_assessment_overrides" IN ACCESS EXCLUSIVE MODE',
+    );
     const countRows = (await queryRunner.query(`
       SELECT COUNT(*)::text AS "overrideCount"
       FROM "round_question_assessment_overrides"
