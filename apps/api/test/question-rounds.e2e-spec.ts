@@ -6,12 +6,17 @@ import { after, before, describe, it } from 'node:test';
 import { setTimeout as delay } from 'node:timers/promises';
 import request from 'supertest';
 import { DataSource, type QueryRunner } from 'typeorm';
+import type { AnswerValue, BaseQuestionType, GeneralPlaybook } from '@project-maker/contracts';
+import { loadGeneralPlaybookV1 } from '@project-maker/contracts/general-playbook-runtime';
 
 import { AppModule } from '../src/app.module';
 import { Core0001Core1785916800000 } from '../src/migrations/0001-core';
 import { QuestionsRounds0002QuestionsRounds1786003200000 } from '../src/migrations/0002-questions-rounds';
 import { MarkdownRevisions0003MarkdownRevisions1786089600000 } from '../src/migrations/0003-markdown-revisions';
 import { InitialIntakeOpenRound0005InitialIntakeOpenRound1786262400000 } from '../src/migrations/0005-initial-intake-open-round';
+import { DiscoveryFollowUps0006DiscoveryFollowUps1786348800000 } from '../src/migrations/0006-discovery-follow-ups';
+import { DiscoveryFollowUpResolution0007DiscoveryFollowUpResolution1786435200000 } from '../src/migrations/0007-discovery-follow-up-resolution';
+import { DiscoveryFollowUpEditVersion0008DiscoveryFollowUpEditVersion1786521600000 } from '../src/migrations/0008-discovery-follow-up-edit-version';
 import { RoundQuestionAssessmentOverrides0009RoundQuestionAssessmentOverrides1786608000000 } from '../src/migrations/0009-round-question-assessment-overrides';
 import { RoundAnswerValidationParity0010RoundAnswerValidationParity1786694400000 } from '../src/migrations/0010-round-answer-validation-parity';
 
@@ -39,6 +44,9 @@ describe('Question bank and interview rounds (PostgreSQL e2e)', () => {
         QuestionsRounds0002QuestionsRounds1786003200000,
         MarkdownRevisions0003MarkdownRevisions1786089600000,
         InitialIntakeOpenRound0005InitialIntakeOpenRound1786262400000,
+        DiscoveryFollowUps0006DiscoveryFollowUps1786348800000,
+        DiscoveryFollowUpResolution0007DiscoveryFollowUpResolution1786435200000,
+        DiscoveryFollowUpEditVersion0008DiscoveryFollowUpEditVersion1786521600000,
         RoundQuestionAssessmentOverrides0009RoundQuestionAssessmentOverrides1786608000000,
         RoundAnswerValidationParity0010RoundAnswerValidationParity1786694400000,
       ],
@@ -1461,7 +1469,255 @@ describe('Question bank and interview rounds (PostgreSQL e2e)', () => {
       /type|valid|answer|completion/,
     );
   });
+
+  it('returns explicit readiness unavailable states and a missing-project error', async () => {
+    const { projectId } = await createProjectWithSingleQuestionSchema(
+      app,
+      `Readiness unavailable ${Date.now()}`,
+      'readiness-unavailable',
+    );
+
+    const noSourceResponse = await request(app.getHttpServer())
+      .get(`/projects/${projectId}/readiness`)
+      .expect(200);
+    assert.deepEqual(noSourceResponse.body, {
+      available: false,
+      projectId,
+      reason: 'NO_INITIAL_INTAKE',
+    });
+
+    await request(app.getHttpServer())
+      .post(`/projects/${projectId}/rounds`)
+      .send({ type: 'INITIAL_INTAKE' })
+      .expect(201);
+
+    const unsupportedResponse = await request(app.getHttpServer())
+      .get(`/projects/${projectId}/readiness`)
+      .expect(200);
+    assert.deepEqual(unsupportedResponse.body, {
+      available: false,
+      projectId,
+      reason: 'UNSUPPORTED_SCHEMA',
+    });
+
+    const missingProjectResponse = await request(app.getHttpServer())
+      .get(`/projects/${randomUUID()}/readiness`)
+      .expect(404);
+    assert.equal(missingProjectResponse.body.message, 'Project not found.');
+  });
+
+  it('calculates canonical readiness from effective states without returning business content', async () => {
+    const fixture = await createCanonicalReadinessRound(
+      app,
+      `Readiness canonical ${Date.now()}`,
+      'readiness-canonical',
+      null,
+    );
+    const policy = await loadGeneralPlaybookV1();
+    const partialStatus = checklistStatusForValue(policy, 0.5);
+    const excludedStatus = policy.scoring.readiness.excludedChecklistStatus;
+    const blockedStatus = requireFollowUpStatus(policy.statuses.followUp, 'Blokkolt');
+    const resolvedStatus = policy.scoring.readiness.resolvedFollowUpStatuses[0];
+    assert.ok(resolvedStatus);
+
+    const firstQuestion = requireReadinessQuestion(fixture.questions, 'general-001');
+    const secondQuestion = requireReadinessQuestion(fixture.questions, 'general-002');
+    const thirdQuestion = requireReadinessQuestion(fixture.questions, 'general-003');
+    const fourthQuestion = requireReadinessQuestion(fixture.questions, 'general-004');
+
+    await saveRoundAnswer(app, fixture.projectId, fixture.roundId, firstQuestion);
+    await saveRoundAnswer(app, fixture.projectId, fixture.roundId, secondQuestion);
+    await request(app.getHttpServer())
+      .put(
+        `/projects/${fixture.projectId}/rounds/${fixture.roundId}/answers/${secondQuestion.id}/assessment`,
+      )
+      .send({ status: partialStatus, rationale: null })
+      .expect(200);
+
+    const sensitiveRationale = `score01-readiness-rationale-${randomUUID()}`;
+    await request(app.getHttpServer())
+      .put(
+        `/projects/${fixture.projectId}/rounds/${fixture.roundId}/answers/${thirdQuestion.id}/assessment`,
+      )
+      .send({ status: excludedStatus, rationale: sensitiveRationale })
+      .expect(200);
+
+    const redactedAnswerQuestion = requireTextReadinessQuestion(
+      fixture.questions,
+      new Set([firstQuestion.id, secondQuestion.id, thirdQuestion.id, fourthQuestion.id]),
+    );
+    const sensitiveAnswer = `score01-readiness-answer-${randomUUID()}`;
+    await request(app.getHttpServer())
+      .patch(
+        `/projects/${fixture.projectId}/rounds/${fixture.roundId}/answers/${redactedAnswerQuestion.id}`,
+      )
+      .send({ value: sensitiveAnswer })
+      .expect(200);
+
+    const sensitiveFollowUpQuestion = `score01-follow-up-question-${randomUUID()}`;
+    const sensitiveFollowUpOwner = `score01-follow-up-owner-${randomUUID()}`;
+    const sensitiveFollowUpNextStep = `score01-follow-up-next-step-${randomUUID()}`;
+    const followUpResponse = await request(app.getHttpServer())
+      .post(`/projects/${fixture.projectId}/discovery-follow-ups`)
+      .send({
+        category: 'BUSINESS',
+        question: sensitiveFollowUpQuestion,
+        owner: sensitiveFollowUpOwner,
+        dueDate: '2026-08-11',
+        nextStep: sensitiveFollowUpNextStep,
+      })
+      .expect(201);
+    const followUpId = followUpResponse.body.id as string;
+    await controlDataSource.query(
+      'UPDATE "discovery_follow_ups" SET "status" = $1 WHERE "id" = $2',
+      [blockedStatus, followUpId],
+    );
+
+    const blockedReadinessResponse = await request(app.getHttpServer())
+      .get(`/projects/${fixture.projectId}/readiness`)
+      .expect(200);
+    const blockedReadiness = blockedReadinessResponse.body as AvailableReadinessResponse;
+    assert.equal(blockedReadiness.available, true);
+    assert.equal(blockedReadiness.projectId, fixture.projectId);
+    assert.equal(blockedReadiness.sourceRoundId, fixture.roundId);
+    assert.equal(blockedReadiness.sourceRoundStatus, 'OPEN');
+    assert.deepEqual(
+      blockedReadiness.factors
+        .filter((factor) => factor.id !== 'checklist')
+        .map((factor) => ({ id: factor.id, percentage: factor.percentage })),
+      [
+        { id: 'baseInfo', percentage: 100 },
+        { id: 'business', percentage: 75 },
+        { id: 'ownership', percentage: 0 },
+        { id: 'followUpResolution', percentage: 0 },
+      ],
+    );
+    assert.ok(requireReadinessFactor(blockedReadiness, 'checklist').percentage > 0);
+    assert.ok(requireReadinessFactor(blockedReadiness, 'checklist').percentage < 100);
+    assert.ok(blockedReadiness.completionPercentage > 0);
+    assert.ok(blockedReadiness.completionPercentage < 100);
+
+    const blockedGap = blockedReadiness.gaps.find((gap) => gap.id === `follow-up-${followUpId}`);
+    assert.deepEqual(blockedGap, {
+      id: `follow-up-${followUpId}`,
+      severity: policy.statuses.readinessGapSeverity[0],
+      category: 'Discovery utánkövetés',
+      message: 'Egy discovery utánkövetés blokkolt állapotban van.',
+      nextStep: 'Oldd fel a blokkoló discovery utánkövetést.',
+      target: 'follow-ups',
+      snapshotId: null,
+      followUpId,
+    });
+    assert.ok(blockedReadiness.gaps.some((gap) => gap.id === 'overview-ball-owner'));
+    assert.ok(blockedReadiness.gaps.some((gap) => gap.id === 'checklist-general-002'));
+    assert.ok(blockedReadiness.gaps.some((gap) => gap.id === 'checklist-general-004'));
+    assert.ok(!blockedReadiness.gaps.some((gap) => gap.id === 'checklist-general-003'));
+    assert.equal(
+      blockedReadiness.gaps.find((gap) => gap.id === 'checklist-general-002')?.severity,
+      policy.statuses.readinessGapSeverity[1],
+    );
+
+    const blockedSerialized = JSON.stringify(blockedReadiness);
+    for (const sensitiveValue of [
+      sensitiveAnswer,
+      sensitiveRationale,
+      sensitiveFollowUpQuestion,
+      sensitiveFollowUpOwner,
+      sensitiveFollowUpNextStep,
+    ]) {
+      assert.equal(blockedSerialized.includes(sensitiveValue), false);
+    }
+
+    const sensitiveDecision = `score01-follow-up-decision-${randomUUID()}`;
+    await request(app.getHttpServer())
+      .post(`/projects/${fixture.projectId}/discovery-follow-ups/${followUpId}/resolve`)
+      .send({ status: resolvedStatus, decisionOrAnswer: sensitiveDecision })
+      .expect(200);
+
+    const resolvedReadinessResponse = await request(app.getHttpServer())
+      .get(`/projects/${fixture.projectId}/readiness`)
+      .expect(200);
+    const resolvedReadiness = resolvedReadinessResponse.body as AvailableReadinessResponse;
+    assert.equal(
+      requireReadinessFactor(resolvedReadiness, 'followUpResolution').percentage,
+      100,
+    );
+    assert.ok(!resolvedReadiness.gaps.some((gap) => gap.id === `follow-up-${followUpId}`));
+    assert.equal(JSON.stringify(resolvedReadiness).includes(sensitiveDecision), false);
+
+  });
+
+  it('uses a completed canonical intake only until a new initial intake is open', async () => {
+    const firstFixture = await createCanonicalReadinessRound(
+      app,
+      `Readiness source selection ${Date.now()}`,
+      'readiness-source-selection',
+      'Readiness owner',
+    );
+
+    for (const question of firstFixture.questions) {
+      await saveRoundAnswer(app, firstFixture.projectId, firstFixture.roundId, question);
+    }
+    await request(app.getHttpServer())
+      .post(`/projects/${firstFixture.projectId}/rounds/${firstFixture.roundId}/complete`)
+      .expect(201);
+
+    const completedReadinessResponse = await request(app.getHttpServer())
+      .get(`/projects/${firstFixture.projectId}/readiness`)
+      .expect(200);
+    const completedReadiness = completedReadinessResponse.body as AvailableReadinessResponse;
+    assert.equal(completedReadiness.sourceRoundId, firstFixture.roundId);
+    assert.equal(completedReadiness.sourceRoundStatus, 'COMPLETED');
+
+    const openRoundResponse = await request(app.getHttpServer())
+      .post(`/projects/${firstFixture.projectId}/rounds`)
+      .send({ type: 'INITIAL_INTAKE' })
+      .expect(201);
+    const openRoundId = openRoundResponse.body.id as string;
+
+    const openReadinessResponse = await request(app.getHttpServer())
+      .get(`/projects/${firstFixture.projectId}/readiness`)
+      .expect(200);
+    const openReadiness = openReadinessResponse.body as AvailableReadinessResponse;
+    assert.equal(openReadiness.sourceRoundId, openRoundId);
+    assert.equal(openReadiness.sourceRoundStatus, 'OPEN');
+  });
 });
+
+interface ReadinessRoundQuestion {
+  readonly id: string;
+  readonly stableKey: string;
+  readonly type: BaseQuestionType;
+  readonly options: readonly string[] | null;
+}
+
+interface CanonicalReadinessRound {
+  readonly projectId: string;
+  readonly roundId: string;
+  readonly questions: readonly ReadinessRoundQuestion[];
+}
+
+interface AvailableReadinessResponse {
+  readonly available: true;
+  readonly projectId: string;
+  readonly sourceRoundId: string;
+  readonly sourceRoundStatus: string;
+  readonly completionPercentage: number;
+  readonly factors: readonly {
+    readonly id: string;
+    readonly percentage: number;
+  }[];
+  readonly gaps: readonly {
+    readonly id: string;
+    readonly severity: string;
+    readonly category: string;
+    readonly message: string;
+    readonly nextStep: string;
+    readonly target: string;
+    readonly snapshotId: string | null;
+    readonly followUpId: string | null;
+  }[];
+}
 
 async function createProjectWithSingleQuestionSchema(
   app: INestApplication,
@@ -1544,6 +1800,159 @@ async function createProjectWithQuestionTypesSchema(
     .expect(201);
 
   return { projectId };
+}
+
+async function createCanonicalReadinessRound(
+  app: INestApplication,
+  projectName: string,
+  emailPrefix: string,
+  ballOwner: string | null,
+): Promise<CanonicalReadinessRound> {
+  const policy = await loadGeneralPlaybookV1();
+  const expectedStableKeys = policy.items.map((item) => canonicalStableKey(policy.id, item.id));
+  const bankResponse = await request(app.getHttpServer())
+    .get('/settings/base-questions')
+    .expect(200);
+  const activeStableKeys = new Set(
+    (bankResponse.body.questions as Array<{ stableKey: string }>).map(
+      (question) => question.stableKey,
+    ),
+  );
+  for (const stableKey of expectedStableKeys) {
+    assert.ok(activeStableKeys.has(stableKey));
+  }
+
+  const projectResponse = await request(app.getHttpServer())
+    .post('/projects')
+    .send({
+      name: projectName,
+      customerContactName: 'Readiness Test Contact',
+      customerContactEmail: `${emailPrefix}-${Date.now()}@example.test`,
+      ...(ballOwner === null ? {} : { ballOwner }),
+    })
+    .expect(201);
+  const projectId = projectResponse.body.id as string;
+
+  await request(app.getHttpServer())
+    .post(`/projects/${projectId}/question-schema`)
+    .send({
+      questions: policy.items.map((item) => ({
+        stableKey: canonicalStableKey(policy.id, item.id),
+        required: item.requiredForEstimate,
+        blocking: item.blockingIfMissing,
+      })),
+    })
+    .expect(201);
+
+  const roundResponse = await request(app.getHttpServer())
+    .post(`/projects/${projectId}/rounds`)
+    .send({ type: 'INITIAL_INTAKE' })
+    .expect(201);
+  const questions = roundResponse.body.questions as ReadinessRoundQuestion[];
+  assert.equal(questions.length, expectedStableKeys.length);
+
+  return {
+    projectId,
+    roundId: roundResponse.body.id as string,
+    questions,
+  };
+}
+
+async function saveRoundAnswer(
+  app: INestApplication,
+  projectId: string,
+  roundId: string,
+  question: ReadinessRoundQuestion,
+): Promise<void> {
+  await request(app.getHttpServer())
+    .patch(`/projects/${projectId}/rounds/${roundId}/answers/${question.id}`)
+    .send({ value: validReadinessAnswer(question) })
+    .expect(200);
+}
+
+function canonicalStableKey(playbookId: string, itemId: number): string {
+  return `${playbookId}-${String(itemId).padStart(3, '0')}`;
+}
+
+function checklistStatusForValue(policy: GeneralPlaybook, value: number): string {
+  const status = Object.entries(policy.scoring.readiness.checklistStatusValue).find(
+    ([, candidateValue]) => candidateValue === value,
+  )?.[0];
+  if (!status) {
+    throw new Error(`No checklist status exists for policy value ${value}.`);
+  }
+  return status;
+}
+
+function requireFollowUpStatus(statuses: readonly string[], requiredStatus: string): string {
+  const status = statuses.find((candidate) => candidate === requiredStatus);
+  if (!status) {
+    throw new Error(`Readiness policy does not define follow-up status ${requiredStatus}.`);
+  }
+  return status;
+}
+
+function requireReadinessQuestion(
+  questions: readonly ReadinessRoundQuestion[],
+  stableKey: string,
+): ReadinessRoundQuestion {
+  const question = questions.find((candidate) => candidate.stableKey === stableKey);
+  if (!question) {
+    throw new Error(`Canonical readiness round is missing ${stableKey}.`);
+  }
+  return question;
+}
+
+function requireTextReadinessQuestion(
+  questions: readonly ReadinessRoundQuestion[],
+  excludedQuestionIds: ReadonlySet<string>,
+): ReadinessRoundQuestion {
+  const question = questions.find(
+    (candidate) =>
+      !excludedQuestionIds.has(candidate.id) &&
+      (candidate.type === 'TEXT' || candidate.type === 'LONG_TEXT'),
+  );
+  if (!question) {
+    throw new Error('Canonical readiness round has no independent text question.');
+  }
+  return question;
+}
+
+function validReadinessAnswer(question: ReadinessRoundQuestion): AnswerValue {
+  if (question.type === 'TEXT' || question.type === 'LONG_TEXT') {
+    return `Readiness evidence for ${question.stableKey}`;
+  }
+  if (question.type === 'BOOLEAN') {
+    return true;
+  }
+  if (question.type === 'NUMBER') {
+    return 1;
+  }
+  if (question.type === 'DATE') {
+    return '2026-08-10';
+  }
+  const options = question.options;
+  if (!options || options.length === 0) {
+    throw new Error(`Readiness question ${question.stableKey} has no selectable option.`);
+  }
+  if (question.type === 'SINGLE_SELECT') {
+    return options[0];
+  }
+  if (question.type === 'MULTI_SELECT') {
+    return [options[0]];
+  }
+  throw new Error(`Unsupported readiness question type ${question.type}.`);
+}
+
+function requireReadinessFactor(
+  readiness: AvailableReadinessResponse,
+  factorId: string,
+): AvailableReadinessResponse['factors'][number] {
+  const factor = readiness.factors.find((candidate) => candidate.id === factorId);
+  if (!factor) {
+    throw new Error(`Readiness response is missing factor ${factorId}.`);
+  }
+  return factor;
 }
 
 function createDatabaseUrlWithApplicationName(
