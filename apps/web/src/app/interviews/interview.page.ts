@@ -26,8 +26,13 @@ const completionBlockedByAnswerErrorMessage =
   'Az interjúkör nem zárható le, amíg van sikertelen válaszmentés. Mentsd újra a hibás válaszokat, majd próbáld újra.';
 const completionBlockedByPendingSaveMessage =
   'Az interjúkör lezárása előtt várd meg, amíg minden automatikus mentés befejeződik.';
+const completionBlockedByAssessmentErrorMessage =
+  'Az interjúkör nem zárható le, amíg van sikertelen értékelésmentés. Mentsd újra a hibás értékeléseket, majd próbáld újra.';
+const completionBlockedByPendingAssessmentMessage =
+  'Az interjúkör lezárása előtt várd meg, amíg minden értékelés mentése befejeződik.';
 
 type QuestionSaveStatus = 'idle' | 'saving' | 'saved' | 'error';
+type AssessmentMode = 'automatic' | 'partial' | 'not-relevant';
 
 interface QuestionAnswerState {
   readonly draft: AnswerValue | null;
@@ -36,6 +41,15 @@ interface QuestionAnswerState {
   readonly error: string | null;
   readonly latestRequestId: number;
   readonly latestSubmittedRequestId: number | null;
+}
+
+interface QuestionAssessmentState {
+  readonly mode: AssessmentMode;
+  readonly rationale: string;
+  readonly baselineMode: AssessmentMode;
+  readonly baselineRationale: string;
+  readonly status: QuestionSaveStatus;
+  readonly error: string | null;
 }
 
 @Component({
@@ -64,6 +78,7 @@ export class InterviewPage implements OnInit, OnDestroy {
   readonly selectedKeys = signal<readonly string[]>([]);
   readonly round = signal<InterviewRound | null>(null);
   readonly answerStates = signal<ReadonlyMap<string, QuestionAnswerState>>(new Map());
+  readonly assessmentStates = signal<ReadonlyMap<string, QuestionAssessmentState>>(new Map());
   readonly loading = signal(true);
   readonly loadError = signal<string | null>(null);
   readonly actionError = signal<string | null>(null);
@@ -98,6 +113,7 @@ export class InterviewPage implements OnInit, OnDestroy {
     this.feedback.set(null);
     this.round.set(null);
     this.answerStates.set(new Map());
+    this.assessmentStates.set(new Map());
     forkJoin({
       bank: this.questionBankApi.loadBaseQuestionBank(),
       schema: this.questionBankApi.loadProjectSchema(this.projectId),
@@ -116,6 +132,7 @@ export class InterviewPage implements OnInit, OnDestroy {
         this.schema.set(schema);
         this.round.set(activeRound);
         this.answerStates.set(buildAnswerStates(activeRound));
+        this.assessmentStates.set(buildAssessmentStates(activeRound));
         this.selectedKeys.set(this.buildSelectedKeys(bank, schema, activeRound));
         this.loading.set(false);
       },
@@ -227,6 +244,7 @@ export class InterviewPage implements OnInit, OnDestroy {
         this.inFlightRequestIds.clear();
         this.round.set(round);
         this.answerStates.set(buildAnswerStates(round));
+        this.assessmentStates.set(buildAssessmentStates(round));
         this.roundSaving.set(false);
         this.feedback.set('A kezdő interjúkör elindult.');
       },
@@ -337,6 +355,137 @@ export class InterviewPage implements OnInit, OnDestroy {
     return this.currentAnswer(question) === true;
   }
 
+  assessmentStatus(question: RoundQuestionSnapshot): string {
+    return question.checklistStatus;
+  }
+
+  isAssessmentSelected(question: RoundQuestionSnapshot, mode: AssessmentMode): boolean {
+    return this.assessmentState(question).mode === mode;
+  }
+
+  isAssessmentControlDisabled(question: RoundQuestionSnapshot, mode: AssessmentMode): boolean {
+    const state = this.assessmentState(question);
+    return this.isAssessmentEditingLocked(question) || (state.status === 'saving' && state.mode === mode);
+  }
+
+  canSavePartialAssessment(question: RoundQuestionSnapshot): boolean {
+    return this.hasPersistedValidAnswer(question) && !this.isAssessmentControlDisabled(question, 'partial');
+  }
+
+  selectPartialAssessment(question: RoundQuestionSnapshot): void {
+    if (!this.canSavePartialAssessment(question)) {
+      return;
+    }
+
+    this.setAssessmentState(question.id, {
+      ...this.assessmentState(question),
+      mode: 'partial',
+      rationale: '',
+      error: null,
+    });
+    this.persistAssessment(question);
+  }
+
+  selectNotRelevantAssessment(question: RoundQuestionSnapshot): void {
+    if (this.isAssessmentControlDisabled(question, 'not-relevant')) {
+      return;
+    }
+
+    const state = this.assessmentState(question);
+    this.setAssessmentState(question.id, {
+      ...state,
+      mode: 'not-relevant',
+      rationale: state.mode === 'not-relevant' ? state.rationale : '',
+      error: null,
+    });
+  }
+
+  setAssessmentRationale(question: RoundQuestionSnapshot, rationale: string): void {
+    const state = this.assessmentState(question);
+    if (this.isAssessmentControlDisabled(question, 'not-relevant')) {
+      return;
+    }
+
+    this.setAssessmentState(question.id, {
+      ...state,
+      rationale,
+      error: null,
+    });
+  }
+
+  canSaveNotRelevantAssessment(question: RoundQuestionSnapshot): boolean {
+    return (
+      this.assessmentState(question).mode === 'not-relevant' &&
+      isValidAssessmentRationale(this.assessmentState(question).rationale) &&
+      !this.isAssessmentControlDisabled(question, 'not-relevant')
+    );
+  }
+
+  saveNotRelevantAssessment(question: RoundQuestionSnapshot): void {
+    if (!this.canSaveNotRelevantAssessment(question)) {
+      return;
+    }
+
+    this.persistAssessment(question);
+  }
+
+  resetAssessment(question: RoundQuestionSnapshot): void {
+    if (this.isAssessmentControlDisabled(question, 'automatic')) {
+      return;
+    }
+
+    this.setAssessmentState(question.id, {
+      ...this.assessmentState(question),
+      mode: 'automatic',
+      rationale: '',
+      error: null,
+    });
+    this.persistAssessment(question);
+  }
+
+  showAssessmentRationale(question: RoundQuestionSnapshot): boolean {
+    return this.assessmentState(question).mode === 'not-relevant';
+  }
+
+  assessmentRationale(question: RoundQuestionSnapshot): string {
+    return this.assessmentState(question).rationale;
+  }
+
+  assessmentSaveState(question: RoundQuestionSnapshot): string {
+    const state = this.assessmentState(question);
+    if (state.status === 'saving') {
+      return 'Értékelés mentése folyamatban…';
+    }
+    if (state.status === 'error') {
+      return state.error
+        ? `Nem sikerült elmenteni az értékelést. ${state.error}`
+        : 'Nem sikerült elmenteni az értékelést. Próbáld újra.';
+    }
+    if (state.mode !== state.baselineMode || state.rationale !== state.baselineRationale) {
+      return 'Értékelési piszkozat';
+    }
+    return 'Értékelés mentve';
+  }
+
+  assessmentHasError(question: RoundQuestionSnapshot): boolean {
+    return this.assessmentState(question).status === 'error';
+  }
+
+  retryAssessment(question: RoundQuestionSnapshot): void {
+    const state = this.assessmentState(question);
+    if (state.status !== 'error') {
+      return;
+    }
+
+    if (state.mode === 'partial' && !this.hasPersistedValidAnswer(question)) {
+      return;
+    }
+    if (state.mode === 'not-relevant' && !isValidAssessmentRationale(state.rationale)) {
+      return;
+    }
+    this.persistAssessment(question);
+  }
+
   completeRound(): void {
     const round = this.round();
     if (!round || round.status === 'COMPLETED' || this.completing()) {
@@ -349,8 +498,20 @@ export class InterviewPage implements OnInit, OnDestroy {
       return;
     }
 
+    if (this.hasAssessmentSaveErrors()) {
+      this.actionError.set(completionBlockedByAssessmentErrorMessage);
+      this.feedback.set(null);
+      return;
+    }
+
     if (this.hasPendingAnswerWork()) {
       this.actionError.set(completionBlockedByPendingSaveMessage);
+      this.feedback.set(null);
+      return;
+    }
+
+    if (this.hasPendingAssessmentWork()) {
+      this.actionError.set(completionBlockedByPendingAssessmentMessage);
       this.feedback.set(null);
       return;
     }
@@ -364,6 +525,7 @@ export class InterviewPage implements OnInit, OnDestroy {
         this.inFlightRequestIds.clear();
         this.round.set(completedRound);
         this.answerStates.set(buildAnswerStates(completedRound));
+        this.assessmentStates.set(buildAssessmentStates(completedRound));
         this.completing.set(false);
         this.feedback.set('Az interjúkör lezárult.');
       },
@@ -383,15 +545,27 @@ export class InterviewPage implements OnInit, OnDestroy {
   }
 
   isCompleteDisabled(): boolean {
-    return this.completing() || this.hasPendingAnswerWork() || this.hasAnswerSaveErrors();
+    return (
+      this.completing() ||
+      this.hasPendingAnswerWork() ||
+      this.hasAnswerSaveErrors() ||
+      this.hasPendingAssessmentWork() ||
+      this.hasAssessmentSaveErrors()
+    );
   }
 
   showCompletionBlockedMessage(): boolean {
-    return this.hasAnswerSaveErrors();
+    return this.hasAnswerSaveErrors() || this.hasAssessmentSaveErrors() || this.hasPendingAssessmentWork();
   }
 
   completionBlockedMessage(): string {
-    return completionBlockedByAnswerErrorMessage;
+    if (this.hasAnswerSaveErrors()) {
+      return completionBlockedByAnswerErrorMessage;
+    }
+    if (this.hasAssessmentSaveErrors()) {
+      return completionBlockedByAssessmentErrorMessage;
+    }
+    return completionBlockedByPendingAssessmentMessage;
   }
 
   questionSaveState(question: RoundQuestionSnapshot): string {
@@ -512,6 +686,44 @@ export class InterviewPage implements OnInit, OnDestroy {
       this.answerStates().get(question.id) ??
       createQuestionAnswerState(question.answer, question.answeredAt)
     );
+  }
+
+  private assessmentState(question: RoundQuestionSnapshot): QuestionAssessmentState {
+    return this.assessmentStates().get(question.id) ?? createQuestionAssessmentState(question);
+  }
+
+  private persistAssessment(question: RoundQuestionSnapshot): void {
+    const round = this.round();
+    const state = this.assessmentState(question);
+    if (!round || this.isAssessmentEditingLocked(question) || state.status === 'saving') {
+      return;
+    }
+
+    this.setAssessmentState(question.id, {
+      ...state,
+      status: 'saving',
+      error: null,
+    });
+    const request =
+      state.mode === 'automatic'
+        ? this.interviewApi.resetAssessment(this.projectId, round.id, question.id)
+        : this.interviewApi.setAssessment(this.projectId, round.id, question.id, {
+            status: state.mode === 'partial' ? 'Részben megvan' : 'Nem releváns',
+            rationale: state.mode === 'not-relevant' ? state.rationale.trim() : null,
+          });
+    request.subscribe({
+      next: (savedQuestion) => {
+        this.replaceRoundQuestion(savedQuestion);
+      },
+      error: (error: Error) => {
+        const current = this.assessmentState(question);
+        this.setAssessmentState(question.id, {
+          ...current,
+          status: 'error',
+          error: error.message,
+        });
+      },
+    });
   }
 
   private setAnswerDraft(snapshotId: string, value: AnswerValue | null): void {
@@ -688,10 +900,20 @@ export class InterviewPage implements OnInit, OnDestroy {
         ),
       };
     });
+    this.setAnswerState(question.id, createQuestionAnswerState(question.answer, question.answeredAt));
+    this.setAssessmentState(question.id, createQuestionAssessmentState(question));
   }
 
   private setAnswerState(snapshotId: string, state: QuestionAnswerState): void {
     this.answerStates.update((states) => {
+      const nextStates = new Map(states);
+      nextStates.set(snapshotId, state);
+      return nextStates;
+    });
+  }
+
+  private setAssessmentState(snapshotId: string, state: QuestionAssessmentState): void {
+    this.assessmentStates.update((states) => {
       const nextStates = new Map(states);
       nextStates.set(snapshotId, state);
       return nextStates;
@@ -738,6 +960,14 @@ export class InterviewPage implements OnInit, OnDestroy {
     return [...this.answerStates().values()].some((state) => state.status === 'error');
   }
 
+  private hasPendingAssessmentWork(): boolean {
+    return [...this.assessmentStates().values()].some((state) => state.status === 'saving');
+  }
+
+  private hasAssessmentSaveErrors(): boolean {
+    return [...this.assessmentStates().values()].some((state) => state.status === 'error');
+  }
+
   private savedStateFor(value: AnswerValue | null): QuestionSaveStatus {
     return value === null ? 'idle' : 'saved';
   }
@@ -745,6 +975,19 @@ export class InterviewPage implements OnInit, OnDestroy {
   private isAnswerEditingLocked(question: RoundQuestionSnapshot): boolean {
     const round = this.round();
     return round?.status === 'COMPLETED' || this.completing() || !this.answerStates().has(question.id);
+  }
+
+  private isAssessmentEditingLocked(question: RoundQuestionSnapshot): boolean {
+    const round = this.round();
+    return (
+      round?.status === 'COMPLETED' ||
+      this.completing() ||
+      !this.assessmentStates().has(question.id)
+    );
+  }
+
+  private hasPersistedValidAnswer(question: RoundQuestionSnapshot): boolean {
+    return this.answerState(question).persisted !== null && question.answeredAt !== null;
   }
 }
 
@@ -763,6 +1006,18 @@ function buildAnswerStates(
   );
 }
 
+function buildAssessmentStates(
+  round: InterviewRound | null,
+): ReadonlyMap<string, QuestionAssessmentState> {
+  if (!round) {
+    return new Map();
+  }
+
+  return new Map(
+    round.questions.map((question) => [question.id, createQuestionAssessmentState(question)]),
+  );
+}
+
 function createQuestionAnswerState(
   answer: AnswerValue | null,
   answeredAt: string | null,
@@ -775,6 +1030,33 @@ function createQuestionAnswerState(
     latestRequestId: 0,
     latestSubmittedRequestId: null,
   };
+}
+
+function createQuestionAssessmentState(question: RoundQuestionSnapshot): QuestionAssessmentState {
+  const mode = assessmentModeForSnapshot(question);
+  const rationale = question.assessmentRationale ?? '';
+  return {
+    mode,
+    rationale,
+    baselineMode: mode,
+    baselineRationale: rationale,
+    status: 'saved',
+    error: null,
+  };
+}
+
+function assessmentModeForSnapshot(question: RoundQuestionSnapshot): AssessmentMode {
+  if (question.checklistStatus === 'Részben megvan') {
+    return 'partial';
+  }
+  if (question.checklistStatus === 'Nem releváns') {
+    return 'not-relevant';
+  }
+  return 'automatic';
+}
+
+function isValidAssessmentRationale(rationale: string): boolean {
+  return rationale.trim().length > 0 && Array.from(rationale.trim()).length <= 10_000;
 }
 
 function cloneAnswerValue(value: AnswerValue | null): AnswerValue | null {

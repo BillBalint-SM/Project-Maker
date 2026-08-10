@@ -6,6 +6,7 @@ import type {
   CreateInterviewRoundInput,
   InterviewRound,
   RoundQuestionSnapshot,
+  SetRoundQuestionAssessmentInput,
   UpdateRoundAnswerInput,
 } from '@project-maker/contracts';
 
@@ -71,6 +72,38 @@ export class InterviewApiService {
         input,
       )
       .pipe(catchError((error: unknown) => failApiRequest(error, 'elmenteni a választ')));
+  }
+
+  setAssessment(
+    projectId: string,
+    roundId: string,
+    snapshotId: string,
+    input: SetRoundQuestionAssessmentInput,
+  ): Observable<RoundQuestionSnapshot> {
+    const encodedProjectId = encodeURIComponent(projectId);
+    const encodedRoundId = encodeURIComponent(roundId);
+    const encodedSnapshotId = encodeURIComponent(snapshotId);
+    return this.http
+      .put<RoundQuestionSnapshot>(
+        `/api/projects/${encodedProjectId}/rounds/${encodedRoundId}/answers/${encodedSnapshotId}/assessment`,
+        input,
+      )
+      .pipe(catchError((error: unknown) => failApiRequest(error, 'elmenteni az értékelést')));
+  }
+
+  resetAssessment(
+    projectId: string,
+    roundId: string,
+    snapshotId: string,
+  ): Observable<RoundQuestionSnapshot> {
+    const encodedProjectId = encodeURIComponent(projectId);
+    const encodedRoundId = encodeURIComponent(roundId);
+    const encodedSnapshotId = encodeURIComponent(snapshotId);
+    return this.http
+      .delete<RoundQuestionSnapshot>(
+        `/api/projects/${encodedProjectId}/rounds/${encodedRoundId}/answers/${encodedSnapshotId}/assessment`,
+      )
+      .pipe(catchError((error: unknown) => failApiRequest(error, 'visszaállítani az automatikus értékelést')));
   }
 
   completeRound(projectId: string, roundId: string): Observable<InterviewRound> {
