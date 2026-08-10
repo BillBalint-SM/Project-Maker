@@ -516,11 +516,30 @@ test('ignores a delayed conflict refresh after cancellation opens another editor
     (await secondFollowUpResponse.json()) as DiscoveryFollowUp;
 
   await page.goto('/projects/' + project.id);
-  const editButtons = nativeButton(page, 'edit-discovery-follow-up-button');
-  await expect(editButtons).toHaveCount(2);
-  await editButtons.first().click();
-  await page
-    .getByTestId('discovery-follow-up-edit-question-input')
+  const conflictedFollowUpItem = page.locator(
+    '[data-testid="discovery-follow-up-item"][data-follow-up-id="' +
+      conflictedFollowUp.id +
+      '"]',
+  );
+  const secondFollowUpItem = page.locator(
+    '[data-testid="discovery-follow-up-item"][data-follow-up-id="' +
+      secondFollowUp.id +
+      '"]',
+  );
+  await expect(conflictedFollowUpItem).toHaveCount(1);
+  await expect(secondFollowUpItem).toHaveCount(1);
+  await conflictedFollowUpItem
+    .getByTestId('edit-discovery-follow-up-button')
+    .locator('button')
+    .click();
+  const conflictedEditForm = conflictedFollowUpItem.getByTestId(
+    'discovery-follow-up-edit-form',
+  );
+  const conflictedEditQuestion = conflictedEditForm.getByTestId(
+    'discovery-follow-up-edit-question-input',
+  );
+  await expect(conflictedEditForm).toHaveCount(1);
+  await conflictedEditQuestion
     .fill('Cancelled conflict draft.');
 
   const externalUpdate = await request.patch(
@@ -581,17 +600,35 @@ test('ignores a delayed conflict refresh after cancellation opens another editor
               conflictedFollowUp.id,
           ),
     );
-    await nativeButton(page, 'save-discovery-follow-up-edit-button').click();
+    await conflictedEditForm
+      .getByTestId('save-discovery-follow-up-edit-button')
+      .locator('button')
+      .click();
     expect((await staleBrowserResponse).status()).toBe(409);
     await conflictRefreshStarted;
 
-    await nativeButton(page, 'cancel-discovery-follow-up-edit-button').click();
-    await editButtons.nth(1).click();
+    await conflictedEditForm
+      .getByTestId('cancel-discovery-follow-up-edit-button')
+      .locator('button')
+      .click();
     await expect(
-      page.getByTestId('discovery-follow-up-edit-question-input'),
-    ).toHaveValue(secondFollowUp.question);
-    await page
-      .getByTestId('discovery-follow-up-edit-question-input')
+      page.getByTestId('discovery-follow-up-edit-form'),
+    ).toHaveCount(0);
+    await secondFollowUpItem
+      .getByTestId('edit-discovery-follow-up-button')
+      .locator('button')
+      .click();
+    const secondEditForm = secondFollowUpItem.getByTestId(
+      'discovery-follow-up-edit-form',
+    );
+    const secondEditQuestion = secondEditForm.getByTestId(
+      'discovery-follow-up-edit-question-input',
+    );
+    await expect(
+      page.getByTestId('discovery-follow-up-edit-form'),
+    ).toHaveCount(1);
+    await expect(secondEditQuestion).toHaveValue(secondFollowUp.question);
+    await secondEditQuestion
       .fill('Active second editor draft must remain.');
 
     if (releaseConflictRefresh === null) {
@@ -617,9 +654,9 @@ test('ignores a delayed conflict refresh after cancellation opens another editor
         }),
     );
 
-    await expect(
-      page.getByTestId('discovery-follow-up-edit-question-input'),
-    ).toHaveValue('Active second editor draft must remain.');
+    await expect(secondEditQuestion).toHaveValue(
+      'Active second editor draft must remain.',
+    );
     await expect(
       page
         .getByTestId('discovery-follow-up-item')

@@ -171,7 +171,11 @@
     } @else {
       <ol class="discovery-follow-up-list" data-testid="discovery-follow-ups-list">
         @for (followUp of followUps(); track followUp.id) {
-          <li class="discovery-follow-up-item" data-testid="discovery-follow-up-item">
+          <li
+            class="discovery-follow-up-item"
+            data-testid="discovery-follow-up-item"
+            [attr.data-follow-up-id]="followUp.id"
+          >
             <div class="discovery-follow-up-meta">
               <strong>{{ followUp.category }}</strong>
               <p-tag [value]="followUp.status" data-testid="discovery-follow-up-status" />
