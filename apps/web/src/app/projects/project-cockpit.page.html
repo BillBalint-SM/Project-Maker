@@ -90,7 +90,7 @@
     </div>
 
     <div class="cockpit-grid">
-      <p-card>
+      <p-card id="workspace">
         <ng-template #title>Workspace</ng-template>
         <ng-template #subtitle>
           Update the exact delivery state. Archived projects are read-only until restored.
@@ -454,10 +454,15 @@
       </aside>
     </div>
 
+    <app-readiness-review
+      [projectId]="projectId"
+      [refreshKey]="readinessRefreshKey()"
+    />
+
     <app-discovery-follow-ups
       [projectId]="projectId"
       [projectStatus]="current.cockpit.status"
-      (committedChange)="refreshAuditEvents()"
+      (committedChange)="handleDiscoveryCommittedChange()"
     />
 
     <p-confirmdialog #projectDeletionDialog key="project-delete" [defaultFocus]="'none'">
