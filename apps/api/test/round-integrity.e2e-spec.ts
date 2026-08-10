@@ -8,6 +8,7 @@ import { Core0001Core1785916800000 } from '../src/migrations/0001-core';
 import { QuestionsRounds0002QuestionsRounds1786003200000 } from '../src/migrations/0002-questions-rounds';
 import { InitialIntakeOpenRound0005InitialIntakeOpenRound1786262400000 } from '../src/migrations/0005-initial-intake-open-round';
 import { RoundQuestionAssessmentOverrides0009RoundQuestionAssessmentOverrides1786608000000 } from '../src/migrations/0009-round-question-assessment-overrides';
+import { RoundAnswerValidationParity0010RoundAnswerValidationParity1786694400000 } from '../src/migrations/0010-round-answer-validation-parity';
 
 interface RoundFixture {
   readonly openRoundId: string;
@@ -48,7 +49,7 @@ async function insertRound(
   projectId: string,
   schemaId: string,
   baseQuestionId: string,
-  questionType: 'DATE' | 'TEXT',
+  questionType: 'DATE' | 'LONG_TEXT' | 'TEXT',
 ): Promise<{ roundId: string; snapshotId: string }> {
   const roundId = randomUUID();
   const snapshotId = randomUUID();
@@ -249,6 +250,7 @@ describe('Round integrity database boundary (PostgreSQL)', () => {
         QuestionsRounds0002QuestionsRounds1786003200000,
         InitialIntakeOpenRound0005InitialIntakeOpenRound1786262400000,
         RoundQuestionAssessmentOverrides0009RoundQuestionAssessmentOverrides1786608000000,
+        RoundAnswerValidationParity0010RoundAnswerValidationParity1786694400000,
       ],
     });
     await dataSource.initialize();
@@ -733,6 +735,249 @@ describe('Round integrity database boundary (PostgreSQL)', () => {
       [fixture.roundId],
     );
     assert.deepEqual(roundRows, [{ completedAt: null, status: 'OPEN' }]);
+  });
+
+  it('rejects explicit whitespace-only TEXT and LONG_TEXT answers for partial assessment', async () => {
+    const textQuestionTypes = ['TEXT', 'LONG_TEXT'] as const;
+    const outcomes = await Promise.all(
+      textQuestionTypes.map(async (questionType) => {
+        const { projectId, schemaId, baseQuestionId } = await insertProjectSchema(
+          dataSource,
+          `SCORE-01 partial whitespace ${questionType} ${Date.now()} ${randomUUID()}`,
+        );
+        const round = await insertRound(
+          dataSource,
+          projectId,
+          schemaId,
+          baseQuestionId,
+          questionType,
+        );
+        await dataSource.query(
+          `INSERT INTO "round_answers" ("id", "round_id", "snapshot_id", "value")
+           VALUES ($1, $2, $3, $4)`,
+          [randomUUID(), round.roundId, round.snapshotId, JSON.stringify(' \t\n\r\f\v')],
+        );
+
+        try {
+          await insertAssessmentOverride(
+            dataSource,
+            round.roundId,
+            round.snapshotId,
+            'Részben megvan',
+            null,
+          );
+          return 'accepted';
+        } catch (error) {
+          return (error as { code?: string }).code ?? 'rejected-without-code';
+        }
+      }),
+    );
+
+    assert.deepEqual(outcomes, ['23514', '23514']);
+  });
+
+  it('blocks direct completion for explicit whitespace-only TEXT and LONG_TEXT answers', async () => {
+    const textQuestionTypes = ['TEXT', 'LONG_TEXT'] as const;
+    const outcomes = await Promise.all(
+      textQuestionTypes.map(async (questionType) => {
+        const { projectId, schemaId, baseQuestionId } = await insertProjectSchema(
+          dataSource,
+          `SCORE-01 completion whitespace ${questionType} ${Date.now()} ${randomUUID()}`,
+        );
+        const round = await insertRound(
+          dataSource,
+          projectId,
+          schemaId,
+          baseQuestionId,
+          questionType,
+        );
+        await dataSource.query(
+          `INSERT INTO "round_answers" ("id", "round_id", "snapshot_id", "value")
+           VALUES ($1, $2, $3, $4)`,
+          [randomUUID(), round.roundId, round.snapshotId, JSON.stringify(' \t\n\r\f\v')],
+        );
+
+        try {
+          await completeRound(dataSource, round.roundId);
+          return 'completed';
+        } catch (error) {
+          return (error as { code?: string }).code ?? 'rejected-without-code';
+        }
+      }),
+    );
+
+    assert.deepEqual(outcomes, ['23514', '23514']);
+  });
+
+  it('accepts year 0001 at the PostgreSQL answer-validation boundary', async () => {
+    const { projectId, schemaId, baseQuestionId } = await insertProjectSchema(
+      dataSource,
+      `SCORE-01 early date ${Date.now()}`,
+    );
+    const round = await insertRound(dataSource, projectId, schemaId, baseQuestionId, 'DATE');
+    await dataSource.query(
+      `INSERT INTO "round_answers" ("id", "round_id", "snapshot_id", "value")
+       VALUES ($1, $2, $3, $4)`,
+      [randomUUID(), round.roundId, round.snapshotId, JSON.stringify('0001-01-01')],
+    );
+
+    await completeRound(dataSource, round.roundId);
+
+    const roundRows = await dataSource.query<Array<{ status: string }>>(
+      'SELECT "status" FROM "interview_rounds" WHERE "id" = $1',
+      [round.roundId],
+    );
+    assert.deepEqual(roundRows, [{ status: 'COMPLETED' }]);
+  });
+
+  it('uses PostgreSQL character counts for assessment rationale boundaries', async () => {
+    const acceptedFixture = await insertAssessmentFixture(
+      dataSource,
+      `SCORE-01 emoji accepted ${Date.now()}`,
+    );
+    const acceptedRationale = '😀'.repeat(6_000);
+    await insertAssessmentOverride(
+      dataSource,
+      acceptedFixture.roundId,
+      acceptedFixture.snapshotId,
+      'Nem releváns',
+      acceptedRationale,
+    );
+    const acceptedRows = await dataSource.query<Array<{ length: string }>>(
+      `SELECT char_length("rationale")::text AS "length"
+       FROM "round_question_assessment_overrides"
+       WHERE "round_id" = $1 AND "snapshot_id" = $2`,
+      [acceptedFixture.roundId, acceptedFixture.snapshotId],
+    );
+    assert.deepEqual(acceptedRows, [{ length: '6000' }]);
+
+    const rejectedFixture = await insertAssessmentFixture(
+      dataSource,
+      `SCORE-01 emoji rejected ${Date.now()}`,
+    );
+    await assert.rejects(
+      insertAssessmentOverride(
+        dataSource,
+        rejectedFixture.roundId,
+        rejectedFixture.snapshotId,
+        'Nem releváns',
+        '😀'.repeat(10_001),
+      ),
+      (error: { code?: string; constraint?: string }) => {
+        assert.equal(error.code, '23514');
+        assert.equal(error.constraint, 'chk_round_question_assessment_overrides_state');
+        return true;
+      },
+    );
+  });
+
+  it('reverts and reapplies 0010 answer-validation parity exactly once', async () => {
+    const migrationDatabaseName = `score01_validation_parity_${Date.now()}_${randomUUID().replaceAll('-', '')}`;
+    const migrationDatabaseUrl = createDatabaseUrlWithName(databaseUrl, migrationDatabaseName);
+    let baselineDataSource: DataSource | undefined;
+    let migrationDataSource: DataSource | undefined;
+    const explicitWhitespace = JSON.stringify(' \t\n\r\f\v');
+
+    try {
+      await dataSource.query(`CREATE DATABASE "${migrationDatabaseName}"`);
+      baselineDataSource = new DataSource({
+        type: 'postgres',
+        url: migrationDatabaseUrl,
+        synchronize: false,
+        migrations: [
+          Core0001Core1785916800000,
+          QuestionsRounds0002QuestionsRounds1786003200000,
+        ],
+      });
+      await baselineDataSource.initialize();
+      await baselineDataSource.runMigrations();
+      const baselineDefinitionRows = await baselineDataSource.query<
+        Array<{ definition: string }>
+      >(
+        `SELECT pg_get_functiondef(
+          'is_valid_round_answer(base_question_type,jsonb,jsonb)'::regprocedure
+        ) AS "definition"`,
+      );
+      assert.equal(baselineDefinitionRows.length, 1);
+      const baselineDefinition = baselineDefinitionRows[0].definition;
+      await baselineDataSource.destroy();
+      baselineDataSource = undefined;
+
+      migrationDataSource = new DataSource({
+        type: 'postgres',
+        url: migrationDatabaseUrl,
+        synchronize: false,
+        migrations: [
+          Core0001Core1785916800000,
+          QuestionsRounds0002QuestionsRounds1786003200000,
+          InitialIntakeOpenRound0005InitialIntakeOpenRound1786262400000,
+          RoundQuestionAssessmentOverrides0009RoundQuestionAssessmentOverrides1786608000000,
+          RoundAnswerValidationParity0010RoundAnswerValidationParity1786694400000,
+        ],
+      });
+      await migrationDataSource.initialize();
+      await migrationDataSource.runMigrations();
+
+      const currentResults = await migrationDataSource.query<Array<{ valid: boolean }>>(
+        `SELECT "is_valid_round_answer"(
+          'TEXT'::"base_question_type",
+          NULL,
+          $1::jsonb
+        ) AS "valid"`,
+        [explicitWhitespace],
+      );
+      assert.deepEqual(currentResults, [{ valid: false }]);
+
+      await migrationDataSource.undoLastMigration();
+      const revertedDefinitionRows = await migrationDataSource.query<
+        Array<{ definition: string }>
+      >(
+        `SELECT pg_get_functiondef(
+          'is_valid_round_answer(base_question_type,jsonb,jsonb)'::regprocedure
+        ) AS "definition"`,
+      );
+      assert.equal(revertedDefinitionRows.length, 1);
+      assert.equal(revertedDefinitionRows[0].definition, baselineDefinition);
+      assert.match(
+        revertedDefinitionRows[0].definition,
+        /AND btrim\(answer_value #>> '\{\}'\) <> '';/,
+      );
+      const revertedResults = await migrationDataSource.query<Array<{ valid: boolean }>>(
+        `SELECT "is_valid_round_answer"(
+          'TEXT'::"base_question_type",
+          NULL,
+          $1::jsonb
+        ) AS "valid"`,
+        [explicitWhitespace],
+      );
+      assert.deepEqual(revertedResults, [{ valid: true }]);
+
+      await migrationDataSource.runMigrations();
+      const reappliedResults = await migrationDataSource.query<Array<{ valid: boolean }>>(
+        `SELECT "is_valid_round_answer"(
+          'TEXT'::"base_question_type",
+          NULL,
+          $1::jsonb
+        ) AS "valid"`,
+        [explicitWhitespace],
+      );
+      assert.deepEqual(reappliedResults, [{ valid: false }]);
+      const migrationRows = await migrationDataSource.query<Array<{ count: string }>>(
+        `SELECT COUNT(*)::text AS "count"
+         FROM "migrations"
+         WHERE "name" = $1`,
+        ['RoundAnswerValidationParity0010RoundAnswerValidationParity1786694400000'],
+      );
+      assert.deepEqual(migrationRows, [{ count: '1' }]);
+    } finally {
+      if (migrationDataSource?.isInitialized) {
+        await migrationDataSource.destroy();
+      }
+      if (baselineDataSource?.isInitialized) {
+        await baselineDataSource.destroy();
+      }
+      await dataSource.query(`DROP DATABASE IF EXISTS "${migrationDatabaseName}" WITH (FORCE)`);
+    }
   });
 
   it('allows a justified not-relevant required snapshot to complete without an answer', async () => {

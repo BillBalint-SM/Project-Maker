@@ -3,6 +3,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { after, before, describe, it } from 'node:test';
+import { setTimeout as delay } from 'node:timers/promises';
 import request from 'supertest';
 import { DataSource } from 'typeorm';
 
@@ -12,16 +13,22 @@ import { QuestionsRounds0002QuestionsRounds1786003200000 } from '../src/migratio
 import { MarkdownRevisions0003MarkdownRevisions1786089600000 } from '../src/migrations/0003-markdown-revisions';
 import { InitialIntakeOpenRound0005InitialIntakeOpenRound1786262400000 } from '../src/migrations/0005-initial-intake-open-round';
 import { RoundQuestionAssessmentOverrides0009RoundQuestionAssessmentOverrides1786608000000 } from '../src/migrations/0009-round-question-assessment-overrides';
+import { RoundAnswerValidationParity0010RoundAnswerValidationParity1786694400000 } from '../src/migrations/0010-round-answer-validation-parity';
 
 describe('Question bank and interview rounds (PostgreSQL e2e)', () => {
   let app: INestApplication;
   let dataSource: DataSource;
+  let controlDataSource: DataSource;
+  let databaseUrl: string;
+  let apiApplicationName: string;
+  let originalDatabaseUrl: string | undefined;
 
   before(async () => {
-    const databaseUrl = process.env['DATABASE_URL'];
-    if (!databaseUrl) {
+    const configuredDatabaseUrl = process.env['DATABASE_URL'];
+    if (!configuredDatabaseUrl) {
       throw new Error('DATABASE_URL is required for the real PostgreSQL R2 proof.');
     }
+    databaseUrl = configuredDatabaseUrl;
 
     const migrationDataSource = new DataSource({
       type: 'postgres',
@@ -33,11 +40,19 @@ describe('Question bank and interview rounds (PostgreSQL e2e)', () => {
         MarkdownRevisions0003MarkdownRevisions1786089600000,
         InitialIntakeOpenRound0005InitialIntakeOpenRound1786262400000,
         RoundQuestionAssessmentOverrides0009RoundQuestionAssessmentOverrides1786608000000,
+        RoundAnswerValidationParity0010RoundAnswerValidationParity1786694400000,
       ],
     });
     await migrationDataSource.initialize();
     await migrationDataSource.runMigrations();
     await migrationDataSource.destroy();
+
+    originalDatabaseUrl = process.env['DATABASE_URL'];
+    apiApplicationName = `score01-question-rounds-api-${randomUUID().replaceAll('-', '')}`;
+    process.env['DATABASE_URL'] = createDatabaseUrlWithApplicationName(
+      databaseUrl,
+      apiApplicationName,
+    );
 
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
@@ -46,10 +61,23 @@ describe('Question bank and interview rounds (PostgreSQL e2e)', () => {
     app = moduleFixture.createNestApplication();
     await app.init();
     dataSource = app.get(DataSource);
+
+    controlDataSource = new DataSource({
+      type: 'postgres',
+      url: databaseUrl,
+      synchronize: false,
+    });
+    await controlDataSource.initialize();
   });
 
   after(async () => {
+    await controlDataSource.destroy();
     await app.close();
+    if (originalDatabaseUrl === undefined) {
+      delete process.env['DATABASE_URL'];
+    } else {
+      process.env['DATABASE_URL'] = originalDatabaseUrl;
+    }
   });
 
   it('returns null from the active-round endpoint before the first initial intake round', async () => {
@@ -95,6 +123,205 @@ describe('Question bank and interview rounds (PostgreSQL e2e)', () => {
       .expect(200);
     assert.equal(activeRoundResponse.body.questions[0].checklistStatus, 'Kész');
     assert.equal(activeRoundResponse.body.questions[0].assessmentRationale, null);
+  });
+
+  it('rejects explicit whitespace-only TEXT and LONG_TEXT answers through the public API', async () => {
+    const { projectId } = await createProjectWithQuestionTypesSchema(
+      app,
+      `Assessment answer whitespace ${Date.now()}`,
+      'assessment-answer-whitespace',
+      ['TEXT', 'LONG_TEXT'],
+    );
+    const createdRoundResponse = await request(app.getHttpServer())
+      .post(`/projects/${projectId}/rounds`)
+      .send({ type: 'STAKEHOLDER' })
+      .expect(201);
+
+    const questions = createdRoundResponse.body.questions as Array<{
+      id: string;
+      type: string;
+    }>;
+    for (const questionType of ['TEXT', 'LONG_TEXT']) {
+      const question = questions.find((candidate) => candidate.type === questionType);
+      if (!question) {
+        throw new Error(`Expected a ${questionType} snapshot in the created round.`);
+      }
+      await request(app.getHttpServer())
+        .patch(
+          `/projects/${projectId}/rounds/${createdRoundResponse.body.id}/answers/${question.id}`,
+        )
+        .send({ value: '\t\n\r\f\v' })
+        .expect(400);
+    }
+  });
+
+  it('accepts the PostgreSQL-valid early calendar year through the public API', async () => {
+    const { projectId } = await createProjectWithQuestionTypesSchema(
+      app,
+      `Assessment early date ${Date.now()}`,
+      'assessment-early-date',
+      ['DATE'],
+    );
+    const createdRoundResponse = await request(app.getHttpServer())
+      .post(`/projects/${projectId}/rounds`)
+      .send({ type: 'STAKEHOLDER' })
+      .expect(201);
+    const snapshotId = createdRoundResponse.body.questions[0].id as string;
+
+    const answerResponse = await request(app.getHttpServer())
+      .patch(`/projects/${projectId}/rounds/${createdRoundResponse.body.id}/answers/${snapshotId}`)
+      .send({ value: '0001-01-01' })
+      .expect(200);
+    assert.equal(answerResponse.body.answer, '0001-01-01');
+    await request(app.getHttpServer())
+      .post(`/projects/${projectId}/rounds/${createdRoundResponse.body.id}/complete`)
+      .expect(201);
+  });
+
+  it('measures normalized assessment rationales in Unicode code points', async () => {
+    const { projectId } = await createProjectWithSingleQuestionSchema(
+      app,
+      `Assessment emoji rationale ${Date.now()}`,
+      'assessment-emoji-rationale',
+    );
+    const createdRoundResponse = await request(app.getHttpServer())
+      .post(`/projects/${projectId}/rounds`)
+      .send({ type: 'INITIAL_INTAKE' })
+      .expect(201);
+    const roundId = createdRoundResponse.body.id as string;
+    const snapshotId = createdRoundResponse.body.questions[0].id as string;
+    const assessmentUrl =
+      `/projects/${projectId}/rounds/${roundId}/answers/${snapshotId}/assessment`;
+
+    const acceptedRationale = '😀'.repeat(6_000);
+    const acceptedResponse = await request(app.getHttpServer())
+      .put(assessmentUrl)
+      .send({ status: 'Nem releváns', rationale: acceptedRationale })
+      .expect(200);
+    assert.equal(acceptedResponse.body.assessmentRationale, acceptedRationale);
+
+    await request(app.getHttpServer())
+      .put(assessmentUrl)
+      .send({ status: 'Nem releváns', rationale: '😀'.repeat(10_001) })
+      .expect(400);
+  });
+
+  it('serializes an assessment PUT ahead of a direct answer update without a round-answer lock cycle', async () => {
+    const { projectId } = await createProjectWithSingleQuestionSchema(
+      app,
+      `Assessment lock order ${Date.now()}`,
+      'assessment-lock-order',
+    );
+    const createdRoundResponse = await request(app.getHttpServer())
+      .post(`/projects/${projectId}/rounds`)
+      .send({ type: 'INITIAL_INTAKE' })
+      .expect(201);
+    const roundId = createdRoundResponse.body.id as string;
+    const snapshotId = createdRoundResponse.body.questions[0].id as string;
+    const answerId = randomUUID();
+    await controlDataSource.query(
+      `INSERT INTO "round_answers" ("id", "round_id", "snapshot_id", "value")
+       VALUES ($1, $2, $3, $4)`,
+      [answerId, roundId, snapshotId, JSON.stringify('Existing answer evidence')],
+    );
+
+    const gateLockKey = 91_103_403;
+    const gateTriggerName = 'aaa_score01_assessment_gate';
+    const gateFunctionName = 'score01_assessment_gate';
+    const gateRunner = controlDataSource.createQueryRunner();
+    const answerRunner = controlDataSource.createQueryRunner();
+    let advisoryLockHeld = false;
+    await gateRunner.connect();
+    await answerRunner.connect();
+
+    try {
+      await controlDataSource.query(`
+        CREATE OR REPLACE FUNCTION "${gateFunctionName}"()
+        RETURNS trigger
+        LANGUAGE plpgsql
+        AS $$
+        BEGIN
+          PERFORM pg_advisory_xact_lock(${gateLockKey}::bigint);
+          RETURN NEW;
+        END;
+        $$
+      `);
+      await controlDataSource.query(`
+        CREATE TRIGGER "${gateTriggerName}"
+        BEFORE INSERT ON "round_question_assessment_overrides"
+        FOR EACH ROW
+        EXECUTE FUNCTION "${gateFunctionName}"()
+      `);
+      await gateRunner.query('SELECT pg_advisory_lock($1::bigint)', [gateLockKey]);
+      advisoryLockHeld = true;
+
+      let assessmentOutcome: 'completed' | 'pending' | 'rejected' = 'pending';
+      const assessmentPromise = request(app.getHttpServer())
+        .put(`/projects/${projectId}/rounds/${roundId}/answers/${snapshotId}/assessment`)
+        .send({ status: 'Részben megvan', rationale: null });
+      void assessmentPromise.then(
+        () => {
+          assessmentOutcome = 'completed';
+        },
+        () => {
+          assessmentOutcome = 'rejected';
+        },
+      );
+
+      const assessmentWait = await observeApplicationOutcomeOrLockWait(
+        controlDataSource,
+        apiApplicationName,
+        () => assessmentOutcome,
+      );
+      assert.equal(assessmentWait, 'blocked');
+
+      await answerRunner.startTransaction();
+      const backendRows = (await answerRunner.query(
+        'SELECT pg_backend_pid() AS "pid"',
+      )) as Array<{ pid: number }>;
+      let answerOutcome: 'completed' | 'pending' | 'rejected' = 'pending';
+      const answerUpdatePromise = answerRunner.query(
+        'UPDATE "round_answers" SET "value" = $1 WHERE "id" = $2',
+        [JSON.stringify('Concurrent valid answer evidence'), answerId],
+      );
+      void answerUpdatePromise.then(
+        () => {
+          answerOutcome = 'completed';
+        },
+        () => {
+          answerOutcome = 'rejected';
+        },
+      );
+
+      const answerWait = await observeQueryOutcomeOrLockWait(
+        controlDataSource,
+        backendRows[0].pid,
+        () => answerOutcome,
+      );
+      assert.equal(answerWait, 'blocked');
+
+      await gateRunner.query('SELECT pg_advisory_unlock($1::bigint)', [gateLockKey]);
+      advisoryLockHeld = false;
+      const assessmentResponse = await assessmentPromise;
+      await answerUpdatePromise;
+      await answerRunner.commitTransaction();
+
+      assert.equal(assessmentResponse.status, 200);
+      assert.equal(assessmentResponse.body.checklistStatus, 'Részben megvan');
+    } finally {
+      if (advisoryLockHeld) {
+        await gateRunner.query('SELECT pg_advisory_unlock($1::bigint)', [gateLockKey]);
+      }
+      if (answerRunner.isTransactionActive) {
+        await answerRunner.rollbackTransaction();
+      }
+      await answerRunner.release();
+      await gateRunner.release();
+      await controlDataSource.query(
+        `DROP TRIGGER IF EXISTS "${gateTriggerName}" ON "round_question_assessment_overrides"`,
+      );
+      await controlDataSource.query(`DROP FUNCTION IF EXISTS "${gateFunctionName}"()`);
+    }
   });
 
   it('persists assessment commands idempotently with policy validation and redacted audit', async () => {
@@ -790,4 +1017,118 @@ async function createProjectWithSingleQuestionSchema(
     .expect(201);
 
   return { projectId, schemaId: schemaResponse.body.id as string };
+}
+
+async function createProjectWithQuestionTypesSchema(
+  app: INestApplication,
+  projectName: string,
+  emailPrefix: string,
+  questionTypes: readonly ('DATE' | 'LONG_TEXT' | 'TEXT')[],
+): Promise<{ projectId: string }> {
+  const stableKeys: string[] = [];
+  for (const [index, questionType] of questionTypes.entries()) {
+    const bankResponse = await request(app.getHttpServer())
+      .get('/settings/base-questions')
+      .expect(200);
+    const stableKey = `${emailPrefix}-${questionType.toLowerCase().replaceAll('_', '-')}-${Date.now()}-${index}`;
+    await request(app.getHttpServer())
+      .post('/settings/base-questions')
+      .send({
+        stableKey,
+        topic: 'SCORE-01 validation parity',
+        controlPoint: `${questionType} answer validation`,
+        text: `Provide one ${questionType} answer.`,
+        type: questionType,
+        required: true,
+        requiredForEstimate: false,
+        blocking: true,
+        order: bankResponse.body.questions.length + 1,
+        active: true,
+      })
+      .expect(201);
+    stableKeys.push(stableKey);
+  }
+
+  const projectResponse = await request(app.getHttpServer())
+    .post('/projects')
+    .send({
+      name: projectName,
+      customerContactName: 'Task 3 Fix Contact',
+      customerContactEmail: `${emailPrefix}-${Date.now()}@example.test`,
+    })
+    .expect(201);
+  const projectId = projectResponse.body.id as string;
+  await request(app.getHttpServer())
+    .post(`/projects/${projectId}/question-schema`)
+    .send({
+      questions: stableKeys.map((stableKey) => ({
+        stableKey,
+        required: true,
+        blocking: true,
+      })),
+    })
+    .expect(201);
+
+  return { projectId };
+}
+
+function createDatabaseUrlWithApplicationName(
+  databaseUrl: string,
+  applicationName: string,
+): string {
+  const parsedUrl = new URL(databaseUrl);
+  parsedUrl.searchParams.set('application_name', applicationName);
+  return parsedUrl.toString();
+}
+
+async function observeQueryOutcomeOrLockWait(
+  dataSource: DataSource,
+  backendPid: number,
+  getOutcome: () => 'completed' | 'pending' | 'rejected',
+): Promise<'blocked' | 'completed' | 'rejected'> {
+  for (let attempt = 0; attempt < 100; attempt += 1) {
+    const outcome = getOutcome();
+    if (outcome !== 'pending') {
+      return outcome;
+    }
+    const activityRows = await dataSource.query<Array<{ waitEventType: string | null }>>(
+      `SELECT "wait_event_type" AS "waitEventType"
+       FROM "pg_stat_activity"
+       WHERE "pid" = $1`,
+      [backendPid],
+    );
+    if (activityRows[0]?.waitEventType === 'Lock') {
+      return 'blocked';
+    }
+    await delay(10);
+  }
+  throw new Error(`PostgreSQL backend ${backendPid} did not finish or enter a lock wait.`);
+}
+
+async function observeApplicationOutcomeOrLockWait(
+  dataSource: DataSource,
+  applicationName: string,
+  getOutcome: () => 'completed' | 'pending' | 'rejected',
+): Promise<'blocked' | 'completed' | 'rejected'> {
+  for (let attempt = 0; attempt < 100; attempt += 1) {
+    const outcome = getOutcome();
+    if (outcome !== 'pending') {
+      return outcome;
+    }
+    const activityRows = await dataSource.query<Array<{ waitEventType: string | null }>>(
+      `SELECT "wait_event_type" AS "waitEventType"
+       FROM "pg_stat_activity"
+       WHERE "application_name" = $1
+       ORDER BY "backend_start" DESC
+       LIMIT 1`,
+      [applicationName],
+    );
+    if (activityRows[0]?.waitEventType === 'Lock') {
+      return 'blocked';
+    }
+    await delay(10);
+  }
+  throw new Error(
+    `PostgreSQL application ${applicationName} did not finish or enter a lock wait.`,
+  );
 }

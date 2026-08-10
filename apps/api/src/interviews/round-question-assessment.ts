@@ -12,6 +12,8 @@ import type { RoundQuestionSnapshotEntity } from './round-question-snapshot.enti
 
 export const assessmentRationaleMaxLength = 10_000;
 
+const explicitRoundAnswerWhitespace = new Set([' ', '\t', '\n', '\r', '\f', '\v']);
+
 export interface RoundQuestionAssessmentPolicy {
   readonly missingStatus: string;
   readonly partialStatus: string;
@@ -29,7 +31,7 @@ export function roundAnswerValidationError(
   value: AnswerValue,
 ): string | null {
   if (type === 'TEXT' || type === 'LONG_TEXT') {
-    return typeof value === 'string' && value.trim().length > 0
+    return typeof value === 'string' && hasRoundAnswerTextContent(value)
       ? null
       : 'Text answers must not be blank.';
   }
@@ -91,6 +93,10 @@ export function toEffectiveRoundQuestionSnapshot(
   };
 }
 
+export function unicodeCodePointLength(value: string): number {
+  return Array.from(value).length;
+}
+
 function toRoundQuestionAssessmentPolicy(
   playbook: GeneralPlaybook,
 ): RoundQuestionAssessmentPolicy {
@@ -148,16 +154,34 @@ function effectiveAssessment(
 }
 
 function isIsoCalendarDate(value: string): boolean {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  if (!match) {
     return false;
   }
-  const [year, month, day] = value.split('-').map(Number);
-  const parsed = new Date(Date.UTC(year, month - 1, day));
-  return (
-    parsed.getUTCFullYear() === year &&
-    parsed.getUTCMonth() === month - 1 &&
-    parsed.getUTCDate() === day
-  );
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  return year >= 1 && month >= 1 && month <= 12 && day >= 1 && day <= daysInMonth(year, month);
+}
+
+function hasRoundAnswerTextContent(value: string): boolean {
+  for (const character of value) {
+    if (!explicitRoundAnswerWhitespace.has(character)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function daysInMonth(year: number, month: number): number {
+  if (month === 2) {
+    return isLeapYear(year) ? 29 : 28;
+  }
+  return month === 4 || month === 6 || month === 9 || month === 11 ? 30 : 31;
+}
+
+function isLeapYear(year: number): boolean {
+  return year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
 }
 
 function toIso(value: Date, field: string): string {
