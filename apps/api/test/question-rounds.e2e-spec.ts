@@ -20,6 +20,25 @@ import { DiscoveryFollowUpEditVersion0008DiscoveryFollowUpEditVersion17865216000
 import { RoundQuestionAssessmentOverrides0009RoundQuestionAssessmentOverrides1786608000000 } from '../src/migrations/0009-round-question-assessment-overrides';
 import { RoundAnswerValidationParity0010RoundAnswerValidationParity1786694400000 } from '../src/migrations/0010-round-answer-validation-parity';
 
+describe('Question-rounds disposable database guard', () => {
+  it('rejects unsafe PostgreSQL hosts and database names', () => {
+    assert.throws(
+      () =>
+        assertDisposableQuestionRoundsDatabaseUrl(
+          'postgresql://database.example.test/score01_e2e',
+        ),
+      /loopback PostgreSQL host/,
+    );
+    assert.throws(
+      () => assertDisposableQuestionRoundsDatabaseUrl('postgresql://localhost/production'),
+      /database whose name contains score01, e2e, or test/,
+    );
+    assert.doesNotThrow(() =>
+      assertDisposableQuestionRoundsDatabaseUrl('postgresql://[::1]/score01_e2e'),
+    );
+  });
+});
+
 describe('Question bank and interview rounds (PostgreSQL e2e)', () => {
   let app: INestApplication;
   let dataSource: DataSource;
@@ -33,6 +52,7 @@ describe('Question bank and interview rounds (PostgreSQL e2e)', () => {
     if (!configuredDatabaseUrl) {
       throw new Error('DATABASE_URL is required for the real PostgreSQL R2 proof.');
     }
+    assertDisposableQuestionRoundsDatabaseUrl(configuredDatabaseUrl);
     databaseUrl = configuredDatabaseUrl;
 
     const migrationDataSource = new DataSource({
@@ -1962,6 +1982,33 @@ function createDatabaseUrlWithApplicationName(
   const parsedUrl = new URL(databaseUrl);
   parsedUrl.searchParams.set('application_name', applicationName);
   return parsedUrl.toString();
+}
+
+function assertDisposableQuestionRoundsDatabaseUrl(value: string): void {
+  let parsedUrl: URL;
+  try {
+    parsedUrl = new URL(value);
+  } catch {
+    throw new Error('DATABASE_URL must be a valid PostgreSQL URL for the real PostgreSQL E2E proof.');
+  }
+  if (parsedUrl.protocol !== 'postgres:' && parsedUrl.protocol !== 'postgresql:') {
+    throw new Error('DATABASE_URL must use a PostgreSQL URL for the real PostgreSQL E2E proof.');
+  }
+  if (!['127.0.0.1', 'localhost', '[::1]'].includes(parsedUrl.hostname)) {
+    throw new Error('DATABASE_URL must use a loopback PostgreSQL host for the real PostgreSQL E2E proof.');
+  }
+
+  let databaseName: string;
+  try {
+    databaseName = decodeURIComponent(parsedUrl.pathname.slice(1));
+  } catch {
+    throw new Error('DATABASE_URL must contain a valid disposable database name.');
+  }
+  if (!/(score01|e2e|test)/i.test(databaseName)) {
+    throw new Error(
+      'DATABASE_URL must use a disposable database whose name contains score01, e2e, or test.',
+    );
+  }
 }
 
 async function lockExistingRoundQuestionAssessmentOverride(
