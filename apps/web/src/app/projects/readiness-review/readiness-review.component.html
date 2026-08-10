@@ -61,7 +61,7 @@
         <h2 id="readiness-review-factors-title">Értékelési tényezők</h2>
         <ul class="readiness-review-list" data-testid="readiness-review-factors">
           @for (factor of readiness.factors; track factor.id) {
-            <li data-testid="readiness-review-factor">
+            <li [attr.data-testid]="'readiness-review-factor-' + factor.id">
               <strong>{{ factor.label }}: {{ factor.percentage }}%</strong>
               <span>{{ factor.helpText }}</span>
             </li>

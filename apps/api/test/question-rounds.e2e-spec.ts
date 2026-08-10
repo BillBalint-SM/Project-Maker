@@ -86,7 +86,7 @@ describe('Question bank and interview rounds (PostgreSQL e2e)', () => {
       imports: [AppModule],
     }).compile();
 
-    app = moduleFixture.createNestApplication();
+    app = moduleFixture.createNestApplication({ logger: false });
     await app.init();
     dataSource = app.get(DataSource);
 
@@ -232,6 +232,135 @@ describe('Question bank and interview rounds (PostgreSQL e2e)', () => {
       .put(assessmentUrl)
       .send({ status: 'Nem releváns', rationale: '😀'.repeat(10_001) })
       .expect(400);
+  });
+
+  it('serializes two concurrent first answer writes and preserves the later mutation', async () => {
+    const { projectId } = await createProjectWithSingleQuestionSchema(
+      app,
+      `First answer serialization ${Date.now()}`,
+      'first-answer-serialization',
+    );
+    const createdRoundResponse = await request(app.getHttpServer())
+      .post(`/projects/${projectId}/rounds`)
+      .send({ type: 'INITIAL_INTAKE' })
+      .expect(201);
+    const roundId = createdRoundResponse.body.id as string;
+    const snapshotId = createdRoundResponse.body.questions[0].id as string;
+    const answerUrl = `/projects/${projectId}/rounds/${roundId}/answers/${snapshotId}`;
+    const firstValue = 'First concurrent answer evidence';
+    const laterValue = 'Later concurrent answer evidence';
+
+    const { creatorResponse, waitingResponse } = await serializeAcrossFirstChildInsert(
+      controlDataSource,
+      apiApplicationName,
+      'round_answers',
+      async () => request(app.getHttpServer()).patch(answerUrl).send({ value: firstValue }),
+      async () => request(app.getHttpServer()).patch(answerUrl).send({ value: laterValue }),
+    );
+
+    assert.equal(creatorResponse.status, 200);
+    assert.equal(waitingResponse.status, 200);
+    assert.equal(waitingResponse.body.answer, laterValue);
+    const answerRows = await controlDataSource.query<Array<{ value: string }>>(
+      `SELECT "value" FROM "round_answers"
+       WHERE "round_id" = $1 AND "snapshot_id" = $2`,
+      [roundId, snapshotId],
+    );
+    assert.deepEqual(answerRows, [{ value: laterValue }]);
+  });
+
+  it('serializes two concurrent first assessment writes and preserves the later decision', async () => {
+    const { projectId } = await createProjectWithSingleQuestionSchema(
+      app,
+      `First assessment serialization ${Date.now()}`,
+      'first-assessment-serialization',
+    );
+    const createdRoundResponse = await request(app.getHttpServer())
+      .post(`/projects/${projectId}/rounds`)
+      .send({ type: 'INITIAL_INTAKE' })
+      .expect(201);
+    const roundId = createdRoundResponse.body.id as string;
+    const snapshotId = createdRoundResponse.body.questions[0].id as string;
+    const assessmentUrl =
+      `/projects/${projectId}/rounds/${roundId}/answers/${snapshotId}/assessment`;
+    const firstRationale = 'First concurrent assessment rationale';
+    const laterRationale = 'Later concurrent assessment rationale';
+
+    const { creatorResponse, waitingResponse } = await serializeAcrossFirstChildInsert(
+      controlDataSource,
+      apiApplicationName,
+      'round_question_assessment_overrides',
+      async () =>
+        request(app.getHttpServer())
+          .put(assessmentUrl)
+          .send({ status: 'Nem releváns', rationale: firstRationale }),
+      async () =>
+        request(app.getHttpServer())
+          .put(assessmentUrl)
+          .send({ status: 'Nem releváns', rationale: laterRationale }),
+    );
+
+    assert.equal(creatorResponse.status, 200);
+    assert.equal(waitingResponse.status, 200);
+    assert.equal(waitingResponse.body.checklistStatus, 'Nem releváns');
+    assert.equal(waitingResponse.body.assessmentRationale, laterRationale);
+    const overrideRows = await controlDataSource.query<
+      Array<{ status: string; rationale: string }>
+    >(
+      `SELECT "status", "rationale" FROM "round_question_assessment_overrides"
+       WHERE "round_id" = $1 AND "snapshot_id" = $2`,
+      [roundId, snapshotId],
+    );
+    assert.deepEqual(overrideRows, [{ status: 'Nem releváns', rationale: laterRationale }]);
+    assert.deepEqual(await loadAssessmentAuditEventTypes(controlDataSource, projectId), [
+      'ROUND_QUESTION_ASSESSMENT_SAVED',
+      'ROUND_QUESTION_ASSESSMENT_SAVED',
+    ]);
+  });
+
+  it('removes a newly committed first assessment when reset waited on its round lock', async () => {
+    const { projectId } = await createProjectWithSingleQuestionSchema(
+      app,
+      `First assessment reset serialization ${Date.now()}`,
+      'first-assessment-reset-serialization',
+    );
+    const createdRoundResponse = await request(app.getHttpServer())
+      .post(`/projects/${projectId}/rounds`)
+      .send({ type: 'INITIAL_INTAKE' })
+      .expect(201);
+    const roundId = createdRoundResponse.body.id as string;
+    const snapshotId = createdRoundResponse.body.questions[0].id as string;
+    const assessmentUrl =
+      `/projects/${projectId}/rounds/${roundId}/answers/${snapshotId}/assessment`;
+
+    const { creatorResponse, waitingResponse } = await serializeAcrossFirstChildInsert(
+      controlDataSource,
+      apiApplicationName,
+      'round_question_assessment_overrides',
+      async () =>
+        request(app.getHttpServer())
+          .put(assessmentUrl)
+          .send({
+            status: 'Nem releváns',
+            rationale: 'Assessment committed before the waiting reset',
+          }),
+      async () => request(app.getHttpServer()).delete(assessmentUrl),
+    );
+
+    assert.equal(creatorResponse.status, 200);
+    assert.equal(waitingResponse.status, 200);
+    assert.equal(waitingResponse.body.checklistStatus, 'Nincs meg');
+    assert.equal(waitingResponse.body.assessmentRationale, null);
+    const overrideRows = await controlDataSource.query<Array<{ id: string }>>(
+      `SELECT "id" FROM "round_question_assessment_overrides"
+       WHERE "round_id" = $1 AND "snapshot_id" = $2`,
+      [roundId, snapshotId],
+    );
+    assert.deepEqual(overrideRows, []);
+    assert.deepEqual(await loadAssessmentAuditEventTypes(controlDataSource, projectId), [
+      'ROUND_QUESTION_ASSESSMENT_SAVED',
+      'ROUND_QUESTION_ASSESSMENT_RESET',
+    ]);
   });
 
   it('serializes an assessment PUT ahead of a direct answer update without a round-answer lock cycle', async () => {
@@ -2185,6 +2314,150 @@ async function serializeExistingOverrideMutation<TResponse extends { status: num
     );
     await dataSource.query(`DROP FUNCTION IF EXISTS "${gateFunctionName}"()`);
   }
+}
+
+async function serializeAcrossFirstChildInsert<
+  TCreatorResponse extends { status: number; body: unknown },
+  TWaitingResponse extends { status: number; body: unknown },
+>(
+  dataSource: DataSource,
+  applicationName: string,
+  targetTable: 'round_answers' | 'round_question_assessment_overrides',
+  sendCreatorRequest: () => Promise<TCreatorResponse>,
+  sendWaitingRequest: () => Promise<TWaitingResponse>,
+): Promise<{
+  readonly creatorResponse: TCreatorResponse;
+  readonly waitingResponse: TWaitingResponse;
+}> {
+  const identifierSuffix = randomUUID().replaceAll('-', '');
+  const gateLockKey = Number.parseInt(identifierSuffix.slice(0, 12), 16);
+  const gateTriggerName = `aaa_s01_insert_gate_${identifierSuffix}`;
+  const gateFunctionName = `s01_insert_gate_${identifierSuffix}`;
+  const gateRunner = dataSource.createQueryRunner();
+  let advisoryLockHeld = false;
+  let creatorRequestPromise: Promise<TCreatorResponse> | undefined;
+  let waitingRequestPromise: Promise<TWaitingResponse> | undefined;
+  await gateRunner.connect();
+
+  try {
+    await dataSource.query(`
+      CREATE OR REPLACE FUNCTION "${gateFunctionName}"()
+      RETURNS trigger
+      LANGUAGE plpgsql
+      AS $$
+      BEGIN
+        PERFORM pg_advisory_xact_lock(${gateLockKey}::bigint);
+        RETURN NEW;
+      END;
+      $$
+    `);
+    await dataSource.query(`
+      CREATE TRIGGER "${gateTriggerName}"
+      BEFORE INSERT ON "${targetTable}"
+      FOR EACH ROW
+      EXECUTE FUNCTION "${gateFunctionName}"()
+    `);
+    await gateRunner.query('SELECT pg_advisory_lock($1::bigint)', [gateLockKey]);
+    advisoryLockHeld = true;
+
+    let creatorOutcome: 'completed' | 'pending' | 'rejected' = 'pending';
+    creatorRequestPromise = sendCreatorRequest();
+    void creatorRequestPromise.then(
+      () => {
+        creatorOutcome = 'completed';
+      },
+      () => {
+        creatorOutcome = 'rejected';
+      },
+    );
+    const creatorQueries = await observeApplicationLockQueries(
+      dataSource,
+      applicationName,
+      1,
+      () => creatorOutcome,
+    );
+    assert.ok(
+      creatorQueries.some((query) => query.includes(`INSERT INTO "${targetTable}"`)),
+      `Expected the first ${targetTable} insert to wait on the advisory gate.`,
+    );
+
+    let waitingOutcome: 'completed' | 'pending' | 'rejected' = 'pending';
+    waitingRequestPromise = sendWaitingRequest();
+    void waitingRequestPromise.then(
+      () => {
+        waitingOutcome = 'completed';
+      },
+      () => {
+        waitingOutcome = 'rejected';
+      },
+    );
+    const waitingQueries = await observeApplicationLockQueries(
+      dataSource,
+      applicationName,
+      2,
+      () => waitingOutcome,
+    );
+    assert.ok(
+      waitingQueries.some(
+        (query) => query.includes('FROM "interview_rounds"') && query.includes('FOR UPDATE'),
+      ),
+      'Expected the second request to wait on the round row lock.',
+    );
+
+    await gateRunner.query('SELECT pg_advisory_unlock($1::bigint)', [gateLockKey]);
+    advisoryLockHeld = false;
+    const [creatorResponse, waitingResponse] = await Promise.all([
+      creatorRequestPromise,
+      waitingRequestPromise,
+    ]);
+    creatorRequestPromise = undefined;
+    waitingRequestPromise = undefined;
+    return { creatorResponse, waitingResponse };
+  } finally {
+    if (advisoryLockHeld) {
+      await gateRunner.query('SELECT pg_advisory_unlock($1::bigint)', [gateLockKey]);
+    }
+    await Promise.allSettled(
+      [creatorRequestPromise, waitingRequestPromise].filter(
+        (pendingRequest): pendingRequest is Promise<TCreatorResponse> | Promise<TWaitingResponse> =>
+          pendingRequest !== undefined,
+      ),
+    );
+    await gateRunner.release();
+    await dataSource.query(`DROP TRIGGER IF EXISTS "${gateTriggerName}" ON "${targetTable}"`);
+    await dataSource.query(`DROP FUNCTION IF EXISTS "${gateFunctionName}"()`);
+  }
+}
+
+async function observeApplicationLockQueries(
+  dataSource: DataSource,
+  applicationName: string,
+  expectedCount: number,
+  getOutcome: () => 'completed' | 'pending' | 'rejected',
+): Promise<string[]> {
+  for (let attempt = 0; attempt < 100; attempt += 1) {
+    const outcome = getOutcome();
+    if (outcome !== 'pending') {
+      throw new Error(
+        `Application request ${outcome} before ${expectedCount} PostgreSQL lock waits were observed.`,
+      );
+    }
+    const activityRows = await dataSource.query<Array<{ query: string | null }>>(
+      `SELECT "query"
+       FROM "pg_stat_activity"
+       WHERE "application_name" = $1
+         AND "wait_event_type" = 'Lock'
+       ORDER BY "query_start" ASC`,
+      [applicationName],
+    );
+    if (activityRows.length >= expectedCount) {
+      return activityRows.flatMap((row) => (row.query === null ? [] : [row.query]));
+    }
+    await delay(10);
+  }
+  throw new Error(
+    `PostgreSQL application ${applicationName} did not reach ${expectedCount} lock waits.`,
+  );
 }
 
 async function loadAssessmentAuditEventTypes(
