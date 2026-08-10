@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       CORS_ORIGIN: http://localhost:8080
-      DATABASE_URL: postgres://project_maker_app:ci-password@127.0.0.1:5432/project_maker
+      DATABASE_URL: postgres://project_maker_app:ci-password@127.0.0.1:5432/project_maker_test
       SMTP_HOST: ''
       SMTP_PORT: '1025'
       SMTP_SECURE: 'false'
@@ -22,13 +22,13 @@ jobs:
       postgres:
         image: postgres:18.4-alpine3.24
         env:
-          POSTGRES_DB: project_maker
+          POSTGRES_DB: project_maker_test
           POSTGRES_USER: project_maker_app
           POSTGRES_PASSWORD: ci-password
         ports:
           - 5432:5432
         options: >-
-          --health-cmd "pg_isready -U project_maker_app -d project_maker"
+          --health-cmd "pg_isready -U project_maker_app -d project_maker_test"
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5

@@ -12,10 +12,10 @@ The canonical workflow is:
 2. Capture project basics, the business problem, the desired outcome, ownership, and constraints.
 3. Select a versioned playbook and work through its guided interview/checklist questions.
 4. Record answers, open questions, owners, due dates, next steps, and follow-up outcomes.
-5. Recalculate completion, readiness, blocking gaps, and Decision Score after edits.
-6. Review the cockpit and resolve the highest-severity gaps.
-7. Record a Go, Conditional Go, or No-Go decision.
-8. Generate the canonical Markdown specification, then derive human-readable exports from it.
+5. Review current completion, readiness, factors, and ordered remediation gaps after relevant edits.
+6. Resolve the highest-severity gaps through the Cockpit's explicit remediation target.
+7. Record a Go, Conditional Go, or No-Go decision only after the future SCORE-01.2 workflow becomes available.
+8. Generate the canonical Markdown specification, then derive human-readable exports from it when the future output workflows are delivered.
 9. Archive inactive projects; deletion remains a distinct, explicit operation.
 
 ## Domain terminology
@@ -26,10 +26,11 @@ The canonical workflow is:
 - **Discovery follow-up:** a project-owned discovery work item with a responsible owner, due date, status, answer/decision, and next step. The delivered `INTAKE-04.1`, `INTAKE-04.2`, and `INTAKE-04.3a` slices create, review, resolve, and edit its open working fields while retaining canonical terminal states. Optional source checklist-item linkage remains future work.
 - **Customer email follow-up:** an outbound communication cadence/schedule. It may send pings, but it is not a discovery work item and does not replace discovery follow-ups.
 - **Completion:** progress through relevant playbook items. Items marked not relevant are excluded from the denominator.
-- **Readiness:** a weighted measure of whether the project has enough business, ownership, checklist, and follow-up information for estimation or development.
-- **Readiness gap / gap list:** information that blocks or weakens estimation or a decision, classified as Critical, Important, or Clarification.
-- **Decision Score:** a decision-support score based on business value, strategic alignment, urgency, confidence, inverted complexity, inverted risk, and readiness.
-- **Cockpit:** the review surface for readiness, Decision Score, recommended action, and prioritized gaps.
+- **Effective checklist status:** the current status derived from a valid answer unless a persisted assessment overrides it: `Nincs meg`, `Kész`, `Részben megvan`, or justified `Nem releváns`.
+- **Readiness:** the delivered weighted measure of current base information, business clarification, ownership, relevant checklist status, and discovery-follow-up resolution.
+- **Readiness gap / gap list:** a redacted remediation item classified as `Kritikus`, `Fontos`, or `Pontosítás`, with only its category, generic message, next step, and explicit target.
+- **Decision Score:** a future decision-support score based on business value, strategic alignment, urgency, confidence, inverted complexity, inverted risk, and readiness; it remains unavailable.
+- **Cockpit:** the delivered review surface for readiness, factors, and prioritized gaps. The SCORE-01.2 decision and recommendation surface is absent.
 - **Canonical specification:** the structured Markdown output from which acceptance criteria, user stories, PDF, and spreadsheet exports are derived.
 
 The status vocabulary is defined only in the canonical general playbook contract below. Domain and application code must consume it from the contracts package instead of maintaining local copies.
@@ -51,11 +52,13 @@ The model below records semantic intent, not a database schema. Stable IDs and e
 | Business framing | `businessProblem`, `expectedBusinessOutcome`, `firstMvpGoal` |
 | Decision | `finalDecision`, `decisionDate`, `decisionMaker`, `decisionNote`, six input scores |
 | Intake | Checklist answers keyed by playbook item ID and a list of follow-ups |
-| Derived state | Completion, readiness, Decision Score, recommendation, and ordered readiness gaps |
+| Derived state | Delivered completion, readiness, factors, and ordered redacted readiness gaps; future Decision Score and recommendation |
 
 ### Checklist answer
 
 Each answer preserves `status`, `owner`, `dueDate`, free-text `answer`, `openQuestion`, `nextStep`, and `updatedAt`.
+
+For the delivered initial-intake assessment, a valid answer is effectively `Kész`; no valid answer is `Nincs meg`. `Részben megvan` may be set only when a valid answer exists and remains a completion blocker. `Nem releváns` requires a nonblank rationale, excludes the item from completion and checklist readiness denominators, and can satisfy a required item's completion condition. The rationale is retained with the assessment but is not exposed in readiness gaps or assessment audit payloads. Completed rounds make answers and assessments immutable.
 
 ### Discovery follow-up
 
@@ -63,7 +66,11 @@ Each discovery follow-up preserves a stable `id`, `category`, `question`, `owner
 
 ### Readiness gap
 
-Each gap preserves `severity`, `category`, explanatory `message`, recommended `nextStep`, and a navigation target: overview, checklist, follow-ups, or decision. Optional target field, checklist item ID, and follow-up ID support direct remediation.
+Each delivered gap preserves `severity`, `category`, explanatory `message`, recommended `nextStep`, and a navigation target: overview, checklist, or follow-ups. Optional snapshot and follow-up identifiers support direct remediation. The readiness result deliberately excludes source answers, assessment rationales, owner names, dates, follow-up content, decisions, and next-step values.
+
+### Readiness source and availability
+
+Readiness uses the latest open `INITIAL_INTAKE` round for a project; if none is open, it uses the latest completed one. It is available only when that source contains the exact current 30 stable keys of the canonical `general` v1 playbook. With no initial intake it reports `NO_INITIAL_INTAKE`; a noncanonical source reports `UNSUPPORTED_SCHEMA`. These availability states are not a score and do not prevent normal Workspace or discovery-follow-up work.
 
 ## Canonical playbook contract
 

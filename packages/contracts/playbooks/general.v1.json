@@ -74,6 +74,16 @@
         "estimatePreparationFrom": 55,
         "estimateReadyFrom": 75,
         "developmentReadyFrom": 90
+      },
+      "inputBindings": {
+        "baseInfoProjectFields": [
+          "name",
+          "customerContactName",
+          "customerContactEmail"
+        ],
+        "businessChecklistItemIds": [1, 2],
+        "ownershipProjectFields": ["ballOwner"],
+        "ownershipChecklistItemIds": [3]
       }
     },
     "decision": {

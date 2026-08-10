@@ -8,7 +8,6 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import type {
-  AnswerValue,
   CreateMarkdownRevisionInput,
   InterviewRound,
   MarkdownRevision,
@@ -17,13 +16,17 @@ import type {
   ProjectQuestionSchema,
   ProjectSchemaQuestion,
   ProjectWorkspace,
-  RoundQuestionSnapshot,
 } from '@project-maker/contracts';
 import { DataSource, EntityManager, In, QueryFailedError } from 'typeorm';
 
 import { AuditEvent, type AuditPayload } from '../audit/audit-event.entity';
 import { InterviewRoundEntity } from '../interviews/interview-round.entity';
 import { RoundAnswerEntity } from '../interviews/round-answer.entity';
+import {
+  loadRoundQuestionAssessmentPolicy,
+  toEffectiveRoundQuestionSnapshot,
+} from '../interviews/round-question-assessment';
+import { RoundQuestionAssessmentOverrideEntity } from '../interviews/round-question-assessment-override.entity';
 import { RoundQuestionSnapshotEntity } from '../interviews/round-question-snapshot.entity';
 import { Project } from '../projects/project.entity';
 import { BaseQuestionEntity } from '../question-bank/base-question.entity';
@@ -120,6 +123,11 @@ export class MarkdownService {
       if (isUniqueViolation(error)) {
         throw new ConflictException(
           `Markdown revision version ${version} already exists for this project; retry the request.`,
+        );
+      }
+      if (error instanceof QueryFailedError) {
+        throw new InternalServerErrorException(
+          'The Markdown revision could not be persisted; retry the request.',
         );
       }
       throw error;
@@ -277,6 +285,10 @@ async function loadInterviewRounds(
     where: { roundId: In(roundIds) },
     order: { roundId: 'ASC', snapshotId: 'ASC', id: 'ASC' },
   });
+  const overrides = await manager.getRepository(RoundQuestionAssessmentOverrideEntity).find({
+    where: { roundId: In(roundIds) },
+    order: { roundId: 'ASC', snapshotId: 'ASC', id: 'ASC' },
+  });
   const schemaIds = [...new Set(rounds.map((round) => round.projectSchemaId))];
   const schemas = await manager.getRepository(ProjectQuestionSchemaEntity).findBy({
     id: In(schemaIds),
@@ -284,6 +296,10 @@ async function loadInterviewRounds(
   const schemaVersions = new Map(schemas.map((schema) => [schema.id, schema.schemaVersion]));
   const snapshotsByRound = groupBy(snapshots, (snapshot) => snapshot.roundId);
   const answersBySnapshot = new Map(answers.map((answer) => [answer.snapshotId, answer]));
+  const overridesBySnapshot = new Map(
+    overrides.map((override) => [override.snapshotId, override]),
+  );
+  const assessmentPolicy = await loadRoundQuestionAssessmentPolicy();
 
   return rounds.map((round) => {
     const schemaVersion = schemaVersions.get(round.projectSchemaId);
@@ -301,32 +317,15 @@ async function loadInterviewRounds(
       createdAt: toIso(round.createdAt, 'round createdAt'),
       completedAt: round.completedAt ? toIso(round.completedAt, 'round completedAt') : null,
       questions: roundSnapshots.map((snapshot) =>
-        toRoundQuestionSnapshot(snapshot, answersBySnapshot.get(snapshot.id) ?? null),
+        toEffectiveRoundQuestionSnapshot(
+          snapshot,
+          answersBySnapshot.get(snapshot.id) ?? null,
+          overridesBySnapshot.get(snapshot.id) ?? null,
+          assessmentPolicy,
+        ),
       ),
     };
   });
-}
-
-function toRoundQuestionSnapshot(
-  snapshot: RoundQuestionSnapshotEntity,
-  answer: RoundAnswerEntity | null,
-): RoundQuestionSnapshot {
-  return {
-    id: snapshot.id,
-    baseQuestionId: snapshot.baseQuestionId,
-    stableKey: snapshot.stableKey,
-    topic: snapshot.topic,
-    controlPoint: snapshot.controlPoint,
-    text: snapshot.text,
-    type: snapshot.type,
-    required: snapshot.required,
-    blocking: snapshot.blocking,
-    order: snapshot.order,
-    hint: snapshot.hint,
-    options: snapshot.options,
-    answer: (answer?.value as AnswerValue | undefined) ?? null,
-    answeredAt: answer ? toIso(answer.answeredAt, 'answer answeredAt') : null,
-  };
 }
 
 function toProjectWorkspace(project: Project): ProjectWorkspace {

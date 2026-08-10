@@ -56,6 +56,16 @@ test('general v1 exposes the legacy status vocabulary and scoring policy', async
     checklist: 0.3,
     followUpResolution: 0.15
   });
+  assert.deepEqual(playbook.scoring.readiness.inputBindings, {
+    baseInfoProjectFields: [
+      'name',
+      'customerContactName',
+      'customerContactEmail'
+    ],
+    businessChecklistItemIds: [1, 2],
+    ownershipProjectFields: ['ballOwner'],
+    ownershipChecklistItemIds: [3]
+  });
   assert.equal(playbook.scoring.decision.scale.minimum, 1);
   assert.equal(playbook.scoring.decision.scale.maximum, 5);
   assert.equal(playbook.scoring.decision.thresholds.high, 75);
@@ -98,6 +108,18 @@ test('validation rejects out-of-range scoring policy values', async () => {
   assert.throws(
     () => validateGeneralPlaybook(invalidPlaybook),
     /General playbook validation failed: expected a policy value from 0 to 1 at \$\.scoring\.readiness\.weights\.baseInfo\./
+  );
+});
+
+test('validation rejects readiness input bindings that differ from the canonical playbook', async () => {
+  const { generalPlaybookV1, validateGeneralPlaybook } = await import('../dist/index.js');
+  const invalidPlaybook = structuredClone(generalPlaybookV1);
+
+  invalidPlaybook.scoring.readiness.inputBindings.businessChecklistItemIds[0] = 999;
+
+  assert.throws(
+    () => validateGeneralPlaybook(invalidPlaybook),
+    /General playbook validation failed: expected the canonical policy value 1 at \$\.scoring\.readiness\.inputBindings\.businessChecklistItemIds\[0\]\./
   );
 });
 

@@ -12,6 +12,7 @@ import { InterviewsModule } from './interviews/interviews.module';
 import { MarkdownModule } from './markdown/markdown.module';
 import { ProjectsModule } from './projects/projects.module';
 import { QuestionBankModule } from './question-bank/question-bank.module';
+import { ReadinessModule } from './readiness/readiness.module';
 
 @Module({
   imports: [
@@ -25,6 +26,7 @@ import { QuestionBankModule } from './question-bank/question-bank.module';
     MarkdownModule,
     CustomerFollowUpModule,
     DiscoveryFollowUpsModule,
+    ReadinessModule,
   ],
   controllers: [HealthController],
   providers: [
