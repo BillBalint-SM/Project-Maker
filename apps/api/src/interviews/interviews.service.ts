@@ -30,6 +30,7 @@ import {
   loadRoundQuestionAssessmentPolicy,
   roundAnswerValidationError,
   toEffectiveRoundQuestionSnapshot,
+  unicodeCodePointLength,
   type RoundQuestionAssessmentPolicy,
 } from './round-question-assessment';
 import { RoundQuestionAssessmentOverrideEntity } from './round-question-assessment-override.entity';
@@ -145,6 +146,7 @@ export class InterviewsService {
   ): Promise<RoundQuestionSnapshot> {
     return this.dataSource.transaction(async (manager) => {
       const assessmentPolicy = await loadRoundQuestionAssessmentPolicy();
+      const existingAnswer = await findLockedRoundAnswer(manager, roundId, snapshotId);
       const round = await findLockedRound(manager, projectId, roundId);
       if (round.status === 'COMPLETED') {
         throw new ConflictException('Completed rounds cannot be edited.');
@@ -158,7 +160,6 @@ export class InterviewsService {
       }
 
       const answerRepository = manager.getRepository(RoundAnswerEntity);
-      const existingAnswer = await answerRepository.findOneBy({ snapshotId });
       const overrideRepository = manager.getRepository(
         RoundQuestionAssessmentOverrideEntity,
       );
@@ -217,18 +218,29 @@ export class InterviewsService {
   ): Promise<RoundQuestionSnapshot> {
     return this.dataSource.transaction(async (manager) => {
       const assessmentPolicy = await loadRoundQuestionAssessmentPolicy();
+      const answer =
+        input.status === assessmentPolicy.partialStatus
+          ? await findLockedRoundAnswer(manager, roundId, snapshotId)
+          : null;
       const round = await findLockedRound(manager, projectId, roundId);
       requireEditableRound(round);
       const snapshot = await findRoundSnapshot(manager, roundId, snapshotId);
-      const answer = await manager.getRepository(RoundAnswerEntity).findOneBy({
-        roundId,
-        snapshotId,
-      });
+      const loadedAnswer =
+        answer ??
+        (await manager.getRepository(RoundAnswerEntity).findOneBy({
+          roundId,
+          snapshotId,
+        }));
       const overrideRepository = manager.getRepository(
         RoundQuestionAssessmentOverrideEntity,
       );
       const existingOverride = await overrideRepository.findOneBy({ roundId, snapshotId });
-      const assessment = normalizeAssessmentInput(input, snapshot, answer, assessmentPolicy);
+      const assessment = normalizeAssessmentInput(
+        input,
+        snapshot,
+        loadedAnswer,
+        assessmentPolicy,
+      );
 
       if (
         existingOverride?.status === assessment.status &&
@@ -236,7 +248,7 @@ export class InterviewsService {
       ) {
         return toEffectiveRoundQuestionSnapshot(
           snapshot,
-          answer,
+          loadedAnswer,
           existingOverride,
           assessmentPolicy,
         );
@@ -274,7 +286,7 @@ export class InterviewsService {
       );
       return toEffectiveRoundQuestionSnapshot(
         snapshot,
-        answer,
+        loadedAnswer,
         savedOverride,
         assessmentPolicy,
       );
@@ -413,6 +425,17 @@ async function findLockedRound(
   return round;
 }
 
+async function findLockedRoundAnswer(
+  manager: EntityManager,
+  roundId: string,
+  snapshotId: string,
+): Promise<RoundAnswerEntity | null> {
+  return manager.getRepository(RoundAnswerEntity).findOne({
+    where: { roundId, snapshotId },
+    lock: { mode: 'pessimistic_write' },
+  });
+}
+
 function requireEditableRound(round: InterviewRoundEntity): void {
   if (round.status === 'COMPLETED') {
     throw new ConflictException('Completed rounds cannot be edited.');
@@ -457,7 +480,10 @@ function normalizeAssessmentInput(
       throw new BadRequestException('Not-relevant assessments require a rationale.');
     }
     const rationale = input.rationale.trim();
-    if (rationale.length === 0 || rationale.length > assessmentRationaleMaxLength) {
+    if (
+      rationale.length === 0 ||
+      unicodeCodePointLength(rationale) > assessmentRationaleMaxLength
+    ) {
       throw new BadRequestException(
         `Not-relevant assessment rationale must contain 1 to ${assessmentRationaleMaxLength} characters.`,
       );

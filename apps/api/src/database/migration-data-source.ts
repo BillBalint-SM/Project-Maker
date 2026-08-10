@@ -13,6 +13,7 @@ import { DiscoveryFollowUps0006DiscoveryFollowUps1786348800000 } from '../migrat
 import { DiscoveryFollowUpResolution0007DiscoveryFollowUpResolution1786435200000 } from '../migrations/0007-discovery-follow-up-resolution';
 import { DiscoveryFollowUpEditVersion0008DiscoveryFollowUpEditVersion1786521600000 } from '../migrations/0008-discovery-follow-up-edit-version';
 import { RoundQuestionAssessmentOverrides0009RoundQuestionAssessmentOverrides1786608000000 } from '../migrations/0009-round-question-assessment-overrides';
+import { RoundAnswerValidationParity0010RoundAnswerValidationParity1786694400000 } from '../migrations/0010-round-answer-validation-parity';
 
 const runtime = globalThis as typeof globalThis & {
   readonly process: { readonly env: Readonly<Record<string, string | undefined>> };
@@ -32,6 +33,7 @@ const dataSource = new DataSource({
     DiscoveryFollowUpResolution0007DiscoveryFollowUpResolution1786435200000,
     DiscoveryFollowUpEditVersion0008DiscoveryFollowUpEditVersion1786521600000,
     RoundQuestionAssessmentOverrides0009RoundQuestionAssessmentOverrides1786608000000,
+    RoundAnswerValidationParity0010RoundAnswerValidationParity1786694400000,
   ],
 });
 
