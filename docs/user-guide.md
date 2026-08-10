@@ -16,6 +16,7 @@ Megmutatja, mit érdemes rögzíteni, mit jelent az eredmény, mikor történik 
 - [A projekt cockpit használata](#a-projekt-cockpit-használata)
 - [A közös kérdésbank kezelése](#a-közös-kérdésbank-kezelése)
 - [Projektséma és kezdő interjú](#projektséma-és-kezdő-interjú)
+- [Felkészültségi értékelés és hiányok](#felkészültségi-értékelés-és-hiányok)
 - [Discovery follow-upok kezelése](#discovery-follow-upok-kezelése)
 - [Ügyfél-emlékeztetők és review email](#ügyfél-emlékeztetők-és-review-email)
 - [Markdown-revíziók és átadási pillanatképek](#markdown-revíziók-és-átadási-pillanatképek)
@@ -44,7 +45,7 @@ Minden részletes workflow ugyanarra a hét kérdésre válaszol:
 6. Mi akadályozhatja meg?
 7. Mi a biztonságos következő lépés?
 
-> **Fontos különbség:** a Project Maker discovery- és igénytisztázó eszköz. Nem általános projektmenedzsment-rendszer, nem feladatkezelő, nem erőforrás-tervező, és a jelenlegi verzió nem számít automatikus készültségi vagy döntési pontszámot.
+> **Fontos különbség:** a Project Maker discovery- és igénytisztázó eszköz. Nem általános projektmenedzsment-rendszer, nem feladatkezelő és nem erőforrás-tervező. A jelenlegi verzió készültségi értékelést mutat, de Decision Score-t, ajánlott döntést és automatikusan generált kimenetet még nem ad.
 
 ## Project Maker öt percben
 
@@ -67,6 +68,7 @@ Az alkalmazás napi használatának lényege röviden:
 | Elindul az igényfelmérés | Adj felelőst, következő lépést, határidőt, és válassz státuszt | A portfólióban mindenki ugyanazt az operatív állapotot látja |
 | Megvan a workshop kérdésköre | Tedd közzé a projektsémát | Rögzül, mely kérdések tartoznak ehhez a projekthez |
 | Elindul az interjú | Indíts kezdő interjúkört és rögzítsd a válaszokat | A kör saját, változatlan kérdéspillanatképet kap |
+| Tisztázottságot kell ellenőrizni | Tekintsd át a cockpit `Felkészültségi értékelés` kártyáját és kövesd a hiányok műveleteit | Aktuális kitöltöttség, felkészültség, tényezők és rendezett hiányok látszanak |
 | Új bizonytalanság merült fel | Hozz létre discovery follow-upot felelőssel és dátummal | A tisztázandó pont számonkérhetően megmarad |
 | Átadási pont vagy review következik | Generálj és ellenőrizz Markdown-revíziót | Letölthető, változatlan projektpillanatkép készül |
 | Lezárult az aktív munka | Archiváld a projektet | A történet megmarad, az aktív cockpit-módosítások leállnak |
@@ -133,12 +135,13 @@ flowchart LR
     D --> E{Minden kötelező válasz mentve?}
     E -- Nem --> D
     E -- Igen --> F[Interjúkör lezárása]
-    F --> G[Discovery follow-upok lezárása]
-    G --> H[Markdown-revízió ellenőrzése]
-    H --> I[Ügyfél-review vagy belső átadás]
-    I --> J{Folytatódik az aktív munka?}
-    J -- Igen --> B
-    J -- Nem --> K[Archiválás]
+    F --> G[Felkészültség és hiányok áttekintése]
+    G --> H[Discovery follow-upok lezárása]
+    H --> I[Markdown-revízió ellenőrzése]
+    I --> J[Ügyfél-review vagy belső átadás]
+    J --> K{Folytatódik az aktív munka?}
+    K -- Igen --> B
+    K -- Nem --> L[Archiválás]
 ```
 
 ### 1. Indítás és közös kontextus
@@ -153,9 +156,9 @@ Válaszd ki az aktív alapkérdések közül az adott projekthez szükségeseket
 
 Indíts kezdő interjúkört. Szöveges válasz után várd meg a `Mentve` állapotot; választó, jelölő, szám- és dátumválasz azonnal ment. Megszakítás után ugyanaz a nyitott kör töltődik vissza.
 
-### 4. Nyitott tisztázások
+### 4. Felkészültség és nyitott tisztázások
 
-Az interjú közben felmerülő, később megválaszolandó pontokat ne rejtsd el egy hosszú válaszban. Hozz létre külön discovery follow-upot kategóriával, felelőssel, valódi céldátummal és következő lépéssel. Lezáráskor a döntést vagy választ is rögzítsd.
+Az interjú értékelése után nyisd meg a cockpit `Felkészültségi értékelés` kártyáját. Az interjú közben felmerülő, később megválaszolandó pontokat ne rejtsd el egy hosszú válaszban. Hozz létre külön discovery follow-upot kategóriával, felelőssel, valódi céldátummal és következő lépéssel. Lezáráskor a döntést vagy választ is rögzítsd.
 
 ### 5. Pillanatkép és kommunikáció
 
@@ -423,11 +426,11 @@ Típusváltáskor mindig ellenőrizd, hogy a kérdés jelentése és a korábbi 
 | Jelölő | Jelenlegi tényleges hatás |
 | --- | --- |
 | `Required` | Válasz nélkül a szerver nem engedi lezárni az interjúkört |
-| `Required for estimate` | Metaadatként megmarad, de a jelenlegi verzió nem számol becslési készültséget és nem állít kaput |
+| `Required for estimate` | Metaadatként megmarad; önmagában nem módosítja a kör lezárását vagy a projektstátuszt |
 | `Blocking` | A nyitott körben kiemelt tisztázási útmutatást mutat; önmagában nem akadályozza a lezárást |
 | `Active` | Bekapcsolva megjelenik az új projektséma-választásban; kikapcsolva új sémába nem választható |
 
-Ha egy blokkoló kérdésnek ténylegesen meg kell akadályoznia a kör lezárását, a `Required` jelölőt is kapcsold be. A `Required for estimate` jelölőből jelenleg ne következtess automatikus pontszámra vagy készültségi állapotra.
+Ha egy blokkoló kérdésnek ténylegesen meg kell akadályoznia a kör lezárását, a `Required` jelölőt is kapcsold be. A `Required for estimate` nem külön pontszámkapu, és nem helyettesít Decision Score-t, ajánlott döntést vagy automatikus projektstátusz-váltást. A felkészültségi értékeléshez a [forráskörnek](#ha-az-értékelés-nem-elérhető-vagy-nem-töltődik-be) a jelenlegi kanonikus sémának kell megfelelnie.
 
 ### Tipikus mentési hibák és helyreállítás
 
@@ -549,7 +552,7 @@ Ha egy sikertelen szöveges mentés után tovább gépelsz, a képernyőn lévő
 
 ### Interjúkör lezárása
 
-**Előfeltétel:** nincs várakozó automatikus mentés, nincs folyamatban lévő kérés, nincs mentési hiba, és minden `Required` kérdésnek van mentett válasza.
+**Előfeltétel:** nincs várakozó automatikus mentés, nincs folyamatban lévő kérés, nincs mentési hiba, és minden `Required` kérdésnek van mentett, érvényes válasza vagy indokolt `Nem releváns` értékelése. `Részben megvan` értékeléssel egy kötelező kérdés nem zárható le.
 
 1. Görgess végig a kérdéseken, és ellenőrizd a mentési állapotokat.
 2. Olvasd át a kötelező és blokkoló tisztázásokat üzleti szempontból is.
@@ -563,6 +566,42 @@ A lezárt kör változatlan. Nem szerkeszthető, és a válaszai sem írhatók �
 Korábbi körök áttekintésére a létrehozásukkor vagy később generált Markdown-revízió szolgál.
 
 Lezárás után indíthatsz újabb kezdő interjúkört. Az új kör az akkor legfrissebb projektsémáról készít új pillanatképet, és nem másolja automatikusan az előző kör válaszait.
+
+## Felkészültségi értékelés és hiányok
+
+![Elérhető felkészültségi értékelés összesített kitöltöttséggel, tényezőkkel és egy ellenőrzőlista-hiány javítására mutató művelettel](assets/user-guide/07-readiness-review.png)
+
+*A cockpitban látható értékelés a kanonikus kezdő interjú aktuális állapotát, a tényezőket és a következő biztonságos javítási irányt mutatja; nem Decision Score és nem ajánlott döntés.*
+
+### Mikor jelöld `Részben megvan` vagy `Nem releváns` értékre?
+
+Minden kérdéskártyán az `Értékelés` résznél a szerver által meghatározott tényleges állapot látható. Érvényes mentett válaszból `Kész`, válasz nélkül `Nincs meg` lesz. Az `Automatikus állapot` visszaállítja ezt a válaszból következő értéket.
+
+- `Részben megvan`: akkor használd, ha van mentett, érvényes válasz, de az üzleti tartalom még hiányos vagy ellenőrzésre szorul. Ez fél értékként számít a felkészültségben és kötelező kérdésnél megakadályozza a kör lezárását.
+- `Nem releváns`: csak akkor használd, ha az adott kérdés valóban nem alkalmazható erre a projektre. Add meg az `Indoklás, miért nem releváns` szöveget, majd válaszd az `Indoklás mentése` gombot. Az indoklás kötelező, hogy a kizárás később értelmezhető legyen; az elem kimarad a kitöltöttségi és ellenőrzőlista-számításból, és kötelező kérdésnél is engedheti a lezárást.
+
+Ne használd a `Nem releváns` választ a hiányos információ elfedésére. Ha a kérdés releváns, de a válasz még nem elég jó, maradjon `Részben megvan`, és kövesd a hiány javítását. Sikertelen értékelésmentésnél a beírt indoklás és a választott állapot a képernyőn marad; ellenőrizd a hibaüzenetet, majd válaszd az `Értékelés újrapróbálása` gombot. Lezárt interjúkörben ezek a vezérlők szándékosan letiltottak.
+
+### Az értékelés olvasása és javítása
+
+Az értékelés a cockpitban töltődik be. Elérhető állapotban ezt látod:
+
+- `Interjú kitöltöttsége`: a releváns ellenőrzőlista-elemek állapota; a `Nem releváns` elemeket nem számolja.
+- `Felkészültség`: a súlyozott összkép; a sáv jelzi, hogy pontosítás szükséges, becslés előkészíthető, becslésre kész vagy fejlesztésre kész.
+- `Értékelési tényezők`: külön mutatják az alapinformációk, az üzleti tisztázottság, a felelősség, az ellenőrzőlista és a discovery utánkövetés állapotát.
+- `Rendezett hiányok`: a `Kritikus`, `Fontos`, majd `Pontosítás` sorrendben megjelenő, általánosított javítási jelzések. A lista nem jelenít meg interjúválaszt, `Nem releváns` indoklást vagy discovery follow-up tartalmat.
+
+Minden hiány művelete a megfelelő munkafelületre vezet: a `Workspace megnyitása` a felelőshöz, a `Kérdés megnyitása` a megfelelő interjúkérdéshez, a `Discovery utánkövetések megnyitása` pedig a follow-up listához. Javítsd ott az adatot vagy zárd le a follow-upot, mentsd sikeresen, majd nézd meg a frissült értékelést. Workspace- vagy discovery-módosítás után a Cockpit oldal újratöltése nélkül is frissülhet az értékelés.
+
+### Ha az értékelés nem elérhető vagy nem töltődik be
+
+| Látható helyzet | Jelentés | Biztonságos folytatás |
+| --- | --- | --- |
+| `Még nincs kezdő interjú` | A projekthez nincs kiértékelhető kezdő interjú | Nyisd meg az interjúoldalt, tegyél közzé megfelelő sémát, majd indíts kezdő interjút |
+| `Az értékeléshez frissített interjúséma szükséges` | A forráskör nem a jelenlegi kanonikus kérdéskészletet tartalmazza | Frissítsd a projektsémát, majd indíts új kezdő interjút; ne próbáld a régi kört kézzel átírni |
+| Betöltési hiba és `Újrapróbálás` | A felkészültségi kérés nem fejeződött be | Ellenőrizd a kapcsolatot, válaszd az `Újrapróbálás` gombot, és csak sikeres betöltés után hozz döntést az értékekből |
+
+Az elérhetetlen vagy hibás értékelés nem akadályozza meg a Workspace és a discovery follow-up kezelését. Mentsd ezeket a szokásos módon; az értékelés helyreállása után ellenőrizd újra a hiányokat. A `Felkészültség` nem helyettesít üzleti döntést: SCORE-01.2 Decision Score, ajánlott döntés és a belőlük készült automatikus kimenetek jelenleg nem érhetők el.
 
 ## Discovery follow-upok kezelése
 
@@ -1015,9 +1054,9 @@ Az alábbiak nem elrejtett funkciók és nem más menüpontban találhatók; a j
 - A projekt neve és a customer contact adatai létrehozás után nem szerkeszthetők.
 - Csak kezdő, `INITIAL_INTAKE` kör indítható; külön stakeholder- és clarification-kör nincs.
 - A lezárt körök története nem böngészhető az interjúoldalon; a Markdown-pillanatképekből tekinthető át.
-- A `Required for estimate` még nem számol estimate-readiness értéket.
+- A felkészültségi sáv nem állít át lifecycle státuszt, és nem helyettesíti a csapat üzleti döntését.
 - A `Blocking` önmagában útmutatás; csak `Required` jelöléssel együtt lesz lezárási kapu.
-- Nincs automatikus completion, readiness, gap- vagy Decision Score számítás és ajánlott következő döntés.
+- Nincs SCORE-01.2 Decision Score, ajánlott döntés vagy automatikusan generált kimenet; az elérhető completion, readiness és hiánylista nem ezek helyettesítője.
 
 ### Follow-up és kommunikáció
 
