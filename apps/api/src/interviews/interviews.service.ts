@@ -146,6 +146,11 @@ export class InterviewsService {
   ): Promise<RoundQuestionSnapshot> {
     return this.dataSource.transaction(async (manager) => {
       const assessmentPolicy = await loadRoundQuestionAssessmentPolicy();
+      const existingOverride = await findLockedRoundQuestionAssessmentOverride(
+        manager,
+        roundId,
+        snapshotId,
+      );
       const existingAnswer = await findLockedRoundAnswer(manager, roundId, snapshotId);
       const round = await findLockedRound(manager, projectId, roundId);
       if (round.status === 'COMPLETED') {
@@ -163,7 +168,6 @@ export class InterviewsService {
       const overrideRepository = manager.getRepository(
         RoundQuestionAssessmentOverrideEntity,
       );
-      const existingOverride = await overrideRepository.findOneBy({ roundId, snapshotId });
       if (input.value === null) {
         if (existingAnswer) {
           if (existingOverride?.status === assessmentPolicy.partialStatus) {
@@ -218,7 +222,13 @@ export class InterviewsService {
   ): Promise<RoundQuestionSnapshot> {
     return this.dataSource.transaction(async (manager) => {
       const assessmentPolicy = await loadRoundQuestionAssessmentPolicy();
+      const existingOverride = await findLockedRoundQuestionAssessmentOverride(
+        manager,
+        roundId,
+        snapshotId,
+      );
       const answer =
+        existingOverride?.status === assessmentPolicy.partialStatus ||
         input.status === assessmentPolicy.partialStatus
           ? await findLockedRoundAnswer(manager, roundId, snapshotId)
           : null;
@@ -234,7 +244,6 @@ export class InterviewsService {
       const overrideRepository = manager.getRepository(
         RoundQuestionAssessmentOverrideEntity,
       );
-      const existingOverride = await overrideRepository.findOneBy({ roundId, snapshotId });
       const assessment = normalizeAssessmentInput(
         input,
         snapshot,
@@ -300,6 +309,11 @@ export class InterviewsService {
   ): Promise<RoundQuestionSnapshot> {
     return this.dataSource.transaction(async (manager) => {
       const assessmentPolicy = await loadRoundQuestionAssessmentPolicy();
+      const existingOverride = await findLockedRoundQuestionAssessmentOverride(
+        manager,
+        roundId,
+        snapshotId,
+      );
       const round = await findLockedRound(manager, projectId, roundId);
       requireEditableRound(round);
       const snapshot = await findRoundSnapshot(manager, roundId, snapshotId);
@@ -310,7 +324,6 @@ export class InterviewsService {
       const overrideRepository = manager.getRepository(
         RoundQuestionAssessmentOverrideEntity,
       );
-      const existingOverride = await overrideRepository.findOneBy({ roundId, snapshotId });
       if (existingOverride) {
         await overrideRepository.remove(existingOverride);
         await saveAssessmentResetAuditEvent(manager, projectId, roundId, snapshotId);
@@ -431,6 +444,17 @@ async function findLockedRoundAnswer(
   snapshotId: string,
 ): Promise<RoundAnswerEntity | null> {
   return manager.getRepository(RoundAnswerEntity).findOne({
+    where: { roundId, snapshotId },
+    lock: { mode: 'pessimistic_write' },
+  });
+}
+
+async function findLockedRoundQuestionAssessmentOverride(
+  manager: EntityManager,
+  roundId: string,
+  snapshotId: string,
+): Promise<RoundQuestionAssessmentOverrideEntity | null> {
+  return manager.getRepository(RoundQuestionAssessmentOverrideEntity).findOne({
     where: { roundId, snapshotId },
     lock: { mode: 'pessimistic_write' },
   });

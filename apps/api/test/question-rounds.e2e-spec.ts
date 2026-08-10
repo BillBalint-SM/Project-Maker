@@ -324,6 +324,186 @@ describe('Question bank and interview rounds (PostgreSQL e2e)', () => {
     }
   });
 
+  it('serializes an assessment reset after a direct override delete with a true no-op audit outcome', async () => {
+    const { projectId } = await createProjectWithSingleQuestionSchema(
+      app,
+      `Assessment reset override lock ${Date.now()}`,
+      'assessment-reset-override-lock',
+    );
+    const createdRoundResponse = await request(app.getHttpServer())
+      .post(`/projects/${projectId}/rounds`)
+      .send({ type: 'INITIAL_INTAKE' })
+      .expect(201);
+    const roundId = createdRoundResponse.body.id as string;
+    const snapshotId = createdRoundResponse.body.questions[0].id as string;
+    const assessmentUrl =
+      `/projects/${projectId}/rounds/${roundId}/answers/${snapshotId}/assessment`;
+
+    await request(app.getHttpServer())
+      .put(assessmentUrl)
+      .send({ status: 'Nem releváns', rationale: 'Initial reset contention rationale' })
+      .expect(200);
+
+    const resetResponse = await serializeExistingOverrideMutation(
+      controlDataSource,
+      apiApplicationName,
+      `DELETE FROM "round_question_assessment_overrides"
+       WHERE "round_id" = $1 AND "snapshot_id" = $2`,
+      [roundId, snapshotId],
+      async () => request(app.getHttpServer()).delete(assessmentUrl),
+    );
+
+    assert.equal(resetResponse.status, 200);
+    assert.equal(resetResponse.body.checklistStatus, 'Nincs meg');
+    assert.equal(resetResponse.body.assessmentRationale, null);
+    const overrideRows = await controlDataSource.query<Array<{ id: string }>>(
+      `SELECT "id" FROM "round_question_assessment_overrides"
+       WHERE "round_id" = $1 AND "snapshot_id" = $2`,
+      [roundId, snapshotId],
+    );
+    assert.deepEqual(overrideRows, []);
+    assert.deepEqual(await loadAssessmentAuditEventTypes(controlDataSource, projectId), [
+      'ROUND_QUESTION_ASSESSMENT_SAVED',
+    ]);
+
+    await request(app.getHttpServer()).delete(assessmentUrl).expect(200);
+    assert.deepEqual(await loadAssessmentAuditEventTypes(controlDataSource, projectId), [
+      'ROUND_QUESTION_ASSESSMENT_SAVED',
+    ]);
+  });
+
+  it('serializes a PUT over an existing partial override after a direct override update', async () => {
+    const { projectId } = await createProjectWithSingleQuestionSchema(
+      app,
+      `Assessment PUT override lock ${Date.now()}`,
+      'assessment-put-override-lock',
+    );
+    const createdRoundResponse = await request(app.getHttpServer())
+      .post(`/projects/${projectId}/rounds`)
+      .send({ type: 'INITIAL_INTAKE' })
+      .expect(201);
+    const roundId = createdRoundResponse.body.id as string;
+    const snapshotId = createdRoundResponse.body.questions[0].id as string;
+    const assessmentUrl =
+      `/projects/${projectId}/rounds/${roundId}/answers/${snapshotId}/assessment`;
+
+    await request(app.getHttpServer())
+      .patch(`/projects/${projectId}/rounds/${roundId}/answers/${snapshotId}`)
+      .send({ value: 'Existing partial assessment evidence' })
+      .expect(200);
+    await request(app.getHttpServer())
+      .put(assessmentUrl)
+      .send({ status: 'Részben megvan', rationale: null })
+      .expect(200);
+
+    const rationale = 'The API decision wins after the direct update serializes.';
+    const putResponse = await serializeExistingOverrideMutation(
+      controlDataSource,
+      apiApplicationName,
+      `UPDATE "round_question_assessment_overrides"
+       SET "updated_at" = CURRENT_TIMESTAMP
+       WHERE "round_id" = $1 AND "snapshot_id" = $2`,
+      [roundId, snapshotId],
+      async () =>
+        request(app.getHttpServer())
+          .put(assessmentUrl)
+          .send({ status: 'Nem releváns', rationale }),
+    );
+
+    assert.equal(putResponse.status, 200);
+    assert.equal(putResponse.body.checklistStatus, 'Nem releváns');
+    assert.equal(putResponse.body.assessmentRationale, rationale);
+    const overrideRows = await controlDataSource.query<
+      Array<{ status: string; rationale: string | null }>
+    >(
+      `SELECT "status", "rationale" FROM "round_question_assessment_overrides"
+       WHERE "round_id" = $1 AND "snapshot_id" = $2`,
+      [roundId, snapshotId],
+    );
+    assert.deepEqual(overrideRows, [{ status: 'Nem releváns', rationale }]);
+    assert.deepEqual(await loadAssessmentAuditEventTypes(controlDataSource, projectId), [
+      'ROUND_QUESTION_ASSESSMENT_SAVED',
+      'ROUND_QUESTION_ASSESSMENT_SAVED',
+    ]);
+
+    await request(app.getHttpServer())
+      .put(assessmentUrl)
+      .send({ status: 'Nem releváns', rationale })
+      .expect(200);
+    assert.deepEqual(await loadAssessmentAuditEventTypes(controlDataSource, projectId), [
+      'ROUND_QUESTION_ASSESSMENT_SAVED',
+      'ROUND_QUESTION_ASSESSMENT_SAVED',
+    ]);
+  });
+
+  it('serializes clearing an answer with a partial override after a direct override update', async () => {
+    const { projectId } = await createProjectWithSingleQuestionSchema(
+      app,
+      `Assessment clear override lock ${Date.now()}`,
+      'assessment-clear-override-lock',
+    );
+    const createdRoundResponse = await request(app.getHttpServer())
+      .post(`/projects/${projectId}/rounds`)
+      .send({ type: 'INITIAL_INTAKE' })
+      .expect(201);
+    const roundId = createdRoundResponse.body.id as string;
+    const snapshotId = createdRoundResponse.body.questions[0].id as string;
+    const assessmentUrl =
+      `/projects/${projectId}/rounds/${roundId}/answers/${snapshotId}/assessment`;
+
+    await request(app.getHttpServer())
+      .patch(`/projects/${projectId}/rounds/${roundId}/answers/${snapshotId}`)
+      .send({ value: 'Evidence that supports the partial assessment' })
+      .expect(200);
+    await request(app.getHttpServer())
+      .put(assessmentUrl)
+      .send({ status: 'Részben megvan', rationale: null })
+      .expect(200);
+
+    const clearResponse = await serializeExistingOverrideMutation(
+      controlDataSource,
+      apiApplicationName,
+      `UPDATE "round_question_assessment_overrides"
+       SET "updated_at" = CURRENT_TIMESTAMP
+       WHERE "round_id" = $1 AND "snapshot_id" = $2`,
+      [roundId, snapshotId],
+      async () =>
+        request(app.getHttpServer())
+          .patch(`/projects/${projectId}/rounds/${roundId}/answers/${snapshotId}`)
+          .send({ value: null }),
+    );
+
+    assert.equal(clearResponse.status, 200);
+    assert.equal(clearResponse.body.answer, null);
+    assert.equal(clearResponse.body.checklistStatus, 'Nincs meg');
+    assert.equal(clearResponse.body.assessmentRationale, null);
+    const answerRows = await controlDataSource.query<Array<{ id: string }>>(
+      `SELECT "id" FROM "round_answers"
+       WHERE "round_id" = $1 AND "snapshot_id" = $2`,
+      [roundId, snapshotId],
+    );
+    const overrideRows = await controlDataSource.query<Array<{ id: string }>>(
+      `SELECT "id" FROM "round_question_assessment_overrides"
+       WHERE "round_id" = $1 AND "snapshot_id" = $2`,
+      [roundId, snapshotId],
+    );
+    assert.deepEqual(answerRows, []);
+    assert.deepEqual(overrideRows, []);
+    assert.deepEqual(await loadAssessmentAuditEventTypes(controlDataSource, projectId), [
+      'ROUND_QUESTION_ASSESSMENT_SAVED',
+      'ROUND_QUESTION_ASSESSMENT_RESET',
+    ]);
+
+    await request(app.getHttpServer())
+      .patch(`/projects/${projectId}/rounds/${roundId}/answers/${snapshotId}`)
+      .send({ value: null })
+      .expect(200);
+    assert.deepEqual(await loadAssessmentAuditEventTypes(controlDataSource, projectId), [
+      'ROUND_QUESTION_ASSESSMENT_SAVED',
+      'ROUND_QUESTION_ASSESSMENT_RESET',
+    ]);
+  });
+
   it('persists assessment commands idempotently with policy validation and redacted audit', async () => {
     const { projectId } = await createProjectWithSingleQuestionSchema(
       app,
@@ -1079,6 +1259,125 @@ function createDatabaseUrlWithApplicationName(
   const parsedUrl = new URL(databaseUrl);
   parsedUrl.searchParams.set('application_name', applicationName);
   return parsedUrl.toString();
+}
+
+async function serializeExistingOverrideMutation<TResponse extends { status: number; body: unknown }>(
+  dataSource: DataSource,
+  applicationName: string,
+  directMutationSql: string,
+  directMutationParameters: string[],
+  sendApiRequest: () => Promise<TResponse>,
+): Promise<TResponse> {
+  const identifierSuffix = randomUUID().replaceAll('-', '');
+  const gateLockKey = Number.parseInt(identifierSuffix.slice(0, 12), 16);
+  const gateTriggerName = `aaa_score01_override_gate_${identifierSuffix}`;
+  const gateFunctionName = `score01_override_gate_${identifierSuffix}`;
+  const gateRunner = dataSource.createQueryRunner();
+  const overrideRunner = dataSource.createQueryRunner();
+  let advisoryLockHeld = false;
+  await gateRunner.connect();
+  await overrideRunner.connect();
+
+  try {
+    await dataSource.query(`
+      CREATE OR REPLACE FUNCTION "${gateFunctionName}"()
+      RETURNS trigger
+      LANGUAGE plpgsql
+      AS $$
+      BEGIN
+        PERFORM pg_advisory_xact_lock(${gateLockKey}::bigint);
+        IF TG_OP = 'DELETE' THEN
+          RETURN OLD;
+        END IF;
+        RETURN NEW;
+      END;
+      $$
+    `);
+    await dataSource.query(`
+      CREATE TRIGGER "${gateTriggerName}"
+      BEFORE UPDATE OR DELETE ON "round_question_assessment_overrides"
+      FOR EACH ROW
+      EXECUTE FUNCTION "${gateFunctionName}"()
+    `);
+    await gateRunner.query('SELECT pg_advisory_lock($1::bigint)', [gateLockKey]);
+    advisoryLockHeld = true;
+
+    await overrideRunner.startTransaction();
+    const backendRows = (await overrideRunner.query(
+      'SELECT pg_backend_pid() AS "pid"',
+    )) as Array<{ pid: number }>;
+    let overrideOutcome: 'completed' | 'pending' | 'rejected' = 'pending';
+    const directMutationPromise = overrideRunner.query(
+      directMutationSql,
+      directMutationParameters,
+    );
+    void directMutationPromise.then(
+      () => {
+        overrideOutcome = 'completed';
+      },
+      () => {
+        overrideOutcome = 'rejected';
+      },
+    );
+
+    const directMutationWait = await observeQueryOutcomeOrLockWait(
+      dataSource,
+      backendRows[0].pid,
+      () => overrideOutcome,
+    );
+    assert.equal(directMutationWait, 'blocked');
+
+    let apiOutcome: 'completed' | 'pending' | 'rejected' = 'pending';
+    const apiRequestPromise = sendApiRequest();
+    void apiRequestPromise.then(
+      () => {
+        apiOutcome = 'completed';
+      },
+      () => {
+        apiOutcome = 'rejected';
+      },
+    );
+    const apiWait = await observeApplicationOutcomeOrLockWait(
+      dataSource,
+      applicationName,
+      () => apiOutcome,
+    );
+    assert.equal(apiWait, 'blocked');
+
+    await gateRunner.query('SELECT pg_advisory_unlock($1::bigint)', [gateLockKey]);
+    advisoryLockHeld = false;
+    await directMutationPromise;
+    await overrideRunner.commitTransaction();
+    return apiRequestPromise;
+  } finally {
+    if (advisoryLockHeld) {
+      await gateRunner.query('SELECT pg_advisory_unlock($1::bigint)', [gateLockKey]);
+    }
+    if (overrideRunner.isTransactionActive) {
+      await overrideRunner.rollbackTransaction();
+    }
+    await overrideRunner.release();
+    await gateRunner.release();
+    await dataSource.query(
+      `DROP TRIGGER IF EXISTS "${gateTriggerName}" ON "round_question_assessment_overrides"`,
+    );
+    await dataSource.query(`DROP FUNCTION IF EXISTS "${gateFunctionName}"()`);
+  }
+}
+
+async function loadAssessmentAuditEventTypes(
+  dataSource: DataSource,
+  projectId: string,
+): Promise<string[]> {
+  const rows = await dataSource.query<Array<{ eventType: string }>>(
+    `SELECT "event_type" AS "eventType"
+     FROM "audit_events"
+     WHERE "project_id" = $1
+       AND "event_type" IN ('ROUND_QUESTION_ASSESSMENT_SAVED', 'ROUND_QUESTION_ASSESSMENT_RESET')
+     ORDER BY "created_at" ASC, "id" ASC`,
+    [projectId],
+  );
+  return rows.map((row) => row.eventType);
 }
 
 async function observeQueryOutcomeOrLockWait(
