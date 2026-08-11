@@ -33,8 +33,20 @@ A positive record revision used to prove that an edit is based on the current fo
 _Avoid_: Timestamp-based conflict token, user-facing lifecycle state
 
 **Discovery follow-up source linkage**:
-An optional relationship from a discovery follow-up to its originating checklist item. It is not part of the general editing slice.
+An optional historical relationship from a discovery follow-up to one immutable
+checklist snapshot eligible in the project's current Initial Intake source at
+the time of linking. An open discovery follow-up may change or remove the
+relationship; a resolved follow-up retains it as readable provenance even when
+a later intake round becomes current. It is not part of the general editing
+slice.
 _Avoid_: Inferred link, general edit field
+
+**Current Initial Intake source**:
+The most recently created open Initial Intake round for a project; when none
+is open, the most recently created completed Initial Intake round. It defines
+the eligible checklist snapshots for a new or changed discovery follow-up
+source linkage.
+_Avoid_: Any historical checklist, automatically repointed source
 
 **Resolved discovery follow-up**:
 A discovery follow-up in the `Megválaszolva` or `Nem releváns` terminal state; its business content is immutable and it is not reopened by the editing slice.
