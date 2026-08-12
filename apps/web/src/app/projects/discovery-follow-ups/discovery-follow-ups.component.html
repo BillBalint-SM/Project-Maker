@@ -313,6 +313,7 @@
                     [disabled]="
                       sourceLinkForm.invalid ||
                       savingSourceLinkId() !== null ||
+                      sourceOptionsLoading() ||
                       mutationDisabled()
                     "
                     data-testid="save-discovery-follow-up-source-link-button"
