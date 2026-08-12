@@ -71,6 +71,7 @@ jobs:
       POSTGRES_DB: project_maker_container_smoke
       POSTGRES_PASSWORD: ci-password
       POSTGRES_USER: project_maker_app
+      WEB_PORT: '8080'
       SMTP_HOST: ''
       SMTP_PORT: '1025'
       SMTP_SECURE: 'false'
