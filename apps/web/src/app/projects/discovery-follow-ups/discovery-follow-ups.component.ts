@@ -433,7 +433,12 @@ export class DiscoveryFollowUpsComponent implements OnInit {
           this.feedback.set('Discovery follow-up source updated.');
           this.committedChange.emit();
         },
-        error: (error: Error) => this.actionError.set(error.message),
+        error: (error: Error) => {
+          this.actionError.set(error.message);
+          if (isSourceLinkConflict(error)) {
+            this.refreshSourceOptionsAfterLinkConflict();
+          }
+        },
       });
   }
 
@@ -564,6 +569,12 @@ export class DiscoveryFollowUpsComponent implements OnInit {
     this.savingSourceLinkId.set(null);
     this.sourceLinkBaseline.set(null);
     this.sourceLinkForm.reset({ sourceSnapshotId: null });
+  }
+
+  private refreshSourceOptionsAfterLinkConflict(): void {
+    this.sourceOptions.set([]);
+    this.sourceLinkForm.reset({ sourceSnapshotId: null });
+    this.loadSourceOptions();
   }
 
   sourceRemovalTriggerId(followUpId: string): string {
@@ -1136,6 +1147,14 @@ function toLocalDateOnly(value: Date): string {
 function fromLocalDateOnly(value: string): Date {
   const [year, month, day] = value.split('-').map(Number);
   return new Date(year, month - 1, day);
+}
+
+function isSourceLinkConflict(error: Error): boolean {
+  return (
+    error instanceof DiscoveryFollowUpsApiError &&
+    error.operation === 'set-source-link' &&
+    error.status === 409
+  );
 }
 
 function sortDiscoveryFollowUps(

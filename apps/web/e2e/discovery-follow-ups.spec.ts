@@ -1351,6 +1351,97 @@ test('adds a source through the row link form and persists its compact reference
   await expect(reloadedItem).not.toContainText(fixture.source.text);
 });
 
+test('refreshes source candidates after a stale source-link conflict', async ({
+  page,
+  request,
+}) => {
+  const fixture = await createSourceLinkageFixture(request);
+  const followUp = await createDiscoveryFollowUp(request, fixture.project.id);
+  await page.goto('/projects/' + fixture.project.id);
+
+  const item = discoveryFollowUpItem(page, followUp.id);
+  await itemButton(item, 'link-discovery-follow-up-source-button').click();
+  const sourceLinkForm = item.getByTestId(
+    'discovery-follow-up-source-link-form',
+  );
+  await selectSource(
+    page,
+    sourceLinkForm.getByTestId('discovery-follow-up-source-link-select'),
+    fixture.source,
+  );
+
+  const currentSource = await createReplacementSource(
+    request,
+    fixture.project.id,
+  );
+  const sourceLinkResponse = page.waitForResponse(
+    (response) =>
+      response.request().method() === 'PUT' &&
+      response
+        .url()
+        .endsWith(
+          '/api/projects/' +
+            fixture.project.id +
+            '/discovery-follow-ups/' +
+            followUp.id +
+            '/source-link',
+        ),
+  );
+  const refreshedCandidatesResponse = page.waitForResponse(
+    (response) =>
+      response.request().method() === 'GET' &&
+      response
+        .url()
+        .endsWith(
+          '/api/projects/' +
+            fixture.project.id +
+            '/discovery-follow-ups/source-options',
+        ),
+  );
+  await itemButton(
+    item,
+    'save-discovery-follow-up-source-link-button',
+  ).click();
+  expect((await sourceLinkResponse).status()).toBe(409);
+
+  expect((await refreshedCandidatesResponse).status()).toBe(200);
+  await expect(
+    page.getByTestId('discovery-follow-up-action-error'),
+  ).toContainText('Initial Intake source candidates were refreshed. Choose again.');
+  await expect(
+    itemButton(item, 'save-discovery-follow-up-source-link-button'),
+  ).toBeDisabled();
+  await selectSource(
+    page,
+    sourceLinkForm.getByTestId('discovery-follow-up-source-link-select'),
+    currentSource,
+  );
+
+  const recoveredSourceLinkResponse = page.waitForResponse(
+    (response) =>
+      response.request().method() === 'PUT' &&
+      response
+        .url()
+        .endsWith(
+          '/api/projects/' +
+            fixture.project.id +
+            '/discovery-follow-ups/' +
+            followUp.id +
+            '/source-link',
+        ),
+  );
+  await itemButton(
+    item,
+    'save-discovery-follow-up-source-link-button',
+  ).click();
+  const recoveredSourceLink = await recoveredSourceLinkResponse;
+  expect(recoveredSourceLink.status()).toBe(200);
+  expect(recoveredSourceLink.request().postDataJSON()).toMatchObject({
+    sourceSnapshotId: currentSource.id,
+    expectedVersion: followUp.version,
+  });
+});
+
 test('replaces and removes a discovery source only after explicit confirmation with managed focus', async ({
   page,
   request,

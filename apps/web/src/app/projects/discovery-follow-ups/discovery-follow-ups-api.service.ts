@@ -209,7 +209,7 @@ function discoveryNextStep(
     return 'The discovery follow-up may have changed. Refresh its current version and try again.';
   }
   if (status === 409 && operation === 'set-source-link') {
-    return 'Refresh the Initial Intake source candidates and choose again.';
+    return 'Initial Intake source candidates were refreshed. Choose again.';
   }
   if (status === 409) {
     return 'Refresh the project to see its latest lifecycle state.';
