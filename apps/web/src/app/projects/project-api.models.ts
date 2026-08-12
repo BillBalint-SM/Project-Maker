@@ -9,13 +9,6 @@ import type {
 
 export type {
   AuditEventPage,
-  AuditEventRecord,
-  CustomerEmailDelivery,
-  CustomerFollowUpState,
-  CreateProjectInput,
-  ProjectCockpit,
-  ProjectStatus,
-  ProjectWorkspace,
 } from '@project-maker/contracts';
 
 export interface UpdateProjectWorkspaceInput {
