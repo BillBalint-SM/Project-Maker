@@ -7,29 +7,21 @@
 - [Product domain](product-domain.md) — platform-neutral intent and vocabulary; not a delivery-status record.
 - [Operations handoff](operations-handoff.md) — runtime, recovery, email, and verification guidance.
 
-## Planning and delivery evidence
+## Architecture and current delivery evidence
 
 - [Project Cockpit architecture decision](adr/0001-domain-aligned-project-cockpit.md)
-- [Cockpit operation-policy implementation plan](superpowers/plans/2026-08-09-cockpit-operation-policy.md)
-- [Discovery follow-up deep-module implementation plan](superpowers/plans/2026-08-09-discovery-follow-up-deep-module.md)
 - [Current requirement checklist](../.planning/REQUIREMENTS.md) — checked only with delivery evidence.
-- [Current planning baseline](../.planning/STATE.md) — historical project context; verify Git decisions with a fresh `WORK_STATE` check.
-- [Guided-intake prioritization handoff](../.planning/planning-show/product-delivery/guided-intake/standalone/2026-08-06-planning-show-handoff.md)
-- [Guided-intake implementation plan](superpowers/plans/2026-08-06-guided-intake-persistence.md)
-- [Strict-deletion design](superpowers/specs/2026-08-07-strict-project-deletion-design.md)
-- [Strict-deletion implementation plan](superpowers/plans/2026-08-07-strict-project-deletion.md)
-- [Roadmap/documentation synchronization design](superpowers/specs/2026-08-08-roadmap-documentation-sync-design.md)
-- [Roadmap/documentation synchronization plan](superpowers/plans/2026-08-08-roadmap-documentation-sync.md)
-- [Discovery follow-ups design](superpowers/specs/2026-08-08-intake-04-discovery-follow-ups-design.md)
-- [Discovery follow-ups implementation plan](superpowers/plans/2026-08-08-intake-04-discovery-follow-ups.md)
-- [Discovery follow-up resolution design](superpowers/specs/2026-08-08-intake-04-follow-up-resolution-design.md)
-- [Discovery follow-up resolution implementation plan](superpowers/plans/2026-08-08-intake-04-follow-up-resolution.md)
-- [Discovery follow-up editing design](superpowers/specs/2026-08-10-intake-04-discovery-follow-up-editing-design.md)
-- [Discovery follow-up editing implementation plan](superpowers/plans/2026-08-10-intake-04-discovery-follow-up-editing.md)
-- [SCORE-01.1 readiness assessment and review design](superpowers/specs/2026-08-10-score-01-readiness-assessment-design.md)
-- [SCORE-01.1 readiness assessment and review implementation plan](superpowers/plans/2026-08-10-score-01-readiness-assessment-and-review.md)
-- [Hungarian end-user guide design](superpowers/specs/2026-08-09-user-guide-design.md)
-- [Hungarian end-user guide implementation plan](superpowers/plans/2026-08-09-user-guide.md)
+
+## Active planned work
+
+- [Discovery follow-up source-linkage design](superpowers/specs/2026-08-11-intake-04-discovery-follow-up-source-linkage-design.md)
+- [Discovery follow-up source-linkage implementation plan](superpowers/plans/2026-08-11-intake-04-discovery-follow-up-source-linkage.md)
+
+## Historical planning packets
+
+Earlier designs, plans, and delivery handoffs remain available under
+[`docs/superpowers`](superpowers/) and in Git history. The roadmap is the
+authority for delivered and planned status.
 
 ## End-user guidance
 
