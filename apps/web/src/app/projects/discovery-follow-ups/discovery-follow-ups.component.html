@@ -135,6 +135,43 @@
           }
         </div>
         <div class="field">
+          <label for="discovery-follow-up-source">
+            Initial Intake source (optional)
+          </label>
+          <p-select
+            inputId="discovery-follow-up-source"
+            styleClass="full-width"
+            formControlName="sourceSnapshotId"
+            [options]="sourceOptionChoices()"
+            optionLabel="label"
+            optionValue="value"
+            data-testid="discovery-follow-up-source-select"
+          />
+          @if (sourceOptionsLoading()) {
+            <small>Loading Initial Intake source options…</small>
+          } @else if (sourceOptionsError(); as error) {
+            <div
+              class="discovery-follow-up-source-options-error"
+              data-testid="discovery-follow-up-source-options-error"
+              role="alert"
+            >
+              <span>{{ error }}</span>
+              <p-button
+                type="button"
+                label="Retry source options"
+                severity="secondary"
+                [outlined]="true"
+                data-testid="retry-discovery-follow-up-source-options-button"
+                (onClick)="loadSourceOptions()"
+              />
+            </div>
+          } @else if (sourceOptions().length === 0) {
+            <small data-testid="discovery-follow-up-source-options-empty">
+              No current Initial Intake source is available. You can still create an unlinked follow-up.
+            </small>
+          }
+        </div>
+        <div class="field">
           <label for="discovery-follow-up-next-step">Next step</label>
           <textarea
             pTextarea
@@ -175,6 +212,7 @@
             class="discovery-follow-up-item"
             data-testid="discovery-follow-up-item"
             [attr.data-follow-up-id]="followUp.id"
+            tabindex="-1"
           >
             <div class="discovery-follow-up-meta">
               <strong>{{ followUp.category }}</strong>
@@ -191,6 +229,12 @@
                 <strong>Decision or answer:</strong> {{ followUp.decisionOrAnswer }}
               </p>
             }
+            @if (followUp.source; as source) {
+              <p data-testid="discovery-follow-up-source-reference">
+                <strong>Source:</strong>
+                #{{ source.order }} · {{ source.topic }} · {{ source.controlPoint }}
+              </p>
+            }
             @if (isCanonicalOpen(followUp)) {
               <p-button
                 label="Edit"
@@ -204,6 +248,86 @@
                 data-testid="resolve-discovery-follow-up-button"
                 (onClick)="openResolution(followUp.id)"
               />
+              @if (followUp.source === null) {
+                <p-button
+                  label="Link source"
+                  [disabled]="
+                    sourceLinkActionDisabled() ||
+                    sourceOptionsLoading() ||
+                    sourceOptionsError() !== null ||
+                    sourceOptions().length === 0
+                  "
+                  data-testid="link-discovery-follow-up-source-button"
+                  (onClick)="openSourceLink(followUp.id)"
+                />
+              } @else {
+                <p-button
+                  label="Change source"
+                  [disabled]="
+                    sourceLinkActionDisabled() ||
+                    sourceOptionsLoading() ||
+                    sourceOptionsError() !== null ||
+                    sourceOptions().length === 0
+                  "
+                  data-testid="change-discovery-follow-up-source-button"
+                  (onClick)="openSourceLink(followUp.id)"
+                />
+                <p-button
+                  label="Remove source"
+                  severity="danger"
+                  [outlined]="true"
+                  [loading]="savingSourceLinkId() === followUp.id"
+                  [disabled]="sourceLinkActionDisabled()"
+                  [attr.id]="sourceRemovalTriggerId(followUp.id)"
+                  data-testid="remove-discovery-follow-up-source-button"
+                  (onClick)="confirmSourceLinkRemoval(followUp, $event)"
+                />
+              }
+            }
+            @if (openedSourceLinkId() === followUp.id) {
+              <form
+                class="discovery-follow-up-source-link-form"
+                [formGroup]="sourceLinkForm"
+                (ngSubmit)="saveSourceLink(followUp.id)"
+                data-testid="discovery-follow-up-source-link-form"
+              >
+                <div class="field">
+                  <label for="discovery-follow-up-source-link">
+                    Initial Intake source
+                  </label>
+                  <p-select
+                    inputId="discovery-follow-up-source-link"
+                    styleClass="full-width"
+                    formControlName="sourceSnapshotId"
+                    [options]="sourceOptionChoices()"
+                    optionLabel="label"
+                    optionValue="value"
+                    data-testid="discovery-follow-up-source-link-select"
+                  />
+                </div>
+                <div class="discovery-follow-up-source-link-actions">
+                  <p-button
+                    type="submit"
+                    label="Save source"
+                    [loading]="savingSourceLinkId() === followUp.id"
+                    [disabled]="
+                      sourceLinkForm.invalid ||
+                      savingSourceLinkId() !== null ||
+                      mutationDisabled()
+                    "
+                    data-testid="save-discovery-follow-up-source-link-button"
+                  />
+                  <p-button
+                    type="button"
+                    label="Cancel"
+                    severity="secondary"
+                    [outlined]="true"
+                    [disabled]="savingSourceLinkId() !== null"
+                    data-testid="cancel-discovery-follow-up-source-link-button"
+                    (onClick)="clearSourceLinkState()"
+                  />
+                </div>
+              </form>
             }
             @if (isEditOpen(followUp.id)) {
               <form
@@ -464,3 +588,41 @@
     }
   }
 </p-card>
+
+<p-overlay
+  #sourceRemovalOverlay
+  [visible]="pendingSourceRemoval() !== null"
+  [target]="sourceRemovalOverlayTarget()"
+  [autoZIndex]="true"
+  [options]="sourceRemovalOverlayOptions"
+  (onAfterEnter)="focusSourceRemovalCancelAfterEnter()"
+>
+  @if (pendingSourceRemoval()) {
+    <section
+      class="discovery-follow-up-source-remove-confirmation"
+      role="alertdialog"
+      aria-labelledby="discovery-follow-up-source-remove-title"
+      aria-describedby="discovery-follow-up-source-remove-description"
+      data-testid="discovery-follow-up-source-remove-confirmation"
+    >
+      <h3 id="discovery-follow-up-source-remove-title">Remove source link?</h3>
+      <p id="discovery-follow-up-source-remove-description">
+        This removes the recorded origin. A later intake round may make the old source unavailable for reattachment.
+      </p>
+      <div class="discovery-follow-up-source-remove-actions">
+        <p-button
+          label="Cancel"
+          [autofocus]="true"
+          data-testid="cancel-discovery-follow-up-source-remove-button"
+          (onClick)="cancelSourceLinkRemoval()"
+        />
+        <p-button
+          label="Remove source"
+          severity="danger"
+          data-testid="confirm-discovery-follow-up-source-remove-button"
+          (onClick)="acceptSourceLinkRemoval()"
+        />
+      </div>
+    </section>
+  }
+</p-overlay>

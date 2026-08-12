@@ -1,10 +1,10 @@
 import { IsInt, Min } from 'class-validator';
 import type { UpdateDiscoveryFollowUpInput } from '@project-maker/contracts';
 
-import { CreateDiscoveryFollowUpDto } from './create-discovery-follow-up.dto';
+import { DiscoveryFollowUpDetailsDto } from './discovery-follow-up-details.dto';
 
 export class UpdateDiscoveryFollowUpDto
-  extends CreateDiscoveryFollowUpDto
+  extends DiscoveryFollowUpDetailsDto
   implements UpdateDiscoveryFollowUpInput
 {
   @IsInt()

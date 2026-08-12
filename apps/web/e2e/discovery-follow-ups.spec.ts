@@ -2,6 +2,8 @@ import {
   expect,
   test,
   type APIRequestContext,
+  type APIResponse,
+  type ConsoleMessage,
   type Locator,
   type Page,
 } from '@playwright/test';
@@ -21,6 +23,20 @@ interface DiscoveryFollowUp {
   readonly status: string;
   readonly nextStep: string;
   readonly version: number;
+  readonly source: {
+    readonly snapshotId: string;
+    readonly order: number;
+    readonly topic: string;
+    readonly controlPoint: string;
+  } | null;
+}
+
+interface SourceSnapshot {
+  readonly id: string;
+  readonly order: number;
+  readonly topic: string;
+  readonly controlPoint: string;
+  readonly text: string;
 }
 
 async function createProject(
@@ -56,6 +72,173 @@ async function createDiscoveryFollowUp(
   );
   expect(response.status()).toBe(201);
   return (await response.json()) as DiscoveryFollowUp;
+}
+
+async function createSourceLinkageFixture(
+  request: APIRequestContext,
+): Promise<{ readonly project: ProjectWorkspace; readonly source: SourceSnapshot }> {
+  const project = await createProject(request, 'Discovery source linkage browser flow');
+  const bankResponse = await request.get(apiOrigin + '/settings/base-questions');
+  expect(bankResponse.status()).toBe(200);
+  const bank = (await bankResponse.json()) as {
+    readonly questions: readonly { readonly stableKey: string }[];
+  };
+  const stableKey = bank.questions[0]?.stableKey;
+  if (!stableKey) {
+    throw new Error('Seeded question bank did not provide a stable key.');
+  }
+  const schemaResponse = await request.post(
+    apiOrigin + '/projects/' + project.id + '/question-schema',
+    {
+      data: { questions: [{ stableKey, required: false, blocking: false }] },
+    },
+  );
+  expect(schemaResponse.status()).toBe(201);
+  const roundResponse = await request.post(
+    apiOrigin + '/projects/' + project.id + '/rounds',
+    { data: { type: 'INITIAL_INTAKE' } },
+  );
+  expect(roundResponse.status()).toBe(201);
+  const round = (await roundResponse.json()) as {
+    readonly questions: readonly SourceSnapshot[];
+  };
+  const source = round.questions[0];
+  if (!source) {
+    throw new Error('Initial Intake did not create a source snapshot.');
+  }
+  return { project, source };
+}
+
+async function createReplacementSource(
+  request: APIRequestContext,
+  projectId: string,
+): Promise<SourceSnapshot> {
+  const activeRoundResponse = await request.get(
+    apiOrigin + '/projects/' + projectId + '/rounds/active',
+  );
+  expect(activeRoundResponse.status()).toBe(200);
+  const activeRound = (await activeRoundResponse.json()) as {
+    readonly id: string;
+  } | null;
+  if (!activeRound) {
+    throw new Error('Initial Intake source round was not active.');
+  }
+  const completeResponse = await request.post(
+    apiOrigin + '/projects/' + projectId + '/rounds/' + activeRound.id + '/complete',
+  );
+  expect(completeResponse.status()).toBe(201);
+  const replacementRoundResponse = await request.post(
+    apiOrigin + '/projects/' + projectId + '/rounds',
+    { data: { type: 'INITIAL_INTAKE' } },
+  );
+  expect(replacementRoundResponse.status()).toBe(201);
+  const replacementRound = (await replacementRoundResponse.json()) as {
+    readonly questions: readonly SourceSnapshot[];
+  };
+  const replacementSource = replacementRound.questions[0];
+  if (!replacementSource) {
+    throw new Error('Replacement Initial Intake did not create a source snapshot.');
+  }
+  return replacementSource;
+}
+
+function sourceOptionLabel(source: SourceSnapshot): string {
+  return (
+    '#' +
+    source.order +
+    ' · ' +
+    source.topic +
+    ' · ' +
+    source.controlPoint +
+    ' — ' +
+    source.text
+  );
+}
+
+function discoveryFollowUpItem(page: Page, followUpId: string): Locator {
+  return page.locator(
+    '[data-testid="discovery-follow-up-item"][data-follow-up-id="' +
+      followUpId +
+      '"]',
+  );
+}
+
+function itemButton(item: Locator, testId: string): Locator {
+  return item.getByTestId(testId).locator('button');
+}
+
+async function selectSource(
+  page: Page,
+  select: Locator,
+  source: SourceSnapshot,
+): Promise<void> {
+  await select.click();
+  const option = page.getByRole('option');
+  await expect(option).toHaveCount(1);
+  await expect(option).toHaveText(sourceOptionLabel(source));
+  await option.click();
+}
+
+async function fillDiscoveryFollowUpCreationForm(page: Page): Promise<void> {
+  await page.getByTestId('discovery-follow-up-category-select').click();
+  const categoryOptions = page.getByRole('option');
+  await expect(categoryOptions).toHaveCount(8);
+  await categoryOptions.first().click();
+  await page.getByTestId('discovery-follow-up-question-input').fill(
+    'Which source needs a discovery decision?',
+  );
+  await page.getByTestId('discovery-follow-up-owner-input').fill(
+    'Product owner',
+  );
+  const dueDateInput = page
+    .getByTestId('discovery-follow-up-due-date-input')
+    .locator('input');
+  await dueDateInput.click();
+  await dueDateInput.pressSequentially('2026-10-01');
+  await dueDateInput.press('Tab');
+  await page.getByTestId('discovery-follow-up-next-step-input').fill(
+    'Review the Initial Intake source.',
+  );
+}
+
+async function addSourceLinkFixture(
+  request: APIRequestContext,
+  projectId: string,
+  followUp: DiscoveryFollowUp,
+  source: SourceSnapshot,
+): Promise<void> {
+  const response = await request.put(
+    apiOrigin +
+      '/projects/' +
+      projectId +
+      '/discovery-follow-ups/' +
+      followUp.id +
+      '/source-link',
+    {
+      data: {
+        sourceSnapshotId: source.id,
+        expectedVersion: followUp.version,
+      },
+    },
+  );
+  expect(response.status()).toBe(200);
+}
+
+async function getDiscoveryFollowUp(
+  request: APIRequestContext,
+  projectId: string,
+  followUpId: string,
+): Promise<DiscoveryFollowUp> {
+  const response = await request.get(
+    apiOrigin + '/projects/' + projectId + '/discovery-follow-ups',
+  );
+  expect(response.status()).toBe(200);
+  const followUps = (await response.json()) as readonly DiscoveryFollowUp[];
+  const followUp = followUps.find((candidate) => candidate.id === followUpId);
+  if (!followUp) {
+    throw new Error('Discovery follow-up fixture was not returned by the API.');
+  }
+  return followUp;
 }
 
 function nativeButton(page: Page, testId: string): Locator {
@@ -996,4 +1179,934 @@ test('keeps the cockpit usable when Discovery loading fails and retries the real
   await expect(page.getByTestId('discovery-follow-ups-error')).toHaveCount(0);
   await expect(page.getByTestId('discovery-follow-up-item')).toHaveCount(1);
   await expect(page.getByTestId('workspace-form')).toBeVisible();
+});
+
+test('creates a linked discovery follow-up with full selection text and compact persisted provenance', async ({
+  page,
+  request,
+}) => {
+  const fixture = await createSourceLinkageFixture(request);
+  await page.goto('/projects/' + fixture.project.id);
+
+  await selectSource(
+    page,
+    page.getByTestId('discovery-follow-up-source-select'),
+    fixture.source,
+  );
+  await fillDiscoveryFollowUpCreationForm(page);
+
+  const creationResponse = page.waitForResponse(
+    (response) =>
+      response.request().method() === 'POST' &&
+      response
+        .url()
+        .endsWith(
+          '/api/projects/' + fixture.project.id + '/discovery-follow-ups',
+        ),
+  );
+  await nativeButton(page, 'create-discovery-follow-up-button').click();
+  const creation = await creationResponse;
+  expect(creation.status()).toBe(201);
+  expect(creation.request().postDataJSON()).toMatchObject({
+    sourceSnapshotId: fixture.source.id,
+  });
+
+  await page.reload();
+  const item = page
+    .getByTestId('discovery-follow-up-item')
+    .filter({ has: page.getByTestId('discovery-follow-up-source-reference') });
+  await expect(item).toHaveCount(1);
+  const sourceReference = item.getByTestId('discovery-follow-up-source-reference');
+  await expect(sourceReference).toContainText(String(fixture.source.order));
+  await expect(sourceReference).toContainText(fixture.source.topic);
+  await expect(sourceReference).toContainText(fixture.source.controlPoint);
+  await expect(item).not.toContainText(fixture.source.text);
+});
+
+test('opens one source-link form and disables every discovery row action', async ({
+  page,
+  request,
+}) => {
+  const fixture = await createSourceLinkageFixture(request);
+  const linkedFollowUp = await createDiscoveryFollowUp(request, fixture.project.id);
+  const firstUnlinkedFollowUp = await createDiscoveryFollowUp(
+    request,
+    fixture.project.id,
+  );
+  const secondUnlinkedFollowUp = await createDiscoveryFollowUp(
+    request,
+    fixture.project.id,
+  );
+  await addSourceLinkFixture(
+    request,
+    fixture.project.id,
+    linkedFollowUp,
+    fixture.source,
+  );
+  await page.goto('/projects/' + fixture.project.id);
+
+  const firstUnlinkedItem = discoveryFollowUpItem(
+    page,
+    firstUnlinkedFollowUp.id,
+  );
+  await expect(firstUnlinkedItem).toHaveCount(1);
+  await itemButton(
+    firstUnlinkedItem,
+    'link-discovery-follow-up-source-button',
+  ).click();
+  await expect(
+    firstUnlinkedItem.getByTestId('discovery-follow-up-source-link-form'),
+  ).toBeVisible();
+
+  const editButtons = nativeButton(page, 'edit-discovery-follow-up-button');
+  const resolveButtons = nativeButton(page, 'resolve-discovery-follow-up-button');
+  const linkButtons = nativeButton(page, 'link-discovery-follow-up-source-button');
+  const changeButtons = nativeButton(
+    page,
+    'change-discovery-follow-up-source-button',
+  );
+  const removeButtons = nativeButton(
+    page,
+    'remove-discovery-follow-up-source-button',
+  );
+  await expect(editButtons).toHaveCount(3);
+  await expect(resolveButtons).toHaveCount(3);
+  await expect(linkButtons).toHaveCount(2);
+  await expect(changeButtons).toHaveCount(1);
+  await expect(removeButtons).toHaveCount(1);
+  for (const action of [
+    editButtons,
+    resolveButtons,
+    linkButtons,
+    changeButtons,
+    removeButtons,
+  ]) {
+    const count = await action.count();
+    for (let index = 0; index < count; index += 1) {
+      await expect(action.nth(index)).toBeDisabled();
+    }
+  }
+  await expect(
+    discoveryFollowUpItem(page, secondUnlinkedFollowUp.id).getByTestId(
+      'discovery-follow-up-source-link-form',
+    ),
+  ).toHaveCount(0);
+});
+
+test('adds a source through the row link form and persists its compact reference', async ({
+  page,
+  request,
+}) => {
+  const fixture = await createSourceLinkageFixture(request);
+  const followUp = await createDiscoveryFollowUp(request, fixture.project.id);
+  await page.goto('/projects/' + fixture.project.id);
+
+  const item = discoveryFollowUpItem(page, followUp.id);
+  await expect(item).toHaveCount(1);
+  await itemButton(item, 'link-discovery-follow-up-source-button').click();
+  await expect(
+    item.getByTestId('discovery-follow-up-source-link-form'),
+  ).toBeVisible();
+  const sourceLinkForm = item.getByTestId(
+    'discovery-follow-up-source-link-form',
+  );
+  await selectSource(
+    page,
+    sourceLinkForm.getByTestId('discovery-follow-up-source-link-select'),
+    fixture.source,
+  );
+
+  const sourceLinkResponse = page.waitForResponse(
+    (response) =>
+      response.request().method() === 'PUT' &&
+      response
+        .url()
+        .endsWith(
+          '/api/projects/' +
+            fixture.project.id +
+            '/discovery-follow-ups/' +
+            followUp.id +
+            '/source-link',
+        ),
+  );
+  await itemButton(
+    item,
+    'save-discovery-follow-up-source-link-button',
+  ).click();
+  const sourceLink = await sourceLinkResponse;
+  expect(sourceLink.status()).toBe(200);
+  expect(sourceLink.request().postDataJSON()).toMatchObject({
+    sourceSnapshotId: fixture.source.id,
+    expectedVersion: followUp.version,
+  });
+
+  await page.reload();
+  const reloadedItem = discoveryFollowUpItem(page, followUp.id);
+  const sourceReference = reloadedItem.getByTestId(
+    'discovery-follow-up-source-reference',
+  );
+  await expect(sourceReference).toContainText(String(fixture.source.order));
+  await expect(sourceReference).toContainText(fixture.source.topic);
+  await expect(sourceReference).toContainText(fixture.source.controlPoint);
+  await expect(reloadedItem).not.toContainText(fixture.source.text);
+});
+
+test('replaces and removes a discovery source only after explicit confirmation with managed focus', async ({
+  page,
+  request,
+}) => {
+  const fixture = await createSourceLinkageFixture(request);
+  const followUp = await createDiscoveryFollowUp(request, fixture.project.id);
+  await addSourceLinkFixture(
+    request,
+    fixture.project.id,
+    followUp,
+    fixture.source,
+  );
+  const replacementSource = await createReplacementSource(
+    request,
+    fixture.project.id,
+  );
+  await page.goto('/projects/' + fixture.project.id);
+
+  const item = discoveryFollowUpItem(page, followUp.id);
+  await expect(item).toHaveCount(1);
+  await itemButton(item, 'change-discovery-follow-up-source-button').click();
+  await expect(
+    item.getByTestId('discovery-follow-up-source-link-form'),
+  ).toBeVisible();
+  const sourceLinkForm = item.getByTestId(
+    'discovery-follow-up-source-link-form',
+  );
+  await selectSource(
+    page,
+    sourceLinkForm.getByTestId('discovery-follow-up-source-link-select'),
+    replacementSource,
+  );
+  const replacementResponse = page.waitForResponse(
+    (response) =>
+      response.request().method() === 'PUT' &&
+      response
+        .url()
+        .endsWith(
+          '/api/projects/' +
+            fixture.project.id +
+            '/discovery-follow-ups/' +
+            followUp.id +
+            '/source-link',
+        ),
+  );
+  await itemButton(
+    item,
+    'save-discovery-follow-up-source-link-button',
+  ).click();
+  const replacement = await replacementResponse;
+  expect(replacement.status()).toBe(200);
+  expect(replacement.request().postDataJSON()).toMatchObject({
+    sourceSnapshotId: replacementSource.id,
+  });
+  const replacedFollowUp = (await replacement.json()) as DiscoveryFollowUp;
+  expect(replacedFollowUp.source?.snapshotId).toBe(replacementSource.id);
+  const replacementReference = item.getByTestId(
+    'discovery-follow-up-source-reference',
+  );
+  await expect(replacementReference).toContainText(
+    String(replacementSource.order),
+  );
+  await expect(replacementReference).toContainText(replacementSource.topic);
+  await expect(replacementReference).toContainText(
+    replacementSource.controlPoint,
+  );
+
+  await page.reload();
+  const persistedReplacement = await getDiscoveryFollowUp(
+    request,
+    fixture.project.id,
+    followUp.id,
+  );
+  expect(persistedReplacement.source?.snapshotId).toBe(replacementSource.id);
+  await expect(
+    item.getByTestId('discovery-follow-up-source-reference'),
+  ).toBeVisible();
+
+  const removeSource = itemButton(
+    item,
+    'remove-discovery-follow-up-source-button',
+  );
+  await removeSource.click();
+  await expect(
+    page.getByTestId('discovery-follow-up-source-remove-confirmation'),
+  ).toBeVisible();
+  await nativeButton(
+    page,
+    'cancel-discovery-follow-up-source-remove-button',
+  ).click();
+  await expect(
+    page.getByTestId('discovery-follow-up-source-remove-confirmation'),
+  ).toHaveCount(0);
+  await expect(removeSource).toBeFocused();
+  await expect(
+    item.getByTestId('discovery-follow-up-source-reference'),
+  ).toBeVisible();
+  const sourceAfterCancel = await getDiscoveryFollowUp(
+    request,
+    fixture.project.id,
+    followUp.id,
+  );
+  expect(sourceAfterCancel.source?.snapshotId).toBe(replacementSource.id);
+
+  await removeSource.click();
+  let releaseRemoval: (() => void) | null = null;
+  let notifyRemovalStarted: (() => void) | null = null;
+  const removalStarted = new Promise<void>((resolve) => {
+    notifyRemovalStarted = resolve;
+  });
+  const removalRoute =
+    '**/api/projects/' +
+    fixture.project.id +
+    '/discovery-follow-ups/' +
+    followUp.id +
+    '/source-link';
+  await page.route(removalRoute, async (route) => {
+    if (route.request().method() !== 'PUT') {
+      await route.continue();
+      return;
+    }
+    if (notifyRemovalStarted === null) {
+      throw new Error('Source removal request was intercepted more than once.');
+    }
+
+    notifyRemovalStarted();
+    notifyRemovalStarted = null;
+    await new Promise<void>((resolve) => {
+      releaseRemoval = resolve;
+    });
+    await route.continue();
+  });
+  const removalResponse = page.waitForResponse(
+    (response) =>
+      response.request().method() === 'PUT' &&
+      response
+        .url()
+        .endsWith(
+          '/api/projects/' +
+            fixture.project.id +
+            '/discovery-follow-ups/' +
+            followUp.id +
+            '/source-link',
+        ),
+  );
+  let removal: APIResponse;
+  try {
+    await nativeButton(
+      page,
+      'confirm-discovery-follow-up-source-remove-button',
+    ).click();
+    await removalStarted;
+    await expect(item).toHaveAttribute('tabindex', '-1');
+    await expect(item).toBeFocused();
+    const unrelatedControl = page.getByTestId('back-to-projects-link');
+    await unrelatedControl.focus();
+    await expect(unrelatedControl).toBeFocused();
+    if (releaseRemoval === null) {
+      throw new Error('Source removal release was not initialized.');
+    }
+    releaseRemoval();
+    removal = await removalResponse;
+  } finally {
+    releaseRemoval?.();
+    await page.unroute(removalRoute);
+  }
+  expect(removal.status()).toBe(200);
+  expect(removal.request().postDataJSON()).toMatchObject({
+    sourceSnapshotId: null,
+  });
+  const removedFollowUp = (await removal.json()) as DiscoveryFollowUp;
+  expect(removedFollowUp.source).toBeNull();
+  await expect(
+    item.getByTestId('discovery-follow-up-source-reference'),
+  ).toHaveCount(0);
+  await page.evaluate(
+    () =>
+      new Promise<void>((resolve) => {
+        requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+      }),
+  );
+  await expect(page.getByTestId('back-to-projects-link')).toBeFocused();
+
+  await page.reload();
+  await expect(
+    item.getByTestId('discovery-follow-up-source-reference'),
+  ).toHaveCount(0);
+  const persistedRemoval = await getDiscoveryFollowUp(
+    request,
+    fixture.project.id,
+    followUp.id,
+  );
+  expect(persistedRemoval.source).toBeNull();
+});
+
+test('disables discovery mutations while source removal is pending and restores its trigger on cancel', async ({
+  page,
+  request,
+}) => {
+  const fixture = await createSourceLinkageFixture(request);
+  const linkedFollowUp = await createDiscoveryFollowUp(
+    request,
+    fixture.project.id,
+  );
+  const unlinkedFollowUp = await createDiscoveryFollowUp(
+    request,
+    fixture.project.id,
+  );
+  await addSourceLinkFixture(
+    request,
+    fixture.project.id,
+    linkedFollowUp,
+    fixture.source,
+  );
+  await page.goto('/projects/' + fixture.project.id);
+
+  const linkedItem = discoveryFollowUpItem(page, linkedFollowUp.id);
+  const unlinkedItem = discoveryFollowUpItem(page, unlinkedFollowUp.id);
+  const removeSource = itemButton(
+    linkedItem,
+    'remove-discovery-follow-up-source-button',
+  );
+  const discoveryMutations = [
+    nativeButton(page, 'create-discovery-follow-up-button'),
+    itemButton(linkedItem, 'edit-discovery-follow-up-button'),
+    itemButton(linkedItem, 'resolve-discovery-follow-up-button'),
+    itemButton(linkedItem, 'change-discovery-follow-up-source-button'),
+    removeSource,
+    itemButton(unlinkedItem, 'edit-discovery-follow-up-button'),
+    itemButton(unlinkedItem, 'resolve-discovery-follow-up-button'),
+    itemButton(unlinkedItem, 'link-discovery-follow-up-source-button'),
+  ];
+  for (const mutation of discoveryMutations) {
+    await expect(mutation).toBeEnabled();
+  }
+
+  await removeSource.click();
+  await expect(
+    page.getByTestId('discovery-follow-up-source-remove-confirmation'),
+  ).toBeVisible();
+  for (const mutation of discoveryMutations) {
+    await expect(mutation).toBeDisabled();
+  }
+
+  await nativeButton(
+    page,
+    'cancel-discovery-follow-up-source-remove-button',
+  ).click();
+  await expect(
+    page.getByTestId('discovery-follow-up-source-remove-confirmation'),
+  ).toHaveCount(0);
+  for (const mutation of discoveryMutations) {
+    await expect(mutation).toBeEnabled();
+  }
+  await expect(removeSource).toBeFocused();
+});
+
+test('keeps source removal non-modal and closes it with Escape from the focused archive control', async ({
+  page,
+  request,
+}) => {
+  const fixture = await createSourceLinkageFixture(request);
+  const followUp = await createDiscoveryFollowUp(request, fixture.project.id);
+  await addSourceLinkFixture(
+    request,
+    fixture.project.id,
+    followUp,
+    fixture.source,
+  );
+  await page.goto('/projects/' + fixture.project.id);
+
+  const item = discoveryFollowUpItem(page, followUp.id);
+  const removeSource = itemButton(
+    item,
+    'remove-discovery-follow-up-source-button',
+  );
+  await removeSource.click();
+  const confirmation = page.getByTestId(
+    'discovery-follow-up-source-remove-confirmation',
+  );
+  const cancel = nativeButton(
+    page,
+    'cancel-discovery-follow-up-source-remove-button',
+  );
+  const archive = nativeButton(page, 'archive-project-button');
+  await expect(confirmation).toBeVisible();
+  await expect(cancel).toBeFocused();
+
+  let reachedArchive = false;
+  for (let attempt = 0; attempt < 20; attempt += 1) {
+    await page.keyboard.press('Shift+Tab');
+    if (await archive.evaluate((element) => element === document.activeElement)) {
+      reachedArchive = true;
+      break;
+    }
+  }
+  expect(reachedArchive).toBe(true);
+  await expect(confirmation).toBeVisible();
+  await expect(confirmation).toHaveAttribute('role', 'alertdialog');
+  await expect(confirmation).not.toHaveAttribute('aria-modal');
+  await expect(
+    page.locator('[aria-modal="true"]').filter({ has: confirmation }),
+  ).toHaveCount(0);
+  await expect(confirmation).toHaveAccessibleName('Remove source link?');
+  await expect(confirmation).toHaveAccessibleDescription(
+    'This removes the recorded origin. A later intake round may make the old source unavailable for reattachment.',
+  );
+  await expect(archive).toBeFocused();
+  await page.keyboard.press('Escape');
+  await expect(confirmation).toHaveCount(0);
+  await expect(removeSource).toBeEnabled();
+  await expect(removeSource).toBeFocused();
+});
+
+test('routes Escape to the topmost Cockpit confirmation without closing source removal below it', async ({
+  page,
+  request,
+}) => {
+  const fixture = await createSourceLinkageFixture(request);
+  const followUp = await createDiscoveryFollowUp(request, fixture.project.id);
+  await addSourceLinkFixture(
+    request,
+    fixture.project.id,
+    followUp,
+    fixture.source,
+  );
+  await page.goto('/projects/' + fixture.project.id);
+
+  const item = discoveryFollowUpItem(page, followUp.id);
+  await itemButton(item, 'remove-discovery-follow-up-source-button').click();
+  const sourceConfirmation = page.getByTestId(
+    'discovery-follow-up-source-remove-confirmation',
+  );
+  await expect(sourceConfirmation).toBeVisible();
+
+  const deleteProject = nativeButton(page, 'delete-project-button');
+  await deleteProject.click();
+  const projectConfirmation = page.getByTestId('project-delete-confirmation');
+  await expect(projectConfirmation).toBeVisible();
+  await expect(
+    nativeButton(page, 'cancel-project-delete-button'),
+  ).toBeFocused();
+
+  await page.keyboard.press('Escape');
+  await expect(projectConfirmation).toHaveCount(0);
+  await expect(sourceConfirmation).toBeVisible();
+
+  await page.keyboard.press('Escape');
+  await expect(sourceConfirmation).toHaveCount(0);
+});
+
+test('keeps source removal pending when a cockpit operation blocks acceptance', async ({
+  page,
+  request,
+}) => {
+  const fixture = await createSourceLinkageFixture(request);
+  const followUp = await createDiscoveryFollowUp(request, fixture.project.id);
+  await addSourceLinkFixture(
+    request,
+    fixture.project.id,
+    followUp,
+    fixture.source,
+  );
+  let releaseArchive: (() => void) | null = null;
+  let notifyArchiveStarted: (() => void) | null = null;
+  const archiveStarted = new Promise<void>((resolve) => {
+    notifyArchiveStarted = resolve;
+  });
+  const pageErrors: string[] = [];
+  const recordPageError = (error: Error): void => {
+    pageErrors.push(error.message);
+  };
+  const consoleErrors: string[] = [];
+  const recordConsoleError = (message: ConsoleMessage): void => {
+    if (message.type() === 'error') {
+      consoleErrors.push(message.text());
+    }
+  };
+  page.on('pageerror', recordPageError);
+  page.on('console', recordConsoleError);
+  let sourceLinkCommandCount = 0;
+  page.on('request', (requestEvent) => {
+    if (
+      requestEvent.method() === 'PUT' &&
+      requestEvent
+        .url()
+        .endsWith(
+          '/api/projects/' +
+            fixture.project.id +
+            '/discovery-follow-ups/' +
+            followUp.id +
+            '/source-link',
+        )
+    ) {
+      sourceLinkCommandCount += 1;
+    }
+  });
+  await page.route(
+    '**/api/projects/' + fixture.project.id + '/archive',
+    async (route) => {
+      if (route.request().method() !== 'POST') {
+        await route.continue();
+        return;
+      }
+      if (notifyArchiveStarted === null) {
+        throw new Error('Archive request was intercepted more than once.');
+      }
+      notifyArchiveStarted();
+      notifyArchiveStarted = null;
+      await new Promise<void>((resolve) => {
+        releaseArchive = resolve;
+      });
+      await route.continue();
+    },
+  );
+  await page.goto('/projects/' + fixture.project.id);
+  let archiveResponse: Promise<APIResponse> | null = null;
+
+  try {
+    const item = discoveryFollowUpItem(page, followUp.id);
+    const removeSource = itemButton(
+      item,
+      'remove-discovery-follow-up-source-button',
+    );
+    await removeSource.click();
+    const confirmation = page.getByTestId(
+      'discovery-follow-up-source-remove-confirmation',
+    );
+    await expect(confirmation).toBeVisible();
+
+    archiveResponse = page.waitForResponse(
+      (response) =>
+        response.request().method() === 'POST' &&
+        response
+          .url()
+          .endsWith('/api/projects/' + fixture.project.id + '/archive'),
+    );
+    await nativeButton(page, 'archive-project-button').click();
+    await archiveStarted;
+    await expect(removeSource).toBeDisabled();
+    await nativeButton(
+      page,
+      'confirm-discovery-follow-up-source-remove-button',
+    ).click();
+
+    await expect(confirmation).toBeVisible();
+    await expect(
+      page.getByTestId('discovery-follow-up-action-error'),
+    ).toBeVisible();
+    expect(sourceLinkCommandCount).toBe(0);
+
+    await nativeButton(
+      page,
+      'cancel-discovery-follow-up-source-remove-button',
+    ).click();
+    await expect(confirmation).toHaveCount(0);
+    await page.evaluate(
+      () =>
+        new Promise<void>((resolve) => {
+          requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+        }),
+    );
+    const cancellationOutcome = {
+      consoleErrors,
+      pageErrors,
+      rowFocused: await item.evaluate(
+        (element) => element === document.activeElement,
+      ),
+    };
+
+    if (releaseArchive === null) {
+      throw new Error('Archive release was not initialized.');
+    }
+    releaseArchive();
+    expect((await archiveResponse).status()).toBe(201);
+    expect(cancellationOutcome).toEqual({
+      consoleErrors: [],
+      pageErrors: [],
+      rowFocused: true,
+    });
+  } finally {
+    releaseArchive?.();
+    await archiveResponse?.catch(() => undefined);
+    page.off('console', recordConsoleError);
+    page.off('pageerror', recordPageError);
+  }
+});
+
+test('keeps compact linked provenance after a real discovery resolution without source actions', async ({
+  page,
+  request,
+}) => {
+  const fixture = await createSourceLinkageFixture(request);
+  const followUp = await createDiscoveryFollowUp(request, fixture.project.id);
+  await addSourceLinkFixture(
+    request,
+    fixture.project.id,
+    followUp,
+    fixture.source,
+  );
+  await page.goto('/projects/' + fixture.project.id);
+
+  const item = discoveryFollowUpItem(page, followUp.id);
+  await itemButton(item, 'resolve-discovery-follow-up-button').click();
+  const status = item
+    .getByTestId('discovery-follow-up-resolution-status-select')
+    .getByRole('combobox');
+  await status.click();
+  await status.press('ArrowDown');
+  await status.press('Enter');
+  await item
+    .getByTestId('discovery-follow-up-decision-or-answer-input')
+    .fill('The linked source supplied the answer.');
+  const resolutionResponse = page.waitForResponse(
+    (response) =>
+      response.request().method() === 'POST' &&
+      response
+        .url()
+        .endsWith(
+          '/api/projects/' +
+            fixture.project.id +
+            '/discovery-follow-ups/' +
+            followUp.id +
+            '/resolve',
+        ),
+  );
+  await itemButton(item, 'save-discovery-follow-up-resolution-button').click();
+  expect((await resolutionResponse).status()).toBe(200);
+
+  const resolvedSourceReference = item.getByTestId(
+    'discovery-follow-up-source-reference',
+  );
+  await expect(resolvedSourceReference).toContainText(
+    String(fixture.source.order),
+  );
+  await expect(resolvedSourceReference).toContainText(fixture.source.topic);
+  await expect(resolvedSourceReference).toContainText(
+    fixture.source.controlPoint,
+  );
+  await expect(item).not.toContainText(fixture.source.text);
+  await expect(
+    item.getByTestId('link-discovery-follow-up-source-button'),
+  ).toHaveCount(0);
+  await expect(
+    item.getByTestId('change-discovery-follow-up-source-button'),
+  ).toHaveCount(0);
+  await expect(
+    item.getByTestId('remove-discovery-follow-up-source-button'),
+  ).toHaveCount(0);
+});
+
+test('keeps unlinked discovery creation available when source options fail and retry', async ({
+  page,
+  request,
+}) => {
+  const fixture = await createSourceLinkageFixture(request);
+  let abortNextSourceOptions = true;
+  await page.route(
+    '**/api/projects/' +
+      fixture.project.id +
+      '/discovery-follow-ups/source-options',
+    async (route) => {
+      if (abortNextSourceOptions && route.request().method() === 'GET') {
+        abortNextSourceOptions = false;
+        await route.abort('failed');
+        return;
+      }
+      await route.continue();
+    },
+  );
+  await page.goto('/projects/' + fixture.project.id);
+
+  await expect(
+    page.getByTestId('discovery-follow-up-source-options-error'),
+  ).toBeVisible();
+  await expect(
+    nativeButton(page, 'retry-discovery-follow-up-source-options-button'),
+  ).toBeVisible();
+  await fillDiscoveryFollowUpCreationForm(page);
+  const creationResponse = page.waitForResponse(
+    (response) =>
+      response.request().method() === 'POST' &&
+      response
+        .url()
+        .endsWith(
+          '/api/projects/' + fixture.project.id + '/discovery-follow-ups',
+        ),
+  );
+  await nativeButton(page, 'create-discovery-follow-up-button').click();
+  const creation = await creationResponse;
+  expect(creation.status()).toBe(201);
+  expect(creation.request().postDataJSON()).not.toHaveProperty(
+    'sourceSnapshotId',
+  );
+  const createdFollowUp = (await creation.json()) as DiscoveryFollowUp;
+  expect(createdFollowUp.source).toBeNull();
+
+  const retryResponse = page.waitForResponse(
+    (response) =>
+      response.request().method() === 'GET' &&
+      response
+        .url()
+        .endsWith(
+          '/api/projects/' +
+            fixture.project.id +
+            '/discovery-follow-ups/source-options',
+        ),
+  );
+  await nativeButton(
+    page,
+    'retry-discovery-follow-up-source-options-button',
+  ).click();
+  expect((await retryResponse).status()).toBe(200);
+  await expect(
+    page.getByTestId('discovery-follow-up-source-options-error'),
+  ).toHaveCount(0);
+  await selectSource(
+    page,
+    page.getByTestId('discovery-follow-up-source-select'),
+    fixture.source,
+  );
+});
+
+test('clears source drafts and removal confirmation when the cockpit archives', async ({
+  page,
+  request,
+}) => {
+  const fixture = await createSourceLinkageFixture(request);
+  const followUp = await createDiscoveryFollowUp(request, fixture.project.id);
+  const unlinkedFollowUp = await createDiscoveryFollowUp(
+    request,
+    fixture.project.id,
+  );
+  await addSourceLinkFixture(
+    request,
+    fixture.project.id,
+    followUp,
+    fixture.source,
+  );
+  const replacementSource = await createReplacementSource(
+    request,
+    fixture.project.id,
+  );
+  await page.goto('/projects/' + fixture.project.id);
+
+  const item = discoveryFollowUpItem(page, followUp.id);
+  const unlinkedItem = discoveryFollowUpItem(page, unlinkedFollowUp.id);
+  await itemButton(item, 'change-discovery-follow-up-source-button').click();
+  const sourceLinkForm = item.getByTestId(
+    'discovery-follow-up-source-link-form',
+  );
+  await expect(sourceLinkForm).toBeVisible();
+  await selectSource(
+    page,
+    sourceLinkForm.getByTestId('discovery-follow-up-source-link-select'),
+    replacementSource,
+  );
+  const firstArchiveResponse = page.waitForResponse(
+    (response) =>
+      response.request().method() === 'POST' &&
+      response.url().endsWith('/api/projects/' + fixture.project.id + '/archive'),
+  );
+  await nativeButton(page, 'archive-project-button').click();
+  expect((await firstArchiveResponse).status()).toBe(201);
+  await expect(sourceLinkForm).toHaveCount(0);
+  await expect(
+    page.getByTestId('discovery-follow-up-source-remove-confirmation'),
+  ).toHaveCount(0);
+  await expect(
+    itemButton(unlinkedItem, 'link-discovery-follow-up-source-button'),
+  ).toBeDisabled();
+  await expect(
+    itemButton(item, 'change-discovery-follow-up-source-button'),
+  ).toBeDisabled();
+  await expect(
+    itemButton(item, 'remove-discovery-follow-up-source-button'),
+  ).toBeDisabled();
+
+  const firstRestoreResponse = page.waitForResponse(
+    (response) =>
+      response.request().method() === 'POST' &&
+      response.url().endsWith('/api/projects/' + fixture.project.id + '/restore'),
+  );
+  await nativeButton(page, 'restore-project-button').click();
+  expect((await firstRestoreResponse).status()).toBe(201);
+  await expect(sourceLinkForm).toHaveCount(0);
+  await expect(
+    page.getByTestId('discovery-follow-up-source-remove-confirmation'),
+  ).toHaveCount(0);
+  await expect(
+    itemButton(unlinkedItem, 'link-discovery-follow-up-source-button'),
+  ).toBeEnabled();
+  await expect(
+    itemButton(item, 'change-discovery-follow-up-source-button'),
+  ).toBeEnabled();
+  await expect(
+    itemButton(item, 'remove-discovery-follow-up-source-button'),
+  ).toBeEnabled();
+  const sourceAfterDraftClearing = await getDiscoveryFollowUp(
+    request,
+    fixture.project.id,
+    followUp.id,
+  );
+  expect(sourceAfterDraftClearing.source?.snapshotId).toBe(fixture.source.id);
+
+  await itemButton(item, 'remove-discovery-follow-up-source-button').click();
+  await expect(
+    page.getByTestId('discovery-follow-up-source-remove-confirmation'),
+  ).toBeVisible();
+  const secondArchiveResponse = page.waitForResponse(
+    (response) =>
+      response.request().method() === 'POST' &&
+      response.url().endsWith('/api/projects/' + fixture.project.id + '/archive'),
+  );
+  await nativeButton(page, 'archive-project-button').click();
+  expect((await secondArchiveResponse).status()).toBe(201);
+  await expect(
+    page.getByTestId('discovery-follow-up-source-remove-confirmation'),
+  ).toHaveCount(0);
+  await expect(sourceLinkForm).toHaveCount(0);
+  await expect(
+    itemButton(unlinkedItem, 'link-discovery-follow-up-source-button'),
+  ).toBeDisabled();
+  await expect(
+    itemButton(item, 'change-discovery-follow-up-source-button'),
+  ).toBeDisabled();
+  await expect(
+    itemButton(item, 'remove-discovery-follow-up-source-button'),
+  ).toBeDisabled();
+
+  const secondRestoreResponse = page.waitForResponse(
+    (response) =>
+      response.request().method() === 'POST' &&
+      response.url().endsWith('/api/projects/' + fixture.project.id + '/restore'),
+  );
+  await nativeButton(page, 'restore-project-button').click();
+  expect((await secondRestoreResponse).status()).toBe(201);
+  await expect(sourceLinkForm).toHaveCount(0);
+  await expect(
+    page.getByTestId('discovery-follow-up-source-remove-confirmation'),
+  ).toHaveCount(0);
+  await expect(
+    itemButton(unlinkedItem, 'link-discovery-follow-up-source-button'),
+  ).toBeEnabled();
+  await expect(
+    itemButton(item, 'change-discovery-follow-up-source-button'),
+  ).toBeEnabled();
+  await expect(
+    itemButton(item, 'remove-discovery-follow-up-source-button'),
+  ).toBeEnabled();
+  const sourceAfterConfirmationClearing = await getDiscoveryFollowUp(
+    request,
+    fixture.project.id,
+    followUp.id,
+  );
+  expect(sourceAfterConfirmationClearing.source?.snapshotId).toBe(
+    fixture.source.id,
+  );
 });

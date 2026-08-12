@@ -45,6 +45,9 @@ export class DiscoveryFollowUpEntity {
   @Column({ name: 'next_step', type: 'text' })
   nextStep!: string;
 
+  @Column({ name: 'source_snapshot_id', type: 'uuid', nullable: true })
+  sourceSnapshotId!: string | null;
+
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt!: Date;
 
