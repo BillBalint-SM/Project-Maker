@@ -101,10 +101,10 @@ To find candidates, inspect only open direct children, then select those with
 no assignee and no open blocker:
 
 ```powershell
-$openChildren = gh issue view <map number> --json subIssues --jq '.subIssues[] | select(.state == "OPEN") | .number'
+$openChildren = gh issue view <map number> --json subIssues --jq '.subIssues.nodes[] | select(.state == "OPEN") | .number'
 foreach ($ticketNumber in $openChildren) {
   $ticket = gh issue view $ticketNumber --json number,title,url,assignees,blockedBy,state | ConvertFrom-Json
-  $openBlockers = @($ticket.blockedBy | Where-Object state -eq 'OPEN')
+  $openBlockers = @($ticket.blockedBy.nodes | Where-Object state -eq 'OPEN')
   if ($ticket.assignees.Count -eq 0 -and $openBlockers.Count -eq 0) {
     $ticket | Select-Object number,title,url
   }
