@@ -9,7 +9,6 @@
   },
   "scripts": {
     "build": "pnpm -r --if-present build",
-    "checkpoint": "pnpm verify",
     "compose:config": "docker compose --env-file .env config --quiet",
     "compose:down": "docker compose --env-file .env down",
     "compose:up": "docker compose --env-file .env up --build --wait",
