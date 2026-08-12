@@ -10,13 +10,18 @@ import {
 import type {
   CreateDiscoveryFollowUpInput,
   DiscoveryFollowUp,
+  DiscoveryFollowUpSourceOption,
+  DiscoveryFollowUpSourceReference,
   ResolveDiscoveryFollowUpInput,
+  SetDiscoveryFollowUpSourceLinkInput,
   UpdateDiscoveryFollowUpInput,
 } from '@project-maker/contracts';
 import { loadGeneralPlaybookV1 } from '@project-maker/contracts/general-playbook-runtime';
-import { DataSource, EntityManager } from 'typeorm';
+import { DataSource, EntityManager, In } from 'typeorm';
 
 import { AuditEvent, type AuditPayload } from '../audit/audit-event.entity';
+import { findCurrentInitialIntakeSource } from '../interviews/current-initial-intake-source';
+import { RoundQuestionSnapshotEntity } from '../interviews/round-question-snapshot.entity';
 import { Project } from '../projects/project.entity';
 import { DiscoveryFollowUpEntity } from './discovery-follow-up.entity';
 
@@ -31,6 +36,11 @@ const editableDiscoveryFollowUpFields = [
 type EditableDiscoveryFollowUpField =
   (typeof editableDiscoveryFollowUpFields)[number];
 
+type DiscoveryFollowUpSourceAuditReference = Pick<
+  DiscoveryFollowUpSourceReference,
+  'order' | 'topic' | 'controlPoint'
+>;
+
 @Injectable()
 export class DiscoveryFollowUpsService {
   constructor(private readonly dataSource: DataSource) {}
@@ -41,7 +51,36 @@ export class DiscoveryFollowUpsService {
       where: { projectId },
       order: { dueDate: 'ASC', createdAt: 'ASC', id: 'ASC' },
     });
-    return rows.map(toDiscoveryFollowUp);
+    const sourceSnapshots = await loadSourceSnapshotsByFollowUp(this.dataSource.manager, rows);
+    return rows.map((row) =>
+      toDiscoveryFollowUp(row, requireSourceSnapshot(row, sourceSnapshots)),
+    );
+  }
+
+  async listSourceOptions(
+    projectId: string,
+  ): Promise<readonly DiscoveryFollowUpSourceOption[]> {
+    await findProject(this.dataSource, projectId);
+    const sourceRound = await findCurrentInitialIntakeSource(
+      this.dataSource.manager,
+      projectId,
+    );
+    if (!sourceRound) {
+      return [];
+    }
+    const snapshots = await this.dataSource
+      .getRepository(RoundQuestionSnapshotEntity)
+      .find({
+        where: { roundId: sourceRound.id },
+        order: { order: 'ASC', id: 'ASC' },
+      });
+    return snapshots.map((snapshot) => ({
+      snapshotId: snapshot.id,
+      order: snapshot.order,
+      topic: snapshot.topic,
+      controlPoint: snapshot.controlPoint,
+      text: snapshot.text,
+    }));
   }
 
   async create(
@@ -51,6 +90,10 @@ export class DiscoveryFollowUpsService {
     return this.dataSource.transaction(async (manager) => {
       const project = await findLockedProject(manager, projectId);
       rejectArchivedProject(project);
+      const sourceSnapshot =
+        input.sourceSnapshotId === undefined
+          ? null
+          : await requireCurrentSourceSnapshot(manager, projectId, input.sourceSnapshotId);
       const saved = await manager.getRepository(DiscoveryFollowUpEntity).save({
         id: randomUUID(),
         projectId,
@@ -61,8 +104,9 @@ export class DiscoveryFollowUpsService {
         status: await initialDiscoveryFollowUpStatus(),
         decisionOrAnswer: null,
         nextStep: normalizeRequiredText(input.nextStep, 'nextStep must not be blank.'),
+        sourceSnapshotId: sourceSnapshot?.id ?? null,
       });
-      const followUp = toDiscoveryFollowUp(saved);
+      const followUp = toDiscoveryFollowUp(saved, sourceSnapshot);
       await saveDiscoveryFollowUpAuditEvent(manager, followUp);
       return followUp;
     });
@@ -101,7 +145,10 @@ export class DiscoveryFollowUpsService {
         (field) => entity[field] !== normalized[field],
       );
       if (changedFields.length === 0) {
-        return toDiscoveryFollowUp(entity);
+        return toDiscoveryFollowUp(
+          entity,
+          await loadSourceSnapshotForFollowUp(manager, entity),
+        );
       }
 
       entity.category = normalized.category;
@@ -111,8 +158,62 @@ export class DiscoveryFollowUpsService {
       entity.nextStep = normalized.nextStep;
 
       const saved = await manager.getRepository(DiscoveryFollowUpEntity).save(entity);
-      const followUp = toDiscoveryFollowUp(saved);
+      const followUp = toDiscoveryFollowUp(
+        saved,
+        await loadSourceSnapshotForFollowUp(manager, saved),
+      );
       await saveDiscoveryFollowUpUpdateAuditEvent(manager, followUp, changedFields);
+      return followUp;
+    });
+  }
+
+  async setSourceLink(
+    projectId: string,
+    followUpId: string,
+    input: SetDiscoveryFollowUpSourceLinkInput,
+  ): Promise<DiscoveryFollowUp> {
+    return this.dataSource.transaction(async (manager) => {
+      const project = await findLockedProject(manager, projectId);
+      rejectArchivedProjectForSourceLinking(project);
+
+      const entity = await findLockedDiscoveryFollowUp(
+        manager,
+        projectId,
+        followUpId,
+      );
+      if (entity.status !== (await initialDiscoveryFollowUpStatus())) {
+        throw new ConflictException('Discovery follow-up is not open.');
+      }
+      if (entity.version !== input.expectedVersion) {
+        throw new ConflictException('Discovery follow-up has changed.');
+      }
+
+      const previousSnapshot = await requireStoredSourceSnapshot(
+        manager,
+        entity.sourceSnapshotId,
+      );
+      if (entity.sourceSnapshotId === input.sourceSnapshotId) {
+        return toDiscoveryFollowUp(entity, previousSnapshot);
+      }
+
+      const nextSnapshot =
+        input.sourceSnapshotId === null
+          ? null
+          : await requireCurrentSourceSnapshot(
+              manager,
+              projectId,
+              input.sourceSnapshotId,
+            );
+      entity.sourceSnapshotId = nextSnapshot?.id ?? null;
+      const saved = await manager.getRepository(DiscoveryFollowUpEntity).save(entity);
+      const followUp = toDiscoveryFollowUp(saved, nextSnapshot);
+      await saveDiscoveryFollowUpSourceLinkAuditEvent(
+        manager,
+        followUp.projectId,
+        followUp.id,
+        previousSnapshot ? toSourceAuditReference(previousSnapshot) : null,
+        nextSnapshot ? toSourceAuditReference(nextSnapshot) : null,
+      );
       return followUp;
     });
   }
@@ -139,7 +240,10 @@ export class DiscoveryFollowUpsService {
       );
 
       const saved = await manager.getRepository(DiscoveryFollowUpEntity).save(entity);
-      const followUp = toDiscoveryFollowUp(saved);
+      const followUp = toDiscoveryFollowUp(
+        saved,
+        await loadSourceSnapshotForFollowUp(manager, saved),
+      );
       await saveDiscoveryFollowUpResolutionAuditEvent(manager, followUp);
       return followUp;
     });
@@ -204,6 +308,91 @@ async function findLockedDiscoveryFollowUp(
   return followUp;
 }
 
+function rejectArchivedProjectForSourceLinking(project: Project): void {
+  if (project.status === 'ARCHIVED') {
+    throw new ConflictException(
+      'Archived projects cannot change discovery follow-up sources.',
+    );
+  }
+}
+
+async function requireCurrentSourceSnapshot(
+  manager: EntityManager,
+  projectId: string,
+  sourceSnapshotId: string,
+): Promise<RoundQuestionSnapshotEntity> {
+  const sourceRound = await findCurrentInitialIntakeSource(manager, projectId);
+  if (!sourceRound) {
+    throw new ConflictException('No current Initial Intake source is available.');
+  }
+  const snapshot = await manager.getRepository(RoundQuestionSnapshotEntity).findOneBy({
+    id: sourceSnapshotId,
+    roundId: sourceRound.id,
+  });
+  if (!snapshot) {
+    throw new ConflictException(
+      'Selected source is not part of the current Initial Intake.',
+    );
+  }
+  return snapshot;
+}
+
+async function requireStoredSourceSnapshot(
+  manager: EntityManager,
+  sourceSnapshotId: string | null,
+): Promise<RoundQuestionSnapshotEntity | null> {
+  if (sourceSnapshotId === null) {
+    return null;
+  }
+  const snapshot = await manager
+    .getRepository(RoundQuestionSnapshotEntity)
+    .findOneBy({ id: sourceSnapshotId });
+  if (!snapshot) {
+    throw new InternalServerErrorException(
+      'Stored discovery follow-up source is missing.',
+    );
+  }
+  return snapshot;
+}
+
+async function loadSourceSnapshotForFollowUp(
+  manager: EntityManager,
+  followUp: DiscoveryFollowUpEntity,
+): Promise<RoundQuestionSnapshotEntity | null> {
+  const sourceSnapshots = await loadSourceSnapshotsByFollowUp(manager, [followUp]);
+  return requireSourceSnapshot(followUp, sourceSnapshots);
+}
+
+async function loadSourceSnapshotsByFollowUp(
+  manager: EntityManager,
+  followUps: readonly DiscoveryFollowUpEntity[],
+): Promise<ReadonlyMap<string, RoundQuestionSnapshotEntity>> {
+  const ids = followUps
+    .map((followUp) => followUp.sourceSnapshotId)
+    .filter((id): id is string => id !== null);
+  if (ids.length === 0) {
+    return new Map();
+  }
+  const snapshots = await manager.getRepository(RoundQuestionSnapshotEntity).findBy({
+    id: In(ids),
+  });
+  return new Map(snapshots.map((snapshot) => [snapshot.id, snapshot]));
+}
+
+function requireSourceSnapshot(
+  followUp: DiscoveryFollowUpEntity,
+  sourceSnapshots: ReadonlyMap<string, RoundQuestionSnapshotEntity>,
+): RoundQuestionSnapshotEntity | null {
+  if (followUp.sourceSnapshotId === null) {
+    return null;
+  }
+  const snapshot = sourceSnapshots.get(followUp.sourceSnapshotId);
+  if (!snapshot) {
+    throw new InternalServerErrorException('Stored discovery follow-up source is missing.');
+  }
+  return snapshot;
+}
+
 function normalizeRequiredText(value: string, errorMessage: string): string {
   const normalized = value.trim();
   if (!normalized) {
@@ -266,6 +455,13 @@ async function saveDiscoveryFollowUpAuditEvent(
     category: followUp.category,
     dueDate: followUp.dueDate,
     status: followUp.status,
+    ...(followUp.source
+      ? {
+          sourceOrder: String(followUp.source.order),
+          sourceTopic: followUp.source.topic,
+          sourceControlPoint: followUp.source.controlPoint,
+        }
+      : {}),
   };
   await manager.getRepository(AuditEvent).save({
     id: randomUUID(),
@@ -308,7 +504,70 @@ async function saveDiscoveryFollowUpUpdateAuditEvent(
   });
 }
 
-function toDiscoveryFollowUp(value: DiscoveryFollowUpEntity): DiscoveryFollowUp {
+async function saveDiscoveryFollowUpSourceLinkAuditEvent(
+  manager: EntityManager,
+  projectId: string,
+  followUpId: string,
+  previousSource: DiscoveryFollowUpSourceAuditReference | null,
+  source: DiscoveryFollowUpSourceAuditReference | null,
+): Promise<void> {
+  const sourceAction =
+    previousSource === null
+      ? 'ADDED'
+      : source === null
+        ? 'REMOVED'
+        : 'REPLACED';
+  const payload: AuditPayload = {
+    followUpId,
+    sourceAction,
+    ...(previousSource
+      ? {
+          previousSourceOrder: String(previousSource.order),
+          previousSourceTopic: previousSource.topic,
+          previousSourceControlPoint: previousSource.controlPoint,
+        }
+      : {}),
+    ...(source
+      ? {
+          sourceOrder: String(source.order),
+          sourceTopic: source.topic,
+          sourceControlPoint: source.controlPoint,
+        }
+      : {}),
+  };
+  await manager.getRepository(AuditEvent).save({
+    id: randomUUID(),
+    projectId,
+    eventType: 'DISCOVERY_FOLLOW_UP_SOURCE_LINK_CHANGED',
+    payload,
+  });
+}
+
+function toSourceAuditReference(
+  snapshot: RoundQuestionSnapshotEntity,
+): DiscoveryFollowUpSourceAuditReference {
+  return {
+    order: snapshot.order,
+    topic: snapshot.topic,
+    controlPoint: snapshot.controlPoint,
+  };
+}
+
+function toSourceReference(
+  snapshot: RoundQuestionSnapshotEntity,
+): DiscoveryFollowUpSourceReference {
+  return {
+    snapshotId: snapshot.id,
+    order: snapshot.order,
+    topic: snapshot.topic,
+    controlPoint: snapshot.controlPoint,
+  };
+}
+
+function toDiscoveryFollowUp(
+  value: DiscoveryFollowUpEntity,
+  sourceSnapshot: RoundQuestionSnapshotEntity | null,
+): DiscoveryFollowUp {
   return {
     id: value.id,
     projectId: value.projectId,
@@ -322,5 +581,6 @@ function toDiscoveryFollowUp(value: DiscoveryFollowUpEntity): DiscoveryFollowUp 
     createdAt: value.createdAt.toISOString(),
     updatedAt: value.updatedAt.toISOString(),
     version: value.version,
+    source: sourceSnapshot ? toSourceReference(sourceSnapshot) : null,
   };
 }

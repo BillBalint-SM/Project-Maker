@@ -4,11 +4,10 @@ import { after, before, describe, it } from 'node:test';
 import { setTimeout as delay } from 'node:timers/promises';
 import { DataSource, type QueryRunner } from 'typeorm';
 
-import { Core0001Core1785916800000 } from '../src/migrations/0001-core';
-import { QuestionsRounds0002QuestionsRounds1786003200000 } from '../src/migrations/0002-questions-rounds';
-import { InitialIntakeOpenRound0005InitialIntakeOpenRound1786262400000 } from '../src/migrations/0005-initial-intake-open-round';
-import { RoundQuestionAssessmentOverrides0009RoundQuestionAssessmentOverrides1786608000000 } from '../src/migrations/0009-round-question-assessment-overrides';
-import { RoundAnswerValidationParity0010RoundAnswerValidationParity1786694400000 } from '../src/migrations/0010-round-answer-validation-parity';
+import {
+  migrationsForFreshDatabase,
+  migrationsForHistoricalDatabase,
+} from './migration-harness';
 
 interface RoundFixture {
   readonly openRoundId: string;
@@ -245,13 +244,7 @@ describe('Round integrity database boundary (PostgreSQL)', () => {
       type: 'postgres',
       url: databaseUrl,
       synchronize: false,
-      migrations: [
-        Core0001Core1785916800000,
-        QuestionsRounds0002QuestionsRounds1786003200000,
-        InitialIntakeOpenRound0005InitialIntakeOpenRound1786262400000,
-        RoundQuestionAssessmentOverrides0009RoundQuestionAssessmentOverrides1786608000000,
-        RoundAnswerValidationParity0010RoundAnswerValidationParity1786694400000,
-      ],
+      migrations: [...migrationsForFreshDatabase()],
     });
     await dataSource.initialize();
     await dataSource.runMigrations();
@@ -276,8 +269,9 @@ describe('Round integrity database boundary (PostgreSQL)', () => {
         url: migrationDatabaseUrl,
         synchronize: false,
         migrations: [
-          Core0001Core1785916800000,
-          QuestionsRounds0002QuestionsRounds1786003200000,
+          ...migrationsForHistoricalDatabase(
+            'QuestionsRounds0002QuestionsRounds1786003200000',
+          ),
         ],
       });
       await seedDataSource.initialize();
@@ -298,9 +292,9 @@ describe('Round integrity database boundary (PostgreSQL)', () => {
         url: migrationDatabaseUrl,
         synchronize: false,
         migrations: [
-          Core0001Core1785916800000,
-          QuestionsRounds0002QuestionsRounds1786003200000,
-          InitialIntakeOpenRound0005InitialIntakeOpenRound1786262400000,
+          ...migrationsForHistoricalDatabase(
+            'InitialIntakeOpenRound0005InitialIntakeOpenRound1786262400000',
+          ),
         ],
       });
       await migrationDataSource.initialize();
@@ -885,8 +879,9 @@ describe('Round integrity database boundary (PostgreSQL)', () => {
         url: migrationDatabaseUrl,
         synchronize: false,
         migrations: [
-          Core0001Core1785916800000,
-          QuestionsRounds0002QuestionsRounds1786003200000,
+          ...migrationsForHistoricalDatabase(
+            'QuestionsRounds0002QuestionsRounds1786003200000',
+          ),
         ],
       });
       await baselineDataSource.initialize();
@@ -908,11 +903,9 @@ describe('Round integrity database boundary (PostgreSQL)', () => {
         url: migrationDatabaseUrl,
         synchronize: false,
         migrations: [
-          Core0001Core1785916800000,
-          QuestionsRounds0002QuestionsRounds1786003200000,
-          InitialIntakeOpenRound0005InitialIntakeOpenRound1786262400000,
-          RoundQuestionAssessmentOverrides0009RoundQuestionAssessmentOverrides1786608000000,
-          RoundAnswerValidationParity0010RoundAnswerValidationParity1786694400000,
+          ...migrationsForHistoricalDatabase(
+            'RoundAnswerValidationParity0010RoundAnswerValidationParity1786694400000',
+          ),
         ],
       });
       await migrationDataSource.initialize();
@@ -1355,10 +1348,9 @@ describe('Round integrity database boundary (PostgreSQL)', () => {
         url: migrationDatabaseUrl,
         synchronize: false,
         migrations: [
-          Core0001Core1785916800000,
-          QuestionsRounds0002QuestionsRounds1786003200000,
-          InitialIntakeOpenRound0005InitialIntakeOpenRound1786262400000,
-          RoundQuestionAssessmentOverrides0009RoundQuestionAssessmentOverrides1786608000000,
+          ...migrationsForHistoricalDatabase(
+            'RoundQuestionAssessmentOverrides0009RoundQuestionAssessmentOverrides1786608000000',
+          ),
         ],
       });
       await migrationDataSource.initialize();
@@ -1456,10 +1448,9 @@ describe('Round integrity database boundary (PostgreSQL)', () => {
         url: migrationDatabaseUrl,
         synchronize: false,
         migrations: [
-          Core0001Core1785916800000,
-          QuestionsRounds0002QuestionsRounds1786003200000,
-          InitialIntakeOpenRound0005InitialIntakeOpenRound1786262400000,
-          RoundQuestionAssessmentOverrides0009RoundQuestionAssessmentOverrides1786608000000,
+          ...migrationsForHistoricalDatabase(
+            'RoundQuestionAssessmentOverrides0009RoundQuestionAssessmentOverrides1786608000000',
+          ),
         ],
       });
       await migrationDataSource.initialize();
@@ -1495,10 +1486,9 @@ describe('Round integrity database boundary (PostgreSQL)', () => {
         url: revertDatabaseUrl,
         synchronize: false,
         migrations: [
-          Core0001Core1785916800000,
-          QuestionsRounds0002QuestionsRounds1786003200000,
-          InitialIntakeOpenRound0005InitialIntakeOpenRound1786262400000,
-          RoundQuestionAssessmentOverrides0009RoundQuestionAssessmentOverrides1786608000000,
+          ...migrationsForHistoricalDatabase(
+            'RoundQuestionAssessmentOverrides0009RoundQuestionAssessmentOverrides1786608000000',
+          ),
         ],
       });
       await revertDataSource.initialize();

@@ -611,6 +611,10 @@ A discovery follow-up olyan tisztázandó üzleti tétel, amelynek van egyértel
 
 *A lista külön mutatja a terminális döntést és a még nyitott, `Edit` vagy `Resolve` műveletre váró tisztázást.*
 
+![Nyitott discovery follow-up kompakt Initial Intake forráshivatkozással és Link/Change/Remove source műveletekkel](assets/user-guide/08-discovery-source-linkage.png)
+
+*A forrás csak a sorszámát, témáját és kontrollpontját mutatja; a teljes checklist-kérdés kizárólag kiválasztáskor látható.*
+
 ### Kategóriák
 
 | Kategória | Mikor válaszd? | Példa |
@@ -632,12 +636,25 @@ A discovery follow-up olyan tisztázandó üzleti tétel, amelynek van egyértel
 2. A `Question` mezőbe egyetlen, megválaszolható tisztázást írj, legfeljebb 10 000 karakterben.
 3. Az `Owner` mezőben nevezd meg azt a személyt vagy egyértelmű szerepet, akinél a következő labda van; legfeljebb 255 karakter használható.
 4. A `Due date` mezőben valódi naptári céldátumot adj meg. Ez dátum, nem időpont.
-5. A `Next step` mezőben írd le, mi történik a válasz megszerzéséért, legfeljebb 10 000 karakterben.
-6. Válaszd a `Create discovery follow-up` gombot.
+5. Ha a tétel egy konkrét kezdő interjú checklist-eleméből ered, az opcionális `Initial Intake source` listában válaszd ki. A lista a teljes kérdésszöveget is mutatja, hogy biztosan a megfelelő eredetet válaszd.
+6. A `Next step` mezőben írd le, mi történik a válasz megszerzéséért, legfeljebb 10 000 karakterben.
+7. Válaszd a `Create discovery follow-up` gombot.
+
+Üresen hagyhatod a forrást: a forrás nélküli follow-up ugyanúgy létrejön. Ha nincs aktuális kezdő interjú vagy nincs benne választható elem, ezt a lista jelzi, de a forrás nélküli létrehozást nem tiltja le. Ha a forráslista betöltése hibázik, válaszd az `Újrapróbálás` műveletet; a meglévő hivatkozások és a forrás nélküli létrehozás közben használható marad.
 
 Siker esetén az űrlap kiürül, zöld sikerüzenet jelenik meg, és az új tétel `Nyitott` státusszal bekerül a listába. Audit-esemény is készül.
 
 A lista a legkorábbi `Due date` szerint rendez. Azonos dátumnál a korábban létrehozott elem kerül előre. A rendszer jelenleg nem emeli ki automatikusan a lejárt tételt, ezért a dátumok napi ellenőrzése a munkát végző csapat feladata.
+
+### Forrás kapcsolása, cseréje és eltávolítása
+
+Nyitott, forrás nélküli tételnél válaszd a `Link source`, meglévő forrásnál a `Change source` műveletet. A megjelenő választóban jelölj ki egy elemet, majd válaszd a `Save source` gombot. A lista mindig az aktuális Initial Intake forrást használja: előbb a legutóbb létrehozott nyitott, ennek hiányában a legutóbb lezárt kezdő interjút. Egy később indított kör nem írja át a korábbi hivatkozást.
+
+A forráskártya és az audit csak a `#sorszám · téma · kontrollpont` rövid hivatkozást mutatja. A teljes forráskérdés csak a választóban segít azonosítani az elemet; az azonosító, az interjúválasz és az értékelési indoklás nem jelenik meg itt.
+
+Meglévő forrás eltávolításához válaszd a `Remove source`, majd az in-context megerősítésben a `Remove source` gombot. A `Cancel` semmit nem módosít. Erősítsd meg csak akkor, ha biztos vagy benne: egy későbbi Initial Intake miatt a régi forrás később már nem lesz visszaválasztható. A megerősítés alatt más discovery-módosítás nem indítható.
+
+Ha mentéskor ütközés vagy elavult forrás jelenik meg, a választásod megmarad. Frissítsd a forrásjelölteket, ellenőrizd az aktuális Initial Intake állapotát, majd tudatosan válassz újra. Egyszerre csak egy `Edit`, `Resolve` vagy source-link űrlap lehet nyitva.
 
 ### Nyitott follow-up napi szerkesztése
 
@@ -671,11 +688,11 @@ Siker után az `Edit` és a `Resolve` gomb is eltűnik, megjelenik a terminális
 
 ### Mi nem módosítható?
 
-Terminális (`Megválaszolva` vagy `Nem releváns`) follow-up nem szerkeszthető és nem nyitható újra. Follow-up törlése és forráskérdéshez vagy checklist-itemhez kapcsolása sem elérhető. Hibás, még nyitott kérdés, felelős vagy dátum esetén az `Edit` folyamatot használd; lezárt tételt ne próbálj hamis válasszal helyesbíteni. Ha valóban új tisztázandó kérdés keletkezik, hozz létre új follow-upot.
+Terminális (`Megválaszolva` vagy `Nem releváns`) follow-up nem szerkeszthető, nem nyitható újra, és a megőrzött forrása sem módosítható. Follow-up törlése, illetve interjú- vagy readiness-oldalról közvetlen linked létrehozás nem elérhető. Hibás, még nyitott kérdés, felelős vagy dátum esetén az `Edit` folyamatot használd; lezárt tételt ne próbálj hamis válasszal helyesbíteni. Ha valóban új tisztázandó kérdés keletkezik, hozz létre új follow-upot.
 
 ### Archivált projekt
 
-Archiválás után a discovery lista olvasható marad, de az új elem létrehozása, az `Edit` és a `Resolve` művelet letiltott. Ha archiváláskor nyitva volt egy helyi szerkesztő- vagy feloldó űrlap, annak be nem mentett szövege törlődik. Visszaállítás után a projekt `DRAFT` lesz, a meglévő follow-upok megmaradnak, és a nyitott elemek műveletei újra elérhetővé válnak.
+Archiválás után a discovery lista és a kompakt forráshivatkozások olvashatók maradnak, de az új elem létrehozása, az `Edit`, a `Resolve` és a source-link műveletek letiltottak. Ha archiváláskor nyitva volt egy helyi szerkesztő-, feloldó- vagy source-link űrlap, illetve eltávolítási megerősítés, annak be nem mentett állapota törlődik. Visszaállítás után a projekt `DRAFT` lesz, a meglévő follow-upok megmaradnak, és a nyitott elemek műveletei újra elérhetővé válnak.
 
 Ha archivált állapotban kell valódi új döntést rögzíteni, előbb válaszd a `Restore project` műveletet, ellenőrizd a `DRAFT` állapotot, majd végezd el a follow-up műveletet.
 
@@ -1060,7 +1077,7 @@ Az alábbiak nem elrejtett funkciók és nem más menüpontban találhatók; a j
 
 ### Follow-up és kommunikáció
 
-- Discovery follow-up újranyitása, törlése és forráskérdéshez vagy checklist-itemhez kapcsolása nem elérhető.
+- Discovery follow-up újranyitása és törlése nem elérhető. Forráskapcsolat csak a cockpitban, nyitott follow-uphoz kezelhető; interjú- vagy readiness-oldalról nincs közvetlen linked létrehozás.
 - Nincs automatikus lejártság-kiemelés vagy overdue riasztás a discovery listában.
 - Nincs címzett-felülírás, küldés előtti megerősítés, kézbesítési/olvasási visszaigazolás vagy felhasználói levélszerkesztő.
 - A levélküldés nem rendelkezik felhasználói outboxszal vagy ismételt küldést láthatóan deduplikáló kezelőfelülettel.
