@@ -93,8 +93,3 @@ has browser proof: 3/3 focused and 22/22 full E2E tests passed. SCORE-01.2
 Decision Score/recommendation, canonical structured output, authentication,
 authorization, backup operations, and export coverage remain separate until their
 requirements and verification evidence are complete.
-
-## Next gate
-
-Before any repository decision or edit, refresh `WORK_STATE`; do not infer
-current branch, HEAD, worktree, upstream, or PR state from this document.
