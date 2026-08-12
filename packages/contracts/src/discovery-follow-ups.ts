@@ -12,12 +12,28 @@ export const discoveryFollowUpCategories = [
 export type DiscoveryFollowUpCategory =
   (typeof discoveryFollowUpCategories)[number];
 
+export interface DiscoveryFollowUpSourceOption {
+  readonly snapshotId: string;
+  readonly order: number;
+  readonly topic: string;
+  readonly controlPoint: string;
+  readonly text: string;
+}
+
+export interface DiscoveryFollowUpSourceReference {
+  readonly snapshotId: string;
+  readonly order: number;
+  readonly topic: string;
+  readonly controlPoint: string;
+}
+
 export interface CreateDiscoveryFollowUpInput {
   readonly category: DiscoveryFollowUpCategory;
   readonly question: string;
   readonly owner: string;
   readonly dueDate: string;
   readonly nextStep: string;
+  readonly sourceSnapshotId?: string;
 }
 
 export interface ResolveDiscoveryFollowUpInput {
@@ -34,6 +50,11 @@ export interface UpdateDiscoveryFollowUpInput {
   readonly expectedVersion: number;
 }
 
+export interface SetDiscoveryFollowUpSourceLinkInput {
+  readonly sourceSnapshotId: string | null;
+  readonly expectedVersion: number;
+}
+
 export interface DiscoveryFollowUp {
   readonly id: string;
   readonly projectId: string;
@@ -47,4 +68,5 @@ export interface DiscoveryFollowUp {
   readonly createdAt: string;
   readonly updatedAt: string;
   readonly version: number;
+  readonly source: DiscoveryFollowUpSourceReference | null;
 }

@@ -14,6 +14,7 @@ export const cockpitOperationIds = [
   'customer-review-email',
   'discovery-create',
   'discovery-update',
+  'discovery-source-link',
   'discovery-resolve',
   'project-archive',
   'project-restore',

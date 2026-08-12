@@ -91,6 +91,7 @@ ordered TypeORM migrations registered in
 8. `0008-discovery-follow-up-edit-version.ts` — positive persisted discovery-follow-up version for conflict-safe open-item edits.
 9. `0009-round-question-assessment-overrides.ts` — effective `Részben megvan` and justified `Nem releváns` assessment overrides, completion/immutability guards, and their database invariants.
 10. `0010-round-answer-validation-parity.ts` — database validation parity for `TEXT` and `LONG_TEXT` answers by rejecting values made only from space, tab, line feed, carriage return, form feed, or vertical tab, matching the API rule.
+11. `0011-discovery-follow-up-source-linkage.ts` — nullable discovery-follow-up source snapshot, restrictive foreign key, and source lookup index.
 
 The deployed API image contains the compiled migration classes, but not the
 TypeScript migration source tree used by the development-only
@@ -141,7 +142,7 @@ docker compose --env-file .env exec -T api node -e $migrationStatusScript
 
 `pending: false` means that all migration classes in the running image are
 recorded in the database. The `applied` array is the database's migration
-history; the ten expected names are listed above.
+history; the eleven expected names are listed above.
 
 There is no safe arbitrary migration selector in the runtime image. A
 controlled revert can undo only the latest applied migration through a
@@ -174,6 +175,9 @@ Reverting `0010` redefines only the round-answer validation function with its
 previous space-only `btrim` predicate. It leaves schema objects and stored answers
 in place, but database validation then permits control-whitespace-only text that
 the forward migration rejects.
+Reverting `0011` drops only its index, restrictive foreign key, and nullable
+source column, in that order; it removes the source relationship but not the
+discovery follow-up itself or any immutable snapshot.
 Before any revert, inspect the migration and choose the rollback procedure
 appropriate to the affected objects.
 
@@ -228,10 +232,21 @@ assigns the canonical initial status `Nyitott` and writes one creation audit eve
 with only `followUpId`, category, due date, and status; question, owner, and
 next-step text are not copied into the audit payload.
 
+Creation may optionally attach one snapshot from the project's current Initial
+Intake source: the latest open round, or the latest completed round when none is
+open. Open follow-ups can add, replace, or explicitly remove that relationship;
+resolved follow-ups retain it as historical provenance. The source command uses
+the same lock and version discipline as other follow-up mutations. A real source
+change emits a redacted audit event with only the action and compact order/topic/
+control-point reference, never a source snapshot identifier, full source
+question, answer, rationale, owner, or next-step text.
+
 ```text
 GET  /api/projects/{projectId}/discovery-follow-ups
 POST /api/projects/{projectId}/discovery-follow-ups
+GET  /api/projects/{projectId}/discovery-follow-ups/source-options
 PATCH /api/projects/{projectId}/discovery-follow-ups/{followUpId}
+PUT  /api/projects/{projectId}/discovery-follow-ups/{followUpId}/source-link
 POST /api/projects/{projectId}/discovery-follow-ups/{followUpId}/resolve
 ```
 
@@ -299,8 +314,8 @@ These are intentionally separate flows:
   non-sensitive error code, and can be disabled or given an expiry time.
 
 The follow-up state in this section is an email-delivery schedule. It is not the
-delivered `INTAKE-04.1`/`INTAKE-04.2`/`INTAKE-04.3a` discovery-follow-up work-item
-slices; optional source linkage remains later discovery work.
+delivered `INTAKE-04` discovery-follow-up work-item management slice, including
+its optional source linkage.
 
 Relevant API routes:
 

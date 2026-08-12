@@ -8,7 +8,7 @@ import { loadGeneralPlaybookV1 } from '@project-maker/contracts/general-playbook
 import { DataSource } from 'typeorm';
 
 import { DiscoveryFollowUpEntity } from '../discovery-follow-ups/discovery-follow-up.entity';
-import { InterviewRoundEntity } from '../interviews/interview-round.entity';
+import { findCurrentInitialIntakeSource } from '../interviews/current-initial-intake-source';
 import {
   loadRoundQuestionAssessmentPolicy,
   toEffectiveRoundQuestionSnapshot,
@@ -30,7 +30,10 @@ export class ReadinessService {
       throw new NotFoundException('Project not found.');
     }
 
-    const sourceRound = await this.findSourceRound(projectId);
+    const sourceRound = await findCurrentInitialIntakeSource(
+      this.dataSource.manager,
+      projectId,
+    );
     if (!sourceRound) {
       return { available: false, projectId, reason: 'NO_INITIAL_INTAKE' };
     }
@@ -89,21 +92,6 @@ export class ReadinessService {
         createdAt: followUp.createdAt.toISOString(),
       })),
       policy,
-    });
-  }
-
-  private async findSourceRound(projectId: string): Promise<InterviewRoundEntity | null> {
-    const rounds = this.dataSource.getRepository(InterviewRoundEntity);
-    const openRound = await rounds.findOne({
-      where: { projectId, type: 'INITIAL_INTAKE', status: 'OPEN' },
-      order: { createdAt: 'DESC', id: 'ASC' },
-    });
-    if (openRound) {
-      return openRound;
-    }
-    return rounds.findOne({
-      where: { projectId, type: 'INITIAL_INTAKE', status: 'COMPLETED' },
-      order: { createdAt: 'DESC', id: 'ASC' },
     });
   }
 }

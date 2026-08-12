@@ -23,7 +23,7 @@ The canonical workflow is:
 - **Intake:** the structured first assessment used to decide whether an initiative is clear enough to estimate or develop.
 - **Playbook:** a versioned question set with its own readiness and decision-scoring weights. A project stores the selected playbook ID.
 - **Checklist answer:** the answer and operational state for one playbook item, including owner, due date, open question, and next step.
-- **Discovery follow-up:** a project-owned discovery work item with a responsible owner, due date, status, answer/decision, and next step. The delivered `INTAKE-04.1`, `INTAKE-04.2`, and `INTAKE-04.3a` slices create, review, resolve, and edit its open working fields while retaining canonical terminal states. Optional source checklist-item linkage remains future work.
+- **Discovery follow-up:** a project-owned discovery work item with a responsible owner, due date, status, answer/decision, next step, and an optional immutable source snapshot. The delivered `INTAKE-04` slices create, review, resolve, edit open working fields, and link an open item to its intake origin while retaining canonical terminal states.
 - **Customer email follow-up:** an outbound communication cadence/schedule. It may send pings, but it is not a discovery work item and does not replace discovery follow-ups.
 - **Completion:** progress through relevant playbook items. Items marked not relevant are excluded from the denominator.
 - **Effective checklist status:** the current status derived from a valid answer unless a persisted assessment overrides it: `Nincs meg`, `Kész`, `Részben megvan`, or justified `Nem releváns`.
@@ -62,7 +62,7 @@ For the delivered initial-intake assessment, a valid answer is effectively `Kés
 
 ### Discovery follow-up
 
-Each discovery follow-up preserves a stable `id`, `category`, `question`, `owner`, `dueDate`, `status`, `decisionOrAnswer`, and `nextStep`. Creation, review, resolution, and editing of the five open working fields are delivered; optional source checklist-item linkage remains future work. Customer email follow-up state is a separate scheduling concern and is not part of this entity.
+Each discovery follow-up preserves a stable `id`, `category`, `question`, `owner`, `dueDate`, `status`, `decisionOrAnswer`, `nextStep`, and zero or one immutable source snapshot. A new or replacement source must belong to the latest open `INITIAL_INTAKE` round, or to the latest completed one when no initial intake is open. A later intake never rewrites an existing link. Resolved follow-ups retain their source as immutable provenance, while only open follow-ups may add, change, or remove it. Cards and audit records expose a compact human reference (order, topic, control point), not the source ID or full source question. Customer email follow-up state is a separate scheduling concern and is not part of this entity.
 
 ### Readiness gap
 
