@@ -55,5 +55,5 @@ jobs:
       - name: Build shared contracts
         run: pnpm --filter @project-maker/contracts build
 
-      - name: Run checkpoint
-        run: pnpm checkpoint
+      - name: Run verify
+        run: pnpm verify
