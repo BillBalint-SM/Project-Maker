@@ -7,6 +7,14 @@ import { DataSource } from 'typeorm';
 
 import { AppModule } from '../src/app.module';
 
+type InitialIntakeSnapshot = {
+  readonly id: string;
+  readonly order: number;
+  readonly topic: string;
+  readonly controlPoint: string;
+  readonly text: string;
+};
+
 describe('ProjectsController (e2e)', () => {
   let app: INestApplication;
   let dataSource: DataSource;
@@ -179,6 +187,620 @@ describe('ProjectsController (e2e)', () => {
       .expect(404);
   });
 
+  it('lists current Initial Intake candidates and creates a linked discovery follow-up with compact provenance', async () => {
+    const projectId = await createProject('discovery-follow-up-source-options');
+    const source = await createInitialIntakeSource(projectId);
+
+    const options = await request(app.getHttpServer())
+      .get('/projects/' + projectId + '/discovery-follow-ups/source-options')
+      .expect(200);
+
+    assert.deepEqual(options.body, [
+      {
+        snapshotId: source.snapshot.id,
+        order: source.snapshot.order,
+        topic: source.snapshot.topic,
+        controlPoint: source.snapshot.controlPoint,
+        text: source.snapshot.text,
+      },
+    ]);
+
+    const created = await request(app.getHttpServer())
+      .post('/projects/' + projectId + '/discovery-follow-ups')
+      .send({
+        category: 'BUSINESS',
+        question: 'Which discovery decision still needs proof?',
+        owner: 'Product owner',
+        dueDate: '2026-10-01',
+        nextStep: 'Review the intake evidence.',
+        sourceSnapshotId: source.snapshot.id,
+      })
+      .expect(201);
+
+    assert.deepEqual(created.body.source, {
+      snapshotId: source.snapshot.id,
+      order: source.snapshot.order,
+      topic: source.snapshot.topic,
+      controlPoint: source.snapshot.controlPoint,
+    });
+    assert.equal(created.body.version, 1);
+
+    const auditRows = await dataSource.query<
+      Array<{ event_type: string; payload: Record<string, unknown> }>
+    >(
+      'SELECT "event_type", "payload" FROM "audit_events" WHERE "project_id" = $1 AND "event_type" = $2 ORDER BY "created_at" ASC, "id" ASC',
+      [projectId, 'DISCOVERY_FOLLOW_UP_CREATED'],
+    );
+    assert.deepEqual(auditRows, [
+      {
+        event_type: 'DISCOVERY_FOLLOW_UP_CREATED',
+        payload: {
+          followUpId: created.body.id,
+          category: 'BUSINESS',
+          dueDate: '2026-10-01',
+          status: 'Nyitott',
+          sourceOrder: String(source.snapshot.order),
+          sourceTopic: source.snapshot.topic,
+          sourceControlPoint: source.snapshot.controlPoint,
+        },
+      },
+    ]);
+    assert.doesNotMatch(JSON.stringify(auditRows), new RegExp(source.snapshot.id));
+    assert.doesNotMatch(JSON.stringify(auditRows), new RegExp(source.snapshot.text));
+  });
+
+  it('returns no source candidates even when the project is archived', async () => {
+    const projectId = await createProject('discovery-follow-up-source-options-empty');
+
+    await request(app.getHttpServer())
+      .get('/projects/' + projectId + '/discovery-follow-ups/source-options')
+      .expect(200)
+      .expect([]);
+
+    await request(app.getHttpServer()).post(`/projects/${projectId}/archive`).expect(201);
+
+    await request(app.getHttpServer())
+      .get('/projects/' + projectId + '/discovery-follow-ups/source-options')
+      .expect(200)
+      .expect([]);
+  });
+
+  it('adds, replaces, and removes a discovery follow-up source with one version and redacted audit per write', async () => {
+    const projectId = await createProject('discovery-follow-up-source-link-mutations');
+    const firstSource = await createInitialIntakeSource(projectId);
+    const followUp = await createDiscoveryFollowUp(projectId, 'source-link-mutations');
+
+    const added = await request(app.getHttpServer())
+      .put(
+        '/projects/' +
+          projectId +
+          '/discovery-follow-ups/' +
+          followUp.id +
+          '/source-link',
+      )
+      .send({
+        sourceSnapshotId: firstSource.snapshot.id,
+        expectedVersion: followUp.version,
+      })
+      .expect(200);
+
+    assert.equal(added.body.version, followUp.version + 1);
+    assert.deepEqual(added.body.source, {
+      snapshotId: firstSource.snapshot.id,
+      order: firstSource.snapshot.order,
+      topic: firstSource.snapshot.topic,
+      controlPoint: firstSource.snapshot.controlPoint,
+    });
+
+    await request(app.getHttpServer())
+      .post(`/projects/${projectId}/rounds/${firstSource.roundId}/complete`)
+      .expect(201);
+    const currentRound = await request(app.getHttpServer())
+      .post(`/projects/${projectId}/rounds`)
+      .send({ type: 'INITIAL_INTAKE' })
+      .expect(201);
+    const currentSource = currentRound.body.questions[0] as InitialIntakeSnapshot;
+
+    const replaced = await request(app.getHttpServer())
+      .put(
+        '/projects/' +
+          projectId +
+          '/discovery-follow-ups/' +
+          followUp.id +
+          '/source-link',
+      )
+      .send({
+        sourceSnapshotId: currentSource.id,
+        expectedVersion: added.body.version,
+      })
+      .expect(200);
+
+    assert.equal(replaced.body.version, added.body.version + 1);
+    assert.deepEqual(replaced.body.source, {
+      snapshotId: currentSource.id,
+      order: currentSource.order,
+      topic: currentSource.topic,
+      controlPoint: currentSource.controlPoint,
+    });
+
+    const removed = await request(app.getHttpServer())
+      .put(
+        '/projects/' +
+          projectId +
+          '/discovery-follow-ups/' +
+          followUp.id +
+          '/source-link',
+      )
+      .send({
+        sourceSnapshotId: null,
+        expectedVersion: replaced.body.version,
+      })
+      .expect(200);
+
+    assert.equal(removed.body.version, replaced.body.version + 1);
+    assert.equal(removed.body.source, null);
+
+    const auditRows = await dataSource.query<
+      Array<{ event_type: string; payload: Record<string, unknown> }>
+    >(
+      'SELECT "event_type", "payload" FROM "audit_events" WHERE "project_id" = $1 AND "event_type" = $2 ORDER BY "created_at" ASC, "id" ASC',
+      [projectId, 'DISCOVERY_FOLLOW_UP_SOURCE_LINK_CHANGED'],
+    );
+    assert.deepEqual(auditRows, [
+      {
+        event_type: 'DISCOVERY_FOLLOW_UP_SOURCE_LINK_CHANGED',
+        payload: {
+          followUpId: followUp.id,
+          sourceAction: 'ADDED',
+          sourceOrder: String(firstSource.snapshot.order),
+          sourceTopic: firstSource.snapshot.topic,
+          sourceControlPoint: firstSource.snapshot.controlPoint,
+        },
+      },
+      {
+        event_type: 'DISCOVERY_FOLLOW_UP_SOURCE_LINK_CHANGED',
+        payload: {
+          followUpId: followUp.id,
+          sourceAction: 'REPLACED',
+          previousSourceOrder: String(firstSource.snapshot.order),
+          previousSourceTopic: firstSource.snapshot.topic,
+          previousSourceControlPoint: firstSource.snapshot.controlPoint,
+          sourceOrder: String(currentSource.order),
+          sourceTopic: currentSource.topic,
+          sourceControlPoint: currentSource.controlPoint,
+        },
+      },
+      {
+        event_type: 'DISCOVERY_FOLLOW_UP_SOURCE_LINK_CHANGED',
+        payload: {
+          followUpId: followUp.id,
+          sourceAction: 'REMOVED',
+          previousSourceOrder: String(currentSource.order),
+          previousSourceTopic: currentSource.topic,
+          previousSourceControlPoint: currentSource.controlPoint,
+        },
+      },
+    ]);
+    for (const forbidden of [
+      firstSource.snapshot.id,
+      currentSource.id,
+      firstSource.snapshot.text,
+      currentSource.text,
+      'Question for source-link-mutations',
+    ]) {
+      assertNoSubmittedValues(auditRows, forbidden);
+    }
+  });
+
+  it('returns same-target and already-empty source-link requests as no-ops without version or audit changes', async () => {
+    const projectId = await createProject('discovery-follow-up-source-link-no-op');
+    const source = await createInitialIntakeSource(projectId);
+    const linkedFollowUp = await createDiscoveryFollowUp(projectId, 'source-link-no-op');
+    const added = await request(app.getHttpServer())
+      .put(`/projects/${projectId}/discovery-follow-ups/${linkedFollowUp.id}/source-link`)
+      .send({
+        sourceSnapshotId: source.snapshot.id,
+        expectedVersion: linkedFollowUp.version,
+      })
+      .expect(200);
+
+    const sameTarget = await request(app.getHttpServer())
+      .put(`/projects/${projectId}/discovery-follow-ups/${linkedFollowUp.id}/source-link`)
+      .send({
+        sourceSnapshotId: source.snapshot.id,
+        expectedVersion: added.body.version,
+      })
+      .expect(200);
+    assert.equal(sameTarget.body.version, added.body.version);
+    assert.deepEqual(sameTarget.body.source, added.body.source);
+    assert.equal(await countDiscoveryFollowUpSourceLinkAudit(projectId), 1);
+
+    const emptyFollowUp = await createDiscoveryFollowUp(projectId, 'source-link-empty-no-op');
+    const alreadyEmpty = await request(app.getHttpServer())
+      .put(`/projects/${projectId}/discovery-follow-ups/${emptyFollowUp.id}/source-link`)
+      .send({ sourceSnapshotId: null, expectedVersion: emptyFollowUp.version })
+      .expect(200);
+    assert.equal(alreadyEmpty.body.version, emptyFollowUp.version);
+    assert.equal(alreadyEmpty.body.source, null);
+    assert.equal(await countDiscoveryFollowUpSourceLinkAudit(projectId), 1);
+  });
+
+  it('keeps a historical same-target source as a no-op but rejects a different non-current snapshot', async () => {
+    const projectId = await createProject('discovery-follow-up-historical-source-no-op');
+    const firstRound = await createInitialIntakeSources(projectId, 2);
+    const linked = await request(app.getHttpServer())
+      .post(`/projects/${projectId}/discovery-follow-ups`)
+      .send({
+        category: 'BUSINESS',
+        question: 'Which historical source must remain stable?',
+        owner: 'Product owner',
+        dueDate: '2026-10-01',
+        nextStep: 'Keep the established provenance.',
+        sourceSnapshotId: firstRound.snapshots[0]?.id,
+      })
+      .expect(201);
+
+    await request(app.getHttpServer())
+      .post(`/projects/${projectId}/rounds/${firstRound.roundId}/complete`)
+      .expect(201);
+    await request(app.getHttpServer())
+      .post(`/projects/${projectId}/rounds`)
+      .send({ type: 'INITIAL_INTAKE' })
+      .expect(201);
+
+    const sameTarget = await request(app.getHttpServer())
+      .put(`/projects/${projectId}/discovery-follow-ups/${linked.body.id}/source-link`)
+      .send({
+        sourceSnapshotId: firstRound.snapshots[0]?.id,
+        expectedVersion: linked.body.version,
+      })
+      .expect(200);
+    assert.equal(sameTarget.body.version, linked.body.version);
+    assert.deepEqual(sameTarget.body.source, linked.body.source);
+
+    await request(app.getHttpServer())
+      .put(`/projects/${projectId}/discovery-follow-ups/${linked.body.id}/source-link`)
+      .send({
+        sourceSnapshotId: firstRound.snapshots[1]?.id,
+        expectedVersion: linked.body.version,
+      })
+      .expect(409);
+    assert.equal(await countDiscoveryFollowUpSourceLinkAudit(projectId), 0);
+  });
+
+  it('rejects invalid source-link commands without changing relationship data or exposing submitted values', async () => {
+    const projectId = await createProject('discovery-follow-up-source-link-invalid');
+    const historicalSource = await createInitialIntakeSource(projectId);
+    await request(app.getHttpServer())
+      .post(`/projects/${projectId}/rounds/${historicalSource.roundId}/complete`)
+      .expect(201);
+    const currentRound = await request(app.getHttpServer())
+      .post(`/projects/${projectId}/rounds`)
+      .send({ type: 'INITIAL_INTAKE' })
+      .expect(201);
+    const currentSource = currentRound.body.questions[0] as InitialIntakeSnapshot;
+    const followUp = await createDiscoveryFollowUp(projectId, 'source-link-invalid');
+    const otherProjectId = await createProject('discovery-follow-up-source-link-foreign');
+    const foreignSource = await createInitialIntakeSource(otherProjectId);
+    const foreignFollowUp = await createDiscoveryFollowUp(
+      otherProjectId,
+      'source-link-foreign-follow-up',
+    );
+    const route = `/projects/${projectId}/discovery-follow-ups/${followUp.id}/source-link`;
+    const errorBodies: unknown[] = [];
+
+    errorBodies.push(
+      (
+        await request(app.getHttpServer())
+          .put(route)
+          .send({
+            sourceSnapshotId: currentSource.id,
+            expectedVersion: followUp.version + 1,
+          })
+          .expect(409)
+      ).body,
+    );
+
+    await request(app.getHttpServer()).post(`/projects/${projectId}/archive`).expect(201);
+    errorBodies.push(
+      (
+        await request(app.getHttpServer())
+          .put(route)
+          .send({
+            sourceSnapshotId: currentSource.id,
+            expectedVersion: followUp.version,
+          })
+          .expect(409)
+      ).body,
+    );
+    await request(app.getHttpServer()).post(`/projects/${projectId}/restore`).expect(201);
+
+    const malformedSourceMarker = 'private-source-free-text-marker';
+    errorBodies.push(
+      (
+        await request(app.getHttpServer())
+          .put(route)
+          .send({
+            sourceSnapshotId: malformedSourceMarker,
+            expectedVersion: followUp.version,
+          })
+          .expect(400)
+      ).body,
+    );
+    errorBodies.push(
+      (
+        await request(app.getHttpServer())
+          .put(route)
+          .send({ expectedVersion: followUp.version })
+          .expect(400)
+      ).body,
+    );
+    errorBodies.push(
+      (
+        await request(app.getHttpServer())
+          .put(route)
+          .send({ sourceSnapshotId: currentSource.id, expectedVersion: 0 })
+          .expect(400)
+      ).body,
+    );
+    errorBodies.push(
+      (
+        await request(app.getHttpServer())
+          .put(route)
+          .send({ sourceSnapshotId: currentSource.id })
+          .expect(400)
+      ).body,
+    );
+
+    const malformedFollowUpMarker = 'private-follow-up-free-text-marker';
+    errorBodies.push(
+      (
+        await request(app.getHttpServer())
+          .put(
+            `/projects/${projectId}/discovery-follow-ups/${malformedFollowUpMarker}/source-link`,
+          )
+          .send({
+            sourceSnapshotId: currentSource.id,
+            expectedVersion: followUp.version,
+          })
+          .expect(400)
+      ).body,
+    );
+    errorBodies.push(
+      (
+        await request(app.getHttpServer())
+          .put(
+            `/projects/${otherProjectId}/discovery-follow-ups/${followUp.id}/source-link`,
+          )
+          .send({
+            sourceSnapshotId: foreignSource.snapshot.id,
+            expectedVersion: followUp.version,
+          })
+          .expect(404)
+      ).body,
+    );
+    errorBodies.push(
+      (
+        await request(app.getHttpServer())
+          .put(
+            `/projects/${projectId}/discovery-follow-ups/${foreignFollowUp.id}/source-link`,
+          )
+          .send({
+            sourceSnapshotId: currentSource.id,
+            expectedVersion: foreignFollowUp.version,
+          })
+          .expect(404)
+      ).body,
+    );
+    for (const sourceSnapshotId of [
+      foreignSource.snapshot.id,
+      historicalSource.snapshot.id,
+    ]) {
+      errorBodies.push(
+        (
+          await request(app.getHttpServer())
+            .put(route)
+            .send({ sourceSnapshotId, expectedVersion: followUp.version })
+            .expect(409)
+        ).body,
+      );
+    }
+
+    const rows = await dataSource.query<
+      Array<{ source_snapshot_id: string | null; version: number }>
+    >(
+      'SELECT "source_snapshot_id", "version" FROM "discovery_follow_ups" WHERE "id" = $1',
+      [followUp.id],
+    );
+    assert.deepEqual(rows, [{ source_snapshot_id: null, version: followUp.version }]);
+    assert.equal(await countDiscoveryFollowUpSourceLinkAudit(projectId), 0);
+
+    const serializedErrors = JSON.stringify(errorBodies);
+    for (const submitted of [
+      malformedSourceMarker,
+      malformedFollowUpMarker,
+      currentSource.id,
+      foreignSource.snapshot.id,
+      historicalSource.snapshot.id,
+      followUp.id,
+      foreignFollowUp.id,
+    ]) {
+      assertNoSubmittedValues(errorBodies, submitted);
+    }
+    assert.doesNotMatch(
+      serializedErrors,
+      /discovery_follow_ups|round_question_snapshots|\b(select|insert|update|delete|sql)\b|queryfailederror|stack trace/i,
+    );
+  });
+
+  it('retains linked provenance after resolution and rejects direct source-link changes', async () => {
+    const projectId = await createProject('discovery-follow-up-resolved-source-link');
+    const source = await createInitialIntakeSource(projectId);
+    const created = await request(app.getHttpServer())
+      .post(`/projects/${projectId}/discovery-follow-ups`)
+      .send({
+        category: 'BUSINESS',
+        question: 'Which resolved source remains authoritative?',
+        owner: 'Product owner',
+        dueDate: '2026-10-01',
+        nextStep: 'Resolve with the linked evidence.',
+        sourceSnapshotId: source.snapshot.id,
+      })
+      .expect(201);
+    const resolved = await request(app.getHttpServer())
+      .post(`/projects/${projectId}/discovery-follow-ups/${created.body.id}/resolve`)
+      .send({
+        status: 'Megválaszolva',
+        decisionOrAnswer: 'The linked source supplied the answer.',
+      })
+      .expect(200);
+
+    assert.deepEqual(resolved.body.source, created.body.source);
+    const list = await request(app.getHttpServer())
+      .get(`/projects/${projectId}/discovery-follow-ups`)
+      .expect(200);
+    const reloaded = list.body.find(
+      (value: { id: string }) => value.id === created.body.id,
+    ) as { source: unknown } | undefined;
+    assert.deepEqual(reloaded?.source, created.body.source);
+
+    const rejected = await request(app.getHttpServer())
+      .put(`/projects/${projectId}/discovery-follow-ups/${created.body.id}/source-link`)
+      .send({ sourceSnapshotId: null, expectedVersion: resolved.body.version })
+      .expect(409);
+    assert.equal(rejected.body.message, 'Discovery follow-up is not open.');
+    assert.equal(await countDiscoveryFollowUpSourceLinkAudit(projectId), 0);
+  });
+
+  it('rejects a repeated original source-link version as stale before same-target no-op handling', async () => {
+    const projectId = await createProject('discovery-follow-up-source-link-stale');
+    const source = await createInitialIntakeSource(projectId);
+    const followUp = await createDiscoveryFollowUp(projectId, 'source-link-stale');
+    const command = {
+      sourceSnapshotId: source.snapshot.id,
+      expectedVersion: followUp.version,
+    };
+
+    const added = await request(app.getHttpServer())
+      .put(`/projects/${projectId}/discovery-follow-ups/${followUp.id}/source-link`)
+      .send(command)
+      .expect(200);
+    const stale = await request(app.getHttpServer())
+      .put(`/projects/${projectId}/discovery-follow-ups/${followUp.id}/source-link`)
+      .send(command)
+      .expect(409);
+
+    assert.equal(stale.body.message, 'Discovery follow-up has changed.');
+    assert.equal(await countDiscoveryFollowUpSourceLinkAudit(projectId), 1);
+    const list = await request(app.getHttpServer())
+      .get(`/projects/${projectId}/discovery-follow-ups`)
+      .expect(200);
+    const reloaded = list.body.find(
+      (value: { id: string }) => value.id === followUp.id,
+    ) as { version: number; source: unknown } | undefined;
+    assert.equal(reloaded?.version, added.body.version);
+    assert.deepEqual(reloaded?.source, added.body.source);
+  });
+
+  it('creates an unlinked discovery follow-up without an Initial Intake source', async () => {
+    const projectId = await createProject('discovery-follow-up-unlinked-without-source');
+
+    const created = await request(app.getHttpServer())
+      .post('/projects/' + projectId + '/discovery-follow-ups')
+      .send({
+        category: 'BUSINESS',
+        question: 'Which decision still needs proof?',
+        owner: 'Product owner',
+        dueDate: '2026-10-01',
+        nextStep: 'Review the available evidence.',
+      })
+      .expect(201);
+
+    assert.equal(created.body.source, null);
+  });
+
+  it('rejects an explicit null sourceSnapshotId without echoing submitted free text', async () => {
+    const projectId = await createProject('discovery-follow-up-null-source');
+    const marker = 'null-source-free-text-marker';
+
+    const response = await request(app.getHttpServer())
+      .post('/projects/' + projectId + '/discovery-follow-ups')
+      .send({
+        category: 'BUSINESS',
+        question: marker,
+        owner: 'Product owner',
+        dueDate: '2026-10-01',
+        nextStep: 'Review the available evidence.',
+        sourceSnapshotId: null,
+      })
+      .expect(400);
+
+    assertNoSubmittedValues(response.body, marker);
+  });
+
+  it('rejects foreign and non-current source snapshots without follow-up creation or creation audit events', async () => {
+    const projectId = await createProject('discovery-follow-up-invalid-source');
+    const firstSource = await createInitialIntakeSource(projectId);
+    const linked = await request(app.getHttpServer())
+      .post('/projects/' + projectId + '/discovery-follow-ups')
+      .send({
+        category: 'BUSINESS',
+        question: 'Which current decision still needs proof?',
+        owner: 'Product owner',
+        dueDate: '2026-10-01',
+        nextStep: 'Review the intake evidence.',
+        sourceSnapshotId: firstSource.snapshot.id,
+      })
+      .expect(201);
+    await request(app.getHttpServer())
+      .post(`/projects/${projectId}/rounds/${firstSource.roundId}/complete`)
+      .expect(201);
+    const currentRound = await request(app.getHttpServer())
+      .post(`/projects/${projectId}/rounds`)
+      .send({ type: 'INITIAL_INTAKE' })
+      .expect(201);
+    const currentSource = currentRound.body.questions[0] as { id: string };
+    const foreignProjectId = await createProject('discovery-follow-up-foreign-source');
+    const foreignSource = await createInitialIntakeSource(foreignProjectId);
+
+    const reloaded = await request(app.getHttpServer())
+      .get('/projects/' + projectId + '/discovery-follow-ups')
+      .expect(200);
+    assert.deepEqual(reloaded.body[0]?.source, {
+      snapshotId: firstSource.snapshot.id,
+      order: firstSource.snapshot.order,
+      topic: firstSource.snapshot.topic,
+      controlPoint: firstSource.snapshot.controlPoint,
+    });
+
+    for (const sourceSnapshotId of [firstSource.snapshot.id, foreignSource.snapshot.id]) {
+      await request(app.getHttpServer())
+        .post('/projects/' + projectId + '/discovery-follow-ups')
+        .send({
+          category: 'BUSINESS',
+          question: 'Which invalid source must not persist?',
+          owner: 'Product owner',
+          dueDate: '2026-10-01',
+          nextStep: 'Review the intake evidence.',
+          sourceSnapshotId,
+        })
+        .expect(409);
+    }
+
+    assert.notEqual(currentSource.id, firstSource.snapshot.id);
+    const followUpRows = await dataSource.query<Array<{ count: string }>>(
+      'SELECT COUNT(*)::text AS "count" FROM "discovery_follow_ups" WHERE "project_id" = $1',
+      [projectId],
+    );
+    assert.equal(followUpRows[0]?.count, '1');
+    const auditRows = await dataSource.query<Array<{ count: string }>>(
+      'SELECT COUNT(*)::text AS "count" FROM "audit_events" WHERE "project_id" = $1 AND "event_type" = $2',
+      [projectId, 'DISCOVERY_FOLLOW_UP_CREATED'],
+    );
+    assert.equal(auditRows[0]?.count, '1');
+    assert.equal(linked.body.id, reloaded.body[0]?.id);
+  });
+
   it('creates discovery follow-ups with the canonical initial status and deterministic list order', async () => {
     const projectId = await createProject('discovery-follow-up-create');
 
@@ -209,8 +831,10 @@ describe('ProjectsController (e2e)', () => {
     assert.equal(later.body.nextStep, 'Confirm against the vendor contract.');
     assert.equal(later.body.dueDate, '2026-09-17');
     assert.equal(later.body.decisionOrAnswer, null);
+    assert.equal(later.body.source, null);
     assert.equal(later.body.version, 1);
     assert.equal(earlier.body.version, 1);
+    assert.equal(earlier.body.source, null);
 
     const list = await request(app.getHttpServer())
       .get(`/projects/${projectId}/discovery-follow-ups`)
@@ -227,12 +851,35 @@ describe('ProjectsController (e2e)', () => {
     );
     const reloadedLater = list.body.find(
       (value: { id: string }) => value.id === later.body.id,
-    ) as { decisionOrAnswer: string | null; version: number } | undefined;
+    ) as {
+      decisionOrAnswer: string | null;
+      version: number;
+      source: null;
+    } | undefined;
     if (!reloadedLater) {
       throw new Error('created discovery follow-up was not returned after reload');
     }
     assert.equal(reloadedLater.decisionOrAnswer, null);
+    assert.equal(reloadedLater.source, null);
     assert.equal(reloadedLater.version, 1);
+
+    const rejectedPatch = await request(app.getHttpServer())
+      .patch('/projects/' + projectId + '/discovery-follow-ups/' + later.body.id)
+      .send({
+        category: later.body.category,
+        question: later.body.question,
+        owner: later.body.owner,
+        dueDate: later.body.dueDate,
+        nextStep: later.body.nextStep,
+        expectedVersion: later.body.version,
+        sourceSnapshotId: '00000000-0000-4000-8000-000000000099',
+      })
+      .expect(400);
+
+    assertNoSubmittedValues(
+      rejectedPatch.body,
+      '00000000-0000-4000-8000-000000000099',
+    );
 
     const auditRows = await dataSource.query<
       Array<{ event_type: string; payload: Record<string, unknown> }>
@@ -1373,6 +2020,51 @@ describe('ProjectsController (e2e)', () => {
     return response.body.id as string;
   }
 
+  async function createInitialIntakeSource(
+    projectId: string,
+  ): Promise<{
+    readonly roundId: string;
+    readonly snapshot: InitialIntakeSnapshot;
+  }> {
+    const source = await createInitialIntakeSources(projectId, 1);
+    const snapshot = source.snapshots[0];
+    if (!snapshot) {
+      throw new Error('Initial Intake round did not provide a source snapshot.');
+    }
+    return { roundId: source.roundId, snapshot };
+  }
+
+  async function createInitialIntakeSources(
+    projectId: string,
+    count: number,
+  ): Promise<{
+    readonly roundId: string;
+    readonly snapshots: readonly InitialIntakeSnapshot[];
+  }> {
+    const bank = await request(app.getHttpServer()).get('/settings/base-questions').expect(200);
+    const stableKeys = (bank.body.questions as Array<{ stableKey?: string }>)
+      .slice(0, count)
+      .map((question) => question.stableKey);
+    if (stableKeys.length !== count || stableKeys.some((stableKey) => !stableKey)) {
+      throw new Error('Seeded question bank did not provide enough source stable keys.');
+    }
+    await request(app.getHttpServer())
+      .post('/projects/' + projectId + '/question-schema')
+      .send({
+        questions: stableKeys.map((stableKey) => ({
+          stableKey,
+          required: false,
+          blocking: false,
+        })),
+      })
+      .expect(201);
+    const round = await request(app.getHttpServer())
+      .post('/projects/' + projectId + '/rounds')
+      .send({ type: 'INITIAL_INTAKE' })
+      .expect(201);
+    return { roundId: round.body.id, snapshots: round.body.questions };
+  }
+
   async function createDiscoveryFollowUp(
     projectId: string,
     label: string,
@@ -1400,6 +2092,16 @@ describe('ProjectsController (e2e)', () => {
     const rows = await dataSource.query<Array<{ count: string }>>(
       'SELECT COUNT(*)::text AS "count" FROM "audit_events" WHERE "project_id" = $1 AND "event_type" = $2',
       [projectId, 'DISCOVERY_FOLLOW_UP_UPDATED'],
+    );
+    return Number(rows[0]?.count);
+  }
+
+  async function countDiscoveryFollowUpSourceLinkAudit(
+    projectId: string,
+  ): Promise<number> {
+    const rows = await dataSource.query<Array<{ count: string }>>(
+      'SELECT COUNT(*)::text AS "count" FROM "audit_events" WHERE "project_id" = $1 AND "event_type" = $2',
+      [projectId, 'DISCOVERY_FOLLOW_UP_SOURCE_LINK_CHANGED'],
     );
     return Number(rows[0]?.count);
   }

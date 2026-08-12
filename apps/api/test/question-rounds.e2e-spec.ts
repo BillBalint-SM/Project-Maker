@@ -10,15 +10,7 @@ import type { AnswerValue, BaseQuestionType, GeneralPlaybook } from '@project-ma
 import { loadGeneralPlaybookV1 } from '@project-maker/contracts/general-playbook-runtime';
 
 import { AppModule } from '../src/app.module';
-import { Core0001Core1785916800000 } from '../src/migrations/0001-core';
-import { QuestionsRounds0002QuestionsRounds1786003200000 } from '../src/migrations/0002-questions-rounds';
-import { MarkdownRevisions0003MarkdownRevisions1786089600000 } from '../src/migrations/0003-markdown-revisions';
-import { InitialIntakeOpenRound0005InitialIntakeOpenRound1786262400000 } from '../src/migrations/0005-initial-intake-open-round';
-import { DiscoveryFollowUps0006DiscoveryFollowUps1786348800000 } from '../src/migrations/0006-discovery-follow-ups';
-import { DiscoveryFollowUpResolution0007DiscoveryFollowUpResolution1786435200000 } from '../src/migrations/0007-discovery-follow-up-resolution';
-import { DiscoveryFollowUpEditVersion0008DiscoveryFollowUpEditVersion1786521600000 } from '../src/migrations/0008-discovery-follow-up-edit-version';
-import { RoundQuestionAssessmentOverrides0009RoundQuestionAssessmentOverrides1786608000000 } from '../src/migrations/0009-round-question-assessment-overrides';
-import { RoundAnswerValidationParity0010RoundAnswerValidationParity1786694400000 } from '../src/migrations/0010-round-answer-validation-parity';
+import { migrationsForFreshDatabase } from './migration-harness';
 
 describe('Question-rounds disposable database guard', () => {
   it('rejects unsafe PostgreSQL hosts and database names', () => {
@@ -59,17 +51,7 @@ describe('Question bank and interview rounds (PostgreSQL e2e)', () => {
       type: 'postgres',
       url: databaseUrl,
       synchronize: false,
-      migrations: [
-        Core0001Core1785916800000,
-        QuestionsRounds0002QuestionsRounds1786003200000,
-        MarkdownRevisions0003MarkdownRevisions1786089600000,
-        InitialIntakeOpenRound0005InitialIntakeOpenRound1786262400000,
-        DiscoveryFollowUps0006DiscoveryFollowUps1786348800000,
-        DiscoveryFollowUpResolution0007DiscoveryFollowUpResolution1786435200000,
-        DiscoveryFollowUpEditVersion0008DiscoveryFollowUpEditVersion1786521600000,
-        RoundQuestionAssessmentOverrides0009RoundQuestionAssessmentOverrides1786608000000,
-        RoundAnswerValidationParity0010RoundAnswerValidationParity1786694400000,
-      ],
+      migrations: [...migrationsForFreshDatabase()],
     });
     await migrationDataSource.initialize();
     await migrationDataSource.runMigrations();

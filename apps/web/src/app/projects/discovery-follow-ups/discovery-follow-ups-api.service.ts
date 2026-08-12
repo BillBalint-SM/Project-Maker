@@ -8,16 +8,26 @@ import {
 import type {
   CreateDiscoveryFollowUpInput,
   DiscoveryFollowUp,
+  DiscoveryFollowUpSourceOption,
   ResolveDiscoveryFollowUpInput,
+  SetDiscoveryFollowUpSourceLinkInput,
   UpdateDiscoveryFollowUpInput,
 } from '@project-maker/contracts';
 
-export type DiscoveryOperation = 'load' | 'create' | 'update' | 'resolve';
+export type DiscoveryOperation =
+  | 'load'
+  | 'load-source-options'
+  | 'create'
+  | 'update'
+  | 'set-source-link'
+  | 'resolve';
 
 const discoveryActions: Readonly<Record<DiscoveryOperation, string>> = {
   load: 'load discovery follow-ups',
+  'load-source-options': 'load Initial Intake source options',
   create: 'create a discovery follow-up',
   update: 'update a discovery follow-up',
+  'set-source-link': 'change the discovery follow-up source',
   resolve: 'resolve a discovery follow-up',
 };
 
@@ -45,6 +55,22 @@ export class DiscoveryFollowUpsApiService {
       )
       .pipe(
         catchError((error: unknown) => this.fail(error, 'load')),
+      );
+  }
+
+  listSourceOptions(
+    projectId: string,
+  ): Observable<readonly DiscoveryFollowUpSourceOption[]> {
+    return this.http
+      .get<readonly DiscoveryFollowUpSourceOption[]>(
+        '/api/projects/' +
+          encodeURIComponent(projectId) +
+          '/discovery-follow-ups/source-options',
+      )
+      .pipe(
+        catchError((error: unknown) =>
+          this.fail(error, 'load-source-options'),
+        ),
       );
   }
 
@@ -78,6 +104,25 @@ export class DiscoveryFollowUpsApiService {
         input,
       )
       .pipe(catchError((error: unknown) => this.fail(error, 'update')));
+  }
+
+  setSourceLink(
+    projectId: string,
+    followUpId: string,
+    input: SetDiscoveryFollowUpSourceLinkInput,
+  ): Observable<DiscoveryFollowUp> {
+    return this.http
+      .put<DiscoveryFollowUp>(
+        '/api/projects/' +
+          encodeURIComponent(projectId) +
+          '/discovery-follow-ups/' +
+          encodeURIComponent(followUpId) +
+          '/source-link',
+        input,
+      )
+      .pipe(
+        catchError((error: unknown) => this.fail(error, 'set-source-link')),
+      );
   }
 
   resolve(
@@ -162,6 +207,9 @@ function discoveryNextStep(
   }
   if (status === 409 && operation === 'update') {
     return 'The discovery follow-up may have changed. Refresh its current version and try again.';
+  }
+  if (status === 409 && operation === 'set-source-link') {
+    return 'Initial Intake source candidates were refreshed. Choose again.';
   }
   if (status === 409) {
     return 'Refresh the project to see its latest lifecycle state.';

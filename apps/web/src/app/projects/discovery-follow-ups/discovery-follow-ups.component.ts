@@ -1,4 +1,18 @@
-import { Component, computed, DestroyRef, effect, inject, input, OnInit, output, signal } from '@angular/core';
+import { DOCUMENT } from '@angular/common';
+import {
+  afterNextRender,
+  Component,
+  computed,
+  DestroyRef,
+  effect,
+  inject,
+  Injector,
+  input,
+  OnInit,
+  output,
+  signal,
+  viewChild,
+} from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import {
   FormControl,
@@ -11,10 +25,13 @@ import { CardModule } from 'primeng/card';
 import { DatePickerModule } from 'primeng/datepicker';
 import { InputTextModule } from 'primeng/inputtext';
 import { MessageModule } from 'primeng/message';
+import type { OverlayOptions } from 'primeng/api';
+import { Overlay } from 'primeng/overlay';
 import { ProgressSpinnerModule } from 'primeng/progressspinner';
 import { SelectModule } from 'primeng/select';
 import { TagModule } from 'primeng/tag';
 import { TextareaModule } from 'primeng/textarea';
+import { ZIndexUtils } from 'primeng/utils';
 import {
   discoveryFollowUpCategories,
   generalPlaybookV1,
@@ -22,6 +39,7 @@ import {
   type CreateDiscoveryFollowUpInput,
   type DiscoveryFollowUp,
   type DiscoveryFollowUpCategory,
+  type DiscoveryFollowUpSourceOption,
   type ProjectStatus,
   type ResolveDiscoveryFollowUpInput,
   type UpdateDiscoveryFollowUpInput,
@@ -52,6 +70,7 @@ interface EditConflictRefreshSnapshot {
     DatePickerModule,
     InputTextModule,
     MessageModule,
+    Overlay,
     ProgressSpinnerModule,
     ReactiveFormsModule,
     SelectModule,
@@ -70,6 +89,8 @@ export class DiscoveryFollowUpsComponent implements OnInit {
   private readonly api = inject(DiscoveryFollowUpsApiService);
   private readonly operationPolicy = inject(COCKPIT_OPERATION_POLICY);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly document = inject(DOCUMENT);
+  private readonly injector = inject(Injector);
 
   readonly followUps = signal<readonly DiscoveryFollowUp[]>([]);
   readonly loading = signal(true);
@@ -86,7 +107,22 @@ export class DiscoveryFollowUpsComponent implements OnInit {
   readonly refreshedEditConflict = signal<EditConflictRefreshSnapshot | null>(
     null,
   );
+  readonly sourceOptions = signal<readonly DiscoveryFollowUpSourceOption[]>([]);
+  readonly sourceOptionsLoading = signal(true);
+  readonly sourceOptionsError = signal<string | null>(null);
+  readonly openedSourceLinkId = signal<string | null>(null);
+  readonly savingSourceLinkId = signal<string | null>(null);
+  readonly sourceLinkBaseline = signal<DiscoveryFollowUp | null>(null);
+  readonly pendingSourceRemoval = signal<DiscoveryFollowUp | null>(null);
+  readonly sourceRemovalOverlay = viewChild<Overlay>('sourceRemovalOverlay');
+  readonly sourceRemovalOverlayTarget = signal<string | null>(null);
+  readonly sourceRemovalOverlayOptions: OverlayOptions = {
+    hideOnEscape: false,
+    listener: (_event, options) => options?.type !== 'outside',
+  };
   private editConflictRefreshGeneration = 0;
+  private sourceRemovalTrigger: HTMLButtonElement | null = null;
+  private sourceRemovalRow: HTMLElement | null = null;
 
   readonly categoryOptions = discoveryFollowUpCategories.map(
     (value) => ({ label: value, value }),
@@ -94,10 +130,25 @@ export class DiscoveryFollowUpsComponent implements OnInit {
   readonly resolvedStatusOptions = resolvedDiscoveryFollowUpStatuses.map(
     (value) => ({ label: value, value }),
   );
+  readonly sourceOptionChoices = computed(() =>
+    this.sourceOptions().map((option) => ({
+      label:
+        '#' +
+        option.order +
+        ' · ' +
+        option.topic +
+        ' · ' +
+        option.controlPoint +
+        ' — ' +
+        option.text,
+      value: option.snapshotId,
+    })),
+  );
   readonly mutationDisabled = computed(
     () =>
       this.projectStatus() === 'ARCHIVED' ||
-      this.operationPolicy.busy(),
+      this.operationPolicy.busy() ||
+      this.pendingSourceRemoval() !== null,
   );
   readonly creating = computed(
     () => this.operationPolicy.activeOperation() === 'discovery-create',
@@ -126,6 +177,7 @@ export class DiscoveryFollowUpsComponent implements OnInit {
     dueDate: new FormControl<Date | null>(null, {
       validators: [Validators.required],
     }),
+    sourceSnapshotId: new FormControl<string | null>(null),
     nextStep: new FormControl('', {
       nonNullable: true,
       validators: [
@@ -183,18 +235,45 @@ export class DiscoveryFollowUpsComponent implements OnInit {
     }),
   });
 
+  readonly sourceLinkForm = new FormGroup({
+    sourceSnapshotId: new FormControl<string | null>(null, {
+      validators: [Validators.required],
+    }),
+  });
+
   constructor() {
     effect(() => {
       if (this.projectStatus() === 'ARCHIVED') {
         this.openedResolutionId.set(null);
         this.resetResolutionForm();
         this.clearEditState();
+        this.clearSourceLinkState();
+        this.pendingSourceRemoval.set(null);
+        this.clearSourceRemovalFocusTargets();
       }
+    });
+    effect((onCleanup) => {
+      if (this.pendingSourceRemoval() === null) {
+        return;
+      }
+
+      const eventTarget = this.document.defaultView;
+      if (!eventTarget) {
+        return;
+      }
+      const handleKeydown = (event: KeyboardEvent): void => {
+        this.cancelSourceLinkRemovalOnEscape(event);
+      };
+      eventTarget.addEventListener('keydown', handleKeydown, true);
+      onCleanup(() => {
+        eventTarget.removeEventListener('keydown', handleKeydown, true);
+      });
     });
   }
 
   ngOnInit(): void {
     this.loadFollowUps();
+    this.loadSourceOptions();
   }
 
   loadFollowUps(): void {
@@ -212,6 +291,28 @@ export class DiscoveryFollowUpsComponent implements OnInit {
         error: (error: Error) => {
           this.loadError.set(error.message);
           this.loading.set(false);
+        },
+      });
+  }
+
+  loadSourceOptions(): void {
+    this.sourceOptionsLoading.set(true);
+    this.sourceOptionsError.set(null);
+    this.creationForm.controls.sourceSnapshotId.disable({ emitEvent: false });
+    this.api
+      .listSourceOptions(this.projectId())
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (options) => {
+          this.sourceOptions.set(options);
+          this.creationForm.controls.sourceSnapshotId.enable({
+            emitEvent: false,
+          });
+          this.sourceOptionsLoading.set(false);
+        },
+        error: (error: Error) => {
+          this.sourceOptionsError.set(error.message);
+          this.sourceOptionsLoading.set(false);
         },
       });
   }
@@ -234,6 +335,9 @@ export class DiscoveryFollowUpsComponent implements OnInit {
       owner: value.owner.trim(),
       dueDate: toLocalDateOnly(value.dueDate),
       nextStep: value.nextStep.trim(),
+      ...(value.sourceSnapshotId === null
+        ? {}
+        : { sourceSnapshotId: value.sourceSnapshotId }),
     };
     const lease = this.operationPolicy.tryAcquire('discovery-create');
     if (!lease) {
@@ -261,6 +365,236 @@ export class DiscoveryFollowUpsComponent implements OnInit {
           this.actionError.set(error.message);
         },
       });
+  }
+
+  openSourceLink(followUpId: string): void {
+    const followUp = this.followUps().find(
+      (candidate) => candidate.id === followUpId,
+    );
+    if (
+      !followUp ||
+      !this.isCanonicalOpen(followUp) ||
+      this.sourceLinkActionDisabled() ||
+      this.sourceOptionsLoading() ||
+      this.sourceOptionsError() !== null ||
+      this.sourceOptions().length === 0
+    ) {
+      return;
+    }
+
+    this.actionError.set(null);
+    this.sourceLinkForm.reset({ sourceSnapshotId: null });
+    this.sourceLinkBaseline.set(followUp);
+    this.openedSourceLinkId.set(followUpId);
+  }
+
+  saveSourceLink(followUpId: string): void {
+    const baseline = this.sourceLinkBaseline();
+    const selectedSourceId =
+      this.sourceLinkForm.getRawValue().sourceSnapshotId;
+    if (
+      !baseline ||
+      baseline.id !== followUpId ||
+      selectedSourceId === null ||
+      this.mutationDisabled() ||
+      this.savingSourceLinkId() !== null
+    ) {
+      return;
+    }
+
+    const lease = this.operationPolicy.tryAcquire('discovery-source-link');
+    if (!lease) {
+      return;
+    }
+
+    this.savingSourceLinkId.set(followUpId);
+    this.actionError.set(null);
+    this.feedback.set(null);
+    this.api
+      .setSourceLink(this.projectId(), followUpId, {
+        sourceSnapshotId: selectedSourceId,
+        expectedVersion: baseline.version,
+      })
+      .pipe(
+        finalize(() => this.savingSourceLinkId.set(null)),
+        releaseCockpitOperationOnFinalize(lease),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe({
+        next: (updated) => {
+          this.followUps.update((current) =>
+            sortDiscoveryFollowUps(
+              current.map((candidate) =>
+                candidate.id === updated.id ? updated : candidate,
+              ),
+            ),
+          );
+          this.clearSourceLinkState();
+          this.feedback.set('Discovery follow-up source updated.');
+          this.committedChange.emit();
+        },
+        error: (error: Error) => {
+          this.actionError.set(error.message);
+          if (isSourceLinkConflict(error)) {
+            this.refreshSourceOptionsAfterLinkConflict();
+          }
+        },
+      });
+  }
+
+  confirmSourceLinkRemoval(
+    followUp: DiscoveryFollowUp,
+    event: MouseEvent,
+  ): void {
+    if (
+      !this.isCanonicalOpen(followUp) ||
+      followUp.source === null ||
+      this.sourceLinkActionDisabled()
+    ) {
+      return;
+    }
+
+    const trigger = event.currentTarget;
+    if (!(trigger instanceof HTMLButtonElement)) {
+      throw new Error(
+        'Could not open source removal confirmation because its trigger is not a button.',
+      );
+    }
+    const row = trigger.closest<HTMLElement>(
+      '[data-testid="discovery-follow-up-item"]',
+    );
+    if (!row) {
+      throw new Error(
+        'Could not open source removal confirmation because its follow-up row was not found.',
+      );
+    }
+
+    this.actionError.set(null);
+    this.sourceRemovalTrigger = trigger;
+    this.sourceRemovalRow = row;
+    this.sourceRemovalOverlayTarget.set(this.sourceRemovalTriggerId(followUp.id));
+    this.pendingSourceRemoval.set(followUp);
+  }
+
+  cancelSourceLinkRemoval(): void {
+    const trigger = this.sourceRemovalTrigger;
+    const row = this.sourceRemovalRow;
+
+    this.pendingSourceRemoval.set(null);
+    this.clearSourceRemovalFocusTargets();
+    this.restoreSourceRemovalFocusAfterNextRender(trigger, row);
+  }
+
+  acceptSourceLinkRemoval(): void {
+    const baseline = this.pendingSourceRemoval();
+    if (!baseline) {
+      return;
+    }
+    const row = this.sourceRemovalRow;
+    if (!row) {
+      throw new Error(
+        'Could not remove the discovery follow-up source because its follow-up row was not captured.',
+      );
+    }
+
+    const current = this.followUps().find(
+      (candidate) => candidate.id === baseline.id,
+    );
+    if (
+      this.projectStatus() === 'ARCHIVED' ||
+      this.operationPolicy.busy() ||
+      this.openedEditId() !== null ||
+      this.openedResolutionId() !== null ||
+      this.openedSourceLinkId() !== null ||
+      this.savingSourceLinkId() !== null
+    ) {
+      this.actionError.set(
+        'Could not remove the discovery follow-up source while another Cockpit operation is in progress. Wait for it to finish and try again.',
+      );
+      return;
+    }
+    if (
+      !current ||
+      !this.isCanonicalOpen(current) ||
+      current.source === null
+    ) {
+      this.actionError.set(
+        'Could not remove the discovery follow-up source because the follow-up is no longer open and linked. Refresh Discovery follow-ups and try again.',
+      );
+      return;
+    }
+
+    const lease = this.operationPolicy.tryAcquire('discovery-source-link');
+    if (!lease) {
+      this.actionError.set(
+        'Could not remove the discovery follow-up source while another Cockpit operation is in progress. Wait for it to finish and try again.',
+      );
+      return;
+    }
+
+    this.pendingSourceRemoval.set(null);
+    this.clearSourceRemovalFocusTargets();
+    this.focusAfterNextRender(row, 'discovery follow-up row');
+    this.savingSourceLinkId.set(baseline.id);
+    this.actionError.set(null);
+    this.feedback.set(null);
+    this.api
+      .setSourceLink(this.projectId(), baseline.id, {
+        sourceSnapshotId: null,
+        expectedVersion: baseline.version,
+      })
+      .pipe(
+        finalize(() => this.savingSourceLinkId.set(null)),
+        releaseCockpitOperationOnFinalize(lease),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe({
+        next: (updated) => {
+          this.followUps.update((current) =>
+            sortDiscoveryFollowUps(
+              current.map((candidate) =>
+                candidate.id === updated.id ? updated : candidate,
+              ),
+            ),
+          );
+          this.feedback.set('Discovery follow-up source removed.');
+          this.committedChange.emit();
+        },
+        error: (error: Error) => this.actionError.set(error.message),
+      });
+  }
+
+  clearSourceLinkState(): void {
+    this.openedSourceLinkId.set(null);
+    this.savingSourceLinkId.set(null);
+    this.sourceLinkBaseline.set(null);
+    this.sourceLinkForm.reset({ sourceSnapshotId: null });
+  }
+
+  private refreshSourceOptionsAfterLinkConflict(): void {
+    this.sourceOptions.set([]);
+    this.sourceLinkForm.reset({ sourceSnapshotId: null });
+    this.loadSourceOptions();
+  }
+
+  sourceRemovalTriggerId(followUpId: string): string {
+    return 'discovery-follow-up-source-remove-' + followUpId;
+  }
+
+  focusSourceRemovalCancelAfterEnter(): void {
+    const cancel = this.document.querySelector<HTMLButtonElement>(
+      '[data-testid="cancel-discovery-follow-up-source-remove-button"] button',
+    );
+    if (!cancel) {
+      throw new Error(
+        'Could not focus source removal cancel because it is not available.',
+      );
+    }
+
+    cancel.focus();
+    if (this.document.activeElement !== cancel) {
+      throw new Error('Could not focus source removal cancel.');
+    }
   }
 
   openEdit(followUpId: string): void {
@@ -466,6 +800,7 @@ export class DiscoveryFollowUpsComponent implements OnInit {
       !this.isCanonicalOpen(followUp) ||
       this.openedResolutionId() !== null ||
       this.openedEditId() !== null ||
+      this.openedSourceLinkId() !== null ||
       this.resolutionControlsDisabled()
     ) {
       return;
@@ -593,7 +928,17 @@ export class DiscoveryFollowUpsComponent implements OnInit {
     return (
       this.mutationDisabled() ||
       this.openedEditId() !== null ||
-      this.openedResolutionId() !== null
+      this.openedResolutionId() !== null ||
+      this.openedSourceLinkId() !== null
+    );
+  }
+
+  sourceLinkActionDisabled(): boolean {
+    return (
+      this.mutationDisabled() ||
+      this.openedEditId() !== null ||
+      this.openedResolutionId() !== null ||
+      this.openedSourceLinkId() !== null
     );
   }
 
@@ -616,7 +961,8 @@ export class DiscoveryFollowUpsComponent implements OnInit {
     return (
       this.mutationDisabled() ||
       this.openedResolutionId() !== null ||
-      this.openedEditId() !== null
+      this.openedEditId() !== null ||
+      this.openedSourceLinkId() !== null
     );
   }
 
@@ -626,6 +972,7 @@ export class DiscoveryFollowUpsComponent implements OnInit {
       question: '',
       owner: '',
       dueDate: null,
+      sourceSnapshotId: null,
       nextStep: '',
     });
   }
@@ -707,6 +1054,87 @@ export class DiscoveryFollowUpsComponent implements OnInit {
     this.refreshingEditConflict.set(false);
     this.refreshedEditConflict.set(null);
   }
+
+  private clearSourceRemovalFocusTargets(): void {
+    this.sourceRemovalTrigger = null;
+    this.sourceRemovalRow = null;
+    this.sourceRemovalOverlayTarget.set(null);
+  }
+
+  private cancelSourceLinkRemovalOnEscape(event: KeyboardEvent): void {
+    if (
+      event.key !== 'Escape' ||
+      this.pendingSourceRemoval() === null ||
+      !this.isSourceRemovalOverlayTopmost()
+    ) {
+      return;
+    }
+
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    this.cancelSourceLinkRemoval();
+  }
+
+  private isSourceRemovalOverlayTopmost(): boolean {
+    const overlayElement = this.sourceRemovalOverlay()?.overlayEl();
+    return (
+      overlayElement instanceof HTMLElement &&
+      ZIndexUtils.get(overlayElement) === ZIndexUtils.getCurrent()
+    );
+  }
+
+  private restoreSourceRemovalFocusAfterNextRender(
+    trigger: HTMLButtonElement | null,
+    row: HTMLElement | null,
+  ): void {
+    afterNextRender(
+      () => {
+        if (trigger?.isConnected && !trigger.disabled) {
+          trigger.focus();
+          if (this.document.activeElement === trigger) {
+            return;
+          }
+        }
+
+        if (row?.isConnected && row.tabIndex === -1) {
+          row.focus();
+          if (this.document.activeElement === row) {
+            return;
+          }
+        }
+
+        throw new Error(
+          'Could not restore source removal focus because neither the trigger nor its follow-up row is available and focusable.',
+        );
+      },
+      { injector: this.injector },
+    );
+  }
+
+  private focusAfterNextRender(
+    target: HTMLElement,
+    targetDescription: string,
+  ): void {
+    afterNextRender(
+      () => {
+        if (!target.isConnected) {
+          throw new Error(
+            'Could not restore focus to the ' +
+              targetDescription +
+              ' because it is no longer available.',
+          );
+        }
+
+        target.focus();
+        if (this.document.activeElement !== target) {
+          throw new Error(
+            'Could not restore focus to the ' + targetDescription + '.',
+          );
+        }
+      },
+      { injector: this.injector },
+    );
+  }
 }
 
 function toLocalDateOnly(value: Date): string {
@@ -719,6 +1147,14 @@ function toLocalDateOnly(value: Date): string {
 function fromLocalDateOnly(value: string): Date {
   const [year, month, day] = value.split('-').map(Number);
   return new Date(year, month - 1, day);
+}
+
+function isSourceLinkConflict(error: Error): boolean {
+  return (
+    error instanceof DiscoveryFollowUpsApiError &&
+    error.operation === 'set-source-link' &&
+    error.status === 409
+  );
 }
 
 function sortDiscoveryFollowUps(

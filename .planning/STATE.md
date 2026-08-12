@@ -28,10 +28,13 @@ or used as live Git-state evidence here.
   canonical `Megválaszolva` or `Nem releváns` status with a required persisted
   answer/decision. Verified `INTAKE-04.3a` adds a version-checked `PATCH` for the
   five open working fields; stale edits conflict, equivalent edits are no-ops, and
-  real edits write a safe field-name-only audit event. Archived projects remain
-  readable, reject creation, editing, and resolution, and allow eligible open-item
-  actions again after restore. A persisted discovery follow-up also prevents
-  permanent project deletion.
+  real edits write a safe field-name-only audit event. `INTAKE-04.3b` adds an
+  optional current-Initial-Intake source on creation and open-only add/change/
+  removal later; resolved items retain compact historical provenance, while
+  source audits omit the source ID and full source content. Archived projects
+  remain readable, reject creation, editing, resolution, and source changes, and
+  allow eligible open-item actions again after restore. A persisted discovery
+  follow-up also prevents permanent project deletion.
 - Guided intake: a published project question schema can start one open
   `INITIAL_INTAKE` round, recover that active round, persist answers, complete
   after server validation, and keep completed rounds immutable.
@@ -57,7 +60,7 @@ or used as live Git-state evidence here.
   drafts visible with retry, and renders deterministic Hungarian coaching from
   persisted question metadata.
 - End-user documentation: `docs/user-guide.md` teaches every stable delivered
-  route and business workflow with seven sanitized application screenshots,
+  route and business workflow with eight sanitized application screenshots,
   three state/workflow diagrams, recovery guidance, and explicit unavailable
   capability boundaries.
 
@@ -86,10 +89,12 @@ define `DOC-01` scope and evidence; the
 [guide](../docs/user-guide.md) is the employee-facing source.
 
 The verified guided-intake scope is intentionally limited to `INITIAL_INTAKE`.
-`INTAKE-04.1`, `INTAKE-04.2`, and `INTAKE-04.3a` deliver discovery-follow-up
-creation, review, resolution, and conflict-safe editing of open items. Optional
-source linkage (`INTAKE-04.3b`) remains planned. SCORE-01.1 readiness assessment
-has browser proof: 3/3 focused and 22/22 full E2E tests passed. SCORE-01.2
+`INTAKE-04` delivers discovery-follow-up creation, review, resolution,
+conflict-safe editing of open items, and optional source linkage. Fresh
+PostgreSQL 18.4 verification passed the API suite 105/105, migration `0011`
+revert/reapply, web typecheck/build, and the 23-workflow source-linkage browser
+suite. SCORE-01.1 readiness assessment has browser proof: 3/3 focused and 22/22
+full E2E tests passed. SCORE-01.2
 Decision Score/recommendation, canonical structured output, authentication,
 authorization, backup operations, and export coverage remain separate until their
 requirements and verification evidence are complete.
