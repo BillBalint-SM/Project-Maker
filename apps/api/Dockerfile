@@ -41,7 +41,8 @@ RUN pnpm install --filter @project-maker/api --prod --frozen-lockfile
 
 COPY --from=build /workspace/apps/api/dist apps/api/dist
 COPY --from=build /workspace/apps/api/scripts/start.mjs apps/api/scripts/start.mjs
-COPY --from=build /workspace/packages/contracts/dist/runtime-cjs packages/contracts/dist/runtime-cjs
+COPY --from=build /workspace/packages/contracts/dist packages/contracts/dist
+COPY --from=build /workspace/packages/contracts/playbooks packages/contracts/playbooks
 
 WORKDIR /workspace/apps/api
 
