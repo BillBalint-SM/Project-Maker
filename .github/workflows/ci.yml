@@ -61,3 +61,53 @@ jobs:
 
       - name: Run verify
         run: pnpm verify
+
+  container-smoke:
+    runs-on: ubuntu-latest
+    env:
+      COMPOSE_PROJECT_NAME: project-maker-container-smoke-${{ github.run_id }}-${{ github.run_attempt }}
+      CORS_ORIGIN: http://localhost:8080
+      DATABASE_URL: postgres://project_maker_app:ci-password@postgres:5432/project_maker_container_smoke
+      POSTGRES_DB: project_maker_container_smoke
+      POSTGRES_PASSWORD: ci-password
+      POSTGRES_USER: project_maker_app
+      WEB_PORT: '8080'
+      SMTP_HOST: ''
+      SMTP_PORT: '1025'
+      SMTP_SECURE: 'false'
+      SMTP_USER: ''
+      SMTP_PASSWORD: ''
+      SMTP_FROM: project-maker@localhost
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build API container image
+        run: docker compose --project-name "$COMPOSE_PROJECT_NAME" build api
+
+      - name: Verify contracts runtime import in the image
+        run: |
+          docker compose --project-name "$COMPOSE_PROJECT_NAME" run --rm --no-deps --entrypoint node api -e "
+            const { loadGeneralPlaybookV1 } = require('@project-maker/contracts/general-playbook-runtime');
+            loadGeneralPlaybookV1()
+              .then((playbook) => {
+                if (playbook.id !== 'general' || playbook.version !== 1) {
+                  throw new Error('The image did not load the canonical general v1 playbook.');
+                }
+              })
+              .catch((error) => {
+                console.error(error);
+                process.exitCode = 1;
+              });
+          "
+
+      - name: Start migrated API and PostgreSQL
+        run: docker compose --project-name "$COMPOSE_PROJECT_NAME" up --wait postgres api
+
+      - name: Smoke canonical policy consumers
+        run: docker compose --project-name "$COMPOSE_PROJECT_NAME" exec -T api node --input-type=module - < apps/api/test/container-smoke.mjs
+
+      - name: Remove container smoke resources
+        if: always()
+        run: docker compose --project-name "$COMPOSE_PROJECT_NAME" down --volumes --remove-orphans
