@@ -51,3 +51,7 @@ _Avoid_: Any historical checklist, automatically repointed source
 **Resolved discovery follow-up**:
 A discovery follow-up in the `Megválaszolva` or `Nem releváns` terminal state; its business content is immutable and it is not reopened by the editing slice.
 _Avoid_: Closed task, archived follow-up
+
+**Contracts runtime distribution**:
+The complete executable publication of the shared contracts and canonical policy data that an application runtime consumes as one artifact.
+_Avoid_: Partial runtime copy, application-owned policy duplicate
