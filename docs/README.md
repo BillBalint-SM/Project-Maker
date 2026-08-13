@@ -7,15 +7,15 @@
 - [Product domain](product-domain.md) — platform-neutral intent and vocabulary; not a delivery-status record.
 - [Operations handoff](operations-handoff.md) — runtime, recovery, email, and verification guidance.
 
-## Architecture and current delivery evidence
+## Architecture and decision records
 
 - [Project Cockpit architecture decision](adr/0001-domain-aligned-project-cockpit.md)
+- [Decision Score policy-correction decision](adr/0002-pre-delivery-decision-score-policy-correction.md)
 - [Current requirement checklist](../.planning/REQUIREMENTS.md) — checked only with delivery evidence.
 
 ## Active planned work
 
-- [Discovery follow-up source-linkage design](superpowers/specs/2026-08-11-intake-04-discovery-follow-up-source-linkage-design.md)
-- [Discovery follow-up source-linkage implementation plan](superpowers/plans/2026-08-11-intake-04-discovery-follow-up-source-linkage.md)
+- [SCORE-01.2 domain contract](product-domain.md) — Decision Score and recommendation remain planned, not delivered.
 
 ## Historical planning packets
 
