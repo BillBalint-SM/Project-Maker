@@ -14,7 +14,7 @@ The canonical workflow is:
 4. Record answers, open questions, owners, due dates, next steps, and follow-up outcomes.
 5. Review current completion, readiness, factors, and ordered remediation gaps after relevant edits.
 6. Resolve the highest-severity gaps through the Cockpit's explicit remediation target.
-7. Record a Go, Conditional Go, or No-Go decision only after the future SCORE-01.2 workflow becomes available.
+7. Review the future SCORE-01.2 Decision Score and recommendation when it is delivered; recording a formal Go, Conditional Go, or No-Go decision remains a later workflow.
 8. Generate the canonical Markdown specification, then derive human-readable exports from it when the future output workflows are delivered.
 9. Archive inactive projects; deletion remains a distinct, explicit operation.
 
@@ -29,8 +29,11 @@ The canonical workflow is:
 - **Effective checklist status:** the current status derived from a valid answer unless a persisted assessment overrides it: `Nincs meg`, `Kész`, `Részben megvan`, or justified `Nem releváns`.
 - **Readiness:** the delivered weighted measure of current base information, business clarification, ownership, relevant checklist status, and discovery-follow-up resolution.
 - **Readiness gap / gap list:** a redacted remediation item classified as `Kritikus`, `Fontos`, or `Pontosítás`, with only its category, generic message, next step, and explicit target.
-- **Decision Score:** a future decision-support score based on business value, strategic alignment, urgency, confidence, inverted complexity, inverted risk, and readiness; it remains unavailable.
-- **Cockpit:** the delivered review surface for readiness, factors, and prioritized gaps. The SCORE-01.2 decision and recommendation surface is absent.
+- **Decision input rating:** a project-level 1–5 assessment of business value, strategic alignment, urgency, confidence, complexity, or risk. Complexity and risk are inverted when scoring; no value is inferred from an intake answer.
+- **Decision Score:** the planned, explainable decision-support result from the six Decision input ratings and current available readiness. It is not a formal Go, Conditional Go, or No-Go decision and remains unavailable until SCORE-01.2 is delivered.
+- **Decision recommendation:** the planned policy-derived guidance to clarify, prepare an estimate, or treat the project as ready for estimation. It is not an approval and remains unavailable until SCORE-01.2 is delivered.
+- **Estimate-blocking gap:** a current Initial Intake checklist item marked `requiredForEstimate` whose effective status is neither `Kész` nor `Nem releváns`. It is distinct from a critical readiness gap and from a generic open follow-up.
+- **Cockpit:** the delivered review surface for readiness, factors, and prioritized gaps. The planned SCORE-01.2 Decision Review surface is absent.
 - **Canonical specification:** the structured Markdown output from which acceptance criteria, user stories, PDF, and spreadsheet exports are derived.
 
 The status vocabulary is defined only in the canonical general playbook contract below. Domain and application code must consume it from the contracts package instead of maintaining local copies.
@@ -50,9 +53,13 @@ The model below records semantic intent, not a database schema. Stable IDs and e
 | Schedule | `kickoffDate`, `plannedDecisionDate`, `deadline` |
 | Classification | `status`, `priority` |
 | Business framing | `businessProblem`, `expectedBusinessOutcome`, `firstMvpGoal` |
-| Decision | `finalDecision`, `decisionDate`, `decisionMaker`, `decisionNote`, six input scores |
+| Decision input | Six nullable 1–5 ratings: business value, strategic alignment, urgency, confidence, complexity, and risk. They are retained when a later Initial Intake becomes current. |
+| Formal decision | Future `finalDecision`, `decisionDate`, `decisionMaker`, and `decisionNote`; SCORE-01.2 does not record these. |
 | Intake | Checklist answers keyed by playbook item ID and a list of follow-ups |
-| Derived state | Delivered completion, readiness, factors, and ordered redacted readiness gaps; future Decision Score and recommendation |
+| Derived state | Delivered completion, readiness, factors, and ordered redacted readiness gaps; planned Decision Score, recommendation, and safe explanation derived on read, not stored as a snapshot |
+
+Any persisted Decision input rating is project activity: a Draft project with one
+is no longer a bare Draft and must be archived rather than physically deleted.
 
 ### Checklist answer
 
@@ -70,10 +77,10 @@ Each delivered gap preserves `severity`, `category`, explanatory `message`, reco
 
 ### Readiness source and availability
 
-Readiness uses the latest open `INITIAL_INTAKE` round for a project; if none is open, it uses the latest completed one. It is available only when that source contains the exact current 30 stable keys of the canonical `general` v1 playbook. With no initial intake it reports `NO_INITIAL_INTAKE`; a noncanonical source reports `UNSUPPORTED_SCHEMA`. These availability states are not a score and do not prevent normal Workspace or discovery-follow-up work.
+Readiness uses the latest open `INITIAL_INTAKE` round for a project; if none is open, it uses the latest completed one. It is available only when that source contains the exact current 30 stable keys of the canonical `general` v1 playbook. With no initial intake it reports `NO_INITIAL_INTAKE`; a noncanonical source reports `UNSUPPORTED_SCHEMA`. These availability states are not a score and do not prevent normal Workspace or discovery-follow-up work. The planned Decision Score is unavailable rather than partially calculated when readiness is unavailable.
 
 ## Canonical playbook contract
 
 The framework-neutral, immutable source of truth for the `general` v1 template is [`packages/contracts/playbooks/general.v1.json`](../packages/contracts/playbooks/general.v1.json). It contains the 30 stable question IDs, Hungarian labels and hints, required/blocking metadata, status vocabularies, and readiness and decision-scoring policy.
 
-NestJS, Angular, and future workers should consume the typed, immutable `generalPlaybookV1` export from `@project-maker/contracts`; they must not duplicate or adapt these values in framework, persistence, or UI code. The contract is stable for the current playbook version, not a claim that the policy is final. Any future redesign must introduce a new playbook version and explicitly migrate stored answers.
+NestJS, Angular, and future workers should consume the typed, immutable `generalPlaybookV1` export from `@project-maker/contracts`; they must not duplicate or adapt these values in framework, persistence, or UI code. The contract is stable for the current playbook version, not a claim that the policy is final. The agreed correction to the unshipped Decision Score policy is the narrow pre-delivery exception documented in [ADR-0002](adr/0002-pre-delivery-decision-score-policy-correction.md). After the policy has been delivered for use, a material change requires a new playbook version and explicit treatment of historical project data.

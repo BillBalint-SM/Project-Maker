@@ -95,6 +95,8 @@ PostgreSQL 18.4 verification passed the API suite 105/105, migration `0011`
 revert/reapply, web typecheck/build, and the 23-workflow source-linkage browser
 suite. SCORE-01.1 readiness assessment has browser proof: 3/3 focused and 22/22
 full E2E tests passed. SCORE-01.2
-Decision Score/recommendation, canonical structured output, authentication,
-authorization, backup operations, and export coverage remain separate until their
-requirements and verification evidence are complete.
+Decision Score/recommendation has an accepted domain contract and pre-delivery
+policy-correction ADR, but no implementation or verification evidence yet.
+Canonical structured output, authentication, authorization, backup operations,
+and export coverage remain separate until their requirements and verification
+evidence are complete.
