@@ -14,7 +14,7 @@ The canonical workflow is:
 4. Record answers, open questions, owners, due dates, next steps, and follow-up outcomes.
 5. Review current completion, readiness, factors, and ordered remediation gaps after relevant edits.
 6. Resolve the highest-severity gaps through the Cockpit's explicit remediation target.
-7. Review the future SCORE-01.2 Decision Score and recommendation when it is delivered; recording a formal Go, Conditional Go, or No-Go decision remains a later workflow.
+7. Review the server-derived Decision Score and recommendation; recording a formal Go, Conditional Go, or No-Go decision remains a later workflow.
 8. Generate the canonical Markdown specification, then derive human-readable exports from it when the future output workflows are delivered.
 9. Archive inactive projects; deletion remains a distinct, explicit operation.
 
@@ -30,10 +30,10 @@ The canonical workflow is:
 - **Readiness:** the delivered weighted measure of current base information, business clarification, ownership, relevant checklist status, and discovery-follow-up resolution.
 - **Readiness gap / gap list:** a redacted remediation item classified as `Kritikus`, `Fontos`, or `Pontosítás`, with only its category, generic message, next step, and explicit target.
 - **Decision input rating:** a project-level 1–5 assessment of business value, strategic alignment, urgency, confidence, complexity, or risk. Complexity and risk are inverted when scoring; no value is inferred from an intake answer.
-- **Decision Score:** the planned, explainable decision-support result from the six Decision input ratings and current available readiness. It is not a formal Go, Conditional Go, or No-Go decision and remains unavailable until SCORE-01.2 is delivered.
-- **Decision recommendation:** the planned policy-derived guidance to clarify, prepare an estimate, or treat the project as ready for estimation. It is not an approval and remains unavailable until SCORE-01.2 is delivered.
+- **Decision Score:** the delivered, explainable decision-support result from the six Decision input ratings and current available readiness. It is not a formal Go, Conditional Go, or No-Go decision.
+- **Decision recommendation:** the delivered policy-derived guidance to clarify, prepare an estimate, or treat the project as ready for estimation. It is not an approval.
 - **Estimate-blocking gap:** a current Initial Intake checklist item marked `requiredForEstimate` whose effective status is neither `Kész` nor `Nem releváns`. It is distinct from a critical readiness gap and from a generic open follow-up.
-- **Cockpit:** the delivered review surface for readiness, factors, and prioritized gaps. The planned SCORE-01.2 Decision Review surface is absent.
+- **Cockpit:** the delivered review surface for readiness, factors, prioritized gaps, and the separate Decision Review.
 - **Canonical specification:** the structured Markdown output from which acceptance criteria, user stories, PDF, and spreadsheet exports are derived.
 
 The status vocabulary is defined only in the canonical general playbook contract below. Domain and application code must consume it from the contracts package instead of maintaining local copies.
@@ -56,7 +56,7 @@ The model below records semantic intent, not a database schema. Stable IDs and e
 | Decision input | Six nullable 1–5 ratings: business value, strategic alignment, urgency, confidence, complexity, and risk. They are retained when a later Initial Intake becomes current. |
 | Formal decision | Future `finalDecision`, `decisionDate`, `decisionMaker`, and `decisionNote`; SCORE-01.2 does not record these. |
 | Intake | Checklist answers keyed by playbook item ID and a list of follow-ups |
-| Derived state | Delivered completion, readiness, factors, and ordered redacted readiness gaps; planned Decision Score, recommendation, and safe explanation derived on read, not stored as a snapshot |
+| Derived state | Delivered completion, readiness, factors, ordered redacted readiness gaps, Decision Score, recommendation, and safe explanation; all are derived on read and are not stored as a snapshot |
 
 Any persisted Decision input rating is project activity: a Draft project with one
 is no longer a bare Draft and must be archived rather than physically deleted.
@@ -77,7 +77,7 @@ Each delivered gap preserves `severity`, `category`, explanatory `message`, reco
 
 ### Readiness source and availability
 
-Readiness uses the latest open `INITIAL_INTAKE` round for a project; if none is open, it uses the latest completed one. It is available only when that source contains the exact current 30 stable keys of the canonical `general` v1 playbook. With no initial intake it reports `NO_INITIAL_INTAKE`; a noncanonical source reports `UNSUPPORTED_SCHEMA`. These availability states are not a score and do not prevent normal Workspace or discovery-follow-up work. The planned Decision Score is unavailable rather than partially calculated when readiness is unavailable.
+Readiness uses the latest open `INITIAL_INTAKE` round for a project; if none is open, it uses the latest completed one. It is available only when that source contains the exact current 30 stable keys of the canonical `general` v1 playbook. With no initial intake it reports `NO_INITIAL_INTAKE`; a noncanonical source reports `UNSUPPORTED_SCHEMA`. These availability states are not a score and do not prevent normal Workspace or discovery-follow-up work. The delivered Decision Score remains unavailable rather than partially calculated when readiness is unavailable or any Decision input rating is missing.
 
 ## Canonical playbook contract
 

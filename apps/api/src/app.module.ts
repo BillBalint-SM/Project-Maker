@@ -5,6 +5,7 @@ import { TerminusModule } from '@nestjs/terminus';
 
 import { AuditModule } from './audit/audit.module';
 import { DatabaseModule } from './database/database.module';
+import { DecisionReviewModule } from './decision-review/decision-review.module';
 import { DiscoveryFollowUpsModule } from './discovery-follow-ups/discovery-follow-ups.module';
 import { CustomerFollowUpModule } from './follow-ups/follow-up.module';
 import { HealthController } from './health.controller';
@@ -19,6 +20,7 @@ import { ReadinessModule } from './readiness/readiness.module';
     ConfigModule.forRoot({ envFilePath: '../../.env', isGlobal: true }),
     TerminusModule,
     DatabaseModule,
+    DecisionReviewModule,
     AuditModule,
     ProjectsModule,
     QuestionBankModule,

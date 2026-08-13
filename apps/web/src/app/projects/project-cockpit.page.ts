@@ -32,6 +32,7 @@ import {
   releaseCockpitOperationOnFinalize,
 } from './cockpit-operation-policy';
 import { DiscoveryFollowUpsComponent } from './discovery-follow-ups/discovery-follow-ups.component';
+import { DecisionReviewComponent } from './decision-review/decision-review.component';
 import type { AuditEventPage, CockpitView, StatusOption } from './project-api.models';
 import { ProjectApiService } from './project-api.service';
 import { ReadinessReviewComponent } from './readiness-review/readiness-review.component';
@@ -54,6 +55,7 @@ const statusOptions: StatusOption[] = [
     ConfirmDialog,
     DatePipe,
     DatePickerModule,
+    DecisionReviewComponent,
     DiscoveryFollowUpsComponent,
     InputTextModule,
     MessageModule,
@@ -414,6 +416,7 @@ export class ProjectCockpitPage implements OnInit {
         next: (project) => {
           this.applyWorkspaceResponse(project);
           this.feedback.set('Project archived.');
+          this.readinessRefreshKey.update((value) => value + 1);
           this.refreshAuditEvents();
         },
         error: (error: Error) => {
@@ -445,6 +448,7 @@ export class ProjectCockpitPage implements OnInit {
         next: (project) => {
           this.applyWorkspaceResponse(project);
           this.feedback.set('Project restored to DRAFT.');
+          this.readinessRefreshKey.update((value) => value + 1);
           this.refreshAuditEvents();
         },
         error: (error: Error) => {

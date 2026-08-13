@@ -173,15 +173,16 @@ async function selectSource(
   source: SourceSnapshot,
 ): Promise<void> {
   await select.click();
-  const option = page.getByRole('option');
+  const option = select.getByRole('option');
   await expect(option).toHaveCount(1);
   await expect(option).toHaveText(sourceOptionLabel(source));
   await option.click();
 }
 
 async function fillDiscoveryFollowUpCreationForm(page: Page): Promise<void> {
-  await page.getByTestId('discovery-follow-up-category-select').click();
-  const categoryOptions = page.getByRole('option');
+  const categorySelect = page.getByTestId('discovery-follow-up-category-select');
+  await categorySelect.click();
+  const categoryOptions = categorySelect.getByRole('option');
   await expect(categoryOptions).toHaveCount(8);
   await categoryOptions.first().click();
   await page.getByTestId('discovery-follow-up-question-input').fill(

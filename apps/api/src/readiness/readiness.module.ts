@@ -23,5 +23,6 @@ import { ReadinessService } from './readiness.service';
   ],
   controllers: [ReadinessController],
   providers: [ReadinessService],
+  exports: [ReadinessService],
 })
 export class ReadinessModule {}

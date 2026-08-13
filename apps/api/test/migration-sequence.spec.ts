@@ -19,6 +19,7 @@ const expectedMigrationNames = [
   'RoundQuestionAssessmentOverrides0009RoundQuestionAssessmentOverrides1786608000000',
   'RoundAnswerValidationParity0010RoundAnswerValidationParity1786694400000',
   'DiscoveryFollowUpSourceLinkage0011DiscoveryFollowUpSourceLinkage1786780800000',
+  'DecisionReviewInputs0012DecisionReviewInputs1786867200000',
 ] as const;
 
 type MigrationConstructor = new () => { readonly name?: string };
@@ -38,7 +39,7 @@ function isMigrationConstructor(candidate: string | Function): candidate is Migr
 }
 
 describe('Canonical API migration sequence', () => {
-  it('publishes every migration through discovery follow-up source linkage in order', () => {
+  it('publishes every migration through Decision Review inputs in order', () => {
     assert.deepEqual(namesOf(migrationSequence), expectedMigrationNames);
   });
 
