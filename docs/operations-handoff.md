@@ -178,6 +178,9 @@ the forward migration rejects.
 Reverting `0011` drops only its index, restrictive foreign key, and nullable
 source column, in that order; it removes the source relationship but not the
 discovery follow-up itself or any immutable snapshot.
+Migration `0012` is guarded: its rollback refuses before DDL if any Decision
+input rating is persisted. Do not clear ratings merely to make a rollback pass
+without an approved data operation and backup.
 Before any revert, inspect the migration and choose the rollback procedure
 appropriate to the affected objects.
 
@@ -363,6 +366,40 @@ round/snapshot identifiers and canonical status, or identifiers for a reset;
 they do not contain answers or rationales. Preserve this redaction boundary in
 diagnostics and support material.
 
+### SCORE-01.2 Decision Review operational surface
+
+The delivered Decision Review owns only Decision input persistence and derived
+decision support. It does not record a formal decision or mutate the project
+lifecycle:
+
+```text
+GET /api/projects/{projectId}/decision-review
+PUT /api/projects/{projectId}/decision-review
+```
+
+`PUT` accepts all six nullable 1–5 ratings atomically: business value,
+strategic alignment, urgency, confidence, complexity, and risk. A missing
+dimension or an out-of-range value returns `400` without a partial write. A
+normalized identical request is a no-op with no audit event or `updatedAt`
+change. Any actual change writes exactly one
+`PROJECT_DECISION_INPUTS_UPDATED` audit record containing only the ordered
+changed dimension names—never submitted values, Score, recommendation,
+readiness, answers, or gap content.
+
+`GET` returns unavailable reasons when any input is incomplete or canonical
+current readiness is unavailable. Otherwise it derives the rounded Score,
+score label, recommendation, current readiness percentage, whether a critical
+gap remains, the estimate-blocking-gap count, the recommendation reasons, and
+the canonical input weights/inversion markers. It does not return individual
+weighted contributions. The server, not the Angular client, owns every
+calculation and recommendation rule.
+
+Archived projects continue to return their retained inputs and derived review
+but mark it read-only; `PUT` returns `409` until restore. Any persisted rating
+is project activity, so an otherwise bare `DRAFT` cannot be physically deleted
+and must be archived. When a later Initial Intake becomes current, the retained
+inputs are recomputed against that source on the next read.
+
 ## Verification gates for this handoff
 
 The fast, repeatable gates used during this foundation slice are:
@@ -377,7 +414,7 @@ pnpm compose:up
 ```
 
 The Compose smoke gate should confirm `/api/health`, base-question seeding,
-all ten migrations, Markdown download headers/content, and the expected
+all twelve migrations, Markdown download headers/content, and the expected
 `503` response when SMTP is intentionally disabled. A local SMTP-capture
 container can be used to verify manual review, manual ping, and due-timer
 delivery without using production credentials.
@@ -397,6 +434,17 @@ or production database, and remove the container and temporary helper after
 the run. Do not print a database URL, credentials, or synthetic fixture values
 in retained logs.
 
+The SCORE-01.2 focused browser evidence is:
+
+```powershell
+pnpm --dir apps/web exec playwright test decision-review.spec.ts
+```
+
+It starts the real API against a fresh disposable loopback PostgreSQL database,
+migrates it, and proves the server-derived display/save/reload path plus error
+isolation and archive read-only behavior. Use the same disposable-database
+safeguards as the readiness gate.
+
 The repository-wide `pnpm verify` script also runs unit tests and production
 builds. Broader test execution is deliberately deferred until the foundation
 is feature-complete; a passing typecheck/build/Compose smoke is not a claim
@@ -411,7 +459,5 @@ The following are deliberately not hidden in this handoff:
 - an outbox/idempotency model so SMTP I/O is not coupled to a database
   transaction;
 - STARTTLS support and provider-specific SMTP compatibility;
-- SCORE-01.2 server-derived Decision Score and recommendation behavior from the
-  accepted [domain contract](product-domain.md), plus OUTPUT-01 through OUTPUT-03
-  generated outputs;
+- OUTPUT-01 through OUTPUT-03 generated outputs;
 - backup retention/rotation and a restore drill owned by the deployment team.

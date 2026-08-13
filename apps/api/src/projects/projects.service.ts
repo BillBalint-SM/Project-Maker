@@ -221,6 +221,17 @@ async function hasPersistedProjectActivity(
   manager: EntityManager,
   projectId: string,
 ): Promise<boolean> {
+  const project = await manager.getRepository(Project).findOneByOrFail({ id: projectId });
+  if (
+    project.businessValueRating !== null ||
+    project.strategicAlignmentRating !== null ||
+    project.urgencyRating !== null ||
+    project.confidenceRating !== null ||
+    project.complexityRating !== null ||
+    project.riskRating !== null
+  ) {
+    return true;
+  }
   if (await manager.getRepository(AuditEvent).existsBy({ projectId })) {
     return true;
   }

@@ -68,8 +68,22 @@ test('general v1 exposes the legacy status vocabulary and scoring policy', async
   });
   assert.equal(playbook.scoring.decision.scale.minimum, 1);
   assert.equal(playbook.scoring.decision.scale.maximum, 5);
-  assert.equal(playbook.scoring.decision.thresholds.high, 75);
-  assert.equal(playbook.scoring.decision.thresholds.medium, 55);
+  assert.equal(playbook.scoring.decision.thresholds.high, 65);
+  assert.equal(playbook.scoring.decision.thresholds.medium, 40);
+  assert.deepEqual(playbook.scoring.decision.clarificationRules, {
+    criticalGap: true,
+    estimateBlockingGapsAbove: 2,
+    readinessBelow: 40
+  });
+  assert.deepEqual(playbook.scoring.decision.estimateReadyRules, {
+    decisionScoreAtLeast: 65,
+    readinessAtLeast: 65,
+    estimateBlockingGaps: 0
+  });
+  assert.deepEqual(playbook.scoring.decision.conditionalEstimateRules, {
+    decisionScoreAtLeast: 40,
+    readinessAtLeast: 65
+  });
 });
 
 test('package export presents the canonical playbook as immutable contract data', async () => {

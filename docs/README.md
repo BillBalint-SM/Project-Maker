@@ -13,10 +13,6 @@
 - [Decision Score policy-correction decision](adr/0002-pre-delivery-decision-score-policy-correction.md)
 - [Current requirement checklist](../.planning/REQUIREMENTS.md) — checked only with delivery evidence.
 
-## Active planned work
-
-- [SCORE-01.2 domain contract](product-domain.md) — Decision Score and recommendation remain planned, not delivered.
-
 ## Historical planning packets
 
 Earlier designs, plans, and delivery handoffs remain available under

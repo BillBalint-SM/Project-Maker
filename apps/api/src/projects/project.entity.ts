@@ -33,6 +33,24 @@ export class Project {
   @Column({ name: 'due_date', type: 'timestamptz', nullable: true })
   dueAt!: Date | null;
 
+  @Column({ name: 'business_value_rating', type: 'smallint', nullable: true })
+  businessValueRating!: number | null;
+
+  @Column({ name: 'strategic_alignment_rating', type: 'smallint', nullable: true })
+  strategicAlignmentRating!: number | null;
+
+  @Column({ name: 'urgency_rating', type: 'smallint', nullable: true })
+  urgencyRating!: number | null;
+
+  @Column({ name: 'confidence_rating', type: 'smallint', nullable: true })
+  confidenceRating!: number | null;
+
+  @Column({ name: 'complexity_rating', type: 'smallint', nullable: true })
+  complexityRating!: number | null;
+
+  @Column({ name: 'risk_rating', type: 'smallint', nullable: true })
+  riskRating!: number | null;
+
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt!: Date;
 

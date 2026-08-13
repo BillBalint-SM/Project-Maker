@@ -8,6 +8,7 @@ export * from './follow-ups.js';
 export * from './discovery-follow-ups.js';
 export * from './audit.js';
 export * from './readiness.js';
+export * from './decision-review.js';
 
 export const generalPlaybookV1SourcePath = 'playbooks/general.v1.json' as const;
 
