@@ -55,3 +55,55 @@ _Avoid_: Closed task, archived follow-up
 **Contracts runtime distribution**:
 The complete executable publication of the shared contracts and canonical policy data that an application runtime consumes as one artifact.
 _Avoid_: Partial runtime copy, application-owned policy duplicate
+
+**Decision input rating**:
+A project-level, 1–5 assessment of business value, strategic alignment, urgency,
+confidence, complexity, or risk. It is explicit user input for the Decision
+Score and is not inferred from an Initial Intake answer.
+_Avoid_: Checklist status, readiness factor
+
+**Decision Score**:
+An explainable weighted result derived from the six Decision input ratings and
+available readiness under the selected playbook policy. It is decision support,
+not a recorded Go, Conditional Go, or No-Go decision.
+_Avoid_: Final decision, readiness
+
+**Decision recommendation**:
+A policy-derived statement of whether clarification is needed, estimate
+preparation is possible, or the project is ready for estimation. It explains
+the current Decision Score and readiness state without deciding for a person.
+_Avoid_: Approval, automatic Go/No-Go
+
+**Decision recommendation precedence**:
+Clarification need is evaluated before positive estimation recommendations: a
+critical gap, readiness below 40, or more than two estimate-blocking gaps
+requires clarification. Otherwise, estimate readiness requires a score and
+readiness of at least 65 with no estimate-blocking gaps; estimate preparation
+requires a score of at least 40 and readiness of at least 65.
+_Avoid_: Positive recommendation that bypasses a clarification gate
+
+**Decision Score completeness**:
+Decision Score is available only when all six Decision input ratings are valid
+and the current Initial Intake source has available canonical readiness. A
+partial input assessment is retained without a fabricated score or
+recommendation.
+_Avoid_: Partial score, zero score for missing input
+
+**Decision Review**:
+The project-scoped resource that atomically holds the six Decision input
+ratings and returns their server-derived Decision Score, recommendation, and
+safe explanation. It is distinct from generic project workspace updates.
+_Avoid_: Client-side scoring copy, final decision record
+
+**Estimate-blocking gap**:
+A current Initial Intake checklist item marked `requiredForEstimate` whose
+effective checklist status is neither `Kész` nor `Nem releváns`. It is a
+policy-defined estimate gate; it is not every important readiness gap or an
+unresolved discovery follow-up.
+_Avoid_: Critical gap, generic open work
+
+**Decision critical gap**:
+A current available readiness gap classified by the selected policy as
+`Kritikus`. It takes precedence over a positive estimation recommendation and
+may be distinct from an estimate-blocking gap.
+_Avoid_: Estimate-blocking gap, any unresolved follow-up

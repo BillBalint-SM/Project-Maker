@@ -411,6 +411,7 @@ The following are deliberately not hidden in this handoff:
 - an outbox/idempotency model so SMTP I/O is not coupled to a database
   transaction;
 - STARTTLS support and provider-specific SMTP compatibility;
-- SCORE-01.2 Decision Score and recommendation behavior from the domain
-  contract, plus OUTPUT-01 through OUTPUT-03 generated outputs;
+- SCORE-01.2 server-derived Decision Score and recommendation behavior from the
+  accepted [domain contract](product-domain.md), plus OUTPUT-01 through OUTPUT-03
+  generated outputs;
 - backup retention/rotation and a restore drill owned by the deployment team.
