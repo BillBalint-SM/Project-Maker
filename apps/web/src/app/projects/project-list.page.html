@@ -35,7 +35,7 @@
       @for (project of projects(); track project.id) {
         <a
           class="project-card"
-          [routerLink]="['/projects', project.id]"
+          [routerLink]="['/projects', project.id, 'status']"
           [attr.data-testid]="'project-card-' + project.id"
         >
           <div class="project-card-header">
@@ -52,7 +52,7 @@
               <dd>{{ project.nextAction || 'Not defined' }}</dd>
             </div>
           </dl>
-          <span class="open-label">Open cockpit <span aria-hidden="true">→</span></span>
+          <span class="open-label">Projektállapot megnyitása <span aria-hidden="true">→</span></span>
         </a>
       }
     </div>

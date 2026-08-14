@@ -1,0 +1,44 @@
+<section aria-labelledby="project-status-title">
+  <a class="back-link" routerLink="/" data-testid="project-status-back-to-projects">
+    <span aria-hidden="true">←</span> Minden projekt
+  </a>
+
+  <div class="page-heading">
+    <span class="eyebrow">Projektkörnyezet</span>
+    <h1 id="project-status-title">Projektállapot</h1>
+    <p>Az aktuális felkészültségi szakasz és az egyértelmű következő feladat.</p>
+  </div>
+
+  @if (loading()) {
+    <div class="state-panel" data-testid="project-status-loading" aria-live="polite">
+      <p-progress-spinner ariaLabel="Projektállapot betöltése" />
+      <p>A projektállapot betöltése folyamatban van…</p>
+    </div>
+  } @else if (loadError(); as error) {
+    <div class="state-panel" data-testid="project-status-error" role="alert">
+      <h2>A projektállapot nem tölthető be</h2>
+      <p>{{ error }}</p>
+      <p-button label="Újrapróbálás" (onClick)="loadStatus()" data-testid="retry-project-status" />
+    </div>
+  } @else if (preparationStatus(); as current) {
+    <p-card data-testid="project-status-card">
+      <ng-template #title>Aktuális felkészültségi állapot</ng-template>
+      <ng-template #subtitle>
+        A rendszer a jelenlegi kérdésséma, felmérés és döntési értékelés alapján választja ki a következő munkát.
+      </ng-template>
+
+      <strong class="preparation-state" data-testid="project-preparation-state">{{ current.label }}</strong>
+      <p>Egyszerre egy következő feladattal haladj tovább.</p>
+      <a
+        pButton
+        [routerLink]="primaryActionRoute()"
+        data-testid="project-preparation-primary-action"
+      >{{ current.primaryAction.label }}</a>
+      <a
+        class="open-cockpit-link"
+        [routerLink]="['/projects', projectId]"
+        data-testid="open-project-cockpit-from-status"
+      >Projektbeállítások és korábbi cockpit megnyitása</a>
+    </p-card>
+  }
+</section>

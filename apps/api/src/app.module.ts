@@ -12,6 +12,7 @@ import { HealthController } from './health.controller';
 import { InterviewsModule } from './interviews/interviews.module';
 import { MarkdownModule } from './markdown/markdown.module';
 import { ProjectsModule } from './projects/projects.module';
+import { ProjectPreparationModule } from './project-preparation/project-preparation.module';
 import { QuestionBankModule } from './question-bank/question-bank.module';
 import { ReadinessModule } from './readiness/readiness.module';
 
@@ -23,6 +24,7 @@ import { ReadinessModule } from './readiness/readiness.module';
     DecisionReviewModule,
     AuditModule,
     ProjectsModule,
+    ProjectPreparationModule,
     QuestionBankModule,
     InterviewsModule,
     MarkdownModule,

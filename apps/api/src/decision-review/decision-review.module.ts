@@ -11,5 +11,6 @@ import { DecisionReviewService } from './decision-review.service';
   imports: [TypeOrmModule.forFeature([Project, AuditEvent]), ReadinessModule],
   controllers: [DecisionReviewController],
   providers: [DecisionReviewService],
+  exports: [DecisionReviewService],
 })
 export class DecisionReviewModule {}
