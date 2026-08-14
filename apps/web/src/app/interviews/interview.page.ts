@@ -214,6 +214,10 @@ export class InterviewPage implements OnInit, OnDestroy {
         this.schema.set(schema);
         this.selectedKeys.set(schema.questions.map((question) => question.stableKey));
         this.schemaSaving.set(false);
+        if (!hasExistingSchema) {
+          this.createRound();
+          return;
+        }
         this.feedback.set(
           this.schema()?.schemaVersion === 1
             ? 'A projekt interjúsémája elkészült.'

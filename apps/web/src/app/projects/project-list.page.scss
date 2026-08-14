@@ -5,28 +5,6 @@
   justify-content: space-between;
 }
 
-.create-card {
-  display: block;
-  margin-bottom: 2rem;
-}
-
-.create-form {
-  display: grid;
-  gap: 1.25rem;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-}
-
-.create-form p-message,
-.form-actions {
-  grid-column: 1 / -1;
-}
-
-.form-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.65rem;
-}
-
 .project-grid {
   display: grid;
   gap: 1rem;
@@ -98,12 +76,6 @@
   color: var(--p-primary-color);
   font-weight: 700;
   margin-top: auto;
-}
-
-@media (max-width: 52rem) {
-  .create-form {
-    grid-template-columns: 1fr;
-  }
 }
 
 @media (max-width: 36rem) {
