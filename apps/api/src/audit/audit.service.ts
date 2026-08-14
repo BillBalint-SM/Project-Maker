@@ -1,6 +1,11 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import type { AuditEventPage, AuditEventRecord } from '@project-maker/contracts';
+import type {
+  AuditEventPage,
+  AuditEventRecord,
+  ProjectActivityFeed,
+  ProjectActivityItem,
+} from '@project-maker/contracts';
 import { Repository } from 'typeorm';
 
 import { Project } from '../projects/project.entity';
@@ -47,6 +52,21 @@ export class AuditService {
     };
   }
 
+  async listRecentProjectActivity(projectId: string): Promise<ProjectActivityFeed> {
+    await this.assertProjectExists(projectId);
+
+    const events = await this.auditEventRepository.find({
+      where: { projectId },
+      order: { createdAt: 'DESC', id: 'DESC' },
+      take: recentActivityLimit,
+    });
+
+    return {
+      projectId,
+      events: events.map(toProjectActivityItem),
+    };
+  }
+
   private async assertProjectExists(projectId: string): Promise<void> {
     const project = await this.projectRepository.findOne({ where: { id: projectId } });
     if (!project) {
@@ -54,6 +74,8 @@ export class AuditService {
     }
   }
 }
+
+const recentActivityLimit = 5;
 
 function toAuditEventRecord(event: AuditEvent): AuditEventRecord {
   return {
@@ -63,3 +85,33 @@ function toAuditEventRecord(event: AuditEvent): AuditEventRecord {
     createdAt: event.createdAt.toISOString(),
   };
 }
+
+function toProjectActivityItem(event: AuditEvent): ProjectActivityItem {
+  return {
+    occurredAt: event.createdAt.toISOString(),
+    summary: projectActivitySummaries[event.eventType] ?? 'Projektaktivitás rögzítve lett.',
+  };
+}
+
+const projectActivitySummaries: Readonly<Record<string, string>> = {
+  PROJECT_ARCHIVED: 'A projekt archiválva lett.',
+  PROJECT_RESTORED: 'A projekt visszaállítva lett.',
+  PROJECT_DECISION_INPUTS_UPDATED: 'A döntési értékelés frissítve lett.',
+  DISCOVERY_FOLLOW_UP_CREATED: 'Új discovery utánkövetés jött létre.',
+  DISCOVERY_FOLLOW_UP_RESOLVED: 'Egy discovery utánkövetés lezárva lett.',
+  DISCOVERY_FOLLOW_UP_UPDATED: 'Egy discovery utánkövetés frissítve lett.',
+  DISCOVERY_FOLLOW_UP_SOURCE_LINK_CHANGED: 'Egy discovery utánkövetés forráshivatkozása frissítve lett.',
+  INTERVIEW_ROUND_CREATED: 'Új interjúkör indult.',
+  ROUND_ANSWER_CLEARED: 'Egy interjúválasz törölve lett.',
+  ROUND_ANSWER_SAVED: 'Egy interjúválasz mentve lett.',
+  INTERVIEW_ROUND_COMPLETED: 'Egy interjúkör lezárult.',
+  ROUND_QUESTION_ASSESSMENT_SAVED: 'Egy kérdés értékelése frissítve lett.',
+  ROUND_QUESTION_ASSESSMENT_RESET: 'Egy kérdés értékelése visszaállítva lett.',
+  MARKDOWN_REVISION_CREATED: 'Új Markdown-terv készült.',
+  PROJECT_QUESTION_SCHEMA_PUBLISHED: 'A projekt kérdéssémája elfogadva lett.',
+  FOLLOW_UP_SETTINGS_UPDATED: 'Az ügyfél-utánkövetés beállításai frissítve lettek.',
+  FOLLOW_UP_PING_FAILED: 'Az ügyfél-utánkövető emlékeztető küldése nem sikerült.',
+  FOLLOW_UP_PING_SENT: 'Ügyfél-utánkövető emlékeztető elküldve.',
+  CUSTOMER_REVIEW_EMAIL_FAILED: 'Az ügyfél-review e-mail küldése nem sikerült.',
+  CUSTOMER_REVIEW_EMAIL_SENT: 'Ügyfél-review e-mail elküldve.',
+};

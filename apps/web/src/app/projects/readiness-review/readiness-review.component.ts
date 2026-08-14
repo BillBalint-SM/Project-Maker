@@ -31,6 +31,7 @@ import { ReadinessReviewApiService } from './readiness-review-api.service';
 export class ReadinessReviewComponent {
   readonly projectId = input.required<string>();
   readonly refreshKey = input.required<number>();
+  readonly dedicatedPage = input(false);
 
   private readonly api = inject(ReadinessReviewApiService);
   private readonly destroyRef = inject(DestroyRef);
@@ -56,6 +57,10 @@ export class ReadinessReviewComponent {
   }
 
   scrollToWorkspace(): void {
+    if (this.dedicatedPage()) {
+      void this.router.navigate(['/projects', this.projectId()], { fragment: 'workspace' });
+      return;
+    }
     this.viewportScroller.scrollToAnchor('workspace');
   }
 
@@ -71,6 +76,12 @@ export class ReadinessReviewComponent {
   }
 
   scrollToDiscoveryFollowUps(): void {
+    if (this.dedicatedPage()) {
+      void this.router.navigate(['/projects', this.projectId()], {
+        fragment: 'discovery-follow-ups',
+      });
+      return;
+    }
     this.viewportScroller.scrollToAnchor('discovery-follow-ups');
   }
 

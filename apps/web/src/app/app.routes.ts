@@ -10,12 +10,42 @@ export const routes: Routes = [
     title: 'Projects | Project Maker',
   },
   {
+    path: 'projects/new',
+    loadComponent: () =>
+      import('./projects/project-create.page').then(
+        (module) => module.ProjectCreatePage,
+      ),
+    title: 'Új projekt | Project Maker',
+  },
+  {
     path: 'projects/:projectId/interview',
     loadComponent: () =>
       import('./interviews/interview.page').then(
         (module) => module.InterviewPage,
       ),
     title: 'Project interview | Project Maker',
+  },
+  {
+    path: 'projects/:projectId/status',
+    loadComponent: () =>
+      import('./projects/project-status.page').then(
+        (module) => module.ProjectStatusPage,
+      ),
+    title: 'Projektállapot | Project Maker',
+  },
+  {
+    path: 'projects/:projectId/readiness',
+    loadComponent: () =>
+      import('./projects/readiness.page').then((module) => module.ReadinessPage),
+    title: 'Felkészültség | Project Maker',
+  },
+  {
+    path: 'projects/:projectId/decision-review',
+    loadComponent: () =>
+      import('./projects/decision-review.page').then(
+        (module) => module.DecisionReviewPage,
+      ),
+    title: 'Döntési értékelés | Project Maker',
   },
   {
     path: 'projects/:projectId/markdown',

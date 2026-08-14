@@ -5,109 +5,8 @@
       <h1 id="projects-title">Projects</h1>
       <p>See every active workspace and open its delivery cockpit.</p>
     </div>
-    @if (!showCreateForm()) {
-      <p-button
-        label="New project"
-        data-testid="new-project-button"
-        (onClick)="openCreateForm()"
-      />
-    }
+    <a pButton routerLink="/projects/new" data-testid="new-project-button">New project</a>
   </div>
-
-  @if (showCreateForm()) {
-    <p-card styleClass="create-card">
-      <ng-template #title>New project</ng-template>
-      <ng-template #subtitle>
-        Customer contact details are required by the current project contract.
-      </ng-template>
-      <form
-        class="create-form"
-        [formGroup]="createForm"
-        (ngSubmit)="createProject()"
-        data-testid="new-project-form"
-      >
-        <div class="field">
-          <label for="project-name">Project name</label>
-          <input
-            pInputText
-            id="project-name"
-            class="full-width"
-            formControlName="name"
-            autocomplete="off"
-            data-testid="project-name-input"
-            [attr.aria-invalid]="createForm.controls.name.invalid && createForm.controls.name.touched"
-          />
-          @if (createForm.controls.name.invalid && createForm.controls.name.touched) {
-            <small class="field-error">Enter a project name of at most 255 characters.</small>
-          }
-        </div>
-
-        <div class="field">
-          <label for="contact-name">Customer contact name</label>
-          <input
-            pInputText
-            id="contact-name"
-            class="full-width"
-            formControlName="customerContactName"
-            autocomplete="name"
-            data-testid="customer-contact-name-input"
-            [attr.aria-invalid]="createForm.controls.customerContactName.invalid && createForm.controls.customerContactName.touched"
-          />
-          @if (
-            createForm.controls.customerContactName.invalid &&
-            createForm.controls.customerContactName.touched
-          ) {
-            <small class="field-error">Enter the customer contact's name.</small>
-          }
-        </div>
-
-        <div class="field">
-          <label for="contact-email">Customer contact email</label>
-          <input
-            pInputText
-            id="contact-email"
-            type="email"
-            class="full-width"
-            formControlName="customerContactEmail"
-            autocomplete="email"
-            data-testid="customer-contact-email-input"
-            [attr.aria-invalid]="createForm.controls.customerContactEmail.invalid && createForm.controls.customerContactEmail.touched"
-          />
-          @if (
-            createForm.controls.customerContactEmail.invalid &&
-            createForm.controls.customerContactEmail.touched
-          ) {
-            <small class="field-error">Enter a valid customer contact email address.</small>
-          }
-        </div>
-
-        @if (createError()) {
-          <p-message severity="error" data-testid="create-project-error">
-            {{ createError() }}
-          </p-message>
-        }
-
-        <div class="form-actions">
-          <p-button
-            type="submit"
-            label="Create and open cockpit"
-            [loading]="saving()"
-            [disabled]="saving()"
-            data-testid="create-project-submit"
-          />
-          <p-button
-            type="button"
-            label="Cancel"
-            severity="secondary"
-            [text]="true"
-            [disabled]="saving()"
-            data-testid="create-project-cancel"
-            (onClick)="cancelCreate()"
-          />
-        </div>
-      </form>
-    </p-card>
-  }
 
   @if (loading()) {
     <div class="state-panel" data-testid="projects-loading" aria-live="polite">
@@ -129,20 +28,14 @@
     <div class="state-panel" data-testid="projects-empty">
       <h2>No projects yet</h2>
       <p>Create the first workspace to start tracking delivery.</p>
-      @if (!showCreateForm()) {
-        <p-button
-          label="Create a project"
-          data-testid="empty-create-project-button"
-          (onClick)="openCreateForm()"
-        />
-      }
+      <a pButton routerLink="/projects/new" data-testid="empty-create-project-button">Create a project</a>
     </div>
   } @else {
     <div class="project-grid" data-testid="project-list">
       @for (project of projects(); track project.id) {
         <a
           class="project-card"
-          [routerLink]="['/projects', project.id]"
+          [routerLink]="['/projects', project.id, 'status']"
           [attr.data-testid]="'project-card-' + project.id"
         >
           <div class="project-card-header">
@@ -159,7 +52,7 @@
               <dd>{{ project.nextAction || 'Not defined' }}</dd>
             </div>
           </dl>
-          <span class="open-label">Open cockpit <span aria-hidden="true">→</span></span>
+          <span class="open-label">Projektállapot megnyitása <span aria-hidden="true">→</span></span>
         </a>
       }
     </div>
