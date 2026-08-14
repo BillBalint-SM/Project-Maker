@@ -8,6 +8,7 @@ import type {
   CustomerFollowUpState,
   CreateProjectInput,
   ProjectCockpit,
+  ProjectPreparationStatus,
   ProjectWorkspace,
   SendCustomerReviewEmailInput,
   SendFollowUpPingInput,
@@ -75,6 +76,18 @@ export class ProjectApiService {
       }),
       catchError((error: unknown) => this.fail(error, 'load the project cockpit')),
     );
+  }
+
+  loadPreparationStatus(projectId: string): Observable<ProjectPreparationStatus> {
+    return this.http
+      .get<ProjectPreparationStatus>(
+        `/api/projects/${encodeURIComponent(projectId)}/preparation-status`,
+      )
+      .pipe(
+        catchError((error: unknown) =>
+          this.fail(error, 'load the project preparation status'),
+        ),
+      );
   }
 
   updateFollowUp(

@@ -1,0 +1,11 @@
+<section aria-labelledby="readiness-page-title">
+  <a class="back-link" [routerLink]="['/projects', projectId, 'status']">
+    <span aria-hidden="true">←</span> Vissza a projektállapothoz
+  </a>
+  <div class="page-heading">
+    <span class="eyebrow">Projektkörnyezet</span>
+    <h1 id="readiness-page-title">Felkészültség</h1>
+    <p>A jelenlegi hiányok és a következő tisztázási lépések.</p>
+  </div>
+  <app-readiness-review [projectId]="projectId" [refreshKey]="0" [dedicatedPage]="true" />
+</section>

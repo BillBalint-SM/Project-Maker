@@ -1,0 +1,11 @@
+<section aria-labelledby="decision-review-page-title">
+  <a class="back-link" [routerLink]="['/projects', projectId, 'status']">
+    <span aria-hidden="true">←</span> Vissza a projektállapothoz
+  </a>
+  <div class="page-heading">
+    <span class="eyebrow">Projektkörnyezet</span>
+    <h1 id="decision-review-page-title">Döntési értékelés</h1>
+    <p>A felkészültség és a hat értékelési szempont közös, szerveroldali eredménye.</p>
+  </div>
+  <app-decision-review [projectId]="projectId" [refreshKey]="0" />
+</section>

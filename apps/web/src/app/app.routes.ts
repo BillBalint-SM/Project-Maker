@@ -26,6 +26,28 @@ export const routes: Routes = [
     title: 'Project interview | Project Maker',
   },
   {
+    path: 'projects/:projectId/status',
+    loadComponent: () =>
+      import('./projects/project-status.page').then(
+        (module) => module.ProjectStatusPage,
+      ),
+    title: 'Projektállapot | Project Maker',
+  },
+  {
+    path: 'projects/:projectId/readiness',
+    loadComponent: () =>
+      import('./projects/readiness.page').then((module) => module.ReadinessPage),
+    title: 'Felkészültség | Project Maker',
+  },
+  {
+    path: 'projects/:projectId/decision-review',
+    loadComponent: () =>
+      import('./projects/decision-review.page').then(
+        (module) => module.DecisionReviewPage,
+      ),
+    title: 'Döntési értékelés | Project Maker',
+  },
+  {
     path: 'projects/:projectId/markdown',
     loadComponent: () =>
       import('./markdown/markdown.page').then(
