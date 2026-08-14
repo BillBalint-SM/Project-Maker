@@ -72,10 +72,10 @@
           <div class="schema-status">
             @if (schema(); as currentSchema) {
               <span data-testid="project-schema-status">
-                Közzétett séma v{{ currentSchema.schemaVersion }} (bank v{{ currentSchema.bankVersion }})
+                Elfogadott kérdésséma v{{ currentSchema.schemaVersion }} (bank v{{ currentSchema.bankVersion }})
               </span>
             } @else {
-              <span data-testid="project-schema-status">Még nincs közzétett projektséma.</span>
+              <span data-testid="project-schema-status">Még nincs elfogadott kérdésséma.</span>
             }
             <p-button
               [label]="schema() ? 'Séma frissítése' : 'Séma elfogadása és interjú indítása'"
@@ -101,13 +101,23 @@
 
         @if (!round()) {
           <div class="round-start">
-            <p-button
-              label="Kezdő interjú indítása"
-              [loading]="roundSaving()"
-              [disabled]="roundSaving() || !schema()"
-              data-testid="create-interview-round-button"
-              (onClick)="createRound()"
-            />
+            @if (initialRoundStartFailed()) {
+              <p-button
+                label="Interjú indításának újrapróbálása"
+                [loading]="roundSaving()"
+                [disabled]="roundSaving()"
+                data-testid="retry-initial-intake-button"
+                (onClick)="retryInitialRoundStart()"
+              />
+            } @else {
+              <p-button
+                label="Kezdő interjú indítása"
+                [loading]="roundSaving()"
+                [disabled]="roundSaving() || !schema()"
+                data-testid="create-interview-round-button"
+                (onClick)="createRound()"
+              />
+            }
             @if (!schema()) {
               <small class="muted">Az indítás előtt tedd közzé a projekt kérdéssémáját.</small>
             }
