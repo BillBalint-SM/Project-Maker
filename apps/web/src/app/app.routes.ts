@@ -10,6 +10,14 @@ export const routes: Routes = [
     title: 'Projects | Project Maker',
   },
   {
+    path: 'projects/new',
+    loadComponent: () =>
+      import('./projects/project-create.page').then(
+        (module) => module.ProjectCreatePage,
+      ),
+    title: 'Új projekt | Project Maker',
+  },
+  {
     path: 'projects/:projectId/interview',
     loadComponent: () =>
       import('./interviews/interview.page').then(

@@ -1,0 +1,92 @@
+<section aria-labelledby="new-project-title">
+  <div class="page-heading">
+    <span class="eyebrow">Projektindítás</span>
+    <h1 id="new-project-title">Új projekt</h1>
+    <p>Add meg az alapadatokat, majd állítsd össze a projekt kérdéssémáját.</p>
+  </div>
+
+  <p-card styleClass="create-card">
+    <ng-template #title>Projekt alapadatai</ng-template>
+    <ng-template #subtitle>
+      A kapcsolattartó adatai szükségesek a projekt elindításához.
+    </ng-template>
+    <form
+      class="create-form"
+      [formGroup]="createForm"
+      (ngSubmit)="createProject()"
+      data-testid="new-project-form"
+    >
+      <div class="field">
+        <label for="project-name">Projekt neve</label>
+        <input
+          pInputText
+          id="project-name"
+          class="full-width"
+          formControlName="name"
+          autocomplete="off"
+          data-testid="project-name-input"
+          [attr.aria-invalid]="createForm.controls.name.invalid && createForm.controls.name.touched"
+        />
+        @if (createForm.controls.name.invalid && createForm.controls.name.touched) {
+          <small class="field-error">Adj meg legfeljebb 255 karakteres projektnevet.</small>
+        }
+      </div>
+
+      <div class="field">
+        <label for="contact-name">Ügyfél kapcsolattartó neve</label>
+        <input
+          pInputText
+          id="contact-name"
+          class="full-width"
+          formControlName="customerContactName"
+          autocomplete="name"
+          data-testid="customer-contact-name-input"
+          [attr.aria-invalid]="createForm.controls.customerContactName.invalid && createForm.controls.customerContactName.touched"
+        />
+        @if (
+          createForm.controls.customerContactName.invalid &&
+          createForm.controls.customerContactName.touched
+        ) {
+          <small class="field-error">Add meg az ügyfél kapcsolattartójának nevét.</small>
+        }
+      </div>
+
+      <div class="field">
+        <label for="contact-email">Ügyfél kapcsolattartó e-mail-címe</label>
+        <input
+          pInputText
+          id="contact-email"
+          type="email"
+          class="full-width"
+          formControlName="customerContactEmail"
+          autocomplete="email"
+          data-testid="customer-contact-email-input"
+          [attr.aria-invalid]="createForm.controls.customerContactEmail.invalid && createForm.controls.customerContactEmail.touched"
+        />
+        @if (
+          createForm.controls.customerContactEmail.invalid &&
+          createForm.controls.customerContactEmail.touched
+        ) {
+          <small class="field-error">Adj meg érvényes e-mail-címet.</small>
+        }
+      </div>
+
+      @if (createError()) {
+        <p-message severity="error" data-testid="create-project-error">
+          {{ createError() }}
+        </p-message>
+      }
+
+      <div class="form-actions">
+        <p-button
+          type="submit"
+          label="Tovább a kérdéssémához"
+          [loading]="saving()"
+          [disabled]="saving()"
+          data-testid="create-project-submit"
+        />
+        <a pButton routerLink="/" class="p-button-secondary p-button-text">Mégse</a>
+      </div>
+    </form>
+  </p-card>
+</section>

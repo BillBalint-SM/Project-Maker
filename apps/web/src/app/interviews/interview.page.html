@@ -6,7 +6,7 @@
   <div class="page-heading interview-heading">
     <span class="eyebrow">Vezetett interjú</span>
     <h1 id="interview-title">Projektinterjú</h1>
-    <p>Válaszd ki az aktív kérdéseket, tedd közzé a sémát, majd folytasd vagy indítsd el a kezdő interjúkört.</p>
+    <p>Válaszd ki az aktív kérdéseket, fogadd el a sémát, majd folytasd a kezdő interjúkört.</p>
   </div>
 
   @if (actionError()) {
@@ -78,7 +78,7 @@
               <span data-testid="project-schema-status">Még nincs közzétett projektséma.</span>
             }
             <p-button
-              [label]="schema() ? 'Séma frissítése' : 'Séma közzététele'"
+              [label]="schema() ? 'Séma frissítése' : 'Séma elfogadása és interjú indítása'"
               [loading]="schemaSaving()"
               [disabled]="schemaSaving() || selectedCount() === 0 || hasOpenRound()"
               data-testid="publish-project-schema-button"
