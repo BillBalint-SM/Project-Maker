@@ -203,12 +203,8 @@ test.describe.serial('guided intake real Hungarian browser flow', () => {
     const completedRound = (await completedResponse.json()) as InterviewRound;
     expect(completedRound.status).toBe('COMPLETED');
 
-    await expect(page.getByTestId(`round-answer-textarea-${textQuestion.id}`)).toBeDisabled();
-    await expect(page.getByTestId(`round-answer-boolean-${booleanQuestion.id}`)).toBeDisabled();
-    await expect(
-      page.getByTestId(`round-answer-textarea-${missingRequiredQuestion.id}`),
-    ).toBeDisabled();
-    await expect(page.getByTestId('complete-interview-round-button')).toHaveCount(0);
+    await expect(page).toHaveURL(new RegExp(`/projects/${fixture.projectId}/readiness$`));
+    await expect(page.getByTestId('readiness-review-card')).toBeVisible();
 
     await page.goto(`/projects/${fixture.projectId}`);
     await (await nativeButton(page, 'open-project-interview-button')).click();

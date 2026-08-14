@@ -6,7 +6,7 @@
   <div class="page-heading interview-heading">
     <span class="eyebrow">Vezetett interjú</span>
     <h1 id="interview-title">Projektinterjú</h1>
-    <p>Válaszd ki az aktív kérdéseket, tedd közzé a sémát, majd folytasd vagy indítsd el a kezdő interjúkört.</p>
+    <p>Válaszd ki az aktív kérdéseket, fogadd el a sémát, majd folytasd a kezdő interjúkört.</p>
   </div>
 
   @if (actionError()) {
@@ -72,13 +72,13 @@
           <div class="schema-status">
             @if (schema(); as currentSchema) {
               <span data-testid="project-schema-status">
-                Közzétett séma v{{ currentSchema.schemaVersion }} (bank v{{ currentSchema.bankVersion }})
+                Elfogadott kérdésséma v{{ currentSchema.schemaVersion }} (bank v{{ currentSchema.bankVersion }})
               </span>
             } @else {
-              <span data-testid="project-schema-status">Még nincs közzétett projektséma.</span>
+              <span data-testid="project-schema-status">Még nincs elfogadott kérdésséma.</span>
             }
             <p-button
-              [label]="schema() ? 'Séma frissítése' : 'Séma közzététele'"
+              [label]="schema() ? 'Séma frissítése' : 'Séma elfogadása és interjú indítása'"
               [loading]="schemaSaving()"
               [disabled]="schemaSaving() || selectedCount() === 0 || hasOpenRound()"
               data-testid="publish-project-schema-button"
@@ -101,13 +101,23 @@
 
         @if (!round()) {
           <div class="round-start">
-            <p-button
-              label="Kezdő interjú indítása"
-              [loading]="roundSaving()"
-              [disabled]="roundSaving() || !schema()"
-              data-testid="create-interview-round-button"
-              (onClick)="createRound()"
-            />
+            @if (initialRoundStartFailed()) {
+              <p-button
+                label="Interjú indításának újrapróbálása"
+                [loading]="roundSaving()"
+                [disabled]="roundSaving()"
+                data-testid="retry-initial-intake-button"
+                (onClick)="retryInitialRoundStart()"
+              />
+            } @else {
+              <p-button
+                label="Kezdő interjú indítása"
+                [loading]="roundSaving()"
+                [disabled]="roundSaving() || !schema()"
+                data-testid="create-interview-round-button"
+                (onClick)="createRound()"
+              />
+            }
             @if (!schema()) {
               <small class="muted">Az indítás előtt tedd közzé a projekt kérdéssémáját.</small>
             }

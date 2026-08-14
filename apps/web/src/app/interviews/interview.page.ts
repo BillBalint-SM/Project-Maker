@@ -1,5 +1,5 @@
 import { Component, OnDestroy, OnInit, inject, signal } from '@angular/core';
-import { ActivatedRoute, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { forkJoin } from 'rxjs';
 import { ButtonModule } from 'primeng/button';
 import { CardModule } from 'primeng/card';
@@ -33,6 +33,7 @@ const completionBlockedByPendingAssessmentMessage =
 
 type QuestionSaveStatus = 'idle' | 'saving' | 'saved' | 'error';
 type AssessmentMode = 'automatic' | 'partial' | 'not-relevant';
+type InitialRoundStartMode = 'after-schema-acceptance' | 'manual';
 
 interface QuestionAnswerState {
   readonly draft: AnswerValue | null;
@@ -67,6 +68,7 @@ interface QuestionAssessmentState {
 })
 export class InterviewPage implements OnInit, OnDestroy {
   private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
   private readonly questionBankApi = inject(QuestionBankApiService);
   private readonly interviewApi = inject(InterviewApiService);
   private readonly autosaveTimers = new Map<string, ReturnType<typeof setTimeout>>();
@@ -85,6 +87,7 @@ export class InterviewPage implements OnInit, OnDestroy {
   readonly feedback = signal<string | null>(null);
   readonly schemaSaving = signal(false);
   readonly roundSaving = signal(false);
+  readonly initialRoundStartFailed = signal(false);
   readonly completing = signal(false);
 
   ngOnInit(): void {
@@ -111,6 +114,7 @@ export class InterviewPage implements OnInit, OnDestroy {
     this.loadError.set(null);
     this.actionError.set(null);
     this.feedback.set(null);
+    this.initialRoundStartFailed.set(false);
     this.round.set(null);
     this.answerStates.set(new Map());
     this.assessmentStates.set(new Map());
@@ -214,6 +218,10 @@ export class InterviewPage implements OnInit, OnDestroy {
         this.schema.set(schema);
         this.selectedKeys.set(schema.questions.map((question) => question.stableKey));
         this.schemaSaving.set(false);
+        if (!hasExistingSchema) {
+          this.startInitialRound('after-schema-acceptance');
+          return;
+        }
         this.feedback.set(
           this.schema()?.schemaVersion === 1
             ? 'A projekt interjúsémája elkészült.'
@@ -228,9 +236,17 @@ export class InterviewPage implements OnInit, OnDestroy {
   }
 
   createRound(): void {
+    this.startInitialRound('manual');
+  }
+
+  retryInitialRoundStart(): void {
+    this.startInitialRound('after-schema-acceptance');
+  }
+
+  private startInitialRound(mode: InitialRoundStartMode): void {
     if (this.roundSaving() || this.schema() === null) {
       if (this.schema() === null) {
-        this.actionError.set('Az interjúkör indítása előtt tedd közzé a projekt kérdéssémáját.');
+        this.actionError.set('Az interjúkör indítása előtt fogadd el a projekt kérdéssémáját.');
       }
       return;
     }
@@ -245,11 +261,17 @@ export class InterviewPage implements OnInit, OnDestroy {
         this.round.set(round);
         this.answerStates.set(buildAnswerStates(round));
         this.assessmentStates.set(buildAssessmentStates(round));
+        this.initialRoundStartFailed.set(false);
         this.roundSaving.set(false);
         this.feedback.set('A kezdő interjúkör elindult.');
       },
       error: (error: Error) => {
-        this.actionError.set(error.message);
+        this.actionError.set(
+          mode === 'after-schema-acceptance'
+            ? 'A kérdésséma elfogadva van, de a kezdő interjúkör nem indult el. Próbáld újra az interjú indítását.'
+            : error.message,
+        );
+        this.initialRoundStartFailed.set(mode === 'after-schema-acceptance');
         this.roundSaving.set(false);
       },
     });
@@ -527,7 +549,7 @@ export class InterviewPage implements OnInit, OnDestroy {
         this.answerStates.set(buildAnswerStates(completedRound));
         this.assessmentStates.set(buildAssessmentStates(completedRound));
         this.completing.set(false);
-        this.feedback.set('Az interjúkör lezárult.');
+        void this.router.navigate(['/projects', this.projectId, 'readiness']);
       },
       error: (error: Error) => {
         this.actionError.set(error.message);

@@ -58,6 +58,247 @@ describe('ProjectsController (e2e)', () => {
     }
   });
 
+  it('reports the next preparation action for a project without an accepted question schema', async () => {
+    const projectId = await createProject('preparation-status-schema-required');
+
+    const response = await request(app.getHttpServer())
+      .get(`/projects/${projectId}/preparation-status`)
+      .expect(200);
+
+    assert.deepEqual(response.body, {
+      projectId,
+      state: 'SCHEMA_REQUIRED',
+      label: 'Kérdésséma szükséges',
+      primaryAction: {
+        label: 'Felmérés megnyitása',
+        target: 'INTERVIEW',
+      },
+    });
+  });
+
+  it('returns recent project activity in human-readable form without raw audit details', async () => {
+    const projectId = await createProject('project-activity');
+    await request(app.getHttpServer()).post(`/projects/${projectId}/archive`).expect(201);
+
+    const response = await request(app.getHttpServer())
+      .get(`/projects/${projectId}/activity`)
+      .expect(200);
+
+    assert.equal(response.body.projectId, projectId);
+    assert.deepEqual(response.body.events, [
+      {
+        occurredAt: response.body.events[0]?.occurredAt,
+        summary: 'A projekt archiválva lett.',
+      },
+    ]);
+    assert.match(response.body.events[0]?.occurredAt ?? '', /^\d{4}-\d{2}-\d{2}T/);
+    assert.equal('eventType' in response.body.events[0], false);
+    assert.equal('payload' in response.body.events[0], false);
+  });
+
+  it('keeps an open Initial Intake in the interview preparation state', async () => {
+    const projectId = await createProject('preparation-status-intake-in-progress');
+    await createCanonicalDecisionReviewRound(projectId);
+
+    const response = await request(app.getHttpServer())
+      .get(`/projects/${projectId}/preparation-status`)
+      .expect(200);
+
+    assert.deepEqual(response.body, {
+      projectId,
+      state: 'INTAKE_IN_PROGRESS',
+      label: 'Felmérés folyamatban',
+      primaryAction: {
+        label: 'Felmérés megnyitása',
+        target: 'INTERVIEW',
+      },
+    });
+  });
+
+  it('routes a completed intake with missing Decision Review inputs to the review', async () => {
+    const projectId = await createProject('preparation-status-decision-review-required');
+    const roundId = await createCanonicalDecisionReviewRound(projectId);
+    await request(app.getHttpServer())
+      .post(`/projects/${projectId}/rounds/${roundId}/complete`)
+      .expect(201);
+
+    const response = await request(app.getHttpServer())
+      .get(`/projects/${projectId}/preparation-status`)
+      .expect(200);
+
+    assert.deepEqual(response.body, {
+      projectId,
+      state: 'DECISION_REVIEW_REQUIRED',
+      label: 'Döntési értékelés szükséges',
+      primaryAction: {
+        label: 'Döntési értékelés megnyitása',
+        target: 'DECISION_REVIEW',
+      },
+    });
+  });
+
+  it('restarts preparation at schema selection after restoring retained intake history', async () => {
+    const projectId = await createProject('preparation-status-after-restoration');
+    const roundId = await createCanonicalDecisionReviewRound(projectId);
+    await request(app.getHttpServer())
+      .post(`/projects/${projectId}/rounds/${roundId}/complete`)
+      .expect(201);
+    await request(app.getHttpServer()).post(`/projects/${projectId}/archive`).expect(201);
+    await request(app.getHttpServer()).post(`/projects/${projectId}/restore`).expect(201);
+
+    const response = await request(app.getHttpServer())
+      .get(`/projects/${projectId}/preparation-status`)
+      .expect(200);
+
+    assert.deepEqual(response.body, {
+      projectId,
+      state: 'SCHEMA_REQUIRED',
+      label: 'Kérdésséma szükséges',
+      primaryAction: {
+        label: 'Felmérés megnyitása',
+        target: 'INTERVIEW',
+      },
+    });
+  });
+
+  it('routes an unsupported completed schema to readiness clarification', async () => {
+    const projectId = await createProject('preparation-status-unsupported-schema');
+    const bank = await request(app.getHttpServer()).get('/settings/base-questions').expect(200);
+    const firstStableKey = (bank.body.questions as Array<{ stableKey?: string }>)[0]?.stableKey;
+    if (!firstStableKey) {
+      throw new Error('Seeded question bank did not provide a source stable key.');
+    }
+    await request(app.getHttpServer())
+      .post(`/projects/${projectId}/question-schema`)
+      .send({
+        questions: [{ stableKey: firstStableKey, required: false, blocking: false }],
+      })
+      .expect(201);
+    const round = await request(app.getHttpServer())
+      .post(`/projects/${projectId}/rounds`)
+      .send({ type: 'INITIAL_INTAKE' })
+      .expect(201);
+    await request(app.getHttpServer())
+      .post(`/projects/${projectId}/rounds/${round.body.id as string}/complete`)
+      .expect(201);
+
+    const response = await request(app.getHttpServer())
+      .get(`/projects/${projectId}/preparation-status`)
+      .expect(200);
+
+    assert.deepEqual(response.body, {
+      projectId,
+      state: 'CLARIFICATION_REQUIRED',
+      label: 'Tisztázás szükséges',
+      primaryAction: {
+        label: 'Felkészültség megnyitása',
+        target: 'READINESS',
+      },
+    });
+  });
+
+  it('derives the estimation preparation state from the current Decision Review recommendation', async () => {
+    const projectId = await createProject('preparation-status-estimate-preparable');
+    const roundId = await createCanonicalDecisionReviewRound(projectId);
+    await request(app.getHttpServer())
+      .post(`/projects/${projectId}/rounds/${roundId}/complete`)
+      .expect(201);
+    await request(app.getHttpServer())
+      .put(`/projects/${projectId}/decision-review`)
+      .send({
+        businessValue: 3,
+        strategicAlignment: 3,
+        urgency: 3,
+        confidence: 3,
+        complexity: 3,
+        risk: 3,
+      })
+      .expect(200)
+      .expect(({ body }) => assert.equal(body.recommendation, 'ESTIMATE_PREPARATION_POSSIBLE'));
+
+    const response = await request(app.getHttpServer())
+      .get(`/projects/${projectId}/preparation-status`)
+      .expect(200);
+
+    assert.deepEqual(response.body, {
+      projectId,
+      state: 'ESTIMATE_PREPARABLE',
+      label: 'Becslés előkészíthető',
+      primaryAction: {
+        label: 'Döntési értékelés megnyitása',
+        target: 'DECISION_REVIEW',
+      },
+    });
+  });
+
+  it('routes a clarification recommendation to readiness', async () => {
+    const projectId = await createProject('preparation-status-clarification-required');
+    const roundId = await createCanonicalDecisionReviewRound(projectId);
+    await request(app.getHttpServer())
+      .post(`/projects/${projectId}/rounds/${roundId}/complete`)
+      .expect(201);
+    await request(app.getHttpServer())
+      .put(`/projects/${projectId}/decision-review`)
+      .send({
+        businessValue: 1,
+        strategicAlignment: 1,
+        urgency: 1,
+        confidence: 1,
+        complexity: 5,
+        risk: 5,
+      })
+      .expect(200)
+      .expect(({ body }) => assert.equal(body.recommendation, 'CLARIFICATION_REQUIRED'));
+
+    const response = await request(app.getHttpServer())
+      .get(`/projects/${projectId}/preparation-status`)
+      .expect(200);
+
+    assert.deepEqual(response.body, {
+      projectId,
+      state: 'CLARIFICATION_REQUIRED',
+      label: 'Tisztázás szükséges',
+      primaryAction: {
+        label: 'Felkészültség megnyitása',
+        target: 'READINESS',
+      },
+    });
+  });
+
+  it('surfaces an estimate-ready recommendation as the final preparation state', async () => {
+    const projectId = await createProject('preparation-status-estimate-ready');
+    const roundId = await createCanonicalDecisionReviewRound(projectId);
+    await request(app.getHttpServer())
+      .post(`/projects/${projectId}/rounds/${roundId}/complete`)
+      .expect(201);
+    await request(app.getHttpServer())
+      .put(`/projects/${projectId}/decision-review`)
+      .send({
+        businessValue: 5,
+        strategicAlignment: 4,
+        urgency: 3,
+        confidence: 2,
+        complexity: 4,
+        risk: 5,
+      })
+      .expect(200)
+      .expect(({ body }) => assert.equal(body.recommendation, 'ESTIMATE_READY'));
+
+    const response = await request(app.getHttpServer())
+      .get(`/projects/${projectId}/preparation-status`)
+      .expect(200);
+
+    assert.deepEqual(response.body, {
+      projectId,
+      state: 'ESTIMATE_READY',
+      label: 'Becslésre kész',
+      primaryAction: {
+        label: 'Döntési értékelés megnyitása',
+        target: 'DECISION_REVIEW',
+      },
+    });
+  });
+
   it('returns a blank Decision Review with every current availability blocker', async () => {
     const projectId = await createProject('decision-review-unavailable');
 

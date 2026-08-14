@@ -8,6 +8,8 @@ import type {
   CustomerFollowUpState,
   CreateProjectInput,
   ProjectCockpit,
+  ProjectActivityFeed,
+  ProjectPreparationStatus,
   ProjectWorkspace,
   SendCustomerReviewEmailInput,
   SendFollowUpPingInput,
@@ -74,6 +76,37 @@ export class ProjectApiService {
         return { cockpit, project, followUp };
       }),
       catchError((error: unknown) => this.fail(error, 'load the project cockpit')),
+    );
+  }
+
+  loadPreparationStatus(projectId: string): Observable<ProjectPreparationStatus> {
+    return this.http
+      .get<ProjectPreparationStatus>(
+        `/api/projects/${encodeURIComponent(projectId)}/preparation-status`,
+      )
+      .pipe(
+        catchError((error: unknown) =>
+          this.fail(error, 'load the project preparation status'),
+        ),
+      );
+  }
+
+  loadProjectActivity(projectId: string): Observable<ProjectActivityFeed> {
+    return this.http
+      .get<ProjectActivityFeed>(`/api/projects/${encodeURIComponent(projectId)}/activity`)
+      .pipe(catchError((error: unknown) => this.fail(error, 'load recent project activity')));
+  }
+
+  loadProjectWorkspace(projectId: string): Observable<ProjectWorkspace> {
+    return this.listProjects().pipe(
+      map((projects) => {
+        const project = projects.find((candidate) => candidate.id === projectId);
+        if (!project) {
+          throw new Error('A projekt nem található. Térj vissza a projektlistához, és ellenőrizd újra.');
+        }
+        return project;
+      }),
+      catchError((error: unknown) => this.fail(error, 'load the project coordination details')),
     );
   }
 
