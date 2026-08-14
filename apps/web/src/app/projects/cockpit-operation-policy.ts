@@ -16,6 +16,7 @@ export const cockpitOperationIds = [
   'discovery-update',
   'discovery-source-link',
   'discovery-resolve',
+  'decision-review-save',
   'project-archive',
   'project-restore',
   'project-delete',

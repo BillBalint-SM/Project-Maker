@@ -11,6 +11,7 @@ import { DiscoveryFollowUpEditVersion0008DiscoveryFollowUpEditVersion17865216000
 import { RoundQuestionAssessmentOverrides0009RoundQuestionAssessmentOverrides1786608000000 } from '../migrations/0009-round-question-assessment-overrides';
 import { RoundAnswerValidationParity0010RoundAnswerValidationParity1786694400000 } from '../migrations/0010-round-answer-validation-parity';
 import { DiscoveryFollowUpSourceLinkage0011DiscoveryFollowUpSourceLinkage1786780800000 } from '../migrations/0011-discovery-follow-up-source-linkage';
+import { DecisionReviewInputs0012DecisionReviewInputs1786867200000 } from '../migrations/0012-decision-review-inputs';
 
 export type ApiMigration = new () => MigrationInterface;
 
@@ -26,6 +27,7 @@ export const migrationSequence: readonly ApiMigration[] = [
   RoundQuestionAssessmentOverrides0009RoundQuestionAssessmentOverrides1786608000000,
   RoundAnswerValidationParity0010RoundAnswerValidationParity1786694400000,
   DiscoveryFollowUpSourceLinkage0011DiscoveryFollowUpSourceLinkage1786780800000,
+  DecisionReviewInputs0012DecisionReviewInputs1786867200000,
 ];
 
 export function migrationsThrough(migrationName: string): readonly ApiMigration[] {

@@ -45,7 +45,7 @@ Minden részletes workflow ugyanarra a hét kérdésre válaszol:
 6. Mi akadályozhatja meg?
 7. Mi a biztonságos következő lépés?
 
-> **Fontos különbség:** a Project Maker discovery- és igénytisztázó eszköz. Nem általános projektmenedzsment-rendszer, nem feladatkezelő és nem erőforrás-tervező. A jelenlegi verzió készültségi értékelést mutat, de Decision Score-t, ajánlott döntést és automatikusan generált kimenetet még nem ad.
+> **Fontos különbség:** a Project Maker discovery- és igénytisztázó eszköz. Nem általános projektmenedzsment-rendszer, nem feladatkezelő és nem erőforrás-tervező. A jelenlegi verzió felkészültségi értékelést, Decision Score-t és becslési ajánlást mutat, de nem rögzít formális Go/Conditional Go/No-Go döntést, és nem készít automatikus kimenetet.
 
 ## Project Maker öt percben
 
@@ -601,7 +601,24 @@ Minden hiány művelete a megfelelő munkafelületre vezet: a `Workspace megnyit
 | `Az értékeléshez frissített interjúséma szükséges` | A forráskör nem a jelenlegi kanonikus kérdéskészletet tartalmazza | Frissítsd a projektsémát, majd indíts új kezdő interjút; ne próbáld a régi kört kézzel átírni |
 | Betöltési hiba és `Újrapróbálás` | A felkészültségi kérés nem fejeződött be | Ellenőrizd a kapcsolatot, válaszd az `Újrapróbálás` gombot, és csak sikeres betöltés után hozz döntést az értékekből |
 
-Az elérhetetlen vagy hibás értékelés nem akadályozza meg a Workspace és a discovery follow-up kezelését. Mentsd ezeket a szokásos módon; az értékelés helyreállása után ellenőrizd újra a hiányokat. A `Felkészültség` nem helyettesít üzleti döntést: SCORE-01.2 Decision Score, ajánlott döntés és a belőlük készült automatikus kimenetek jelenleg nem érhetők el.
+Az elérhetetlen vagy hibás értékelés nem akadályozza meg a Workspace és a discovery follow-up kezelését. Mentsd ezeket a szokásos módon; az értékelés helyreállása után ellenőrizd újra a hiányokat. A `Felkészültség` és a Decision Score egyaránt döntéstámogatás: egyik sem helyettesít üzleti döntést vagy készít automatikus kimenetet.
+
+## Döntési értékelés és becslési ajánlás
+
+A cockpit `Döntési értékelés` kártyája hat, projekt-szintű 1–5 értékelést tart meg: üzleti érték, stratégiai illeszkedés, sürgősség, bizonyosság, komplexitás és kockázat. A komplexitás és a kockázat fordított irányban számít. Az értékeket egyszerre, a `Döntési értékelés mentése` gombbal menti a rendszer; a hiányos értékelés megmarad, de nem kap részpontszámot vagy részleges ajánlást.
+
+**Előfeltétel a pontszámhoz:** mind a hat érték megvan, és a projekt aktuális kezdő interjúja a teljes, kanonikus sémából ad elérhető felkészültséget. Enélkül a kártya megmondja, hogy melyik feltétel hiányzik. A Workspace és a discovery follow-upok ilyenkor is a megszokott módon szerkeszthetők.
+
+A szerver jeleníti meg a `Decision Score`-t, annak `Magas` (legalább 65), `Közepes` (40–64) vagy `Alacsony` (40 alatti) címkéjét, a felkészültséget és a becslést blokkoló hiányok darabszámát. A kártya a súlyokat és a fordított irányt is megmutatja, de nem mutat külön dimenziónkénti részpontokat és nem tartalmaz kliensoldali pontszámítást.
+
+Az ajánlás sorrendje szándékosan szigorú:
+
+1. `Pontosítás szükséges`, ha van `Kritikus` hiány, a felkészültség 40% alatti, vagy kettőnél több becslést blokkoló hiány maradt.
+2. `Becslésre kész`, ha a Score és a felkészültség is legalább 65, és nincs becslést blokkoló hiány.
+3. `Becslés előkészíthető`, ha a Score legalább 40 és a felkészültség legalább 65.
+4. Minden más esetben `Pontosítás szükséges`.
+
+Ezek ajánlások, nem jóváhagyások: a rendszer nem változtat projektstátuszt, nem rögzít Go/Conditional Go/No-Go döntést, és nem készít becslést vagy generált dokumentumot. Ha új `INITIAL_INTAKE` kör lesz aktuális, a hat megadott érték megmarad, de a Score és az ajánlás az új forrás felkészültségéből frissül. Archivált projektben az értékelés látható, de csak olvasható; visszaállítás után ismét menthető. Mentési vagy betöltési hiba esetén az erre a kártyára vonatkozó hiba és `Újrapróbálás` jelenik meg, a többi cockpit-munka nem akad el.
 
 ## Discovery follow-upok kezelése
 
@@ -801,7 +818,7 @@ Jelenleg nem tartalmazza:
 
 - a discovery follow-up listát, annak döntéseit vagy gazdáit;
 - a customer follow-up ütemezést és pingállapotot;
-- automatikus readiness vagy Decision Score eredményt;
+- korábbi automatikus readiness vagy Decision Score eredményt;
 - a később, más revízió után beírt adatokat.
 
 Ezért átadáskor a Markdown mellett külön ellenőrizd a cockpit discovery follow-up listáját is.
@@ -1073,7 +1090,7 @@ Az alábbiak nem elrejtett funkciók és nem más menüpontban találhatók; a j
 - A lezárt körök története nem böngészhető az interjúoldalon; a Markdown-pillanatképekből tekinthető át.
 - A felkészültségi sáv nem állít át lifecycle státuszt, és nem helyettesíti a csapat üzleti döntését.
 - A `Blocking` önmagában útmutatás; csak `Required` jelöléssel együtt lesz lezárási kapu.
-- Nincs SCORE-01.2 Decision Score, ajánlott döntés vagy automatikusan generált kimenet; az elérhető completion, readiness és hiánylista nem ezek helyettesítője.
+- A Decision Score és a becslési ajánlás döntéstámogatás, nem formális Go/Conditional Go/No-Go döntés és nem automatikusan generált kimenet.
 
 ### Follow-up és kommunikáció
 

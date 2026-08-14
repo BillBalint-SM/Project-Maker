@@ -26,7 +26,7 @@ The historical guided-intake execution record is preserved in the tracked
 
 ## Scoring and output
 
-- [ ] **SCORE-01:** Completion, readiness, gaps, Decision Score, and recommended action implement the domain contract and have behavioral tests.
+- [x] **SCORE-01:** Completion, readiness, gaps, Decision Score, and recommended action implement the domain contract and have behavioral tests.
 - [ ] **OUTPUT-01:** Structured Markdown is the canonical generated specification.
 - [ ] **OUTPUT-02:** Acceptance criteria and user stories derive from the canonical specification.
 - [ ] **OUTPUT-03:** PDF and spreadsheet exports derive from the canonical specification and handle Hungarian text and dynamic content.
