@@ -30,9 +30,80 @@ p {
   margin-left: 1rem;
 }
 
+.status-hub-grid {
+  display: grid;
+  gap: 1.25rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-top: 1.25rem;
+}
+
+.activity-card {
+  grid-column: 1 / -1;
+}
+
+.status-details {
+  display: grid;
+  gap: 1rem;
+  margin: 0 0 1.25rem;
+}
+
+.status-details div {
+  display: grid;
+  gap: 0.25rem;
+}
+
+dt {
+  color: var(--p-text-muted-color);
+  font-size: 0.875rem;
+  font-weight: 700;
+}
+
+dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.status-hub-link {
+  color: var(--p-primary-color);
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.card-state {
+  margin: 0;
+}
+
+.activity-list {
+  display: grid;
+  gap: 0.9rem;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.activity-list li {
+  border-left: 0.2rem solid var(--p-primary-color);
+  display: grid;
+  gap: 0.25rem;
+  padding-left: 0.8rem;
+}
+
+.activity-list time {
+  color: var(--p-text-muted-color);
+  font-size: 0.875rem;
+}
+
 @media (max-width: 36rem) {
   .open-cockpit-link {
     display: block;
     margin: 1rem 0 0;
+  }
+
+  .status-hub-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .activity-card {
+    grid-column: auto;
   }
 }

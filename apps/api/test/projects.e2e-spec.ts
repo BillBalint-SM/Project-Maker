@@ -76,6 +76,26 @@ describe('ProjectsController (e2e)', () => {
     });
   });
 
+  it('returns recent project activity in human-readable form without raw audit details', async () => {
+    const projectId = await createProject('project-activity');
+    await request(app.getHttpServer()).post(`/projects/${projectId}/archive`).expect(201);
+
+    const response = await request(app.getHttpServer())
+      .get(`/projects/${projectId}/activity`)
+      .expect(200);
+
+    assert.equal(response.body.projectId, projectId);
+    assert.deepEqual(response.body.events, [
+      {
+        occurredAt: response.body.events[0]?.occurredAt,
+        summary: 'A projekt archiválva lett.',
+      },
+    ]);
+    assert.match(response.body.events[0]?.occurredAt ?? '', /^\d{4}-\d{2}-\d{2}T/);
+    assert.equal('eventType' in response.body.events[0], false);
+    assert.equal('payload' in response.body.events[0], false);
+  });
+
   it('keeps an open Initial Intake in the interview preparation state', async () => {
     const projectId = await createProject('preparation-status-intake-in-progress');
     await createCanonicalDecisionReviewRound(projectId);

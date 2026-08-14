@@ -40,5 +40,100 @@
         data-testid="open-project-cockpit-from-status"
       >Projektbeállítások és korábbi cockpit megnyitása</a>
     </p-card>
+
+    <div class="status-hub-grid">
+      <p-card data-testid="project-status-coordination">
+        <ng-template #title>Projektkoordináció</ng-template>
+        <ng-template #subtitle>A jelenlegi felelős és a következő konkrét lépés.</ng-template>
+
+        @if (coordinationLoading()) {
+          <p class="card-state" aria-live="polite">A koordináció betöltése folyamatban van…</p>
+        } @else if (coordinationError(); as error) {
+          <div class="card-state" role="alert">
+            <p>{{ error }}</p>
+            <p-button label="Újrapróbálás" (onClick)="loadCoordination()" />
+          </div>
+        } @else if (project(); as currentProject) {
+          <dl class="status-details">
+            <div>
+              <dt>Felelős</dt>
+              <dd>{{ currentProject.ballOwner ?? 'Még nincs kijelölve.' }}</dd>
+            </div>
+            <div>
+              <dt>Következő lépés</dt>
+              <dd>{{ currentProject.nextAction ?? 'Még nincs rögzítve.' }}</dd>
+            </div>
+            <div>
+              <dt>Határidő</dt>
+              <dd>{{ currentProject.dueAt ? (currentProject.dueAt | date: 'medium') : 'Még nincs rögzítve.' }}</dd>
+            </div>
+          </dl>
+          <a
+            class="status-hub-link"
+            [routerLink]="['/projects', projectId]"
+            fragment="workspace"
+            data-testid="project-status-edit-coordination"
+          >Koordináció szerkesztése</a>
+        }
+      </p-card>
+
+      <p-card data-testid="project-status-customer-communication">
+        <ng-template #title>Ügyfélkommunikáció</ng-template>
+        <ng-template #subtitle>Kapcsolattartó és a meglévő ügyfélműveletek belépési pontja.</ng-template>
+
+        @if (coordinationLoading()) {
+          <p class="card-state" aria-live="polite">Az ügyféladatok betöltése folyamatban van…</p>
+        } @else if (coordinationError(); as error) {
+          <div class="card-state" role="alert">
+            <p>{{ error }}</p>
+            <p-button label="Újrapróbálás" (onClick)="loadCoordination()" />
+          </div>
+        } @else if (project(); as currentProject) {
+          <dl class="status-details">
+            <div>
+              <dt>Kapcsolattartó</dt>
+              <dd>{{ currentProject.customerContactName }}</dd>
+            </div>
+            <div>
+              <dt>E-mail</dt>
+              <dd><a [href]="'mailto:' + currentProject.customerContactEmail">{{ currentProject.customerContactEmail }}</a></dd>
+            </div>
+          </dl>
+          <a
+            class="status-hub-link"
+            [routerLink]="['/projects', projectId]"
+            fragment="customer-communication"
+            data-testid="project-status-open-customer-communication"
+          >Ügyfélkommunikáció megnyitása</a>
+        }
+      </p-card>
+
+      <p-card class="activity-card" data-testid="project-status-activity">
+        <ng-template #title>Legutóbbi aktivitás</ng-template>
+        <ng-template #subtitle>Az utolsó öt, munkához szükséges projektváltozás.</ng-template>
+
+        @if (activityLoading()) {
+          <p class="card-state" aria-live="polite">Az aktivitás betöltése folyamatban van…</p>
+        } @else if (activityError(); as error) {
+          <div class="card-state" role="alert">
+            <p>{{ error }}</p>
+            <p-button label="Újrapróbálás" (onClick)="loadActivity()" />
+          </div>
+        } @else if (activity(); as currentActivity) {
+          @if (currentActivity.events.length === 0) {
+            <p class="card-state">Még nincs rögzített projektaktivitás.</p>
+          } @else {
+            <ol class="activity-list">
+              @for (item of currentActivity.events; track $index) {
+                <li>
+                  <strong>{{ item.summary }}</strong>
+                  <time [attr.datetime]="item.occurredAt">{{ item.occurredAt | date: 'medium' }}</time>
+                </li>
+              }
+            </ol>
+          }
+        }
+      </p-card>
+    </div>
   }
 </section>
