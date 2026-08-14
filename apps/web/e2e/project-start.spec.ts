@@ -119,41 +119,30 @@ function projectIdFromInterviewUrl(page: Page): string {
 }
 
 async function installInitialIntakeStartFailure(projectId: string): Promise<() => Promise<void>> {
+  const objectSuffix = requireUuidSuffix(projectId);
+  const triggerName = `e2e_initial_start_${objectSuffix}`;
+  const functionName = `e2e_initial_start_${objectSuffix}`;
   const client = new Client({ connectionString: requireE2eDatabaseUrl() });
   await client.connect();
   try {
-    await client.query(
-      'CREATE TABLE IF NOT EXISTS e2e_initial_intake_start_failures (project_id uuid PRIMARY KEY)',
-    );
-    await client.query(
-      'INSERT INTO e2e_initial_intake_start_failures (project_id) VALUES ($1)',
-      [projectId],
-    );
     await client.query(`
-      CREATE OR REPLACE FUNCTION e2e_reject_configured_initial_intake_start()
+      CREATE FUNCTION ${functionName}()
       RETURNS trigger
       LANGUAGE plpgsql
       AS $$
       BEGIN
-        IF EXISTS (
-          SELECT 1
-          FROM e2e_initial_intake_start_failures
-          WHERE project_id = NEW.project_id
-        ) THEN
+        IF NEW.project_id = '${projectId}'::uuid THEN
           RAISE EXCEPTION 'E2E configured initial intake start failure';
         END IF;
         RETURN NEW;
       END;
       $$;
     `);
-    await client.query(
-      'DROP TRIGGER IF EXISTS e2e_reject_configured_initial_intake_start ON interview_rounds',
-    );
     await client.query(`
-      CREATE TRIGGER e2e_reject_configured_initial_intake_start
+      CREATE TRIGGER ${triggerName}
       BEFORE INSERT ON interview_rounds
       FOR EACH ROW
-      EXECUTE FUNCTION e2e_reject_configured_initial_intake_start();
+      EXECUTE FUNCTION ${functionName}();
     `);
   } catch (error) {
     await client.end();
@@ -162,15 +151,22 @@ async function installInitialIntakeStartFailure(projectId: string): Promise<() =
 
   return async () => {
     try {
-      await client.query(
-        'DROP TRIGGER IF EXISTS e2e_reject_configured_initial_intake_start ON interview_rounds',
-      );
-      await client.query('DROP FUNCTION IF EXISTS e2e_reject_configured_initial_intake_start()');
-      await client.query('DROP TABLE IF EXISTS e2e_initial_intake_start_failures');
+      await client.query(`DROP TRIGGER IF EXISTS ${triggerName} ON interview_rounds`);
+      await client.query(`DROP FUNCTION IF EXISTS ${functionName}()`);
     } finally {
       await client.end();
     }
   };
+}
+
+function requireUuidSuffix(projectId: string): string {
+  const uuidSuffix = /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i
+    .exec(projectId)?.[0]
+    ?.replaceAll('-', '');
+  if (!uuidSuffix) {
+    throw new Error(`The project-start browser test expected a UUID project ID: ${projectId}`);
+  }
+  return uuidSuffix;
 }
 
 function requireE2eDatabaseUrl(): string {

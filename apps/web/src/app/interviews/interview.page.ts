@@ -33,6 +33,7 @@ const completionBlockedByPendingAssessmentMessage =
 
 type QuestionSaveStatus = 'idle' | 'saving' | 'saved' | 'error';
 type AssessmentMode = 'automatic' | 'partial' | 'not-relevant';
+type InitialRoundStartMode = 'after-schema-acceptance' | 'manual';
 
 interface QuestionAnswerState {
   readonly draft: AnswerValue | null;
@@ -217,7 +218,7 @@ export class InterviewPage implements OnInit, OnDestroy {
         this.selectedKeys.set(schema.questions.map((question) => question.stableKey));
         this.schemaSaving.set(false);
         if (!hasExistingSchema) {
-          this.startInitialRound(true);
+          this.startInitialRound('after-schema-acceptance');
           return;
         }
         this.feedback.set(
@@ -234,17 +235,17 @@ export class InterviewPage implements OnInit, OnDestroy {
   }
 
   createRound(): void {
-    this.startInitialRound(false);
+    this.startInitialRound('manual');
   }
 
   retryInitialRoundStart(): void {
-    this.startInitialRound(true);
+    this.startInitialRound('after-schema-acceptance');
   }
 
-  private startInitialRound(afterSchemaAcceptance: boolean): void {
+  private startInitialRound(mode: InitialRoundStartMode): void {
     if (this.roundSaving() || this.schema() === null) {
       if (this.schema() === null) {
-        this.actionError.set('Az interjúkör indítása előtt tedd közzé a projekt kérdéssémáját.');
+        this.actionError.set('Az interjúkör indítása előtt fogadd el a projekt kérdéssémáját.');
       }
       return;
     }
@@ -265,11 +266,11 @@ export class InterviewPage implements OnInit, OnDestroy {
       },
       error: (error: Error) => {
         this.actionError.set(
-          afterSchemaAcceptance
+          mode === 'after-schema-acceptance'
             ? 'A kérdésséma elfogadva van, de a kezdő interjúkör nem indult el. Próbáld újra az interjú indítását.'
             : error.message,
         );
-        this.initialRoundStartFailed.set(afterSchemaAcceptance);
+        this.initialRoundStartFailed.set(mode === 'after-schema-acceptance');
         this.roundSaving.set(false);
       },
     });
