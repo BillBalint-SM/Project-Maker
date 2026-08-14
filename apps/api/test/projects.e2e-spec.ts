@@ -4,6 +4,8 @@ import assert from 'node:assert/strict';
 import { after, before, describe, it } from 'node:test';
 import request from 'supertest';
 import { DataSource } from 'typeorm';
+import type { AnswerValue, BaseQuestionType } from '@project-maker/contracts';
+import { loadGeneralPlaybookV1 } from '@project-maker/contracts/general-playbook-runtime';
 
 import { AppModule } from '../src/app.module';
 
@@ -13,6 +15,13 @@ type InitialIntakeSnapshot = {
   readonly topic: string;
   readonly controlPoint: string;
   readonly text: string;
+};
+
+type DecisionReviewSnapshot = {
+  readonly id: string;
+  readonly type: BaseQuestionType;
+  readonly stableKey: string;
+  readonly options: readonly string[] | null;
 };
 
 describe('ProjectsController (e2e)', () => {
@@ -47,6 +56,336 @@ describe('ProjectsController (e2e)', () => {
     if (!listResponse.body.some((project: { id: string }) => project.id === projectId)) {
       throw new Error('created project was not returned by GET /projects');
     }
+  });
+
+  it('returns a blank Decision Review with every current availability blocker', async () => {
+    const projectId = await createProject('decision-review-unavailable');
+
+    const response = await request(app.getHttpServer())
+      .get(`/projects/${projectId}/decision-review`)
+      .expect(200);
+
+    assert.deepEqual(response.body, {
+      projectId,
+      inputs: {
+        businessValue: null,
+        strategicAlignment: null,
+        urgency: null,
+        confidence: null,
+        complexity: null,
+        risk: null,
+      },
+      dimensions: decisionReviewDimensions(),
+      ratingScale: { minimum: 1, maximum: 5 },
+      editable: true,
+      available: false,
+      unavailableReasons: ['INCOMPLETE_INPUT', 'NO_INITIAL_INTAKE'],
+    });
+  });
+
+  it('reports an unsupported current Initial Intake schema through Decision Review', async () => {
+    const projectId = await createProject('decision-review-unsupported-schema');
+    const bank = await request(app.getHttpServer()).get('/settings/base-questions').expect(200);
+    const firstStableKey = (bank.body.questions as Array<{ stableKey?: string }>)[0]?.stableKey;
+    if (!firstStableKey) {
+      throw new Error('Seeded question bank did not provide a source stable key.');
+    }
+    await request(app.getHttpServer())
+      .post(`/projects/${projectId}/question-schema`)
+      .send({
+        questions: [{ stableKey: firstStableKey, required: false, blocking: false }],
+      })
+      .expect(201);
+    await request(app.getHttpServer())
+      .post(`/projects/${projectId}/rounds`)
+      .send({ type: 'INITIAL_INTAKE' })
+      .expect(201);
+
+    const response = await request(app.getHttpServer())
+      .get(`/projects/${projectId}/decision-review`)
+      .expect(200);
+
+    assert.equal(response.body.available, false);
+    assert.deepEqual(response.body.unavailableReasons, [
+      'INCOMPLETE_INPUT',
+      'UNSUPPORTED_SCHEMA',
+    ]);
+  });
+
+  it('persists Decision Review inputs atomically with a redacted audit event', async () => {
+    const projectId = await createProject('decision-review-inputs');
+    const inputs = {
+      businessValue: 5,
+      strategicAlignment: 4,
+      urgency: 3,
+      confidence: 2,
+      complexity: 4,
+      risk: 5,
+    };
+
+    const updated = await request(app.getHttpServer())
+      .put(`/projects/${projectId}/decision-review`)
+      .send(inputs)
+      .expect(200);
+
+    assert.deepEqual(updated.body, {
+      projectId,
+      inputs,
+      dimensions: decisionReviewDimensions(),
+      ratingScale: { minimum: 1, maximum: 5 },
+      editable: true,
+      available: false,
+      unavailableReasons: ['NO_INITIAL_INTAKE'],
+    });
+
+    await request(app.getHttpServer())
+      .get(`/projects/${projectId}/decision-review`)
+      .expect(200)
+      .expect(updated.body);
+
+    const auditEvents = await dataSource.query<
+      Array<{ event_type: string; payload: Record<string, unknown> }>
+    >(
+      'SELECT "event_type", "payload" FROM "audit_events" WHERE "project_id" = $1 ORDER BY "created_at" ASC, "id" ASC',
+      [projectId],
+    );
+    assert.deepEqual(auditEvents, [
+      {
+        event_type: 'PROJECT_DECISION_INPUTS_UPDATED',
+        payload: {
+          changedDimensions:
+            'businessValue,strategicAlignment,urgency,confidence,complexity,risk',
+        },
+      },
+    ]);
+  });
+
+  it('returns the server-derived Decision Score and estimate-ready recommendation for a complete review', async () => {
+    const projectId = await createProject('decision-review-complete');
+    const inputs = {
+      businessValue: 5,
+      strategicAlignment: 4,
+      urgency: 3,
+      confidence: 2,
+      complexity: 4,
+      risk: 5,
+    };
+    await request(app.getHttpServer())
+      .patch(`/projects/${projectId}/workspace`)
+      .send({ ballOwner: 'Decision Review owner', status: 'DRAFT' })
+      .expect(200);
+    await createCanonicalDecisionReviewRound(projectId);
+
+    const response = await request(app.getHttpServer())
+      .put(`/projects/${projectId}/decision-review`)
+      .send(inputs)
+      .expect(200);
+
+    assert.deepEqual(response.body, {
+      projectId,
+      inputs,
+      available: true,
+      editable: true,
+      decisionScore: 68,
+      decisionScoreLabel: 'Magas',
+      recommendation: 'ESTIMATE_READY',
+      readinessPercentage: 100,
+      hasCriticalGap: false,
+      estimateBlockingGapCount: 0,
+      clarificationReasons: [],
+      clarificationMessages: [],
+      dimensions: [
+        { id: 'businessValue', weight: 0.25, inverted: false },
+        { id: 'strategicAlignment', weight: 0.15, inverted: false },
+        { id: 'urgency', weight: 0.15, inverted: false },
+        { id: 'confidence', weight: 0.15, inverted: false },
+        { id: 'complexity', weight: 0.1, inverted: true },
+        { id: 'risk', weight: 0.1, inverted: true },
+      ],
+      ratingScale: { minimum: 1, maximum: 5 },
+    });
+  });
+
+  it('requires clarification before a positive recommendation when a critical canonical gap remains', async () => {
+    const projectId = await createProject('decision-review-critical-gap');
+    const inputs = {
+      businessValue: 5,
+      strategicAlignment: 4,
+      urgency: 3,
+      confidence: 2,
+      complexity: 4,
+      risk: 5,
+    };
+
+    await request(app.getHttpServer())
+      .patch(`/projects/${projectId}/workspace`)
+      .send({ ballOwner: 'Decision Review owner', status: 'DRAFT' })
+      .expect(200);
+    await createCanonicalDecisionReviewRound(projectId, new Set(['general-001']));
+
+    const response = await request(app.getHttpServer())
+      .put(`/projects/${projectId}/decision-review`)
+      .send(inputs)
+      .expect(200);
+
+    assert.equal(response.body.available, true);
+    assert.equal(response.body.decisionScore, 67);
+    assert.equal(response.body.decisionScoreLabel, 'Magas');
+    assert.equal(response.body.readinessPercentage, 89);
+    assert.equal(response.body.hasCriticalGap, true);
+    assert.equal(response.body.estimateBlockingGapCount, 1);
+    assert.deepEqual(response.body.clarificationReasons, ['CRITICAL_GAP']);
+    assert.equal(response.body.recommendation, 'CLARIFICATION_REQUIRED');
+  });
+
+  it('retains partial Decision Review inputs but makes no audit or timestamp change for an identical update', async () => {
+    const projectId = await createProject('decision-review-no-op');
+    const inputs = {
+      businessValue: 3,
+      strategicAlignment: null,
+      urgency: null,
+      confidence: null,
+      complexity: null,
+      risk: null,
+    };
+
+    await request(app.getHttpServer())
+      .put(`/projects/${projectId}/decision-review`)
+      .send(inputs)
+      .expect(200)
+      .expect(({ body }) => {
+        assert.equal(body.available, false);
+        assert.deepEqual(body.unavailableReasons, ['INCOMPLETE_INPUT', 'NO_INITIAL_INTAKE']);
+      });
+    const before = await dataSource.query<Array<{ updated_at: string }>>(
+      'SELECT "updated_at"::text FROM "projects" WHERE "id" = $1',
+      [projectId],
+    );
+
+    await request(app.getHttpServer())
+      .put(`/projects/${projectId}/decision-review`)
+      .send(inputs)
+      .expect(200);
+
+    const after = await dataSource.query<Array<{ updated_at: string }>>(
+      'SELECT "updated_at"::text FROM "projects" WHERE "id" = $1',
+      [projectId],
+    );
+    assert.deepEqual(after, before);
+    const audits = await dataSource.query<Array<{ event_type: string }>>(
+      'SELECT "event_type" FROM "audit_events" WHERE "project_id" = $1',
+      [projectId],
+    );
+    assert.deepEqual(audits, [{ event_type: 'PROJECT_DECISION_INPUTS_UPDATED' }]);
+  });
+
+  it('retains Decision Review inputs when a later Initial Intake becomes current and recalculates from that source', async () => {
+    const projectId = await createProject('decision-review-current-source');
+    const inputs = {
+      businessValue: 5,
+      strategicAlignment: 4,
+      urgency: 3,
+      confidence: 2,
+      complexity: 4,
+      risk: 5,
+    };
+
+    await request(app.getHttpServer())
+      .patch(`/projects/${projectId}/workspace`)
+      .send({ ballOwner: 'Decision Review owner', status: 'DRAFT' })
+      .expect(200);
+    const firstRoundId = await createCanonicalDecisionReviewRound(projectId);
+    await request(app.getHttpServer())
+      .put(`/projects/${projectId}/decision-review`)
+      .send(inputs)
+      .expect(200)
+      .expect(({ body }) => assert.equal(body.readinessPercentage, 100));
+    await request(app.getHttpServer())
+      .post(`/projects/${projectId}/rounds/${firstRoundId}/complete`)
+      .expect(201);
+    await request(app.getHttpServer())
+      .post(`/projects/${projectId}/rounds`)
+      .send({ type: 'INITIAL_INTAKE' })
+      .expect(201);
+
+    const review = await request(app.getHttpServer())
+      .get(`/projects/${projectId}/decision-review`)
+      .expect(200);
+    assert.deepEqual(review.body.inputs, inputs);
+    assert.equal(review.body.available, true);
+    assert.equal(review.body.readinessPercentage, 43);
+    assert.equal(review.body.decisionScore, 62);
+    assert.equal(review.body.recommendation, 'CLARIFICATION_REQUIRED');
+    assert.deepEqual(review.body.clarificationReasons, [
+      'CRITICAL_GAP',
+      'TOO_MANY_ESTIMATE_BLOCKING_GAPS',
+    ]);
+  });
+
+  it('rejects Decision Review writes for an archived project and blocks deletion after any persisted input', async () => {
+    const projectId = await createProject('decision-review-lifecycle');
+    const inputs = {
+      businessValue: 3,
+      strategicAlignment: null,
+      urgency: null,
+      confidence: null,
+      complexity: null,
+      risk: null,
+    };
+
+    await request(app.getHttpServer())
+      .put(`/projects/${projectId}/decision-review`)
+      .send(inputs)
+      .expect(200);
+    await request(app.getHttpServer()).delete(`/projects/${projectId}`).expect(409);
+    await request(app.getHttpServer()).post(`/projects/${projectId}/archive`).expect(201);
+    await request(app.getHttpServer())
+      .put(`/projects/${projectId}/decision-review`)
+      .send({ ...inputs, businessValue: 4 })
+      .expect(409);
+    await request(app.getHttpServer()).post(`/projects/${projectId}/restore`).expect(201);
+    await request(app.getHttpServer())
+      .get(`/projects/${projectId}/decision-review`)
+      .expect(200)
+      .expect(({ body }) => assert.equal(body.inputs.businessValue, 3));
+  });
+
+  it('rejects incomplete and out-of-range Decision Review write bodies without persisting a partial change', async () => {
+    const projectId = await createProject('decision-review-validation');
+    const validInputs = {
+      businessValue: 5,
+      strategicAlignment: 4,
+      urgency: 3,
+      confidence: 2,
+      complexity: 4,
+      risk: 5,
+    };
+
+    await request(app.getHttpServer())
+      .put(`/projects/${projectId}/decision-review`)
+      .send({ businessValue: 4 })
+      .expect(400);
+    await request(app.getHttpServer())
+      .put(`/projects/${projectId}/decision-review`)
+      .send({ ...validInputs, risk: 6 })
+      .expect(400);
+
+    const review = await request(app.getHttpServer())
+      .get(`/projects/${projectId}/decision-review`)
+      .expect(200);
+    assert.deepEqual(review.body.inputs, {
+      businessValue: null,
+      strategicAlignment: null,
+      urgency: null,
+      confidence: null,
+      complexity: null,
+      risk: null,
+    });
+    const audits = await dataSource.query<Array<{ event_type: string }>>(
+      'SELECT "event_type" FROM "audit_events" WHERE "project_id" = $1',
+      [projectId],
+    );
+    assert.deepEqual(audits, []);
   });
 
   it('creates a project with the expected workspace and contact values', async () => {
@@ -2032,6 +2371,69 @@ describe('ProjectsController (e2e)', () => {
       throw new Error('Initial Intake round did not provide a source snapshot.');
     }
     return { roundId: source.roundId, snapshot };
+  }
+
+  async function createCanonicalDecisionReviewRound(
+    projectId: string,
+    skippedStableKeys = new Set<string>(),
+  ): Promise<string> {
+    const policy = await loadGeneralPlaybookV1();
+    await request(app.getHttpServer())
+      .post(`/projects/${projectId}/question-schema`)
+      .send({
+        questions: policy.items.map((item) => ({
+          stableKey: `${policy.id}-${String(item.id).padStart(3, '0')}`,
+          required: item.requiredForEstimate,
+          blocking: item.blockingIfMissing,
+        })),
+      })
+      .expect(201);
+    const round = await request(app.getHttpServer())
+      .post(`/projects/${projectId}/rounds`)
+      .send({ type: 'INITIAL_INTAKE' })
+      .expect(201);
+
+    for (const question of round.body.questions as DecisionReviewSnapshot[]) {
+      if (skippedStableKeys.has(question.stableKey)) {
+        continue;
+      }
+      await request(app.getHttpServer())
+        .patch(`/projects/${projectId}/rounds/${round.body.id}/answers/${question.id}`)
+        .send({ value: decisionReviewAnswer(question) })
+        .expect(200);
+    }
+    return round.body.id as string;
+  }
+
+  function decisionReviewAnswer(question: DecisionReviewSnapshot): AnswerValue {
+    if (question.type === 'TEXT' || question.type === 'LONG_TEXT') {
+      return `Decision Review evidence for ${question.stableKey}`;
+    }
+    if (question.type === 'BOOLEAN') {
+      return true;
+    }
+    if (question.type === 'NUMBER') {
+      return 1;
+    }
+    if (question.type === 'DATE') {
+      return '2026-08-10';
+    }
+    const option = question.options?.[0];
+    if (!option) {
+      throw new Error(`Decision Review question ${question.stableKey} has no selectable option.`);
+    }
+    return question.type === 'SINGLE_SELECT' ? option : [option];
+  }
+
+  function decisionReviewDimensions(): readonly Record<string, unknown>[] {
+    return [
+      { id: 'businessValue', weight: 0.25, inverted: false },
+      { id: 'strategicAlignment', weight: 0.15, inverted: false },
+      { id: 'urgency', weight: 0.15, inverted: false },
+      { id: 'confidence', weight: 0.15, inverted: false },
+      { id: 'complexity', weight: 0.1, inverted: true },
+      { id: 'risk', weight: 0.1, inverted: true },
+    ];
   }
 
   async function createInitialIntakeSources(

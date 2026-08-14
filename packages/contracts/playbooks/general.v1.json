@@ -106,21 +106,21 @@
         ]
       },
       "thresholds": {
-        "high": 75,
-        "medium": 55
+        "high": 65,
+        "medium": 40
       },
       "clarificationRules": {
         "criticalGap": true,
         "estimateBlockingGapsAbove": 2,
-        "readinessBelow": 55
+        "readinessBelow": 40
       },
       "estimateReadyRules": {
-        "decisionScoreAtLeast": 75,
-        "readinessAtLeast": 75,
+        "decisionScoreAtLeast": 65,
+        "readinessAtLeast": 65,
         "estimateBlockingGaps": 0
       },
       "conditionalEstimateRules": {
-        "decisionScoreAtLeast": 55,
+        "decisionScoreAtLeast": 40,
         "readinessAtLeast": 65
       }
     }

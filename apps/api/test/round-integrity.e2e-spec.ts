@@ -1549,4 +1549,112 @@ describe('Round integrity database boundary (PostgreSQL)', () => {
       await dataSource.query(`DROP DATABASE IF EXISTS "${migrationDatabaseName}" WITH (FORCE)`);
     }
   });
+
+  it('refuses concurrent Decision Review input persistence before migration 0012 can drop its columns', async () => {
+    const migrationDatabaseName = `score01_decision_review_down_test_${Date.now()}_${randomUUID().replaceAll('-', '')}`;
+    const migrationDatabaseUrl = createDatabaseUrlWithName(databaseUrl, migrationDatabaseName);
+    const revertApplicationName = `score01-decision-review-down-${randomUUID().replaceAll('-', '')}`;
+    const revertDatabaseUrl = createDatabaseUrlWithApplicationName(
+      migrationDatabaseUrl,
+      revertApplicationName,
+    );
+    let migrationDataSource: DataSource | undefined;
+    let pendingWriteDataSource: DataSource | undefined;
+    let revertDataSource: DataSource | undefined;
+    let pendingWriteRunner: QueryRunner | undefined;
+
+    try {
+      await dataSource.query(`CREATE DATABASE "${migrationDatabaseName}"`);
+      migrationDataSource = new DataSource({
+        type: 'postgres',
+        url: migrationDatabaseUrl,
+        synchronize: false,
+        migrations: [...migrationsForFreshDatabase()],
+      });
+      await migrationDataSource.initialize();
+      await migrationDataSource.runMigrations();
+
+      const projectId = randomUUID();
+      await migrationDataSource.query(
+        `INSERT INTO "projects" (
+          "id", "name", "customer_contact_name", "customer_contact_email"
+        ) VALUES ($1, 'SCORE-01.2 rollback race', 'Decision Review', 'decision-review@example.test')`,
+        [projectId],
+      );
+      pendingWriteDataSource = new DataSource({
+        type: 'postgres',
+        url: migrationDatabaseUrl,
+        synchronize: false,
+      });
+      await pendingWriteDataSource.initialize();
+      pendingWriteRunner = pendingWriteDataSource.createQueryRunner();
+      await pendingWriteRunner.connect();
+      await pendingWriteRunner.startTransaction();
+      await pendingWriteRunner.query(
+        'UPDATE "projects" SET "business_value_rating" = 5 WHERE "id" = $1',
+        [projectId],
+      );
+
+      revertDataSource = new DataSource({
+        type: 'postgres',
+        url: revertDatabaseUrl,
+        synchronize: false,
+        migrations: [...migrationsForFreshDatabase()],
+      });
+      await revertDataSource.initialize();
+      let revertOutcome: 'completed' | 'pending' | 'rejected' = 'pending';
+      const revertPromise = revertDataSource.undoLastMigration();
+      void revertPromise.then(
+        () => {
+          revertOutcome = 'completed';
+        },
+        () => {
+          revertOutcome = 'rejected';
+        },
+      );
+
+      const observedOutcome = await observeApplicationOutcomeOrLockWait(
+        migrationDataSource,
+        revertApplicationName,
+        () => revertOutcome,
+      );
+      assert.equal(observedOutcome, 'blocked');
+
+      await pendingWriteRunner.commitTransaction();
+      await assert.rejects(
+        revertPromise,
+        /Migration 0012 cannot remove persisted Decision Review inputs/i,
+      );
+
+      const ratingRows = await migrationDataSource.query<Array<{ businessValueRating: number }>>(
+        'SELECT "business_value_rating" AS "businessValueRating" FROM "projects" WHERE "id" = $1',
+        [projectId],
+      );
+      const migrationRows = await migrationDataSource.query<Array<{ name: string }>>(
+        'SELECT "name" FROM "migrations" WHERE "name" = $1',
+        ['DecisionReviewInputs0012DecisionReviewInputs1786867200000'],
+      );
+      assert.deepEqual(ratingRows, [{ businessValueRating: 5 }]);
+      assert.deepEqual(migrationRows, [
+        { name: 'DecisionReviewInputs0012DecisionReviewInputs1786867200000' },
+      ]);
+    } finally {
+      if (pendingWriteRunner?.isTransactionActive) {
+        await pendingWriteRunner.rollbackTransaction();
+      }
+      if (pendingWriteRunner) {
+        await pendingWriteRunner.release();
+      }
+      if (revertDataSource?.isInitialized) {
+        await revertDataSource.destroy();
+      }
+      if (pendingWriteDataSource?.isInitialized) {
+        await pendingWriteDataSource.destroy();
+      }
+      if (migrationDataSource?.isInitialized) {
+        await migrationDataSource.destroy();
+      }
+      await dataSource.query(`DROP DATABASE IF EXISTS "${migrationDatabaseName}" WITH (FORCE)`);
+    }
+  });
 });
