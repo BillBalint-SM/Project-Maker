@@ -85,6 +85,7 @@ export class InterviewPage implements OnInit, OnDestroy {
   readonly feedback = signal<string | null>(null);
   readonly schemaSaving = signal(false);
   readonly roundSaving = signal(false);
+  readonly initialRoundStartFailed = signal(false);
   readonly completing = signal(false);
 
   ngOnInit(): void {
@@ -111,6 +112,7 @@ export class InterviewPage implements OnInit, OnDestroy {
     this.loadError.set(null);
     this.actionError.set(null);
     this.feedback.set(null);
+    this.initialRoundStartFailed.set(false);
     this.round.set(null);
     this.answerStates.set(new Map());
     this.assessmentStates.set(new Map());
@@ -215,7 +217,7 @@ export class InterviewPage implements OnInit, OnDestroy {
         this.selectedKeys.set(schema.questions.map((question) => question.stableKey));
         this.schemaSaving.set(false);
         if (!hasExistingSchema) {
-          this.createRound();
+          this.startInitialRound(true);
           return;
         }
         this.feedback.set(
@@ -232,6 +234,14 @@ export class InterviewPage implements OnInit, OnDestroy {
   }
 
   createRound(): void {
+    this.startInitialRound(false);
+  }
+
+  retryInitialRoundStart(): void {
+    this.startInitialRound(true);
+  }
+
+  private startInitialRound(afterSchemaAcceptance: boolean): void {
     if (this.roundSaving() || this.schema() === null) {
       if (this.schema() === null) {
         this.actionError.set('Az interjúkör indítása előtt tedd közzé a projekt kérdéssémáját.');
@@ -249,11 +259,17 @@ export class InterviewPage implements OnInit, OnDestroy {
         this.round.set(round);
         this.answerStates.set(buildAnswerStates(round));
         this.assessmentStates.set(buildAssessmentStates(round));
+        this.initialRoundStartFailed.set(false);
         this.roundSaving.set(false);
         this.feedback.set('A kezdő interjúkör elindult.');
       },
       error: (error: Error) => {
-        this.actionError.set(error.message);
+        this.actionError.set(
+          afterSchemaAcceptance
+            ? 'A kérdésséma elfogadva van, de a kezdő interjúkör nem indult el. Próbáld újra az interjú indítását.'
+            : error.message,
+        );
+        this.initialRoundStartFailed.set(afterSchemaAcceptance);
         this.roundSaving.set(false);
       },
     });

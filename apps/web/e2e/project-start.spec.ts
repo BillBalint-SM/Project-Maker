@@ -1,4 +1,12 @@
+import { createRequire } from 'node:module';
+import { resolve } from 'node:path';
+
 import { expect, test, type Locator, type Page } from '@playwright/test';
+
+const requireFromApi = createRequire(resolve(process.cwd(), '..', 'api', 'package.json'));
+const { Client } = requireFromApi('pg') as {
+  readonly Client: new (configuration: { readonly connectionString: string }) => DatabaseClient;
+};
 
 test.describe('project start journey', () => {
   test('creates a project from its own page and opens the project schema', async ({ page }) => {
@@ -34,6 +42,44 @@ test.describe('project start journey', () => {
     expect(roundRequests).toHaveLength(1);
     await expect(page.getByTestId('create-interview-round-button')).toHaveCount(0);
   });
+
+  test('offers a dedicated retry when the first automatic interview start fails', async ({ page }) => {
+    await createProjectAndOpenSchema(page);
+    const projectId = projectIdFromInterviewUrl(page);
+    const clearStartFailure = await installInitialIntakeStartFailure(projectId);
+
+    try {
+      const schemaResponse = page.waitForResponse(
+        (response) =>
+          response.request().method() === 'POST' &&
+          /\/api\/projects\/[^/]+\/question-schema$/.test(new URL(response.url()).pathname),
+      );
+      const failedStartResponse = page.waitForResponse(
+        (response) =>
+          response.request().method() === 'POST' &&
+          new URL(response.url()).pathname === `/api/projects/${projectId}/rounds`,
+      );
+      await (await nativeButton(page, 'publish-project-schema-button')).click();
+      expect((await schemaResponse).status()).toBe(201);
+      expect((await failedStartResponse).status()).toBeGreaterThanOrEqual(500);
+
+      await expect(page.getByTestId('interview-action-error-text')).toContainText(
+        'A kérdésséma elfogadva van, de a kezdő interjúkör nem indult el.',
+      );
+      await expect(page.getByTestId('retry-initial-intake-button')).toBeVisible();
+    } finally {
+      await clearStartFailure();
+    }
+
+    const retriedStartResponse = page.waitForResponse(
+      (response) =>
+        response.request().method() === 'POST' &&
+        new URL(response.url()).pathname === `/api/projects/${projectId}/rounds`,
+    );
+    await (await nativeButton(page, 'retry-initial-intake-button')).click();
+    expect((await retriedStartResponse).status()).toBe(201);
+    await expect(page.getByTestId('active-round-resume-state')).toBeVisible();
+  });
 });
 
 async function createProjectAndOpenSchema(page: Page) {
@@ -55,10 +101,92 @@ async function createProjectAndOpenSchema(page: Page) {
   );
   await (await nativeButton(page, 'create-project-submit')).click();
   expect((await createResponse).status()).toBe(201);
+  await expect(page).toHaveURL(/\/projects\/[^/]+\/interview$/);
 }
 
 async function nativeButton(page: { getByTestId(testId: string): Locator }, testId: string) {
   const button = page.getByTestId(testId).locator('button');
   await expect(button).toHaveCount(1);
   return button;
+}
+
+function projectIdFromInterviewUrl(page: Page): string {
+  const projectId = /\/projects\/([^/]+)\/interview$/.exec(new URL(page.url()).pathname)?.[1];
+  if (!projectId) {
+    throw new Error(`The project interview URL did not contain a project ID: ${page.url()}`);
+  }
+  return projectId;
+}
+
+async function installInitialIntakeStartFailure(projectId: string): Promise<() => Promise<void>> {
+  const client = new Client({ connectionString: requireE2eDatabaseUrl() });
+  await client.connect();
+  try {
+    await client.query(
+      'CREATE TABLE IF NOT EXISTS e2e_initial_intake_start_failures (project_id uuid PRIMARY KEY)',
+    );
+    await client.query(
+      'INSERT INTO e2e_initial_intake_start_failures (project_id) VALUES ($1)',
+      [projectId],
+    );
+    await client.query(`
+      CREATE OR REPLACE FUNCTION e2e_reject_configured_initial_intake_start()
+      RETURNS trigger
+      LANGUAGE plpgsql
+      AS $$
+      BEGIN
+        IF EXISTS (
+          SELECT 1
+          FROM e2e_initial_intake_start_failures
+          WHERE project_id = NEW.project_id
+        ) THEN
+          RAISE EXCEPTION 'E2E configured initial intake start failure';
+        END IF;
+        RETURN NEW;
+      END;
+      $$;
+    `);
+    await client.query(
+      'DROP TRIGGER IF EXISTS e2e_reject_configured_initial_intake_start ON interview_rounds',
+    );
+    await client.query(`
+      CREATE TRIGGER e2e_reject_configured_initial_intake_start
+      BEFORE INSERT ON interview_rounds
+      FOR EACH ROW
+      EXECUTE FUNCTION e2e_reject_configured_initial_intake_start();
+    `);
+  } catch (error) {
+    await client.end();
+    throw error;
+  }
+
+  return async () => {
+    try {
+      await client.query(
+        'DROP TRIGGER IF EXISTS e2e_reject_configured_initial_intake_start ON interview_rounds',
+      );
+      await client.query('DROP FUNCTION IF EXISTS e2e_reject_configured_initial_intake_start()');
+      await client.query('DROP TABLE IF EXISTS e2e_initial_intake_start_failures');
+    } finally {
+      await client.end();
+    }
+  };
+}
+
+function requireE2eDatabaseUrl(): string {
+  const databaseUrl = process.env.DATABASE_URL;
+  if (!databaseUrl) {
+    throw new Error('DATABASE_URL is required for the project-start browser tests.');
+  }
+  const databaseName = new URL(databaseUrl).pathname.slice(1).toLowerCase();
+  if (!databaseName.includes('e2e') && !databaseName.includes('test')) {
+    throw new Error('The project-start browser tests require an isolated E2E/test database.');
+  }
+  return databaseUrl;
+}
+
+interface DatabaseClient {
+  connect(): Promise<void>;
+  end(): Promise<void>;
+  query(sql: string, parameters?: readonly unknown[]): Promise<unknown>;
 }
