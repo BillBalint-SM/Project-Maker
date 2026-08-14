@@ -4,6 +4,168 @@ The domain language used to describe discovery projects, intake work, and their 
 
 ## Language
 
+**Project preparation journey**:
+The primary employee journey for a PM, PO, or BA from selecting a project,
+through completing the Initial Intake and resolving its resulting work, to
+preparing or being ready for estimation. It uses named task contexts rather
+than requiring a person to discover prerequisite work by scrolling a project
+overview.
+_Avoid_: Cockpit scroll journey, administrator configuration journey
+
+**Project status**:
+The compact project-specific entry context that shows the current preparation
+state, operational coordination data, one next relevant task, customer
+communication actions, and recent human-readable activity. It is not the
+container for every project workflow or for raw diagnostic data.
+_Avoid_: One-page project workspace, all-workflow editor
+
+**Portfolio overview**:
+The application-level starting context for current projects, their preparation
+states, and the most important next actions. It does not replace a selected
+project's working context or the active project queue.
+_Avoid_: Full project dossier, unfiltered project list
+
+**Active project queue**:
+A prioritized cross-project list of projects in active preparation, each with
+one clear next action. It is distinct from a queue of individual discovery
+follow-ups.
+_Avoid_: Discovery follow-up queue, project archive
+
+**Selected project context**:
+The visible context while a person works in one project. It identifies the
+project and supplies a return route to the list from which the work began; it
+is not a hidden global selection that persists across unrelated application
+areas.
+_Avoid_: Implicit current project, global sticky project state
+
+**Project context navigation**:
+The compact navigation inside a Selected project context: Projektállapot,
+Felmérés, Felkészültség, Döntési értékelés, Markdown terv, and
+Projektbeállítások. A context may explain a missing prerequisite but is not
+hidden merely because the project is earlier in preparation.
+_Avoid_: Global application menu, scroll-only project navigation
+
+**Navigation boundary**:
+A change between a named global application context or a named Project context
+is a page and URL transition. Setup steps, filters, selected records, revision
+selection, previews, and activity detail are local view state; accepting a
+Project question schema is the deliberate transition from project creation to
+the Initial Intake interview.
+_Avoid_: Scroll navigation, URL for every transient selection, hidden context switch
+
+**Project settings**:
+The project-scoped administration context for basic project data, customer
+contact details, customer email configuration, archive, and deletion. It is
+separate from active project preparation work.
+_Avoid_: Day-to-day project coordination, hidden destructive controls
+
+**Operational coordination data**:
+The ball owner, one next action, and due date used to coordinate active
+project preparation. It is visible and quickly editable from employee working
+contexts rather than buried in Project settings.
+_Avoid_: Customer contact, project lifecycle control
+
+**Question Bank**:
+The organization-maintained, configurable source collection of available
+questions. It is administered separately from choosing a project's questions.
+_Avoid_: Project question schema, interview round
+
+**Published Question Bank version**:
+The versioned, published Question Bank state from which a new Project question
+schema may select questions. Editing occurs in a draft and does not rewrite a
+previously approved Project question schema.
+_Avoid_: Live mutation of an active interview, unversioned question source
+
+**Project question schema**:
+The approved selection of Question Bank questions for one project. Its
+acceptance creates and opens that project's Initial Intake interview round.
+_Avoid_: Editing the Question Bank, unanswered interview
+
+**Unavailable Project question schema**:
+The project-start situation in which no active Question Bank question can be
+selected. The schema cannot be accepted or start an interview, while the
+entered project basic data remains available to resume after the Question Bank
+is corrected.
+_Avoid_: Empty interview round, discarded project-start input
+
+**Project-start draft**:
+A persistent project created from valid basic data before its Project question
+schema is accepted. It remains resumable and is visibly in the
+`Kérdésséma szükséges` preparation state until the interview starts.
+_Avoid_: Browser-only wizard draft, silently abandoned input
+
+**Frozen Project question schema**:
+The Project question schema that belongs to a started or completed Initial
+Intake interview round. It is not changed in place; a different assessment
+uses a newly accepted schema and a new Initial Intake round.
+_Avoid_: Rewriting answered questions, mutable historical assessment
+
+**Post-interview readiness transition**:
+The direct transition from a completed Initial Intake interview to that
+project's Felkészültség context, where its current gaps are understood and
+acted on before the next preparation stage.
+_Avoid_: Returning blindly to a global list, treating completion as readiness
+
+**Project preparation state**:
+The one employee-facing preparation state shown for an active project:
+`Kérdésséma szükséges`, `Felmérés folyamatban`, `Tisztázás szükséges`,
+`Döntési értékelés szükséges`, `Becslés előkészíthető`, or `Becslésre kész`.
+It conveys the next stage of project preparation, not a raw persistence status.
+_Avoid_: DRAFT, inferred priority score, multiple competing project states
+
+**Discovery follow-up queue**:
+The cross-project working view of open Discovery follow-ups. It does not
+include customer communication follow-ups.
+_Avoid_: Active project queue, customer follow-up queue
+
+**Human-readable project activity**:
+An employee-facing chronological summary of project changes expressed in
+domain language. Raw audit event codes and payloads are diagnostic details,
+not the normal project preparation journey.
+_Avoid_: Raw audit log, technical event feed
+
+**Project archive**:
+The deliberate removal of a project from active preparation lists while
+retaining its readable history. Restoring an archived project resumes its
+preparation at the `Kérdésséma szükséges` state.
+_Avoid_: Deleted project, completed estimation handoff
+
+**Markdown template**:
+A named, reusable, user-editable Markdown structure stored for future
+Markdown revision generation. Multiple templates may be saved separately;
+editing one never rewrites an already saved immutable Markdown revision.
+_Avoid_: Markdown revision, hard-coded renderer, editable historical snapshot
+
+**Markdown template library**:
+The organization-level collection of named Markdown templates available when a
+project generates a future Markdown revision.
+_Avoid_: Project-owned template copy, Markdown revision history
+
+**Default Markdown template**:
+The initial published Markdown template available from the Markdown template
+library. It gives every project a usable, human-readable starting point
+without requiring a person to create a template before its first Markdown
+revision.
+_Avoid_: Hard-coded renderer, mandatory custom template setup
+
+**Published Markdown template version**:
+A versioned Markdown template state that is eligible for future revision
+generation. Template editing is performed as a draft; a generated Markdown
+revision records the selected template's name and published version.
+_Avoid_: Editable historical revision, unversioned production template
+
+**Required Markdown template placeholder**:
+A Markdown template placeholder whose project data must be available before a
+revision can be generated. Missing required data blocks generation with a
+specific explanation; an optional placeholder's block is omitted instead.
+_Avoid_: Silent blank value, misleading incomplete document
+
+**Markdown template placeholder**:
+A documented, safe reference to supported project data that a Markdown
+template can render. It is not arbitrary executable logic or an exposed raw
+data payload.
+_Avoid_: Script, unrestricted interpolation, default JSON dump
+
 **Discovery follow-up**:
 A project-owned accountable discovery work item with a question, owner, due date, status, and next step.
 _Avoid_: Customer email follow-up, task
