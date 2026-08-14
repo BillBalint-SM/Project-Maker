@@ -1,5 +1,5 @@
 import { Component, OnDestroy, OnInit, inject, signal } from '@angular/core';
-import { ActivatedRoute, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { forkJoin } from 'rxjs';
 import { ButtonModule } from 'primeng/button';
 import { CardModule } from 'primeng/card';
@@ -68,6 +68,7 @@ interface QuestionAssessmentState {
 })
 export class InterviewPage implements OnInit, OnDestroy {
   private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
   private readonly questionBankApi = inject(QuestionBankApiService);
   private readonly interviewApi = inject(InterviewApiService);
   private readonly autosaveTimers = new Map<string, ReturnType<typeof setTimeout>>();
@@ -548,7 +549,7 @@ export class InterviewPage implements OnInit, OnDestroy {
         this.answerStates.set(buildAnswerStates(completedRound));
         this.assessmentStates.set(buildAssessmentStates(completedRound));
         this.completing.set(false);
-        this.feedback.set('Az interjúkör lezárult.');
+        void this.router.navigate(['/projects', this.projectId, 'readiness']);
       },
       error: (error: Error) => {
         this.actionError.set(error.message);

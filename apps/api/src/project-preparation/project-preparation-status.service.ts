@@ -5,6 +5,7 @@ import type {
 } from '@project-maker/contracts';
 import { DataSource } from 'typeorm';
 
+import { AuditEvent } from '../audit/audit-event.entity';
 import { DecisionReviewService } from '../decision-review/decision-review.service';
 import { findCurrentInitialIntakeSource } from '../interviews/current-initial-intake-source';
 import { Project } from '../projects/project.entity';
@@ -31,9 +32,13 @@ export class ProjectPreparationStatusService {
   ) {}
 
   async getStatus(projectId: string): Promise<ProjectPreparationStatus> {
-    const [project, hasSchema] = await Promise.all([
+    const [project, hasSchema, latestRestoration] = await Promise.all([
       this.dataSource.getRepository(Project).findOneBy({ id: projectId }),
       this.dataSource.getRepository(ProjectQuestionSchemaEntity).existsBy({ projectId }),
+      this.dataSource.getRepository(AuditEvent).findOne({
+        where: { projectId, eventType: 'PROJECT_RESTORED' },
+        order: { createdAt: 'DESC', id: 'DESC' },
+      }),
     ]);
     if (!project) {
       throw new NotFoundException('Project not found.');
@@ -43,6 +48,12 @@ export class ProjectPreparationStatusService {
     }
 
     const sourceRound = await findCurrentInitialIntakeSource(this.dataSource.manager, projectId);
+    if (
+      latestRestoration &&
+      (!sourceRound || sourceRound.createdAt <= latestRestoration.createdAt)
+    ) {
+      return status(projectId, 'SCHEMA_REQUIRED', 'Kérdésséma szükséges', interviewAction);
+    }
     if (!sourceRound || sourceRound.status === 'OPEN') {
       return status(projectId, 'INTAKE_IN_PROGRESS', 'Felmérés folyamatban', interviewAction);
     }

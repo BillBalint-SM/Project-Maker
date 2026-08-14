@@ -137,6 +137,30 @@ describe('ProjectsController (e2e)', () => {
     });
   });
 
+  it('restarts preparation at schema selection after restoring retained intake history', async () => {
+    const projectId = await createProject('preparation-status-after-restoration');
+    const roundId = await createCanonicalDecisionReviewRound(projectId);
+    await request(app.getHttpServer())
+      .post(`/projects/${projectId}/rounds/${roundId}/complete`)
+      .expect(201);
+    await request(app.getHttpServer()).post(`/projects/${projectId}/archive`).expect(201);
+    await request(app.getHttpServer()).post(`/projects/${projectId}/restore`).expect(201);
+
+    const response = await request(app.getHttpServer())
+      .get(`/projects/${projectId}/preparation-status`)
+      .expect(200);
+
+    assert.deepEqual(response.body, {
+      projectId,
+      state: 'SCHEMA_REQUIRED',
+      label: 'Kérdésséma szükséges',
+      primaryAction: {
+        label: 'Felmérés megnyitása',
+        target: 'INTERVIEW',
+      },
+    });
+  });
+
   it('routes an unsupported completed schema to readiness clarification', async () => {
     const projectId = await createProject('preparation-status-unsupported-schema');
     const bank = await request(app.getHttpServer()).get('/settings/base-questions').expect(200);
