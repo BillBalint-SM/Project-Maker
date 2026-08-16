@@ -78,7 +78,7 @@ test.describe.serial('OUTPUT-01 Markdown template library employee workflow', ()
     await page.goto(`/projects/${blockedProject.id}/markdown`);
     await page.getByTestId('markdown-template-select').selectOption(required.id);
     await page.getByTestId('generate-markdown-button').click();
-    await expect(page.getByTestId('markdown-action-error')).toContainText('project.schema');
+    await expect(page.getByTestId('markdown-action-error')).toContainText('Elfogadott projekt-kérdésséma');
 
     expect((await request.post(`/api/projects/${blockedProject.id}/archive`)).status()).toBe(201);
     await page.getByTestId('generate-markdown-button').click();

@@ -48,8 +48,8 @@
 
         <p-card>
           <ng-template #title>Biztonságos placeholderek</ng-template>
-          <p>A <code>?</code> jelű használat opcionális, például <code>{{ '{{project.readiness?}}' }}</code>.</p>
-          <ul>@for (placeholder of placeholders; track placeholder) { <li><code>{{ '{{' + placeholder + '}}' }}</code></li> }</ul>
+          <p>A projektadat-függő blokkok <code>?</code> jellel opcionálissá tehetők. Az opcionális placeholder mindig külön Markdown blokk legyen; ha nincs adat, a közvetlenül előtte álló címsorral együtt kimarad.</p>
+          <ul>@for (placeholder of placeholders; track placeholder.name) { <li><code>{{ '{{' + placeholder.name + (placeholder.optional ? '?' : '') + '}}' }}</code> — {{ placeholder.label }} · {{ placeholder.optional ? 'opcionálisan elhagyható' : 'mindig kötelező' }}</li> }</ul>
         </p-card>
 
         @if (preview(); as content) {

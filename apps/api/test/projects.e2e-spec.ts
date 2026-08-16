@@ -201,6 +201,13 @@ describe('ProjectsController (e2e)', () => {
       .post('/settings/markdown-templates')
       .send({ name: 'Nem biztonságos sablon', draftContent: '{{process.env}}' })
       .expect(400);
+    await request(app.getHttpServer())
+      .post('/settings/markdown-templates')
+      .send({
+        name: 'Beágyazott opcionális sablon',
+        draftContent: 'Felkészültség: {{project.readiness?}}',
+      })
+      .expect(400);
 
     const projectId = await createProject('markdown-required-placeholder');
     const template = await request(app.getHttpServer())
@@ -217,7 +224,45 @@ describe('ProjectsController (e2e)', () => {
       .post(`/projects/${projectId}/markdown-revisions`)
       .send({ reason: 'MANUAL', templateId: template.body.id })
       .expect(409)
-      .expect(({ body }) => assert.match(body.message, /project\.schema/));
+      .expect(({ body }) => assert.match(body.message, /Elfogadott projekt-kérdésséma/));
+
+    for (const [placeholder, expectedLabel] of [
+      ['project.readiness', 'Felkészültség'],
+      ['project.decisionReview', 'Döntési értékelés'],
+    ] as const) {
+      const requiredTemplate = await request(app.getHttpServer())
+        .post('/settings/markdown-templates')
+        .send({
+          name: `Kötelező ${expectedLabel} ${projectId}`,
+          draftContent: `# {{project.name}}\n\n{{${placeholder}}}`,
+        })
+        .expect(201);
+      await request(app.getHttpServer())
+        .post(`/settings/markdown-templates/${requiredTemplate.body.id as string}/publish`)
+        .expect(201);
+      await request(app.getHttpServer())
+        .post(`/projects/${projectId}/markdown-revisions`)
+        .send({ reason: 'MANUAL', templateId: requiredTemplate.body.id })
+        .expect(409)
+        .expect(({ body }) => assert.match(body.message, new RegExp(expectedLabel)));
+    }
+
+    const optionalTemplate = await request(app.getHttpServer())
+      .post('/settings/markdown-templates')
+      .send({
+        name: `Opcionális blokkok ${projectId}`,
+        draftContent: '# {{project.name}}\n\n## Felkészültség\n\n{{project.readiness?}}\n\n## Döntési értékelés\n\n{{project.decisionReview?}}',
+      })
+      .expect(201);
+    await request(app.getHttpServer())
+      .post(`/settings/markdown-templates/${optionalTemplate.body.id as string}/publish`)
+      .expect(201);
+    const optionalRevision = await request(app.getHttpServer())
+      .post(`/projects/${projectId}/markdown-revisions`)
+      .send({ reason: 'MANUAL', templateId: optionalTemplate.body.id })
+      .expect(201);
+    assert.equal(optionalRevision.body.content.includes('## Felkészültség'), false);
+    assert.equal(optionalRevision.body.content.includes('## Döntési értékelés'), false);
 
     await request(app.getHttpServer()).post(`/projects/${projectId}/archive`).expect(201);
     await request(app.getHttpServer())
@@ -225,6 +270,47 @@ describe('ProjectsController (e2e)', () => {
       .send({ reason: 'MANUAL' })
       .expect(409)
       .expect(({ body }) => assert.match(body.message, /Archived projects/));
+  });
+
+  it('renders every Decision Review input in domain language', async () => {
+    const projectId = await createProject('markdown-decision-review-inputs');
+    const roundId = await createCanonicalDecisionReviewRound(projectId);
+    await request(app.getHttpServer())
+      .post(`/projects/${projectId}/rounds/${roundId}/complete`)
+      .expect(201);
+    await request(app.getHttpServer())
+      .put(`/projects/${projectId}/decision-review`)
+      .send({
+        businessValue: 5,
+        strategicAlignment: 4,
+        urgency: 3,
+        confidence: 4,
+        complexity: 2,
+        risk: 1,
+      })
+      .expect(200);
+    const template = await request(app.getHttpServer())
+      .post('/settings/markdown-templates')
+      .send({
+        name: `Döntési bemenetek ${projectId}`,
+        draftContent: '# {{project.name}}\n\n{{project.decisionReview}}',
+      })
+      .expect(201);
+    await request(app.getHttpServer())
+      .post(`/settings/markdown-templates/${template.body.id as string}/publish`)
+      .expect(201);
+
+    const revision = await request(app.getHttpServer())
+      .post(`/projects/${projectId}/markdown-revisions`)
+      .send({ reason: 'MANUAL', templateId: template.body.id })
+      .expect(201);
+    assert.match(revision.body.content, /Üzleti érték: 5/);
+    assert.match(revision.body.content, /Stratégiai illeszkedés: 4/);
+    assert.match(revision.body.content, /Sürgősség: 3/);
+    assert.match(revision.body.content, /Bizonyosság: 4/);
+    assert.match(revision.body.content, /Komplexitás: 2/);
+    assert.match(revision.body.content, /Kockázat: 1/);
+    assert.equal(revision.body.content.includes('ESTIMATE_'), false);
   });
 
   it('reports the next preparation action for a project without an accepted question schema', async () => {

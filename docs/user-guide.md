@@ -814,7 +814,7 @@ A forráspillanatkép jelenleg tartalmazza:
 - a körök kérdéspillanatképeit és mentett válaszait;
 - a revízió létrehozási okát, verzióját és időpontját.
 
-Az opcionális sablonblokkok kimaradhatnak, ha a hozzájuk tartozó adat még nem elérhető. A kötelező placeholder hiánya ehelyett konkrét hibaüzenettel leállítja a generálást. A revízió továbbra sem tartalmazza:
+Az opcionális sablonblokkok a közvetlenül előttük álló címsorral együtt kimaradnak, ha a hozzájuk tartozó adat még nem elérhető. A kötelező placeholder hiánya ehelyett az érintett előkészítési adat magyar nevét megadó hibaüzenettel leállítja a generálást. A revízió továbbra sem tartalmazza:
 
 - a discovery follow-up listát, annak döntéseit vagy gazdáit;
 - a customer follow-up ütemezést és pingállapotot;
@@ -889,7 +889,7 @@ A globális navigáció `Markdown beállítások` oldalán több szervezeti sabl
 4. A `Publikálás` változatlan, sorszámozott verziót hoz létre. A következő szerkesztés új draft és új publikált verzió lesz.
 5. A projekt Markdown oldalán csak publikált verzió választható. Egy már létrejött revízió mindig megtartja a használt sablon nevét, verzióját és kész tartalmát.
 
-A felsorolt placeholderek zárt, dokumentált készletet alkotnak. A `?` jelölés (például `{{project.readiness?}}`) opcionális teljes blokkot jelent; ismeretlen vagy hibás placeholderrel a draft nem menthető vagy publikálható. A sablon nem futtat kódot és nem fér hozzá raw audit payloadhoz.
+A felsorolt placeholderek zárt, dokumentált készletet alkotnak; a felület mindegyiknél jelzi a magyar megnevezést és azt, hogy az adat mindig rendelkezésre áll-e, vagy opcionálisan elhagyható. A `?` jelölés (például `{{project.readiness?}}`) külön Markdown blokkban álló opcionális teljes blokkot jelent; ismeretlen, hibás vagy szövegbe ágyazott opcionális placeholderrel a draft nem menthető vagy publikálható. A sablon nem futtat kódot és nem fér hozzá raw audit payloadhoz.
 
 ## Audit history: mi történt a projekttel?
 

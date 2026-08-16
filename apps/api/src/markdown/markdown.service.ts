@@ -9,6 +9,7 @@ import {
 } from '@nestjs/common';
 import type {
   CreateMarkdownRevisionInput,
+  DecisionRecommendation,
   MarkdownGenerationConfiguration,
   InterviewRound,
   MarkdownRevision,
@@ -724,9 +725,9 @@ function renderInitialIntake(rounds: readonly InterviewRound[]): string | null {
   ].join('\n').trim();
 }
 
-function renderReadiness(readiness: ProjectReadiness): string {
+function renderReadiness(readiness: ProjectReadiness): string | null {
   if (!readiness.available) {
-    return `## Felkészültség\n\nNem elérhető: ${readiness.reason}.`;
+    return null;
   }
   return [
     '## Felkészültség',
@@ -742,19 +743,40 @@ function renderReadiness(readiness: ProjectReadiness): string {
   ].join('\n');
 }
 
-function renderDecisionReview(review: ProjectDecisionReview): string {
+function renderDecisionReview(review: ProjectDecisionReview): string | null {
   if (!review.available) {
-    return `## Döntési értékelés\n\nNem elérhető: ${review.unavailableReasons.join(', ')}.`;
+    return null;
   }
   return [
     '## Döntési értékelés',
     '',
+    '### Értékelési bemenetek',
+    '',
+    `- Üzleti érték: ${review.inputs.businessValue}`,
+    `- Stratégiai illeszkedés: ${review.inputs.strategicAlignment}`,
+    `- Sürgősség: ${review.inputs.urgency}`,
+    `- Bizonyosság: ${review.inputs.confidence}`,
+    `- Komplexitás: ${review.inputs.complexity}`,
+    `- Kockázat: ${review.inputs.risk}`,
+    '',
+    '### Eredmény',
+    '',
     `- Döntési pontszám: ${review.decisionScore} — ${escapeMarkdownInline(review.decisionScoreLabel)}`,
-    `- Ajánlás: ${review.recommendation}`,
+    `- Ajánlás: ${decisionRecommendationLabel(review.recommendation)}`,
     `- Felkészültség: ${review.readinessPercentage}%`,
     `- Becslést blokkoló gapek: ${review.estimateBlockingGapCount}`,
     ...review.clarificationMessages.map((message) => `- ${escapeMarkdownInline(message)}`),
   ].join('\n');
+}
+
+function decisionRecommendationLabel(
+  recommendation: DecisionRecommendation,
+): string {
+  return recommendation === 'CLARIFICATION_REQUIRED'
+    ? 'Pontosítás szükséges'
+    : recommendation === 'ESTIMATE_PREPARATION_POSSIBLE'
+      ? 'Becslés előkészíthető'
+      : 'Becslésre kész';
 }
 
 function formatAnswer(answer: InterviewRound['questions'][number]['answer']): string {
