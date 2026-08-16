@@ -1,4 +1,4 @@
-import { IsIn, IsOptional, IsString, Matches, MaxLength } from 'class-validator';
+import { IsIn, IsOptional, IsString, IsUUID, Matches, MaxLength } from 'class-validator';
 
 import type { CreateMarkdownRevisionInput, MarkdownRevisionReason } from '@project-maker/contracts';
 
@@ -15,4 +15,8 @@ export class CreateMarkdownRevisionDto implements CreateMarkdownRevisionInput {
   @Matches(nonBlankPattern)
   @MaxLength(255)
   milestone?: string | null;
+
+  @IsOptional()
+  @IsUUID()
+  templateId?: string | null;
 }

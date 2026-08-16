@@ -9,6 +9,7 @@ import {
 } from '@nestjs/common';
 import type {
   CreateMarkdownRevisionInput,
+  MarkdownGenerationConfiguration,
   InterviewRound,
   MarkdownRevision,
   MarkdownRevisionReason,
@@ -16,10 +17,13 @@ import type {
   ProjectQuestionSchema,
   ProjectSchemaQuestion,
   ProjectWorkspace,
+  ProjectReadiness,
+  ProjectDecisionReview,
 } from '@project-maker/contracts';
 import { DataSource, EntityManager, In, QueryFailedError } from 'typeorm';
 
 import { AuditEvent, type AuditPayload } from '../audit/audit-event.entity';
+import { DecisionReviewService } from '../decision-review/decision-review.service';
 import { InterviewRoundEntity } from '../interviews/interview-round.entity';
 import { RoundAnswerEntity } from '../interviews/round-answer.entity';
 import {
@@ -29,6 +33,7 @@ import {
 import { RoundQuestionAssessmentOverrideEntity } from '../interviews/round-question-assessment-override.entity';
 import { RoundQuestionSnapshotEntity } from '../interviews/round-question-snapshot.entity';
 import { Project } from '../projects/project.entity';
+import { ReadinessService } from '../readiness/readiness.service';
 import { BaseQuestionEntity } from '../question-bank/base-question.entity';
 import { ProjectQuestionSchemaEntity } from '../question-bank/project-question-schema.entity';
 import { ProjectSchemaQuestionEntity } from '../question-bank/project-schema-question.entity';
@@ -37,6 +42,7 @@ import {
   MarkdownRevisionEntity,
   markdownRevisionReasonValues,
 } from './markdown-revision.entity';
+import { renderTemplate, MarkdownTemplateService } from './markdown-template.service';
 
 const markdownSourceSnapshotVersion = 1 as const;
 const sourceSnapshotSections = ['project', 'projectSchema', 'interviewRounds'] as const;
@@ -63,7 +69,12 @@ interface IdentifiedArrayEntry {
 
 @Injectable()
 export class MarkdownService {
-  constructor(private readonly dataSource: DataSource) {}
+  constructor(
+    private readonly dataSource: DataSource,
+    private readonly templates: MarkdownTemplateService,
+    private readonly readiness: ReadinessService,
+    private readonly decisionReview: DecisionReviewService,
+  ) {}
 
   async create(
     projectId: string,
@@ -83,6 +94,9 @@ export class MarkdownService {
     input: CreateMarkdownRevisionInput,
   ): Promise<MarkdownRevision> {
     validateCreateInput(input);
+    if (project.status === 'ARCHIVED') {
+      throw new ConflictException('Archived projects must be restored before a Markdown revision can be generated.');
+    }
 
     const revisionRepository = manager.getRepository(MarkdownRevisionEntity);
     const previousRevision = await revisionRepository.findOne({
@@ -93,7 +107,14 @@ export class MarkdownService {
     const createdAt = new Date();
     const sourceSnapshot = await buildSourceSnapshot(manager, project);
     const changeSummary = summarizeChanges(previousRevision, sourceSnapshot, version);
-    const content = renderMarkdown({
+    const selected = await this.templates.findPublished(
+      input.templateId ?? project.markdownTemplateId,
+    );
+    const [readiness, decisionReview] = await Promise.all([
+      this.readiness.getReadinessWithManager(manager, project.id),
+      this.decisionReview.getReviewWithManager(manager, project.id),
+    ]);
+    const content = renderTemplate(selected.version.content, renderValues({
       projectId: project.id,
       version,
       reason: input.reason,
@@ -102,7 +123,9 @@ export class MarkdownService {
       sourceSnapshot,
       changeSummary,
       previousRevision,
-    });
+      readiness,
+      decisionReview,
+    }));
     const revision = revisionRepository.create({
       id: randomUUID(),
       projectId: project.id,
@@ -114,6 +137,9 @@ export class MarkdownService {
       changeSummary,
       content,
       previousRevisionId: previousRevision?.id ?? null,
+      templateId: selected.template.id,
+      templateName: selected.template.name,
+      templateVersion: selected.version.version,
     });
 
     let savedRevision: MarkdownRevisionEntity;
@@ -140,7 +166,25 @@ export class MarkdownService {
       payload: createAuditPayload(savedRevision, sourceSnapshot),
     });
 
+    if (project.markdownTemplateId !== selected.template.id) {
+      project.markdownTemplateId = selected.template.id;
+      await manager.getRepository(Project).save(project);
+    }
+
     return toMarkdownRevision(savedRevision);
+  }
+
+  async configuration(projectId: string): Promise<MarkdownGenerationConfiguration> {
+    const project = await findProject(this.dataSource.manager, projectId, false);
+    const templates = (await this.templates.list()).filter(
+      (template) => template.latestPublishedVersion !== null,
+    );
+    const defaultTemplate = templates.find((template) => template.isDefault);
+    const selectedTemplateId = project.markdownTemplateId ?? defaultTemplate?.id;
+    if (!selectedTemplateId) {
+      throw new ConflictException('No published Markdown template is available.');
+    }
+    return { selectedTemplateId, templates };
   }
 
   async list(projectId: string): Promise<readonly MarkdownRevision[]> {
@@ -606,71 +650,117 @@ interface MarkdownRenderInput {
   readonly sourceSnapshot: MarkdownRevisionSourceSnapshot;
   readonly changeSummary: string;
   readonly previousRevision: MarkdownRevisionEntity | null;
+  readonly readiness: ProjectReadiness;
+  readonly decisionReview: ProjectDecisionReview;
 }
 
-function renderMarkdown(input: MarkdownRenderInput): string {
-  const projectName = escapeMarkdownInline(input.sourceSnapshot.project.name);
-  const metadata = [
-    `# Execution Plan — ${projectName}`,
-    '',
-    '## Metadata',
-    '',
-    `- Project ID: \`${input.projectId}\``,
-    `- Revision version: ${input.version}`,
-    `- Reason: ${input.reason}`,
-    `- Milestone: ${input.milestone ? escapeMarkdownInline(input.milestone) : 'None'}`,
-    `- Generated at (UTC): ${input.createdAt.toISOString()}`,
-    `- Source snapshot version: ${input.sourceSnapshot.version}`,
-    '',
-    '## Current project context',
-    '',
-    renderJsonBlock(input.sourceSnapshot.project),
-    '',
-    '## Structured interview/schema data',
-    '',
-    '### Project question schema',
-    '',
-    renderJsonBlock(input.sourceSnapshot.projectSchema),
-    '',
-    '### Interview rounds and answers',
-    '',
-    renderJsonBlock(input.sourceSnapshot.interviewRounds),
-    '',
-    '## Changes since previous revision',
-    '',
-    input.changeSummary,
-  ];
+function renderValues(input: MarkdownRenderInput): Readonly<Record<string, string | null>> {
+  return {
+    'project.name': escapeMarkdownInline(input.sourceSnapshot.project.name),
+    'revision.metadata': [
+      '## Revízió',
+      '',
+      `- Verzió: ${input.version}`,
+      `- Generálás oka: ${input.reason === 'MANUAL' ? 'Kézi' : 'Mérföldkő'}`,
+      `- Mérföldkő: ${input.milestone ? escapeMarkdownInline(input.milestone) : 'Nincs'}`,
+      `- Létrehozva (UTC): ${input.createdAt.toISOString()}`,
+      `- Előző revízió: ${input.previousRevision ? `v${input.previousRevision.version}` : 'Nincs'}`,
+      '',
+      '### Változások az előző revízió óta',
+      '',
+      input.changeSummary,
+    ].join('\n'),
+    'project.context': renderProjectContext(input.sourceSnapshot.project),
+    'project.schema': renderProjectSchema(input.sourceSnapshot.projectSchema),
+    'project.initialIntake': renderInitialIntake(input.sourceSnapshot.interviewRounds),
+    'project.readiness': renderReadiness(input.readiness),
+    'project.decisionReview': renderDecisionReview(input.decisionReview),
+  };
+}
 
-  if (!input.previousRevision) {
-    metadata.push('', 'No previous revision exists; this is the initial generated Markdown execution plan.');
-    return `${metadata.join('\n')}\n`;
+function renderProjectContext(project: ProjectWorkspace): string {
+  return [
+    '## Projektkontextus',
+    '',
+    `- Projekt: ${escapeMarkdownInline(project.name)}`,
+    `- Ügyfélkapcsolat: ${escapeMarkdownInline(project.customerContactName)}`,
+    `- Kapcsolati e-mail: ${escapeMarkdownInline(project.customerContactEmail)}`,
+    `- Státusz: ${escapeMarkdownInline(project.status)}`,
+    `- Labda birtokosa: ${project.ballOwner ? escapeMarkdownInline(project.ballOwner) : 'Nincs kijelölve'}`,
+    `- Következő lépés: ${project.nextAction ? escapeMarkdownInline(project.nextAction) : 'Nincs megadva'}`,
+  ].join('\n');
+}
+
+function renderProjectSchema(schema: ProjectQuestionSchema | null): string | null {
+  if (!schema) return null;
+  return [
+    '## Elfogadott projekt-kérdésséma',
+    '',
+    `Sémaverzió: ${schema.schemaVersion}; kérdésbank-verzió: ${schema.bankVersion}.`,
+    '',
+    ...schema.questions.map(
+      (question) => `${question.order}. **${escapeMarkdownInline(question.topic)} — ${escapeMarkdownInline(question.controlPoint)}**: ${escapeMarkdownInline(question.text)}`,
+    ),
+  ].join('\n');
+}
+
+function renderInitialIntake(rounds: readonly InterviewRound[]): string | null {
+  const candidates = rounds.filter((round) => round.type === 'INITIAL_INTAKE');
+  const round = [...candidates].reverse().find((candidate) => candidate.status === 'OPEN') ?? candidates.at(-1);
+  if (!round) return null;
+  return [
+    '## Initial Intake',
+    '',
+    `Állapot: ${round.status === 'COMPLETED' ? 'Lezárt' : 'Folyamatban'}.`,
+    '',
+    ...round.questions.flatMap((question) => [
+      `### ${question.order}. ${escapeMarkdownInline(question.text)}`,
+      '',
+      `- Ellenőrzési pont: ${escapeMarkdownInline(question.controlPoint)}`,
+      `- Válasz: ${formatAnswer(question.answer)}`,
+      `- Felmérési állapot: ${escapeMarkdownInline(question.checklistStatus)}`,
+      '',
+    ]),
+  ].join('\n').trim();
+}
+
+function renderReadiness(readiness: ProjectReadiness): string {
+  if (!readiness.available) {
+    return `## Felkészültség\n\nNem elérhető: ${readiness.reason}.`;
   }
-
-  const fence = markdownFence(input.previousRevision.content);
-  metadata.push(
+  return [
+    '## Felkészültség',
     '',
-    'The complete previous generated Markdown is embedded below; historical context is preserved.',
+    `- Teljesség: ${readiness.completionPercentage}% — ${escapeMarkdownInline(readiness.completionLabel)}`,
+    `- Felkészültség: ${readiness.readinessPercentage}% — ${escapeMarkdownInline(readiness.readinessBand)}`,
     '',
-    '## Previous revision context',
+    '### Nyitott gapek',
     '',
-    `### Revision ${input.previousRevision.version}`,
-    '',
-    `${fence}markdown\n${input.previousRevision.content}${input.previousRevision.content.endsWith('\n') ? '' : '\n'}${fence}`,
-  );
-  return `${metadata.join('\n')}\n`;
+    ...(readiness.gaps.length === 0
+      ? ['Nincs nyitott gap.']
+      : readiness.gaps.map((gap) => `- **${escapeMarkdownInline(gap.severity)} · ${escapeMarkdownInline(gap.category)}**: ${escapeMarkdownInline(gap.message)} Következő lépés: ${escapeMarkdownInline(gap.nextStep)}`)),
+  ].join('\n');
 }
 
-function renderJsonBlock(value: unknown): string {
-  const serialized = JSON.stringify(value, null, 2).replaceAll('`', '\\u0060');
-  return `\`\`\`json\n${serialized}\n\`\`\``;
-}
-
-function markdownFence(value: string): string {
-  let longestRun = 0;
-  for (const match of value.matchAll(/`+/g)) {
-    longestRun = Math.max(longestRun, match[0].length);
+function renderDecisionReview(review: ProjectDecisionReview): string {
+  if (!review.available) {
+    return `## Döntési értékelés\n\nNem elérhető: ${review.unavailableReasons.join(', ')}.`;
   }
-  return '`'.repeat(Math.max(3, longestRun + 1));
+  return [
+    '## Döntési értékelés',
+    '',
+    `- Döntési pontszám: ${review.decisionScore} — ${escapeMarkdownInline(review.decisionScoreLabel)}`,
+    `- Ajánlás: ${review.recommendation}`,
+    `- Felkészültség: ${review.readinessPercentage}%`,
+    `- Becslést blokkoló gapek: ${review.estimateBlockingGapCount}`,
+    ...review.clarificationMessages.map((message) => `- ${escapeMarkdownInline(message)}`),
+  ].join('\n');
+}
+
+function formatAnswer(answer: InterviewRound['questions'][number]['answer']): string {
+  if (answer === null) return 'Nincs válasz';
+  if (Array.isArray(answer)) return answer.map((item) => escapeMarkdownInline(String(item))).join(', ');
+  return escapeMarkdownInline(String(answer));
 }
 
 function escapeMarkdownInline(value: string): string {
@@ -731,6 +821,9 @@ function toMarkdownRevision(revision: MarkdownRevisionEntity): MarkdownRevision 
     changeSummary: revision.changeSummary,
     content: revision.content,
     previousRevisionId: revision.previousRevisionId,
+    template: revision.templateId && revision.templateName && revision.templateVersion
+      ? { id: revision.templateId, name: revision.templateName, version: revision.templateVersion }
+      : null,
   };
 }
 

@@ -10,12 +10,19 @@ import { Project } from '../projects/project.entity';
 import { BaseQuestionEntity } from '../question-bank/base-question.entity';
 import { ProjectQuestionSchemaEntity } from '../question-bank/project-question-schema.entity';
 import { ProjectSchemaQuestionEntity } from '../question-bank/project-schema-question.entity';
+import { ReadinessModule } from '../readiness/readiness.module';
+import { DecisionReviewModule } from '../decision-review/decision-review.module';
 import { MarkdownController } from './markdown.controller';
 import { MarkdownRevisionEntity } from './markdown-revision.entity';
 import { MarkdownService } from './markdown.service';
+import { MarkdownTemplateController } from './markdown-template.controller';
+import { MarkdownTemplateEntity, MarkdownTemplateVersionEntity } from './markdown-template.entity';
+import { MarkdownTemplateService } from './markdown-template.service';
 
 @Module({
   imports: [
+    ReadinessModule,
+    DecisionReviewModule,
     TypeOrmModule.forFeature([
       MarkdownRevisionEntity,
       Project,
@@ -27,10 +34,12 @@ import { MarkdownService } from './markdown.service';
       RoundAnswerEntity,
       RoundQuestionAssessmentOverrideEntity,
       AuditEvent,
+      MarkdownTemplateEntity,
+      MarkdownTemplateVersionEntity,
     ]),
   ],
-  controllers: [MarkdownController],
-  providers: [MarkdownService],
-  exports: [MarkdownService],
+  controllers: [MarkdownController, MarkdownTemplateController],
+  providers: [MarkdownService, MarkdownTemplateService],
+  exports: [MarkdownService, MarkdownTemplateService],
 })
 export class MarkdownModule {}

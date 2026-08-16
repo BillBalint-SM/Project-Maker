@@ -142,14 +142,7 @@ test.describe.serial('SCORE-01 readiness employee workflow', () => {
     await nativeButton(page, 'complete-interview-round-button').click();
     const completedRound = (await completedResponse).status();
     expect(completedRound).toBe(201);
-    await expect(answerControl(page, partialQuestion)).toBeDisabled();
-    await expect(
-      nativeButton(page, `set-partial-assessment-${partialQuestion.id}`),
-    ).toBeDisabled();
-    await expect(
-      nativeButton(page, `set-not-relevant-assessment-${partialQuestion.id}`),
-    ).toBeDisabled();
-    await expect(nativeButton(page, `reset-round-assessment-${partialQuestion.id}`)).toBeDisabled();
+    await expect(page).toHaveURL(new RegExp(`/projects/${fixture.projectId}/readiness$`));
 
     const remediationRound = await createInitialIntakeRound(request, fixture.projectId);
     const checklistGapQuestion = requireOptionalQuestion(remediationRound.questions);

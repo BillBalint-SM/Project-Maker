@@ -7,7 +7,7 @@ import {
   ParseUUIDPipe,
   Post,
 } from '@nestjs/common';
-import type { MarkdownRevision } from '@project-maker/contracts';
+import type { MarkdownGenerationConfiguration, MarkdownRevision } from '@project-maker/contracts';
 
 import { CreateMarkdownRevisionDto } from './dto/create-markdown-revision.dto';
 import { MarkdownService } from './markdown.service';
@@ -29,6 +29,13 @@ export class MarkdownController {
     @Param('projectId', new ParseUUIDPipe()) projectId: string,
   ): Promise<readonly MarkdownRevision[]> {
     return this.markdownService.list(projectId);
+  }
+
+  @Get('configuration')
+  configuration(
+    @Param('projectId', new ParseUUIDPipe()) projectId: string,
+  ): Promise<MarkdownGenerationConfiguration> {
+    return this.markdownService.configuration(projectId);
   }
 
   @Get(':revisionId/download')
