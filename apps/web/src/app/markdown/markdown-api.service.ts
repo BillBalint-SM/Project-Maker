@@ -22,14 +22,14 @@ export class MarkdownApiService {
         `/api/projects/${encodedProjectId}/markdown-revisions`,
         input,
       )
-      .pipe(catchError((error: unknown) => failApiRequest(error, 'generate the Markdown revision')));
+      .pipe(catchError((error: unknown) => failApiRequest(error, 'generálni a Markdown-revíziót')));
   }
 
   loadConfiguration(projectId: string): Observable<MarkdownGenerationConfiguration> {
     const encodedProjectId = encodeURIComponent(projectId);
     return this.http
       .get<MarkdownGenerationConfiguration>(`/api/projects/${encodedProjectId}/markdown-revisions/configuration`)
-      .pipe(catchError((error: unknown) => failApiRequest(error, 'load Markdown templates')));
+      .pipe(catchError((error: unknown) => failApiRequest(error, 'betölteni a Markdown-sablonokat')));
   }
 
   listRevisions(projectId: string): Observable<readonly MarkdownRevision[]> {
@@ -38,7 +38,7 @@ export class MarkdownApiService {
       .get<readonly MarkdownRevision[]>(
         `/api/projects/${encodedProjectId}/markdown-revisions`,
       )
-      .pipe(catchError((error: unknown) => failApiRequest(error, 'load Markdown revisions')));
+      .pipe(catchError((error: unknown) => failApiRequest(error, 'betölteni a Markdown-revíziókat')));
   }
 
   loadRevision(projectId: string, revisionId: string): Observable<MarkdownRevision> {
@@ -48,7 +48,7 @@ export class MarkdownApiService {
       .get<MarkdownRevision>(
         `/api/projects/${encodedProjectId}/markdown-revisions/${encodedRevisionId}`,
       )
-      .pipe(catchError((error: unknown) => failApiRequest(error, 'load the Markdown revision')));
+      .pipe(catchError((error: unknown) => failApiRequest(error, 'betölteni a Markdown-revíziót')));
   }
 
   downloadUrl(projectId: string, revisionId: string): string {
@@ -80,14 +80,14 @@ function failApiRequest(error: unknown, action: string): Observable<never> {
 function mapApiError(error: unknown, action: string): ActionableApiError {
   if (!(error instanceof HttpErrorResponse)) {
     return {
-      userMessage: `Could not ${action}. Refresh the page and try again.`,
+      userMessage: `Nem sikerült ${action}. Frissítsd az oldalt, majd próbáld újra.`,
       diagnostics: null,
     };
   }
 
   if (error.status === 0) {
     return {
-      userMessage: `Could not ${action} because the API is unreachable. Check that the server is running, then try again.`,
+      userMessage: `Nem sikerült ${action}, mert az API nem érhető el. Ellenőrizd, hogy fut-e a szerver, majd próbáld újra.`,
       diagnostics: { action, status: error.status, statusText: error.statusText },
     };
   }
@@ -102,12 +102,12 @@ function mapApiError(error: unknown, action: string): ActionableApiError {
 
   const nextStep =
     error.status === 404
-      ? 'Confirm that the project or revision still exists.'
+      ? 'Ellenőrizd, hogy a projekt vagy a revízió még létezik-e.'
       : error.status === 409
-        ? 'Refresh the project to see the latest revision state, then try again.'
-        : 'Review the selected reason and try again.';
+        ? 'Frissítsd a projektet a legújabb revízióállapotért, majd próbáld újra.'
+        : 'Ellenőrizd a kiválasztott létrehozási okot, majd próbáld újra.';
   return {
-    userMessage: `Could not ${action} (HTTP ${error.status}). ${nextStep}`,
+    userMessage: `Nem sikerült ${action} (HTTP ${error.status}). ${nextStep}`,
     diagnostics: { action, status: error.status, statusText: error.statusText },
   };
 }

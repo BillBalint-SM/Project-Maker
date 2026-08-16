@@ -55,8 +55,8 @@ export class MarkdownTemplateService {
   }
 
   async create(input: CreateMarkdownTemplateInput): Promise<MarkdownTemplateSummary> {
-    const name = requireText(input.name, 'Template name');
-    const draftContent = requireText(input.draftContent, 'Template draft');
+    const name = requireText(input.name, 'A sablon neve');
+    const draftContent = requireText(input.draftContent, 'A sablon piszkozata');
     validateTemplateContent(draftContent);
     const template = this.dataSource.getRepository(MarkdownTemplateEntity).create({
       id: randomUUID(),
@@ -68,7 +68,7 @@ export class MarkdownTemplateService {
       return toSummary(await this.dataSource.getRepository(MarkdownTemplateEntity).save(template), null);
     } catch (error) {
       if (isUniqueViolation(error)) {
-        throw new ConflictException('A Markdown template with this name already exists.');
+        throw new ConflictException('Már létezik ilyen nevű Markdown-sablon.');
       }
       throw error;
     }
@@ -76,15 +76,15 @@ export class MarkdownTemplateService {
 
   async updateDraft(id: string, input: UpdateMarkdownTemplateDraftInput): Promise<MarkdownTemplateSummary> {
     const template = await this.findTemplate(id);
-    template.name = requireText(input.name, 'Template name');
-    template.draftContent = requireText(input.draftContent, 'Template draft');
+    template.name = requireText(input.name, 'A sablon neve');
+    template.draftContent = requireText(input.draftContent, 'A sablon piszkozata');
     validateTemplateContent(template.draftContent);
     try {
       const saved = await this.dataSource.getRepository(MarkdownTemplateEntity).save(template);
       return toSummary(saved, await this.latestVersion(id));
     } catch (error) {
       if (isUniqueViolation(error)) {
-        throw new ConflictException('A Markdown template with this name already exists.');
+        throw new ConflictException('Már létezik ilyen nevű Markdown-sablon.');
       }
       throw error;
     }
@@ -129,14 +129,14 @@ export class MarkdownTemplateService {
       ? await this.findTemplate(templateId)
       : await this.dataSource.getRepository(MarkdownTemplateEntity).findOneBy({ isDefault: true });
     if (!template) {
-      throw new ConflictException('No Default Markdown template is available.');
+      throw new ConflictException('Nem érhető el alapértelmezett Markdown-sablon.');
     }
     const version = await this.dataSource.getRepository(MarkdownTemplateVersionEntity).findOne({
       where: { templateId: template.id },
       order: { version: 'DESC' },
     });
     if (!version) {
-      throw new ConflictException('The selected Markdown template has no published version.');
+      throw new ConflictException('A kiválasztott Markdown-sablonnak nincs publikált verziója.');
     }
     return { template, version };
   }
@@ -162,11 +162,11 @@ export function validateTemplateContent(content: string): void {
   const matches = [...content.matchAll(placeholderPattern)];
   const residue = content.replace(placeholderPattern, '');
   if (residue.includes('{{') || residue.includes('}}')) {
-    throw new BadRequestException('The Markdown template contains a malformed placeholder.');
+    throw new BadRequestException('A Markdown-sablon hibás formátumú placeholdert tartalmaz.');
   }
   for (const match of matches) {
     if (!allowedPlaceholders.has(match[1] ?? '')) {
-      throw new BadRequestException(`Unsupported Markdown template placeholder: ${match[1] ?? ''}.`);
+      throw new BadRequestException(`Nem támogatott Markdown-sablon placeholder: ${match[1] ?? ''}.`);
     }
   }
   for (const block of splitMarkdownBlocks(content)) {
@@ -175,7 +175,7 @@ export function validateTemplateContent(content: string): void {
     );
     if (hasOptionalPlaceholder && !optionalPlaceholderBlockPattern.test(block.trim())) {
       throw new BadRequestException(
-        'An optional Markdown template placeholder must occupy its own Markdown block.',
+        'Az opcionális Markdown-sablon placeholdernek önálló Markdown-blokkban kell állnia.',
       );
     }
   }
@@ -243,7 +243,7 @@ function toSummary(template: MarkdownTemplateEntity, latestPublishedVersion: num
 function requireText(value: string, label: string): string {
   const normalized = value.trim();
   if (!normalized) {
-    throw new BadRequestException(`${label} must not be blank.`);
+    throw new BadRequestException(`${label} nem lehet üres.`);
   }
   return normalized;
 }

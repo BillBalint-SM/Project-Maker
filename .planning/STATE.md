@@ -2,9 +2,9 @@
 
 **Verified delivery baseline:** the Angular 22.1 web platform with licensed
 PrimeNG 22.0.0 and the delivered application workflows is based on `main`
-commit `82a5449`. The `DOC-01` content baseline is guide commit `51518d5` in
-this bounded delivery; a final merge identity is intentionally not predicted
-or used as live Git-state evidence here.
+commit `b4b81c4`, which includes the merged OUTPUT-01 delivery. Closeout
+documentation and verification evidence are maintained in their reviewed
+delivery change; no future merge identity is predicted here.
 
 ## Current implementation
 
@@ -104,14 +104,16 @@ define `DOC-01` scope and evidence; the
 The verified guided-intake scope is intentionally limited to `INITIAL_INTAKE`.
 `INTAKE-04` delivers discovery-follow-up creation, review, resolution,
 conflict-safe editing of open items, and optional source linkage. Fresh
-PostgreSQL 18.4 verification passed the API suite 113/113, canonical migration
-sequence through `0013`, web typecheck/build, and the 23-workflow source-linkage
-browser suite. SCORE-01.1 readiness assessment has browser proof: 3/3 focused
-and 22/22 full E2E tests passed. SCORE-01.2 Decision Review has API coverage for
+PostgreSQL 18.4 closeout verification passed 13/13 contracts tests, 132/132 API
+tests, 25/25 web unit tests, the canonical migration sequence through `0013`,
+repository typecheck/build, and 42/42 full browser workflows. SCORE-01.2
+Decision Review has API coverage for
 availability, atomic validation/persistence, recommendation precedence,
 current-source recalculation, audit redaction, archive/delete lifecycle, and a
 focused browser proof for display/save/reload, error isolation, and archive
-read-only behavior. OUTPUT-01 canonical structured Markdown is delivered with
-API and browser proof. Authentication, authorization, backup operations,
+read-only behavior. OUTPUT-01 canonical structured Markdown additionally has
+focused browser proof for the template lifecycle, safe error recovery,
+default/remembered selection, required and optional placeholders, immutable
+provenance, and archive behavior. Authentication, authorization, backup operations,
 acceptance-criteria/user-story derivation, and PDF/spreadsheet export coverage
 remain separate until their requirements and verification evidence are complete.

@@ -275,7 +275,7 @@ not copied into audit history. A persisted discovery follow-up is retained
 project activity, so a `DRAFT` project with one cannot be permanently deleted
 and the database foreign key also restricts a late deletion race.
 
-### Markdown execution-plan revisions
+### Canonical Markdown specification revisions
 
 The cockpit’s **Markdown** page (`/projects/:projectId/markdown`) supports a
 manual **Create .md** action and a `MANUAL` or `MILESTONE` reason. Each stored
@@ -285,6 +285,7 @@ revision contains:
 - creation reason, optional milestone, and creation time;
 - a source-data snapshot (project, schema, and interview rounds);
 - a change summary against the previous revision;
+- the selected published template name and immutable version provenance;
 - the complete Markdown content;
 - a link to the previous revision when one exists.
 
@@ -311,7 +312,7 @@ These are intentionally separate flows:
 
 - **Customer review:** always manually initiated by the PO/PM. It requires a
   Markdown revision (the latest one is selected when no revision ID is sent),
-  sends the full execution plan to the project contact email, and records a
+  sends the full canonical Markdown specification to the project contact email, and records a
   success/failure audit event.
 - **Follow-up ping:** can be sent manually from the cockpit or automatically by
   the due-state timer. It includes the latest available Markdown revision when
@@ -415,10 +416,13 @@ pnpm compose:config
 pnpm compose:up
 ```
 
-The Compose smoke gate should confirm `/api/health`, base-question seeding,
-all twelve migrations, Markdown download headers/content, and the expected
-`503` response when SMTP is intentionally disabled. A local SMTP-capture
-container can be used to verify manual review, manual ping, and due-timer
+The separate CI container-smoke gate builds the API image, proves the packaged
+contracts runtime import, starts PostgreSQL and the migration-gated API, and
+invokes the canonical discovery/readiness consumers. OUTPUT-01 closeout also
+proves in the built image that the published Default template can generate a
+canonical revision with immutable template provenance. Markdown download and
+SMTP failure/delivery behavior remain endpoint/integration checks; a local
+SMTP-capture container can verify manual review, manual ping, and due-timer
 delivery without using production credentials.
 
 The declared SCORE-01.1 browser evidence is:
