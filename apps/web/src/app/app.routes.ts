@@ -72,6 +72,14 @@ export const routes: Routes = [
     title: 'Question bank settings | Project Maker',
   },
   {
+    path: 'settings/markdown-templates',
+    loadComponent: () =>
+      import('./settings/markdown-template.page').then(
+        (module) => module.MarkdownTemplatePage,
+      ),
+    title: 'Markdown beállítások | Project Maker',
+  },
+  {
     path: '**',
     redirectTo: '',
   },

@@ -804,7 +804,7 @@ Archivált projektből sem kézi ping, sem customer review nem küldhető. Ha a 
 
 ### Mit jelent a Markdown-revízió?
 
-A revízió egy adott időpont projektállapotának változatlan másolata. Átadási, review- és történeti segédlet. Nem a jelenlegi cockpit élő nézete, és nem a roadmapen szereplő jövőbeli, automatikusan strukturált kanonikus specifikáció.
+A revízió egy adott időpont projektállapotának változatlan, kanonikus Markdown-specifikációja. A kiválasztott publikált sablon biztonságos placeholdereken keresztül jeleníti meg a projekt-, felmérési, readiness- és Decision Review adatokat. Nem a projekt élő nézete: egy későbbi adat- vagy sablonmódosítás nem írja át.
 
 A forráspillanatkép jelenleg tartalmazza:
 
@@ -814,11 +814,10 @@ A forráspillanatkép jelenleg tartalmazza:
 - a körök kérdéspillanatképeit és mentett válaszait;
 - a revízió létrehozási okát, verzióját és időpontját.
 
-Jelenleg nem tartalmazza:
+Az opcionális sablonblokkok kimaradhatnak, ha a hozzájuk tartozó adat még nem elérhető. A kötelező placeholder hiánya ehelyett konkrét hibaüzenettel leállítja a generálást. A revízió továbbra sem tartalmazza:
 
 - a discovery follow-up listát, annak döntéseit vagy gazdáit;
 - a customer follow-up ütemezést és pingállapotot;
-- korábbi automatikus readiness vagy Decision Score eredményt;
 - a később, más revízió után beírt adatokat.
 
 Ezért átadáskor a Markdown mellett külön ellenőrizd a cockpit discovery follow-up listáját is.
@@ -828,10 +827,11 @@ Ezért átadáskor a Markdown mellett külön ellenőrizd a cockpit discovery fo
 Revízió nélkül a `Revision history` rész a `No Markdown revisions yet` állapotot mutatja.
 
 1. A cockpitben válaszd az `Open Markdown plan` gombot.
-2. A `Generation reason` mezőben válassz okot.
-3. Szükség esetén add meg a `Milestone` nevet.
-4. Válaszd a `Generate Markdown revision` gombot.
-5. Várd meg, amíg a revízió megjelenik a listában és a `Revision details` betöltődik.
+2. A `Publikált sablon` mezőben válaszd ki a dokumentum szerkezetét. Az első alkalommal az `Alapértelmezett projektterv`, később a projekt utolsó sikeres választása jelenik meg.
+3. A `Generation reason` mezőben válassz okot.
+4. Szükség esetén add meg a `Milestone` nevet.
+5. Válaszd a `Generate Markdown revision` gombot.
+6. Várd meg, amíg a revízió megjelenik a listában és a `Revision details` betöltődik.
 
 | Ok | Mikor használd? | Milestone mező |
 | --- | --- | --- |
@@ -851,6 +851,7 @@ A részletek jelentése:
 | `Created` | Mikor készült a változatlan revízió |
 | `Milestone` | A névvel jelölt üzleti ellenőrzési pont, vagy `None` |
 | `Source version` | A revízió saját forráspillanatképének verziója |
+| `Sablon` | A generáláskor használt sablon neve és változatlan publikált verziója |
 | `Previous revision` | Link a közvetlen előző revízióhoz, vagy `Initial revision` |
 | `Change summary` | Rövid rendszer-összefoglaló arról, mely tartalmi területek változtak |
 | `Content preview` | A letölthető Markdown tényleges szövege |
@@ -876,7 +877,19 @@ A letöltött fájl neve `execution-plan.md`. A fájl egy másolat; módosítás
 - Ha generáláskor mezőhiba jelenik meg, javítsd a `Milestone` értéket.
 - Ha a projektadat közben változott, töltsd újra az oldalt és szándékosan generálj új pillanatképet; egy korábbi revíziót ne tekints élő állapotnak.
 
-> **Archivált projekt:** a jelenlegi verzióban a Markdown-oldal közvetlen útvonala technikailag elérhető maradhat archiválás után is. Biztonságos munkaszabály szerint új revízió előtt mindig állítsd vissza a projektet, frissítsd a workspace-t, és csak aktív projektből készíts új átadási pillanatképet.
+> **Archivált projekt:** a revíziók olvashatók maradnak, de új Markdown-specifikáció nem generálható. Előbb állítsd vissza a projektet.
+
+### Markdown sablonok kezelése
+
+A globális navigáció `Markdown beállítások` oldalán több szervezeti sablon tartható fenn.
+
+1. Válaszd az `Új sablon` gombot, adj nevet és szerkeszd a Markdown forrást.
+2. A `Draft mentése` még nem módosítja a projektek számára elérhető publikált verziót.
+3. Az `Előnézet` reprezentatív, nem production projektadatokkal ugyanazt a szerveroldali renderert futtatja.
+4. A `Publikálás` változatlan, sorszámozott verziót hoz létre. A következő szerkesztés új draft és új publikált verzió lesz.
+5. A projekt Markdown oldalán csak publikált verzió választható. Egy már létrejött revízió mindig megtartja a használt sablon nevét, verzióját és kész tartalmát.
+
+A felsorolt placeholderek zárt, dokumentált készletet alkotnak. A `?` jelölés (például `{{project.readiness?}}`) opcionális teljes blokkot jelent; ismeretlen vagy hibás placeholderrel a draft nem menthető vagy publikálható. A sablon nem futtat kódot és nem fér hozzá raw audit payloadhoz.
 
 ## Audit history: mi történt a projekttel?
 

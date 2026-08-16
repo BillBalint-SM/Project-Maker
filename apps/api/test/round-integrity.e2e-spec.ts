@@ -1569,7 +1569,11 @@ describe('Round integrity database boundary (PostgreSQL)', () => {
         type: 'postgres',
         url: migrationDatabaseUrl,
         synchronize: false,
-        migrations: [...migrationsForFreshDatabase()],
+        migrations: [
+          ...migrationsForHistoricalDatabase(
+            'DecisionReviewInputs0012DecisionReviewInputs1786867200000',
+          ),
+        ],
       });
       await migrationDataSource.initialize();
       await migrationDataSource.runMigrations();
@@ -1599,7 +1603,11 @@ describe('Round integrity database boundary (PostgreSQL)', () => {
         type: 'postgres',
         url: revertDatabaseUrl,
         synchronize: false,
-        migrations: [...migrationsForFreshDatabase()],
+        migrations: [
+          ...migrationsForHistoricalDatabase(
+            'DecisionReviewInputs0012DecisionReviewInputs1786867200000',
+          ),
+        ],
       });
       await revertDataSource.initialize();
       let revertOutcome: 'completed' | 'pending' | 'rejected' = 'pending';

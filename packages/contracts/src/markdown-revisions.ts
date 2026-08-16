@@ -18,6 +18,18 @@ export interface MarkdownRevisionSourceSnapshot {
 export interface CreateMarkdownRevisionInput {
   readonly reason: MarkdownRevisionReason;
   readonly milestone?: string | null;
+  readonly templateId?: string | null;
+}
+
+export interface MarkdownRevisionTemplateProvenance {
+  readonly id: string;
+  readonly name: string;
+  readonly version: number;
+}
+
+export interface MarkdownGenerationConfiguration {
+  readonly selectedTemplateId: string;
+  readonly templates: readonly import('./markdown-templates.js').MarkdownTemplateSummary[];
 }
 
 export interface MarkdownRevision {
@@ -31,4 +43,5 @@ export interface MarkdownRevision {
   readonly changeSummary: string;
   readonly content: string;
   readonly previousRevisionId: string | null;
+  readonly template: MarkdownRevisionTemplateProvenance | null;
 }

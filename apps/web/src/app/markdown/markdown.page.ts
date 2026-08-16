@@ -16,6 +16,7 @@ import { ProgressSpinnerModule } from 'primeng/progressspinner';
 import { TagModule } from 'primeng/tag';
 import type {
   CreateMarkdownRevisionInput,
+  MarkdownGenerationConfiguration,
   MarkdownRevision,
   MarkdownRevisionReason,
 } from '@project-maker/contracts';
@@ -57,6 +58,7 @@ export class MarkdownPage implements OnInit {
   readonly projectId = this.route.snapshot.paramMap.get('projectId') ?? '';
   readonly reasonOptions = reasonOptions;
   readonly generationForm = new FormGroup({
+    templateId: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
     reason: new FormControl<MarkdownRevisionReason>('MANUAL', {
       nonNullable: true,
     }),
@@ -66,6 +68,7 @@ export class MarkdownPage implements OnInit {
     }),
   });
   readonly revisions = signal<readonly MarkdownRevision[]>([]);
+  readonly configuration = signal<MarkdownGenerationConfiguration | null>(null);
   readonly selectedRevision = signal<MarkdownRevision | null>(null);
   readonly loading = signal(true);
   readonly detailLoading = signal(false);
@@ -93,6 +96,17 @@ export class MarkdownPage implements OnInit {
         }
       });
     this.loadRevisions();
+    this.loadConfiguration();
+  }
+
+  loadConfiguration(): void {
+    this.api.loadConfiguration(this.projectId).subscribe({
+      next: (configuration) => {
+        this.configuration.set(configuration);
+        this.generationForm.controls.templateId.setValue(configuration.selectedTemplateId);
+      },
+      error: (error: unknown) => this.actionError.set(errorMessage(error, 'load Markdown templates')),
+    });
   }
 
   loadRevisions(): void {
@@ -144,6 +158,7 @@ export class MarkdownPage implements OnInit {
     const input: CreateMarkdownRevisionInput = {
       reason: value.reason,
       milestone: value.reason === 'MILESTONE' ? milestone : null,
+      templateId: value.templateId,
     };
     this.generating.set(true);
     this.actionError.set(null);
@@ -154,6 +169,7 @@ export class MarkdownPage implements OnInit {
         this.generating.set(false);
         this.feedback.set(`Markdown revision v${revision.version} generated.`);
         this.generationForm.controls.milestone.reset('');
+        this.loadConfiguration();
         this.loadRevisions();
       },
       error: (error: unknown) => {

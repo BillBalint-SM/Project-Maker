@@ -5,7 +5,7 @@ import type {
   RoundQuestionSnapshot,
 } from '@project-maker/contracts';
 import { loadGeneralPlaybookV1 } from '@project-maker/contracts/general-playbook-runtime';
-import { DataSource } from 'typeorm';
+import { DataSource, EntityManager } from 'typeorm';
 
 import { DiscoveryFollowUpEntity } from '../discovery-follow-ups/discovery-follow-up.entity';
 import { findCurrentInitialIntakeSource } from '../interviews/current-initial-intake-source';
@@ -25,13 +25,20 @@ export class ReadinessService {
   constructor(private readonly dataSource: DataSource) {}
 
   async getReadiness(projectId: string): Promise<ProjectReadiness> {
-    const project = await this.dataSource.getRepository(Project).findOneBy({ id: projectId });
+    return this.getReadinessWithManager(this.dataSource.manager, projectId);
+  }
+
+  async getReadinessWithManager(
+    manager: EntityManager,
+    projectId: string,
+  ): Promise<ProjectReadiness> {
+    const project = await manager.getRepository(Project).findOneBy({ id: projectId });
     if (!project) {
       throw new NotFoundException('Project not found.');
     }
 
     const sourceRound = await findCurrentInitialIntakeSource(
-      this.dataSource.manager,
+      manager,
       projectId,
     );
     if (!sourceRound) {
@@ -39,7 +46,7 @@ export class ReadinessService {
     }
 
     const policy = await loadGeneralPlaybookV1();
-    const snapshots = await this.dataSource.getRepository(RoundQuestionSnapshotEntity).find({
+    const snapshots = await manager.getRepository(RoundQuestionSnapshotEntity).find({
       where: { roundId: sourceRound.id },
       order: { order: 'ASC', id: 'ASC' },
     });
@@ -48,15 +55,15 @@ export class ReadinessService {
     }
 
     const [answers, overrides, followUps, assessmentPolicy] = await Promise.all([
-      this.dataSource.getRepository(RoundAnswerEntity).find({
+      manager.getRepository(RoundAnswerEntity).find({
         where: { roundId: sourceRound.id },
         order: { snapshotId: 'ASC', id: 'ASC' },
       }),
-      this.dataSource.getRepository(RoundQuestionAssessmentOverrideEntity).find({
+      manager.getRepository(RoundQuestionAssessmentOverrideEntity).find({
         where: { roundId: sourceRound.id },
         order: { snapshotId: 'ASC', id: 'ASC' },
       }),
-      this.dataSource.getRepository(DiscoveryFollowUpEntity).find({
+      manager.getRepository(DiscoveryFollowUpEntity).find({
         where: { projectId },
         order: { dueDate: 'ASC', createdAt: 'ASC', id: 'ASC' },
       }),

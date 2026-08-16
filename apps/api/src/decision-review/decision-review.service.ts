@@ -47,7 +47,18 @@ export class DecisionReviewService {
       throw new NotFoundException('Project not found.');
     }
 
-    return this.toReview(project);
+    return this.toReview(project, this.dataSource.manager);
+  }
+
+  async getReviewWithManager(
+    manager: EntityManager,
+    projectId: string,
+  ): Promise<ProjectDecisionReview> {
+    const project = await manager.getRepository(Project).findOneBy({ id: projectId });
+    if (!project) {
+      throw new NotFoundException('Project not found.');
+    }
+    return this.toReview(project, manager);
   }
 
   async updateReview(
@@ -79,11 +90,14 @@ export class DecisionReviewService {
     return this.getReview(projectId);
   }
 
-  private async toReview(project: Project): Promise<ProjectDecisionReview> {
+  private async toReview(
+    project: Project,
+    manager: EntityManager,
+  ): Promise<ProjectDecisionReview> {
     const inputs = toInputs(project);
     const [policy, readiness] = await Promise.all([
       loadGeneralPlaybookV1(),
-      this.readinessService.getReadiness(project.id),
+      this.readinessService.getReadinessWithManager(manager, project.id),
     ]);
     if (!hasCompleteDecisionReviewInputs(inputs) || !readiness.available) {
       return {

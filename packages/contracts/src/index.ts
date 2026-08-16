@@ -4,6 +4,7 @@ export * from './projects.js';
 export * from './question-bank.js';
 export * from './interviews.js';
 export * from './markdown-revisions.js';
+export * from './markdown-templates.js';
 export * from './follow-ups.js';
 export * from './discovery-follow-ups.js';
 export * from './audit.js';
