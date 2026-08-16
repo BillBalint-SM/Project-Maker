@@ -7,7 +7,7 @@ import { MessageModule } from 'primeng/message';
 import { ProgressSpinnerModule } from 'primeng/progressspinner';
 import { TagModule } from 'primeng/tag';
 import type { MarkdownTemplateSummary } from '@project-maker/contracts';
-import { markdownTemplatePlaceholderNames } from '@project-maker/contracts';
+import { markdownTemplatePlaceholderDefinitions } from '@project-maker/contracts';
 
 import { MarkdownTemplateApiService } from './markdown-template-api.service';
 
@@ -36,7 +36,7 @@ export class MarkdownTemplatePage implements OnInit {
   readonly loadError = signal<string | null>(null);
   readonly actionError = signal<string | null>(null);
   readonly feedback = signal<string | null>(null);
-  readonly placeholders = markdownTemplatePlaceholderNames;
+  readonly placeholders = markdownTemplatePlaceholderDefinitions;
   readonly form = new FormGroup({
     name: new FormControl('', { nonNullable: true, validators: [Validators.required, Validators.maxLength(255)] }),
     draftContent: new FormControl('', { nonNullable: true, validators: [Validators.required, Validators.maxLength(100_000)] }),

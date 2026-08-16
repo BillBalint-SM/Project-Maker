@@ -7,13 +7,22 @@ import type {
   MarkdownTemplateSummary,
   UpdateMarkdownTemplateDraftInput,
 } from '@project-maker/contracts';
-import { markdownTemplatePlaceholderNames } from '@project-maker/contracts/markdown-templates';
+import {
+  markdownTemplatePlaceholderDefinitions,
+  markdownTemplatePlaceholderNames,
+  type MarkdownTemplatePlaceholderName,
+} from '@project-maker/contracts/markdown-templates';
 import { DataSource, QueryFailedError } from 'typeorm';
 
 import { MarkdownTemplateEntity, MarkdownTemplateVersionEntity } from './markdown-template.entity';
 
 const placeholderPattern = /{{\s*([a-zA-Z][a-zA-Z0-9.]*)\s*(\?)?\s*}}/g;
 const allowedPlaceholders = new Set<string>(markdownTemplatePlaceholderNames);
+const placeholderDefinitions = new Map(
+  markdownTemplatePlaceholderDefinitions.map((definition) => [definition.name, definition]),
+);
+const optionalPlaceholderBlockPattern = /^{{\s*([a-zA-Z][a-zA-Z0-9.]*)\s*\?\s*}}$/;
+const headingBlockPattern = /^#{1,6}[ \t]+\S[^\r\n]*$/;
 
 const previewValues: Readonly<Record<string, string | null>> = {
   'project.name': 'Minta projekt',
@@ -160,6 +169,16 @@ export function validateTemplateContent(content: string): void {
       throw new BadRequestException(`Unsupported Markdown template placeholder: ${match[1] ?? ''}.`);
     }
   }
+  for (const block of splitMarkdownBlocks(content)) {
+    const hasOptionalPlaceholder = [...block.matchAll(placeholderPattern)].some(
+      (match) => match[2] !== undefined,
+    );
+    if (hasOptionalPlaceholder && !optionalPlaceholderBlockPattern.test(block.trim())) {
+      throw new BadRequestException(
+        'An optional Markdown template placeholder must occupy its own Markdown block.',
+      );
+    }
+  }
 }
 
 export function renderTemplate(
@@ -167,7 +186,8 @@ export function renderTemplate(
   values: Readonly<Record<string, string | null>>,
 ): string {
   validateTemplateContent(content);
-  return `${content.replace(placeholderPattern, (_token, name: string, optional: string | undefined) => {
+  const contentWithOptionalBlocks = renderOptionalBlocks(content, values);
+  return `${contentWithOptionalBlocks.replace(placeholderPattern, (_token, name: string, optional: string | undefined) => {
     const value = values[name];
     if (value !== null && value !== undefined) {
       return value;
@@ -175,8 +195,38 @@ export function renderTemplate(
     if (optional) {
       return '';
     }
-    throw new ConflictException(`Required Markdown template data is unavailable: ${name}.`);
+    const definition = placeholderDefinitions.get(name as MarkdownTemplatePlaceholderName);
+    throw new ConflictException(
+      `A kötelező sablonblokk nem áll rendelkezésre: ${definition?.label ?? 'ismeretlen projektadat'}.`,
+    );
   }).replace(/\n{3,}/g, '\n\n').trim()}\n`;
+}
+
+function renderOptionalBlocks(
+  content: string,
+  values: Readonly<Record<string, string | null>>,
+): string {
+  const renderedBlocks: string[] = [];
+  for (const block of splitMarkdownBlocks(content)) {
+    const optionalMatch = block.trim().match(optionalPlaceholderBlockPattern);
+    if (!optionalMatch) {
+      renderedBlocks.push(block);
+      continue;
+    }
+    const value = values[optionalMatch[1] ?? ''];
+    if (value !== null && value !== undefined) {
+      renderedBlocks.push(value);
+      continue;
+    }
+    if (headingBlockPattern.test(renderedBlocks.at(-1)?.trim() ?? '')) {
+      renderedBlocks.pop();
+    }
+  }
+  return renderedBlocks.join('\n\n');
+}
+
+function splitMarkdownBlocks(content: string): readonly string[] {
+  return content.split(/\r?\n[ \t]*\r?\n/);
 }
 
 function toSummary(template: MarkdownTemplateEntity, latestPublishedVersion: number | null): MarkdownTemplateSummary {

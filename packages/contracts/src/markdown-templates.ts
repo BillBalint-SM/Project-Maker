@@ -17,6 +17,16 @@ export interface MarkdownTemplatePlaceholderDefinition {
   readonly optional: boolean;
 }
 
+export const markdownTemplatePlaceholderDefinitions: readonly MarkdownTemplatePlaceholderDefinition[] = [
+  { name: 'project.name', label: 'Projekt neve', optional: false },
+  { name: 'revision.metadata', label: 'Revízió metaadatai', optional: false },
+  { name: 'project.context', label: 'Projektkontextus', optional: false },
+  { name: 'project.schema', label: 'Elfogadott projekt-kérdésséma', optional: true },
+  { name: 'project.initialIntake', label: 'Initial Intake', optional: true },
+  { name: 'project.readiness', label: 'Felkészültség', optional: true },
+  { name: 'project.decisionReview', label: 'Döntési értékelés', optional: true },
+];
+
 export interface MarkdownTemplateSummary {
   readonly id: string;
   readonly name: string;
