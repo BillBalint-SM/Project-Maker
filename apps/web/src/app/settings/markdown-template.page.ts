@@ -97,7 +97,7 @@ export class MarkdownTemplatePage implements OnInit {
         this.feedback.set('Draft mentve. Az előnézet után publikálhatod.');
         this.upsert(template);
         this.selected.set(template);
-        this.form.markAsPristine();
+        this.form.reset({ name: template.name, draftContent: template.draftContent });
       },
       error: (error: Error) => {
         this.working.set(false);
