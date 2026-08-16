@@ -45,4 +45,13 @@ export class MarkdownRevisionEntity {
 
   @Column({ name: 'previous_revision_id', type: 'uuid', nullable: true })
   previousRevisionId!: string | null;
+
+  @Column({ name: 'template_id', type: 'uuid', nullable: true })
+  templateId!: string | null;
+
+  @Column({ name: 'template_name', type: 'varchar', length: 255, nullable: true })
+  templateName!: string | null;
+
+  @Column({ name: 'template_version', type: 'integer', nullable: true })
+  templateVersion!: number | null;
 }

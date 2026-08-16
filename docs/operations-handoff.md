@@ -92,6 +92,8 @@ ordered TypeORM migrations registered in
 9. `0009-round-question-assessment-overrides.ts` — effective `Részben megvan` and justified `Nem releváns` assessment overrides, completion/immutability guards, and their database invariants.
 10. `0010-round-answer-validation-parity.ts` — database validation parity for `TEXT` and `LONG_TEXT` answers by rejecting values made only from space, tab, line feed, carriage return, form feed, or vertical tab, matching the API rule.
 11. `0011-discovery-follow-up-source-linkage.ts` — nullable discovery-follow-up source snapshot, restrictive foreign key, and source lookup index.
+12. `0012-decision-review-inputs.ts` — validated nullable Decision input ratings with guarded rollback when project input exists.
+13. `0013-markdown-template-library.ts` — named Markdown template drafts and immutable published versions, Default template seed, remembered project choice, and immutable revision provenance; rollback refuses retained template activity.
 
 The deployed API image contains the compiled migration classes, but not the
 TypeScript migration source tree used by the development-only
@@ -459,5 +461,5 @@ The following are deliberately not hidden in this handoff:
 - an outbox/idempotency model so SMTP I/O is not coupled to a database
   transaction;
 - STARTTLS support and provider-specific SMTP compatibility;
-- OUTPUT-01 through OUTPUT-03 generated outputs;
+- OUTPUT-02 and OUTPUT-03 acceptance-criteria/user-story derivation and PDF/spreadsheet exports;
 - backup retention/rotation and a restore drill owned by the deployment team.

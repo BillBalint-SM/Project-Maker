@@ -20,6 +20,11 @@
       "import": "./dist/discovery-follow-ups.js",
       "require": "./dist/runtime-cjs/discovery-follow-ups.js"
     },
+    "./markdown-templates": {
+      "types": "./dist/markdown-templates.d.ts",
+      "import": "./dist/markdown-templates.js",
+      "require": "./dist/runtime-cjs/markdown-templates.js"
+    },
     "./general-playbook-runtime": {
       "types": "./dist/general-playbook-runtime.d.ts",
       "import": "./dist/general-playbook-runtime.js",

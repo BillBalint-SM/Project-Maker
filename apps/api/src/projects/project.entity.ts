@@ -51,6 +51,9 @@ export class Project {
   @Column({ name: 'risk_rating', type: 'smallint', nullable: true })
   riskRating!: number | null;
 
+  @Column({ name: 'markdown_template_id', type: 'uuid', nullable: true })
+  markdownTemplateId!: string | null;
+
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt!: Date;
 

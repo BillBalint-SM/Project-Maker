@@ -58,6 +58,289 @@ describe('ProjectsController (e2e)', () => {
     }
   });
 
+  it('manages a named Markdown template draft through preview and publication', async () => {
+    const initialLibrary = await request(app.getHttpServer())
+      .get('/settings/markdown-templates')
+      .expect(200);
+
+    assert.equal(initialLibrary.body.length, 1);
+    assert.equal(initialLibrary.body[0].name, 'Alapértelmezett projektterv');
+    assert.equal(initialLibrary.body[0].latestPublishedVersion, 1);
+    assert.equal(initialLibrary.body[0].isDefault, true);
+
+    const created = await request(app.getHttpServer())
+      .post('/settings/markdown-templates')
+      .send({
+        name: 'Rövid átadási terv',
+        draftContent: '# {{project.name}}\n\n{{project.context}}\n\n{{project.readiness?}}',
+      })
+      .expect(201);
+
+    assert.equal(created.body.name, 'Rövid átadási terv');
+    assert.equal(created.body.latestPublishedVersion, null);
+    assert.equal(created.body.isDefault, false);
+
+    const preview = await request(app.getHttpServer())
+      .post(`/settings/markdown-templates/${created.body.id as string}/preview`)
+      .expect(201);
+    assert.match(preview.body.content, /^# Minta projekt/m);
+    assert.match(preview.body.content, /Projektkontextus/);
+    assert.equal(preview.body.content.includes('{{'), false);
+
+    const published = await request(app.getHttpServer())
+      .post(`/settings/markdown-templates/${created.body.id as string}/publish`)
+      .expect(201);
+    assert.equal(published.body.latestPublishedVersion, 1);
+
+    const library = await request(app.getHttpServer())
+      .get('/settings/markdown-templates')
+      .expect(200);
+    assert.deepEqual(
+      library.body.map((template: { name: string }) => template.name),
+      ['Alapértelmezett projektterv', 'Rövid átadási terv'],
+    );
+  });
+
+  it('generates immutable Markdown provenance and remembers the project template selection', async () => {
+    const projectId = await createProject('markdown-template-provenance');
+    const templateName = `Provenance sablon ${projectId}`;
+    const template = await request(app.getHttpServer())
+      .post('/settings/markdown-templates')
+      .send({
+        name: templateName,
+        draftContent: '# Átadás — {{project.name}}\n\n{{revision.metadata}}\n\n{{project.context}}',
+      })
+      .expect(201);
+    await request(app.getHttpServer())
+      .post(`/settings/markdown-templates/${template.body.id as string}/publish`)
+      .expect(201);
+
+    const firstRevision = await request(app.getHttpServer())
+      .post(`/projects/${projectId}/markdown-revisions`)
+      .send({ reason: 'MANUAL', templateId: template.body.id })
+      .expect(201);
+
+    assert.deepEqual(firstRevision.body.template, {
+      id: template.body.id,
+      name: templateName,
+      version: 1,
+    });
+    assert.match(firstRevision.body.content, /^# Átadás — R1 project /m);
+    assert.match(firstRevision.body.content, /markdown\\-template\\-provenance/);
+    assert.match(firstRevision.body.content, /## Revízió/);
+    assert.equal(firstRevision.body.content.includes('```json'), false);
+
+    const rememberedConfiguration = await request(app.getHttpServer())
+      .get(`/projects/${projectId}/markdown-revisions/configuration`)
+      .expect(200);
+    assert.equal(rememberedConfiguration.body.selectedTemplateId, template.body.id);
+
+    const nextRevision = await request(app.getHttpServer())
+      .post(`/projects/${projectId}/markdown-revisions`)
+      .send({ reason: 'MANUAL' })
+      .expect(201);
+    assert.deepEqual(nextRevision.body.template, firstRevision.body.template);
+
+    const otherProjectId = await createProject('markdown-default-template');
+    const defaultConfiguration = await request(app.getHttpServer())
+      .get(`/projects/${otherProjectId}/markdown-revisions/configuration`)
+      .expect(200);
+    assert.equal(
+      defaultConfiguration.body.selectedTemplateId,
+      defaultConfiguration.body.templates.find(
+        (candidate: { isDefault: boolean }) => candidate.isDefault,
+      )?.id,
+    );
+  });
+
+  it('keeps generated template provenance immutable across later publications', async () => {
+    const projectId = await createProject('markdown-template-version-history');
+    const template = await request(app.getHttpServer())
+      .post('/settings/markdown-templates')
+      .send({
+        name: `Verziózott sablon ${projectId}`,
+        draftContent: '# Első publikáció — {{project.name}}',
+      })
+      .expect(201);
+    await request(app.getHttpServer())
+      .post(`/settings/markdown-templates/${template.body.id as string}/publish`)
+      .expect(201);
+    const first = await request(app.getHttpServer())
+      .post(`/projects/${projectId}/markdown-revisions`)
+      .send({ reason: 'MANUAL', templateId: template.body.id })
+      .expect(201);
+
+    await request(app.getHttpServer())
+      .put(`/settings/markdown-templates/${template.body.id as string}/draft`)
+      .send({
+        name: template.body.name,
+        draftContent: '# Második publikáció — {{project.name}}',
+      })
+      .expect(200);
+    await request(app.getHttpServer())
+      .post(`/settings/markdown-templates/${template.body.id as string}/publish`)
+      .expect(201)
+      .expect(({ body }) => assert.equal(body.latestPublishedVersion, 2));
+
+    const historical = await request(app.getHttpServer())
+      .get(`/projects/${projectId}/markdown-revisions/${first.body.id as string}`)
+      .expect(200);
+    assert.equal(historical.body.template.version, 1);
+    assert.match(historical.body.content, /^# Első publikáció/m);
+
+    const current = await request(app.getHttpServer())
+      .post(`/projects/${projectId}/markdown-revisions`)
+      .send({ reason: 'MANUAL' })
+      .expect(201);
+    assert.equal(current.body.template.version, 2);
+    assert.match(current.body.content, /^# Második publikáció/m);
+  });
+
+  it('blocks unsafe templates, missing required data, and archived generation', async () => {
+    await request(app.getHttpServer())
+      .post('/settings/markdown-templates')
+      .send({ name: 'Nem biztonságos sablon', draftContent: '{{process.env}}' })
+      .expect(400);
+    await request(app.getHttpServer())
+      .post('/settings/markdown-templates')
+      .send({
+        name: 'Beágyazott opcionális sablon',
+        draftContent: 'Felkészültség: {{project.readiness?}}',
+      })
+      .expect(400);
+
+    const projectId = await createProject('markdown-required-placeholder');
+    const template = await request(app.getHttpServer())
+      .post('/settings/markdown-templates')
+      .send({
+        name: `Kötelező kérdésséma ${projectId}`,
+        draftContent: '# {{project.name}}\n\n{{project.schema}}',
+      })
+      .expect(201);
+    await request(app.getHttpServer())
+      .post(`/settings/markdown-templates/${template.body.id as string}/publish`)
+      .expect(201);
+    await request(app.getHttpServer())
+      .post(`/projects/${projectId}/markdown-revisions`)
+      .send({ reason: 'MANUAL', templateId: template.body.id })
+      .expect(409)
+      .expect(({ body }) => assert.match(body.message, /Elfogadott projekt-kérdésséma/));
+
+    for (const [placeholder, expectedLabel] of [
+      ['project.readiness', 'Felkészültség'],
+      ['project.decisionReview', 'Döntési értékelés'],
+    ] as const) {
+      const requiredTemplate = await request(app.getHttpServer())
+        .post('/settings/markdown-templates')
+        .send({
+          name: `Kötelező ${expectedLabel} ${projectId}`,
+          draftContent: `# {{project.name}}\n\n{{${placeholder}}}`,
+        })
+        .expect(201);
+      await request(app.getHttpServer())
+        .post(`/settings/markdown-templates/${requiredTemplate.body.id as string}/publish`)
+        .expect(201);
+      await request(app.getHttpServer())
+        .post(`/projects/${projectId}/markdown-revisions`)
+        .send({ reason: 'MANUAL', templateId: requiredTemplate.body.id })
+        .expect(409)
+        .expect(({ body }) => assert.match(body.message, new RegExp(expectedLabel)));
+    }
+
+    const optionalTemplate = await request(app.getHttpServer())
+      .post('/settings/markdown-templates')
+      .send({
+        name: `Opcionális blokkok ${projectId}`,
+        draftContent: '# {{project.name}}\n\n## Felkészültség\n\n{{project.readiness?}}\n\n## Döntési értékelés\n\n{{project.decisionReview?}}',
+      })
+      .expect(201);
+    await request(app.getHttpServer())
+      .post(`/settings/markdown-templates/${optionalTemplate.body.id as string}/publish`)
+      .expect(201);
+    const optionalRevision = await request(app.getHttpServer())
+      .post(`/projects/${projectId}/markdown-revisions`)
+      .send({ reason: 'MANUAL', templateId: optionalTemplate.body.id })
+      .expect(201);
+    assert.equal(optionalRevision.body.content.includes('## Felkészültség'), false);
+    assert.equal(optionalRevision.body.content.includes('## Döntési értékelés'), false);
+
+    await request(app.getHttpServer()).post(`/projects/${projectId}/archive`).expect(201);
+    await request(app.getHttpServer())
+      .post(`/projects/${projectId}/markdown-revisions`)
+      .send({ reason: 'MANUAL' })
+      .expect(409)
+      .expect(({ body }) => assert.match(body.message, /Archived projects/));
+  });
+
+  it('renders every Decision Review input in domain language', async () => {
+    const projectId = await createProject('markdown-decision-review-inputs');
+    const roundId = await createCanonicalDecisionReviewRound(projectId);
+    await request(app.getHttpServer())
+      .post(`/projects/${projectId}/rounds/${roundId}/complete`)
+      .expect(201);
+    await request(app.getHttpServer())
+      .put(`/projects/${projectId}/decision-review`)
+      .send({
+        businessValue: 5,
+        strategicAlignment: 4,
+        urgency: 3,
+        confidence: 4,
+        complexity: 2,
+        risk: 1,
+      })
+      .expect(200);
+    const template = await request(app.getHttpServer())
+      .post('/settings/markdown-templates')
+      .send({
+        name: `Döntési bemenetek ${projectId}`,
+        draftContent: '# {{project.name}}\n\n{{project.decisionReview}}',
+      })
+      .expect(201);
+    await request(app.getHttpServer())
+      .post(`/settings/markdown-templates/${template.body.id as string}/publish`)
+      .expect(201);
+
+    const revision = await request(app.getHttpServer())
+      .post(`/projects/${projectId}/markdown-revisions`)
+      .send({ reason: 'MANUAL', templateId: template.body.id })
+      .expect(201);
+    assert.match(revision.body.content, /Üzleti érték: 5/);
+    assert.match(revision.body.content, /Stratégiai illeszkedés: 4/);
+    assert.match(revision.body.content, /Sürgősség: 3/);
+    assert.match(revision.body.content, /Bizonyosság: 4/);
+    assert.match(revision.body.content, /Komplexitás: 2/);
+    assert.match(revision.body.content, /Kockázat: 1/);
+    assert.equal(revision.body.content.includes('ESTIMATE_'), false);
+  });
+
+  it('keeps multiline Initial Intake answers inside their Markdown list field', async () => {
+    const projectId = await createProject('markdown-multiline-answer');
+    const roundId = await createCanonicalDecisionReviewRound(projectId);
+    const activeRound = await request(app.getHttpServer())
+      .get(`/projects/${projectId}/rounds/active`)
+      .expect(200);
+    const multilineQuestion = (activeRound.body.questions as DecisionReviewSnapshot[]).find(
+      (question) => question.type === 'TEXT' || question.type === 'LONG_TEXT',
+    );
+    if (!multilineQuestion) {
+      throw new Error('The canonical intake did not contain a multiline-capable question.');
+    }
+    await request(app.getHttpServer())
+      .patch(`/projects/${projectId}/rounds/${roundId}/answers/${multilineQuestion.id}`)
+      .send({ value: 'Első bekezdés\n\nMásodik bekezdés' })
+      .expect(200);
+
+    const revision = await request(app.getHttpServer())
+      .post(`/projects/${projectId}/markdown-revisions`)
+      .send({ reason: 'MANUAL' })
+      .expect(201);
+    assert.match(
+      revision.body.content,
+      /- Válasz:\n  > Első bekezdés\n  >\n  > Második bekezdés/,
+    );
+    assert.equal(revision.body.content.includes('\n\nMásodik bekezdés'), false);
+  });
+
   it('reports the next preparation action for a project without an accepted question schema', async () => {
     const projectId = await createProject('preparation-status-schema-required');
 
