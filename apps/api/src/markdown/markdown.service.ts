@@ -718,7 +718,7 @@ function renderInitialIntake(rounds: readonly InterviewRound[]): string | null {
       `### ${question.order}. ${escapeMarkdownInline(question.text)}`,
       '',
       `- Ellenőrzési pont: ${escapeMarkdownInline(question.controlPoint)}`,
-      `- Válasz: ${formatAnswer(question.answer)}`,
+      renderAnswerField(question.answer),
       `- Felmérési állapot: ${escapeMarkdownInline(question.checklistStatus)}`,
       '',
     ]),
@@ -783,6 +783,17 @@ function formatAnswer(answer: InterviewRound['questions'][number]['answer']): st
   if (answer === null) return 'Nincs válasz';
   if (Array.isArray(answer)) return answer.map((item) => escapeMarkdownInline(String(item))).join(', ');
   return escapeMarkdownInline(String(answer));
+}
+
+function renderAnswerField(answer: InterviewRound['questions'][number]['answer']): string {
+  const formatted = formatAnswer(answer).replace(/\r\n?/g, '\n');
+  if (!formatted.includes('\n')) {
+    return `- Válasz: ${formatted}`;
+  }
+  const quotedLines = formatted
+    .split('\n')
+    .map((line) => `  >${line.length > 0 ? ` ${line}` : ''}`);
+  return ['- Válasz:', ...quotedLines].join('\n');
 }
 
 function escapeMarkdownInline(value: string): string {

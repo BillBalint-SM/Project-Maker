@@ -97,6 +97,7 @@ export class MarkdownTemplatePage implements OnInit {
         this.feedback.set('Draft mentve. Az előnézet után publikálhatod.');
         this.upsert(template);
         this.selected.set(template);
+        this.form.markAsPristine();
       },
       error: (error: Error) => {
         this.working.set(false);
@@ -107,7 +108,7 @@ export class MarkdownTemplatePage implements OnInit {
 
   showPreview(): void {
     const template = this.selected();
-    if (!template || this.working()) return;
+    if (!template || this.working() || this.form.dirty) return;
     this.working.set(true);
     this.actionError.set(null);
     this.api.preview(template.id).subscribe({
@@ -124,7 +125,7 @@ export class MarkdownTemplatePage implements OnInit {
 
   publish(): void {
     const template = this.selected();
-    if (!template || this.working()) return;
+    if (!template || this.working() || this.form.dirty) return;
     this.working.set(true);
     this.actionError.set(null);
     this.api.publish(template.id).subscribe({

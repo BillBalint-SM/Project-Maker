@@ -37,8 +37,8 @@
             </fieldset>
             <div class="actions">
               <p-button type="submit" label="Draft mentése" [loading]="working()" data-testid="save-markdown-template-button" />
-              <p-button type="button" label="Előnézet" severity="secondary" [disabled]="!selected() || working()" data-testid="preview-markdown-template-button" (onClick)="showPreview()" />
-              <p-button type="button" label="Publikálás" severity="success" [disabled]="!selected() || working()" data-testid="publish-markdown-template-button" (onClick)="publish()" />
+              <p-button type="button" label="Előnézet" severity="secondary" [disabled]="!selected() || working() || form.dirty" data-testid="preview-markdown-template-button" (onClick)="showPreview()" />
+              <p-button type="button" label="Publikálás" severity="success" [disabled]="!selected() || working() || form.dirty" data-testid="publish-markdown-template-button" (onClick)="publish()" />
             </div>
             @if (selected(); as current) {
               <p data-testid="markdown-template-version">{{ current.latestPublishedVersion ? 'Publikált v' + current.latestPublishedVersion : 'Még nincs publikált verzió' }}</p>
