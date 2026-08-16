@@ -118,7 +118,7 @@ Egy projekten belül az oldalak közötti visszalépő linkek őrzik a munkafoly
 | `Projects` | Aktív és archivált projektek áttekintése | Új projekt, cockpit megnyitása |
 | `Project cockpit` | Operatív állapot és projektközpont | Workspace mentése, follow-upok, e-mail, audit, lifecycle |
 | `Projektinterjú` | Projektséma és kezdő interjú | Séma közzététele, kör indítása, válaszadás, lezárás |
-| `Markdown execution plan` | Változatlan átadási pillanatképek | Revízió generálása, összehasonlítás, előnézet, letöltés |
+| `Markdown specifikáció` | Változatlan kanonikus specifikációk | Revízió generálása, összehasonlítás, előnézet, letöltés |
 | `Base question bank` | Minden projekt közös kérdéskészlete | Kérdés létrehozása, új verziót létrehozó szerkesztés |
 
 Ha egy projekt vagy revízió közvetlen linkje már nem létező elemre mutat, térj vissza a projektlistára, és nyisd meg újra a kívánt elemet a felületről. Ne próbáld kézzel javítani az oldal címét.
@@ -783,7 +783,7 @@ Sikertelen küldéskor `FAILED` állapot, biztonságos hibakód és `FOLLOW_UP_P
 >
 > Előbb nyisd meg az `Open Markdown plan` oldalt, ellenőrizd a kijelölt legfrissebb revízió teljes `Content preview` tartalmát, majd térj vissza a cockpitbe.
 
-A review emailhez legalább egy Markdown-revízió kötelező. Nem a follow-up ping állapotát küldi, hanem az aktuális execution-plan pillanatképet kéri jóváhagyásra vagy javításra.
+A review emailhez legalább egy Markdown-revízió kötelező. Nem a follow-up ping állapotát küldi, hanem az aktuális kanonikus Markdown-specifikációt kéri jóváhagyásra vagy javításra.
 
 1. Ellenőrizd a legfrissebb revízió verziószámát, létrehozási okát és előnézetét.
 2. Ellenőrizd a cockpitben a címzettet.
@@ -1114,7 +1114,6 @@ Az alábbiak nem elrejtett funkciók és nem más menüpontban találhatók; a j
 
 ### Dokumentumok és intelligens funkciók
 
-- A jelenlegi Markdown-revízió megőrzött execution-plan pillanatkép, nem a tervezett kanonikus, strukturált specifikáció.
 - A Markdown nem tartalmaz discovery follow-upot vagy customer follow-up állapotot.
 - Nincs automatikusan generált acceptance criteria- vagy user story-csomag.
 - Nincs PDF-, Excel- vagy más spreadsheet-export.

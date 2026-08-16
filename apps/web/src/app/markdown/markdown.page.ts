@@ -30,7 +30,7 @@ interface ReasonOption {
 }
 
 const reasonOptions: readonly ReasonOption[] = markdownRevisionReasons.map((value) => ({
-  label: value === 'MANUAL' ? 'Manual generation' : 'Milestone reached',
+  label: value === 'MANUAL' ? 'Kézi generálás' : 'Mérföldkő elérése',
   value,
 }));
 
@@ -105,14 +105,14 @@ export class MarkdownPage implements OnInit {
         this.configuration.set(configuration);
         this.generationForm.controls.templateId.setValue(configuration.selectedTemplateId);
       },
-      error: (error: unknown) => this.actionError.set(errorMessage(error, 'load Markdown templates')),
+      error: (error: unknown) => this.actionError.set(errorMessage(error, 'betölteni a Markdown-sablonokat')),
     });
   }
 
   loadRevisions(): void {
     if (!this.projectId) {
       this.loadError.set(
-        'The Markdown URL is missing a project ID. Return to the project cockpit and open Markdown again.',
+        'A Markdown URL-ből hiányzik a projektazonosító. Térj vissza a projektállapothoz, majd nyisd meg újra a Markdown tervet.',
       );
       this.loading.set(false);
       return;
@@ -136,7 +136,7 @@ export class MarkdownPage implements OnInit {
         this.selectRevision(this.requestedRevisionId);
       },
       error: (error: unknown) => {
-        this.loadError.set(errorMessage(error, 'load Markdown revisions'));
+        this.loadError.set(errorMessage(error, 'betölteni a Markdown-revíziókat'));
         this.loading.set(false);
       },
     });
@@ -151,7 +151,7 @@ export class MarkdownPage implements OnInit {
     const value = this.generationForm.getRawValue();
     const milestone = value.milestone.trim();
     if (value.reason === 'MILESTONE' && milestone.length === 0) {
-      this.actionError.set('Enter the milestone before generating a milestone revision.');
+      this.actionError.set('A mérföldkő-revízió generálása előtt add meg a mérföldkő nevét.');
       return;
     }
 
@@ -167,13 +167,13 @@ export class MarkdownPage implements OnInit {
       next: (revision) => {
         this.requestedRevisionId = revision.id;
         this.generating.set(false);
-        this.feedback.set(`Markdown revision v${revision.version} generated.`);
+        this.feedback.set(`A Markdown-revízió v${revision.version} verziója elkészült.`);
         this.generationForm.controls.milestone.reset('');
         this.loadConfiguration();
         this.loadRevisions();
       },
       error: (error: unknown) => {
-        this.actionError.set(errorMessage(error, 'generate the Markdown revision'));
+        this.actionError.set(errorMessage(error, 'generálni a Markdown-revíziót'));
         this.generating.set(false);
       },
     });
@@ -191,6 +191,10 @@ export class MarkdownPage implements OnInit {
 
   isSelected(revisionId: string): boolean {
     return this.selectedRevision()?.id === revisionId;
+  }
+
+  reasonLabel(reason: MarkdownRevisionReason): string {
+    return reasonOptions.find((option) => option.value === reason)?.label ?? reason;
   }
 
   private selectRevision(requestedRevisionId: string | null): void {
@@ -226,7 +230,7 @@ export class MarkdownPage implements OnInit {
         this.selectedRevision.set(null);
         this.loadingRevisionId = null;
         this.detailLoading.set(false);
-        this.detailError.set(errorMessage(error, 'load the Markdown revision'));
+        this.detailError.set(errorMessage(error, 'betölteni a Markdown-revíziót'));
       },
     });
   }
@@ -246,5 +250,5 @@ function errorMessage(error: unknown, action: string): string {
   if (error instanceof Error) {
     return error.message;
   }
-  return `Could not ${action}. Refresh the page and try again.`;
+  return `Nem sikerült ${action}. Frissítsd az oldalt, majd próbáld újra.`;
 }
