@@ -1666,7 +1666,7 @@ describe('Round integrity database boundary (PostgreSQL)', () => {
     }
   });
 
-  it('refuses migration 0013 rollback after the seeded template changes or gains a version', async () => {
+  it('refuses migration 0013 rollback when the exact seeded template state is not intact', async () => {
     const migrationDatabaseName = `output01_template_down_test_${Date.now()}_${randomUUID().replaceAll('-', '')}`;
     const migrationDatabaseUrl = createDatabaseUrlWithName(databaseUrl, migrationDatabaseName);
     let migrationDataSource: DataSource | undefined;
@@ -1716,11 +1716,50 @@ describe('Round integrity database boundary (PostgreSQL)', () => {
         /Migration 0013 cannot remove persisted Markdown template activity/i,
       );
 
-      const versionRows = await migrationDataSource.query<Array<{ count: string }>>(
-        'SELECT COUNT(*)::text AS "count" FROM "markdown_template_versions" WHERE "template_id" = $1',
+      await migrationDataSource.query('ALTER TABLE "markdown_template_versions" DISABLE TRIGGER "trg_markdown_template_versions_immutable"');
+      await migrationDataSource.query(
+        'DELETE FROM "markdown_template_versions" WHERE "template_id" = $1 AND "version" = 2',
         [defaultTemplate.id],
       );
-      assert.deepEqual(versionRows, [{ count: '2' }]);
+      await migrationDataSource.query(
+        'DELETE FROM "markdown_template_versions" WHERE "template_id" = $1 AND "version" = 1',
+        [defaultTemplate.id],
+      );
+      await assert.rejects(
+        migrationDataSource.undoLastMigration(),
+        /Migration 0013 cannot remove persisted Markdown template activity/i,
+      );
+
+      await migrationDataSource.query(
+        `INSERT INTO "markdown_template_versions" (
+          "id", "template_id", "version", "content"
+        ) VALUES ($1, $2, 1, $3)`,
+        ['00000000-0000-4000-8000-000000000113', defaultTemplate.id, defaultTemplate.draftContent],
+      );
+      await migrationDataSource.query(
+        'UPDATE "markdown_template_versions" SET "content" = $1 WHERE "template_id" = $2 AND "version" = 1',
+        ['Módosított publikált tartalom', defaultTemplate.id],
+      );
+      await assert.rejects(
+        migrationDataSource.undoLastMigration(),
+        /Migration 0013 cannot remove persisted Markdown template activity/i,
+      );
+
+      await migrationDataSource.query(
+        'UPDATE "markdown_template_versions" SET "content" = $1 WHERE "template_id" = $2 AND "version" = 1',
+        [defaultTemplate.draftContent, defaultTemplate.id],
+      );
+      await migrationDataSource.query(
+        'ALTER TABLE "markdown_template_versions" DROP CONSTRAINT "fk_markdown_template_versions_template"',
+      );
+      await migrationDataSource.query(
+        'DELETE FROM "markdown_templates" WHERE "id" = $1',
+        [defaultTemplate.id],
+      );
+      await assert.rejects(
+        migrationDataSource.undoLastMigration(),
+        /Migration 0013 cannot remove persisted Markdown template activity/i,
+      );
     } finally {
       if (migrationDataSource?.isInitialized) {
         await migrationDataSource.destroy();
