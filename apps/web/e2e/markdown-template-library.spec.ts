@@ -29,6 +29,14 @@ test.describe.serial('OUTPUT-01 Markdown template library employee workflow', ()
     await page.getByTestId('save-markdown-template-button').click();
     await expect(page.getByTestId('markdown-template-feedback')).toContainText('Draft mentve');
 
+    await page
+      .getByTestId('markdown-template-content-input')
+      .fill('# Átadási terv — {{project.name}}\n\n{{revision.metadata}}\n\n{{project.context}}\n\nMentett változat');
+    await expect(page.getByTestId('preview-markdown-template-button').locator('button')).toBeDisabled();
+    await expect(page.getByTestId('publish-markdown-template-button').locator('button')).toBeDisabled();
+    await page.getByTestId('save-markdown-template-button').click();
+    await expect(page.getByTestId('publish-markdown-template-button').locator('button')).toBeEnabled();
+
     await page.getByTestId('preview-markdown-template-button').click();
     await expect(page.getByTestId('markdown-template-preview')).toContainText('# Átadási terv — Minta projekt');
     await page.getByTestId('publish-markdown-template-button').click();

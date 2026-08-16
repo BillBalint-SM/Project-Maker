@@ -1665,4 +1665,67 @@ describe('Round integrity database boundary (PostgreSQL)', () => {
       await dataSource.query(`DROP DATABASE IF EXISTS "${migrationDatabaseName}" WITH (FORCE)`);
     }
   });
+
+  it('refuses migration 0013 rollback after the seeded template changes or gains a version', async () => {
+    const migrationDatabaseName = `output01_template_down_test_${Date.now()}_${randomUUID().replaceAll('-', '')}`;
+    const migrationDatabaseUrl = createDatabaseUrlWithName(databaseUrl, migrationDatabaseName);
+    let migrationDataSource: DataSource | undefined;
+
+    try {
+      await dataSource.query(`CREATE DATABASE "${migrationDatabaseName}"`);
+      migrationDataSource = new DataSource({
+        type: 'postgres',
+        url: migrationDatabaseUrl,
+        synchronize: false,
+        migrations: [...migrationsForFreshDatabase()],
+      });
+      await migrationDataSource.initialize();
+      await migrationDataSource.runMigrations();
+
+      const defaultRows = await migrationDataSource.query<Array<{
+        id: string;
+        name: string;
+        draftContent: string;
+      }>>(
+        `SELECT "id", "name", "draft_content" AS "draftContent"
+         FROM "markdown_templates" WHERE "is_default" = true`,
+      );
+      assert.equal(defaultRows.length, 1);
+      const defaultTemplate = defaultRows[0];
+      await migrationDataSource.query(
+        'UPDATE "markdown_templates" SET "name" = $1 WHERE "id" = $2',
+        ['Módosított alapértelmezett sablon', defaultTemplate.id],
+      );
+      await assert.rejects(
+        migrationDataSource.undoLastMigration(),
+        /Migration 0013 cannot remove persisted Markdown template activity/i,
+      );
+
+      await migrationDataSource.query(
+        'UPDATE "markdown_templates" SET "name" = $1, "draft_content" = $2 WHERE "id" = $3',
+        [defaultTemplate.name, defaultTemplate.draftContent, defaultTemplate.id],
+      );
+      await migrationDataSource.query(
+        `INSERT INTO "markdown_template_versions" (
+          "id", "template_id", "version", "content"
+        ) VALUES ($1, $2, 2, $3)`,
+        [randomUUID(), defaultTemplate.id, defaultTemplate.draftContent],
+      );
+      await assert.rejects(
+        migrationDataSource.undoLastMigration(),
+        /Migration 0013 cannot remove persisted Markdown template activity/i,
+      );
+
+      const versionRows = await migrationDataSource.query<Array<{ count: string }>>(
+        'SELECT COUNT(*)::text AS "count" FROM "markdown_template_versions" WHERE "template_id" = $1',
+        [defaultTemplate.id],
+      );
+      assert.deepEqual(versionRows, [{ count: '2' }]);
+    } finally {
+      if (migrationDataSource?.isInitialized) {
+        await migrationDataSource.destroy();
+      }
+      await dataSource.query(`DROP DATABASE IF EXISTS "${migrationDatabaseName}" WITH (FORCE)`);
+    }
+  });
 });

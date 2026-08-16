@@ -107,12 +107,28 @@ export class MarkdownTemplateLibrary0013MarkdownTemplateLibrary1786953600000
   }
 
   async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query('LOCK TABLE "projects", "markdown_revisions", "markdown_templates" IN ACCESS EXCLUSIVE MODE');
+    await queryRunner.query(
+      'LOCK TABLE "projects", "markdown_revisions", "markdown_templates", "markdown_template_versions" IN ACCESS EXCLUSIVE MODE',
+    );
     const rows = await queryRunner.query(
       `SELECT 1 FROM "projects" WHERE "markdown_template_id" IS NOT NULL
        UNION ALL SELECT 1 FROM "markdown_revisions" WHERE "template_id" IS NOT NULL
-       UNION ALL SELECT 1 FROM "markdown_templates" WHERE "id" <> $1 LIMIT 1`,
-      [defaultTemplateId],
+       UNION ALL SELECT 1 FROM "markdown_templates" WHERE "id" <> $1
+       UNION ALL SELECT 1 FROM "markdown_templates"
+         WHERE "id" = $1
+           AND ("name" <> $2 OR "draft_content" <> $3 OR "is_default" IS DISTINCT FROM true)
+       UNION ALL SELECT 1 WHERE NOT EXISTS (
+         SELECT 1 FROM "markdown_templates"
+         WHERE "id" = $1 AND "name" = $2 AND "draft_content" = $3 AND "is_default" = true
+       )
+       UNION ALL SELECT 1 FROM "markdown_template_versions"
+         WHERE "id" <> $4 OR "template_id" <> $1 OR "version" <> 1 OR "content" <> $3
+       UNION ALL SELECT 1 WHERE NOT EXISTS (
+         SELECT 1 FROM "markdown_template_versions"
+         WHERE "id" = $4 AND "template_id" = $1 AND "version" = 1 AND "content" = $3
+       )
+       LIMIT 1`,
+      [defaultTemplateId, 'Alapértelmezett projektterv', defaultContent, defaultVersionId],
     );
     if (rows.length > 0) {
       throw new Error('Migration 0013 cannot remove persisted Markdown template activity.');

@@ -313,6 +313,34 @@ describe('ProjectsController (e2e)', () => {
     assert.equal(revision.body.content.includes('ESTIMATE_'), false);
   });
 
+  it('keeps multiline Initial Intake answers inside their Markdown list field', async () => {
+    const projectId = await createProject('markdown-multiline-answer');
+    const roundId = await createCanonicalDecisionReviewRound(projectId);
+    const activeRound = await request(app.getHttpServer())
+      .get(`/projects/${projectId}/rounds/active`)
+      .expect(200);
+    const multilineQuestion = (activeRound.body.questions as DecisionReviewSnapshot[]).find(
+      (question) => question.type === 'TEXT' || question.type === 'LONG_TEXT',
+    );
+    if (!multilineQuestion) {
+      throw new Error('The canonical intake did not contain a multiline-capable question.');
+    }
+    await request(app.getHttpServer())
+      .patch(`/projects/${projectId}/rounds/${roundId}/answers/${multilineQuestion.id}`)
+      .send({ value: 'Első bekezdés\n\nMásodik bekezdés' })
+      .expect(200);
+
+    const revision = await request(app.getHttpServer())
+      .post(`/projects/${projectId}/markdown-revisions`)
+      .send({ reason: 'MANUAL' })
+      .expect(201);
+    assert.match(
+      revision.body.content,
+      /- Válasz:\n  > Első bekezdés\n  >\n  > Második bekezdés/,
+    );
+    assert.equal(revision.body.content.includes('\n\nMásodik bekezdés'), false);
+  });
+
   it('reports the next preparation action for a project without an accepted question schema', async () => {
     const projectId = await createProject('preparation-status-schema-required');
 
