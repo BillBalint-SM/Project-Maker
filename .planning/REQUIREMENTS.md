@@ -27,7 +27,7 @@ The historical guided-intake execution record is preserved in the tracked
 ## Scoring and output
 
 - [x] **SCORE-01:** Completion, readiness, gaps, Decision Score, and recommended action implement the domain contract and have behavioral tests.
-- [ ] **OUTPUT-01:** Structured Markdown is the canonical generated specification.
+- [x] **OUTPUT-01:** Structured Markdown is the canonical generated specification. Verified through a published Default template, named draft/published template lifecycle, safe placeholders, server-side preview and rendering, remembered project selection, and immutable revision provenance.
 - [ ] **OUTPUT-02:** Acceptance criteria and user stories derive from the canonical specification.
 - [ ] **OUTPUT-03:** PDF and spreadsheet exports derive from the canonical specification and handle Hungarian text and dynamic content.
 - [x] **DOC-00:** A Git-tracked roadmap and documentation index distinguish delivered behavior, planned work, opportunities, improvements, and historical delivery evidence.

@@ -16,7 +16,8 @@ import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
         </a>
         <nav class="app-nav" aria-label="Application navigation">
           <a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">Projects</a>
-          <a routerLink="/settings/questions" routerLinkActive="active">Settings</a>
+          <a routerLink="/settings/questions" routerLinkActive="active">Kérdésbank beállítások</a>
+          <a routerLink="/settings/markdown-templates" routerLinkActive="active">Markdown beállítások</a>
         </nav>
       </div>
     </header>

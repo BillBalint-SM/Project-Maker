@@ -4,6 +4,7 @@ import { Observable, throwError } from 'rxjs';
 import { catchError } from 'rxjs/operators';
 import type {
   CreateMarkdownRevisionInput,
+  MarkdownGenerationConfiguration,
   MarkdownRevision,
 } from '@project-maker/contracts';
 
@@ -22,6 +23,13 @@ export class MarkdownApiService {
         input,
       )
       .pipe(catchError((error: unknown) => failApiRequest(error, 'generate the Markdown revision')));
+  }
+
+  loadConfiguration(projectId: string): Observable<MarkdownGenerationConfiguration> {
+    const encodedProjectId = encodeURIComponent(projectId);
+    return this.http
+      .get<MarkdownGenerationConfiguration>(`/api/projects/${encodedProjectId}/markdown-revisions/configuration`)
+      .pipe(catchError((error: unknown) => failApiRequest(error, 'load Markdown templates')));
   }
 
   listRevisions(projectId: string): Observable<readonly MarkdownRevision[]> {
@@ -84,6 +92,14 @@ function mapApiError(error: unknown, action: string): ActionableApiError {
     };
   }
 
+  const serverMessage = safeServerMessage(error);
+  if ((error.status === 400 || error.status === 409) && serverMessage) {
+    return {
+      userMessage: serverMessage,
+      diagnostics: { action, status: error.status, statusText: error.statusText },
+    };
+  }
+
   const nextStep =
     error.status === 404
       ? 'Confirm that the project or revision still exists.'
@@ -94,4 +110,14 @@ function mapApiError(error: unknown, action: string): ActionableApiError {
     userMessage: `Could not ${action} (HTTP ${error.status}). ${nextStep}`,
     diagnostics: { action, status: error.status, statusText: error.statusText },
   };
+}
+
+function safeServerMessage(error: HttpErrorResponse): string | null {
+  const payload: unknown = error.error;
+  if (!payload || typeof payload !== 'object' || !('message' in payload)) {
+    return null;
+  }
+
+  const message = payload.message;
+  return typeof message === 'string' && message.trim().length > 0 ? message : null;
 }

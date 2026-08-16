@@ -55,6 +55,15 @@
         >
           <fieldset [disabled]="generating()">
             <div class="field">
+              <label for="markdown-template">Publikált sablon</label>
+              <select id="markdown-template" class="full-width" formControlName="templateId" data-testid="markdown-template-select">
+                @for (template of configuration()?.templates ?? []; track template.id) {
+                  <option [value]="template.id">{{ template.name }} · v{{ template.latestPublishedVersion }}</option>
+                }
+              </select>
+              <small>A sikeres generálás után ezt a választást jegyzi meg a projekt.</small>
+            </div>
+            <div class="field">
               <label for="markdown-reason">Generation reason</label>
               <select
                 id="markdown-reason"
@@ -95,14 +104,16 @@
             </div>
           </fieldset>
 
-          <p-button
-            type="submit"
-            label="Generate Markdown revision"
-            icon="pi pi-file-edit"
-            [loading]="generating()"
+          <button
+            pButton
+            type="button"
             [disabled]="generating()"
             data-testid="generate-markdown-button"
-          />
+            (click)="generateRevision()"
+          >
+            <span class="pi pi-file-edit" aria-hidden="true"></span>
+            <span>{{ generating() ? 'Generating…' : 'Generate Markdown revision' }}</span>
+          </button>
         </form>
       </p-card>
     </div>
@@ -181,6 +192,12 @@
               <div>
                 <dt>Source version</dt>
                 <dd data-testid="markdown-source-version">v{{ current.sourceSnapshot.version }}</dd>
+              </div>
+              <div>
+                <dt>Sablon</dt>
+                <dd data-testid="markdown-revision-template">
+                  @if (current.template; as template) { {{ template.name }} · v{{ template.version }} } @else { Korábbi, provenance nélküli revízió }
+                </dd>
               </div>
               <div>
                 <dt>Previous revision</dt>
