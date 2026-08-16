@@ -141,6 +141,22 @@ describe('ProjectsController (e2e)', () => {
       .expect(201);
     assert.deepEqual(nextRevision.body.template, firstRevision.body.template);
 
+    const auditRows = await dataSource.query<Array<{ payload: Record<string, string> }>>(
+      'SELECT "payload" FROM "audit_events" WHERE "project_id" = $1 AND "event_type" = $2',
+      [projectId, 'MARKDOWN_REVISION_CREATED'],
+    );
+    assert.equal(auditRows.length, 2);
+    assert.deepEqual(Object.keys(auditRows[0]?.payload ?? {}).sort(), [
+      'changeSummaryLength',
+      'contentLength',
+      'previousRevisionId',
+      'reason',
+      'revisionId',
+      'revisionVersion',
+      'sourceSnapshotLength',
+    ]);
+    assert.doesNotMatch(JSON.stringify(auditRows), new RegExp(templateName));
+
     const otherProjectId = await createProject('markdown-default-template');
     const defaultConfiguration = await request(app.getHttpServer())
       .get(`/projects/${otherProjectId}/markdown-revisions/configuration`)
@@ -151,6 +167,41 @@ describe('ProjectsController (e2e)', () => {
         (candidate: { isDefault: boolean }) => candidate.isDefault,
       )?.id,
     );
+  });
+
+  it('serializes concurrent Markdown generation and keeps legacy revisions readable', async () => {
+    const projectId = await createProject('markdown-concurrent-generation');
+    const [first, second] = await Promise.all([
+      request(app.getHttpServer())
+        .post(`/projects/${projectId}/markdown-revisions`)
+        .send({ reason: 'MANUAL' })
+        .expect(201),
+      request(app.getHttpServer())
+        .post(`/projects/${projectId}/markdown-revisions`)
+        .send({ reason: 'MANUAL' })
+        .expect(201),
+    ]);
+    const ordered = [first.body, second.body].sort(
+      (left: { version: number }, right: { version: number }) => left.version - right.version,
+    );
+    assert.deepEqual(ordered.map((revision: { version: number }) => revision.version), [1, 2]);
+    assert.equal(ordered[1].previousRevisionId, ordered[0].id);
+    assert.deepEqual(ordered.map((revision: { template: { version: number } }) => revision.template.version), [1, 1]);
+
+    await dataSource.query('ALTER TABLE "markdown_revisions" DISABLE TRIGGER "trg_markdown_revisions_immutable"');
+    try {
+      await dataSource.query(
+        'UPDATE "markdown_revisions" SET "template_id" = NULL, "template_name" = NULL, "template_version" = NULL WHERE "id" = $1',
+        [ordered[0].id],
+      );
+    } finally {
+      await dataSource.query('ALTER TABLE "markdown_revisions" ENABLE TRIGGER "trg_markdown_revisions_immutable"');
+    }
+    const legacy = await request(app.getHttpServer())
+      .get(`/projects/${projectId}/markdown-revisions/${ordered[0].id as string}`)
+      .expect(200);
+    assert.equal(legacy.body.template, null);
+    assert.equal(legacy.body.content, ordered[0].content);
   });
 
   it('keeps generated template provenance immutable across later publications', async () => {
@@ -269,7 +320,7 @@ describe('ProjectsController (e2e)', () => {
       .post(`/projects/${projectId}/markdown-revisions`)
       .send({ reason: 'MANUAL' })
       .expect(409)
-      .expect(({ body }) => assert.match(body.message, /Archived projects/));
+      .expect(({ body }) => assert.match(body.message, /Archivált projekt/));
   });
 
   it('renders every Decision Review input in domain language', async () => {

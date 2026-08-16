@@ -53,7 +53,7 @@ export const routes: Routes = [
       import('./markdown/markdown.page').then(
         (module) => module.MarkdownPage,
       ),
-    title: 'Markdown execution plan | Project Maker',
+    title: 'Markdown specifikáció | Project Maker',
   },
   {
     path: 'projects/:projectId',

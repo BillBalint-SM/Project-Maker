@@ -45,7 +45,14 @@ test.describe.serial('OUTPUT-01 Markdown template library employee workflow', ()
     await page.getByTestId('publish-markdown-template-button').click();
     await expect(page.getByTestId('markdown-template-version')).toContainText('Publikált v1');
 
+    await page.getByTestId('new-markdown-template-button').click();
+    await page.getByTestId('markdown-template-name-input').fill(`Hibás sablon ${suffix}`);
+    await page.getByTestId('markdown-template-content-input').fill('# {{process.env}}');
+    await page.getByTestId('save-markdown-template-button').click();
+    await expect(page.getByRole('alert')).toContainText('Nem támogatott Markdown-sablon placeholder');
+
     await page.goto(`/projects/${project.id}/markdown`);
+    await expect(page.getByRole('heading', { name: 'Markdown specifikáció' })).toBeVisible();
     const templateSelect = page.getByTestId('markdown-template-select');
     const templateOption = templateSelect.locator('option').filter({ hasText: templateName });
     const templateId = await templateOption.getAttribute('value');
@@ -78,6 +85,16 @@ test.describe.serial('OUTPUT-01 Markdown template library employee workflow', ()
     const required = (await requiredTemplate.json()) as { readonly id: string };
     expect((await request.post(`/api/settings/markdown-templates/${required.id}/publish`)).status()).toBe(201);
 
+    const optionalTemplate = await request.post('/api/settings/markdown-templates', {
+      data: {
+        name: `Opcionális sablon ${suffix}`,
+        draftContent: '# {{project.name}}\n\n## Felkészültség\n\n{{project.readiness?}}\n\n## Döntési értékelés\n\n{{project.decisionReview?}}',
+      },
+    });
+    expect(optionalTemplate.status()).toBe(201);
+    const optional = (await optionalTemplate.json()) as { readonly id: string };
+    expect((await request.post(`/api/settings/markdown-templates/${optional.id}/publish`)).status()).toBe(201);
+
     const blockedProjectResponse = await request.post('/api/projects', {
       data: {
         name: `OUTPUT-01 hiányos projekt ${suffix}`,
@@ -87,12 +104,21 @@ test.describe.serial('OUTPUT-01 Markdown template library employee workflow', ()
     });
     const blockedProject = (await blockedProjectResponse.json()) as { readonly id: string };
     await page.goto(`/projects/${blockedProject.id}/markdown`);
+    await expect(page.getByTestId('markdown-template-select').locator('option:checked')).toContainText(
+      'Alapértelmezett projektterv',
+    );
     await page.getByTestId('markdown-template-select').selectOption(required.id);
     await page.getByTestId('generate-markdown-button').click();
     await expect(page.getByTestId('markdown-action-error')).toContainText('Elfogadott projekt-kérdésséma');
 
+    await page.getByTestId('markdown-template-select').selectOption(optional.id);
+    await page.getByTestId('generate-markdown-button').click();
+    await expect(page.getByTestId('markdown-success')).toContainText('Markdown-revízió');
+    await expect(page.getByTestId('markdown-content-preview')).not.toContainText('## Felkészültség');
+    await expect(page.getByTestId('markdown-content-preview')).not.toContainText('## Döntési értékelés');
+
     expect((await request.post(`/api/projects/${blockedProject.id}/archive`)).status()).toBe(201);
     await page.getByTestId('generate-markdown-button').click();
-    await expect(page.getByTestId('markdown-action-error')).toContainText('Archived projects');
+    await expect(page.getByTestId('markdown-action-error')).toContainText('Archivált projekt');
   });
 });

@@ -96,7 +96,7 @@ export class MarkdownService {
   ): Promise<MarkdownRevision> {
     validateCreateInput(input);
     if (project.status === 'ARCHIVED') {
-      throw new ConflictException('Archived projects must be restored before a Markdown revision can be generated.');
+      throw new ConflictException('Archivált projekthez nem generálható Markdown-revízió; előbb állítsd vissza a projektet.');
     }
 
     const revisionRepository = manager.getRepository(MarkdownRevisionEntity);
@@ -183,7 +183,7 @@ export class MarkdownService {
     const defaultTemplate = templates.find((template) => template.isDefault);
     const selectedTemplateId = project.markdownTemplateId ?? defaultTemplate?.id;
     if (!selectedTemplateId) {
-      throw new ConflictException('No published Markdown template is available.');
+      throw new ConflictException('Nem érhető el publikált Markdown-sablon.');
     }
     return { selectedTemplateId, templates };
   }
@@ -394,7 +394,7 @@ function summarizeChanges(
   version: number,
 ): string {
   if (!previousRevision) {
-    return 'Initial revision; no previous revision exists.';
+    return 'Első revízió; nincs korábbi revízió.';
   }
 
   const previousSnapshot = previousRevision.sourceSnapshot;
@@ -402,17 +402,17 @@ function summarizeChanges(
     .map((section) => describeSectionChanges(previousSnapshot[section], currentSnapshot[section], section))
     .filter((section): section is SectionChangeReport => section !== null);
   if (sectionChanges.length === 0) {
-    return `Revision ${version} records no source snapshot changes since revision ${previousRevision.version}.`;
+    return `A(z) ${version}. revízió forráspillanatképe nem változott a(z) ${previousRevision.version}. revízió óta.`;
   }
 
   const details = sectionChanges.flatMap((section) => {
     const shownCount = section.paths.length;
-    const changeCount = `${section.total} ${section.total === 1 ? 'source path' : 'source paths'}`;
+    const changeCount = `${section.total} forrásútvonal`;
     const heading = `- ${formatSectionName(section.section)} (${changeCount}${
-      section.total > shownCount ? `; showing ${shownCount}` : ''
+      section.total > shownCount ? `; ebből ${shownCount} látható` : ''
     }):`;
     const pathLines = section.paths.map(
-      (change) => `  - ${change.kind} ${formatChangePath(change.path)}.`,
+      (change) => `  - ${formatChangeKind(change.kind)}: ${formatChangePath(change.path)}.`,
     );
     if (section.total === shownCount) {
       return [heading, ...pathLines];
@@ -420,13 +420,11 @@ function summarizeChanges(
     return [
       heading,
       ...pathLines,
-      `  - ${section.total - shownCount} additional change ${
-        section.total - shownCount === 1 ? 'path is' : 'paths are'
-      } omitted; inspect the current and previous snapshots for full context.`,
+      `  - További ${section.total - shownCount} változásútvonal nincs felsorolva; a teljes összefüggéshez hasonlítsd össze a jelenlegi és az előző pillanatképet.`,
     ];
   });
   return [
-    `Revision ${version} records the following changes since revision ${previousRevision.version}:`,
+    `A(z) ${version}. revízió a következő változásokat rögzíti a(z) ${previousRevision.version}. revízió óta:`,
     ...details,
   ].join('\n');
 }
@@ -802,10 +800,14 @@ function escapeMarkdownInline(value: string): string {
 
 function formatSectionName(section: SourceSnapshotSection): string {
   return section === 'projectSchema'
-    ? 'Project schema'
+    ? 'Projekt kérdésséma'
     : section === 'interviewRounds'
-      ? 'Interview rounds and answers'
-      : 'Project workspace';
+      ? 'Interjúkörök és válaszok'
+      : 'Projekt munkatér';
+}
+
+function formatChangeKind(kind: ChangeKind): string {
+  return kind === 'added' ? 'hozzáadva' : kind === 'removed' ? 'eltávolítva' : 'módosítva';
 }
 
 function createAuditPayload(
