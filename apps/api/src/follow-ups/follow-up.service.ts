@@ -520,12 +520,7 @@ export class CustomerFollowUpService implements OnModuleInit, OnModuleDestroy {
     claimed: ClaimedManualPing,
   ): Promise<CustomerFollowUpPingDelivery> {
     try {
-      const result = await this.mailer.submit({
-        recipientAddress: claimed.rendered.recipientEmail,
-        subject: claimed.rendered.subject,
-        textContent: claimed.rendered.text,
-      });
-      if (result.acceptance === 'REJECTED') throw new CustomerMailBoundaryError('SUBMISSION_REJECTED');
+      await this.submitPing(claimed.rendered);
     } catch (error) {
       await this.finalizeManualDeliveryError(claimed, error);
     }
@@ -639,12 +634,7 @@ export class CustomerFollowUpService implements OnModuleInit, OnModuleDestroy {
         return null;
       }
       try {
-        const result = await this.mailer.submit({
-          recipientAddress: rendered.recipientEmail,
-          subject: rendered.subject,
-          textContent: rendered.text,
-        });
-        if (result.acceptance === 'REJECTED') throw new CustomerMailBoundaryError('SUBMISSION_REJECTED');
+        await this.submitPing(rendered);
       } catch {
         await markDeliveryFailure(manager, state, now, true);
         await saveAuditEvent(manager, project.id, 'FOLLOW_UP_PING_FAILED', {
@@ -667,6 +657,17 @@ export class CustomerFollowUpService implements OnModuleInit, OnModuleDestroy {
       throw new ServiceUnavailableException(
         'Customer email delivery is not configured on this API.',
       );
+    }
+  }
+
+  private async submitPing(rendered: RenderedCustomerFollowUpPing): Promise<void> {
+    const result = await this.mailer.submit({
+      recipientAddress: rendered.recipientEmail,
+      subject: rendered.subject,
+      textContent: rendered.text,
+    });
+    if (result.acceptance === 'REJECTED') {
+      throw new CustomerMailBoundaryError('SUBMISSION_REJECTED');
     }
   }
 

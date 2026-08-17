@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
+import { Test } from '@nestjs/testing';
 
 import {
   CustomerMailBoundaryError,
@@ -8,7 +9,10 @@ import {
   type GraphMailClient,
   type GraphMailboxPage,
   type GraphOutboundMessage,
+  graphMailClientToken,
 } from '../src/mail-delivery/graph-customer-mail-boundary';
+import { customerMailboxChangesToken, customerOutboundMailToken, type CustomerMailboxChanges, type CustomerOutboundMail, UnavailableCustomerMailboxChanges } from '../src/mail-delivery/customer-mail-boundary';
+import { GraphMailDeliveryModule } from '../src/mail-delivery/mail-delivery.module';
 
 class ControlledGraphMailClient implements GraphMailClient {
   readonly submitted: GraphOutboundMessage[] = [];
@@ -16,6 +20,11 @@ class ControlledGraphMailClient implements GraphMailClient {
   submissionAccepted = true;
   pages = new Map<string, GraphMailboxPage>();
   readFailure = new Map<string, GraphMailClientError>();
+  configured = true;
+
+  isConfigured(): boolean {
+    return this.configured;
+  }
 
   async submit(message: GraphOutboundMessage): Promise<
     { readonly accepted: true; readonly id: string | null } | { readonly accepted: false }
@@ -38,6 +47,28 @@ class ControlledGraphMailClient implements GraphMailClient {
 }
 
 describe('Graph customer mail boundary', () => {
+  it('fails closed when the default SMTP composition has no mailbox reader', async () => {
+    await assert.rejects(
+      new UnavailableCustomerMailboxChanges().readChanges(null),
+      (error) => isSafeBoundaryError(error, 'CONFIGURATION_ERROR'),
+    );
+  });
+
+  it('registers Graph as both selectable provider-neutral application seams', async () => {
+    const client = new ControlledGraphMailClient();
+    client.pages.set('initial', { value: [], nextCheckpoint: null, completedCheckpoint: 'baseline' });
+    const module = await Test.createTestingModule({
+      imports: [GraphMailDeliveryModule.register({ provide: graphMailClientToken, useValue: client })],
+    }).compile();
+
+    assert.equal(module.get<CustomerOutboundMail>(customerOutboundMailToken).isConfigured(), true);
+    assert.deepEqual(
+      await module.get<CustomerMailboxChanges>(customerMailboxChangesToken).readChanges(null),
+      { changes: [], nextPageCheckpoint: null, completedCheckpoint: { value: 'baseline' } },
+    );
+    await module.close();
+  });
+
   it('normalizes submission acceptance without exposing the Graph response', async () => {
     const client = new ControlledGraphMailClient();
     const boundary = new GraphCustomerMailBoundary(client);
@@ -54,6 +85,13 @@ describe('Graph customer mail boundary', () => {
       subject: 'Kérdésséma',
       body: { contentType: 'Text', content: 'Tartalom' },
     }]);
+  });
+
+  it('reports Graph configuration without claiming a fallback transport', () => {
+    const client = new ControlledGraphMailClient();
+    client.configured = false;
+
+    assert.equal(new GraphCustomerMailBoundary(client).isConfigured(), false);
   });
 
   it('represents provider rejection as mail-system rejection, not delivery state', async () => {
@@ -106,8 +144,8 @@ describe('Graph customer mail boundary', () => {
         textContent: 'Válasz',
         receivedAt: '2026-08-17T08:00:00.000Z',
       }],
-      nextPageCursor: 'page-2',
-      checkpointCursor: null,
+      nextPageCheckpoint: { value: 'page-2' },
+      completedCheckpoint: null,
     });
   });
 
@@ -139,8 +177,8 @@ describe('Graph customer mail boundary', () => {
     client.readFailure.set('throttled', new GraphMailClientError('THROTTLED', 'Bearer secret-token'));
     client.readFailure.set('expired', new GraphMailClientError('INVALID_CURSOR', 'https://graph.example/delta?secret=1'));
 
-    await assert.rejects(boundary.readChanges('throttled'), (error) => isSafeBoundaryError(error, 'THROTTLED'));
-    await assert.rejects(boundary.readChanges('expired'), (error) => isSafeBoundaryError(error, 'INVALID_CURSOR'));
+    await assert.rejects(boundary.readChanges({ value: 'throttled' }), (error) => isSafeBoundaryError(error, 'THROTTLED'));
+    await assert.rejects(boundary.readChanges({ value: 'expired' }), (error) => isSafeBoundaryError(error, 'INVALID_CURSOR'));
   });
 });
 
