@@ -1,4 +1,5 @@
 import { spawn } from 'node:child_process';
+import { createServer } from 'node:http';
 import { createRequire } from 'node:module';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -18,6 +19,47 @@ if (!process.env.DATABASE_URL) {
 }
 
 await resetLocalE2eDatabase(process.env.DATABASE_URL);
+const graphPort = Number(process.env.GRAPH_FAKE_PORT ?? '25260');
+const graphMessages = [];
+let rejectNextGraphMessage = false;
+const graphServer = createServer((request, response) => {
+  if (request.method === 'GET' && request.url === '/__test/messages') {
+    response.writeHead(200, { 'content-type': 'application/json' });
+    response.end(JSON.stringify(graphMessages));
+    return;
+  }
+  if (request.method === 'POST' && request.url === '/__test/reset') {
+    graphMessages.length = 0;
+    rejectNextGraphMessage = false;
+    response.writeHead(204).end();
+    return;
+  }
+  if (request.method === 'POST' && request.url === '/__test/reject-next') {
+    rejectNextGraphMessage = true;
+    response.writeHead(204).end();
+    return;
+  }
+  if (request.method === 'POST' && request.url?.endsWith('/sendMail')) {
+    let body = '';
+    request.setEncoding('utf8');
+    request.on('data', (chunk) => { body += chunk; });
+    request.on('end', () => {
+      if (rejectNextGraphMessage) {
+        rejectNextGraphMessage = false;
+        response.writeHead(400, { 'content-type': 'application/json' }).end('{}');
+        return;
+      }
+      graphMessages.push(JSON.parse(body));
+      response.writeHead(202).end();
+    });
+    return;
+  }
+  response.writeHead(404).end();
+});
+await new Promise((resolvePromise, rejectPromise) => {
+  graphServer.once('error', rejectPromise);
+  graphServer.listen(graphPort, '127.0.0.1', resolvePromise);
+});
 await runPnpmOnce([
   '--dir',
   repositoryDirectory,
@@ -32,6 +74,10 @@ const apiProcess = spawnPnpm(
     env: {
       ...process.env,
       CORS_ORIGIN: process.env.CORS_ORIGIN ?? 'http://127.0.0.1:4200',
+      CUSTOMER_MAILBOX_ADDRESS: process.env.CUSTOMER_MAILBOX_ADDRESS ?? 'project-maker@pte.hu',
+      CUSTOMER_MAILBOX_NAME: process.env.CUSTOMER_MAILBOX_NAME ?? 'Project Maker',
+      GRAPH_BASE_URL: `http://127.0.0.1:${graphPort}`,
+      GRAPH_ACCESS_TOKEN: 'controlled-playwright-token',
     },
     stdio: 'inherit',
     windowsHide: true,
@@ -41,6 +87,7 @@ const apiProcess = spawnPnpm(
 for (const signal of ['SIGINT', 'SIGTERM']) {
   process.on(signal, () => {
     apiProcess.kill(signal);
+    graphServer.close();
   });
 }
 

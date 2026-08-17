@@ -16,6 +16,7 @@ import { MarkdownTemplateLibrary0013MarkdownTemplateLibrary1786953600000 } from 
 import { InterviewCustomerHandoff0014InterviewCustomerHandoff1787039999000 } from '../migrations/0014-interview-customer-handoff';
 import { CustomerFollowUpPingDraft0015CustomerFollowUpPingDraft1787126400000 } from '../migrations/0015-customer-follow-up-ping-draft';
 import { ProjectStartCreationRequest0016ProjectStartCreationRequest1787212800000 } from '../migrations/0016-project-start-creation-request';
+import { M365InterviewHandoff0017M365InterviewHandoff1787299200000 } from '../migrations/0017-m365-interview-handoff';
 
 export type ApiMigration = new () => MigrationInterface;
 
@@ -36,6 +37,7 @@ export const migrationSequence: readonly ApiMigration[] = [
   InterviewCustomerHandoff0014InterviewCustomerHandoff1787039999000,
   CustomerFollowUpPingDraft0015CustomerFollowUpPingDraft1787126400000,
   ProjectStartCreationRequest0016ProjectStartCreationRequest1787212800000,
+  M365InterviewHandoff0017M365InterviewHandoff1787299200000,
 ];
 
 export function migrationsThrough(migrationName: string): readonly ApiMigration[] {

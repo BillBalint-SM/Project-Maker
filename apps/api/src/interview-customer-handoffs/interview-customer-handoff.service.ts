@@ -1,6 +1,7 @@
-import { randomUUID } from 'node:crypto';
+import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { BadRequestException, ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common';
-import type { InterviewCustomerHandoffDetail, InterviewCustomerHandoffPreview, InterviewCustomerHandoffSummary, SendInterviewCustomerHandoffInput } from '@project-maker/contracts';
+import { ConfigService } from '@nestjs/config';
+import type { InterviewCustomerHandoffDetail, InterviewCustomerHandoffPreview, InterviewCustomerHandoffSummary, InterviewHandoffSenderOptions, InterviewHandoffSenderSelection, SendInterviewCustomerHandoffInput } from '@project-maker/contracts';
 import { DataSource, EntityManager, In, Repository } from 'typeorm';
 
 import { AuditEvent } from '../audit/audit-event.entity';
@@ -12,12 +13,23 @@ import { CustomerMailBoundaryError, type CustomerOutboundMail, customerOutboundM
 import { Project } from '../projects/project.entity';
 import { InterviewCustomerHandoffEntity } from './interview-customer-handoff.entity';
 import { renderHandoff, type HandoffProjection } from './interview-customer-handoff.renderer';
+import { CustomerCorrespondenceEntity } from './customer-correspondence.entity';
+import { CustomerOutboundAttemptEntity } from './customer-outbound-attempt.entity';
+import { CustomerOutboundCommunicationEntity } from './customer-outbound-communication.entity';
 
 const sendingLeaseMs = 600_000;
 
 @Injectable()
 export class InterviewCustomerHandoffService {
-  constructor(private readonly dataSource: DataSource, @Inject(customerOutboundMailToken) private readonly mailer: CustomerOutboundMail) {}
+  constructor(private readonly dataSource: DataSource, @Inject(customerOutboundMailToken) private readonly mailer: CustomerOutboundMail, private readonly config: ConfigService) {}
+
+  async senderOptions(projectId: string, roundId: string): Promise<InterviewHandoffSenderOptions> {
+    return this.dataSource.transaction(async (manager) => {
+      const { project } = await requireRound(manager, projectId, roundId, false);
+      const dedicated = dedicatedSender(this.config);
+      return { dedicatedName: dedicated.name, dedicatedAddress: dedicated.address, lastUsedName: project.lastCustomerSenderName, lastUsedAddress: project.lastCustomerSenderAddress };
+    });
+  }
 
   async establishFirstDraft(manager: EntityManager, projectId: string, roundId: string): Promise<InterviewCustomerHandoffEntity> {
     const repository = manager.getRepository(InterviewCustomerHandoffEntity);
@@ -75,13 +87,13 @@ export class InterviewCustomerHandoffService {
     });
   }
 
-  async preview(projectId: string, roundId: string, handoffId: string): Promise<InterviewCustomerHandoffPreview> {
+  async preview(projectId: string, roundId: string, handoffId: string, selection: InterviewHandoffSenderSelection): Promise<InterviewCustomerHandoffPreview> {
     return this.dataSource.transaction(async (manager) => {
       const { project, round } = await requireRound(manager, projectId, roundId, false);
       requireMutable(project);
       const handoff = await requireHandoff(manager, projectId, roundId, handoffId, false);
       if (handoff.state !== 'DRAFT') throw new ConflictException('Csak aktív tervezet tekinthető elő.');
-      return buildPreview(manager, project, round, handoff);
+      return buildPreview(manager, project, round, handoff, resolveSender(selection, this.config));
     });
   }
 
@@ -91,11 +103,22 @@ export class InterviewCustomerHandoffService {
       requireMutable(project);
       const handoff = await requireHandoff(manager, projectId, roundId, handoffId, true);
       if (handoff.state !== 'DRAFT') throw new ConflictException('Az összefoglaló nem küldhető ebből az állapotból.');
-      const preview = await buildPreview(manager, project, round, handoff);
+      const sender = handoff.senderAddress && handoff.senderName
+        ? { address: handoff.senderAddress, name: handoff.senderName }
+        : null;
+      if (sender) throw new ConflictException('Ehhez a verzióhoz már rögzítettük a levelezési azonosságot.');
+      const preview = await buildPreview(manager, project, round, handoff, senderFromDigestInput(input));
       if (preview.sourceContentVersion !== input.sourceContentVersion || preview.previewDigest !== input.previewDigest) {
         throw new ConflictException({ code: 'PREVIEW_STALE', message: 'Az interjú az előnézet óta megváltozott.' });
       }
-      Object.assign(handoff, { state: 'SENDING', recipientName: preview.recipientName, recipientEmail: preview.recipientEmail, internalOwnerName: project.internalOwnerName, subject: preview.subject, htmlContent: preview.htmlContent, textContent: preview.textContent, previewDigest: preview.previewDigest, sourceContentVersion: preview.sourceContentVersion, attemptedAt: new Date(), failureCode: null });
+      const token = randomBytes(32).toString('base64url');
+      const replyToAddress = plusAddress(dedicatedSender(this.config).address, token);
+      const predecessor = handoff.supersedesHandoffId
+        ? await manager.getRepository(InterviewCustomerHandoffEntity).findOneBy({ id: handoff.supersedesHandoffId })
+        : null;
+      const outbound = await manager.getRepository(CustomerOutboundCommunicationEntity).save({ id: randomUUID(), projectId, sourceType: 'INTERVIEW_HANDOFF', sourceId: handoff.id, senderName: preview.senderName, senderAddress: preview.senderAddress, recipientName: preview.recipientName, recipientAddress: preview.recipientEmail, subject: preview.subject, htmlContent: preview.htmlContent, textContent: preview.textContent, sourceContentVersion: preview.sourceContentVersion, previewDigest: preview.previewDigest, replyToAddress, replyTokenHash: sha256(token) });
+      const correspondence = await manager.getRepository(CustomerCorrespondenceEntity).save({ id: randomUUID(), projectId, outboundCommunicationId: outbound.id, predecessorId: predecessor?.correspondenceId ?? null, status: 'Válaszra vár', unreadMessageCount: 0 });
+      Object.assign(handoff, { state: 'SENDING', recipientName: preview.recipientName, recipientEmail: preview.recipientEmail, senderName: preview.senderName, senderAddress: preview.senderAddress, replyToAddress, replyTokenHash: sha256(token), correspondenceId: correspondence.id, outboundCommunicationId: outbound.id, internalOwnerName: project.internalOwnerName, subject: preview.subject, htmlContent: preview.htmlContent, textContent: preview.textContent, previewDigest: preview.previewDigest, sourceContentVersion: preview.sourceContentVersion, attemptedAt: new Date(), failureCode: null, mailSystemAcceptance: null, messageReference: null });
       return manager.getRepository(InterviewCustomerHandoffEntity).save(handoff);
     });
     return this.deliver(prepared);
@@ -120,6 +143,7 @@ export class InterviewCustomerHandoffService {
       const { project } = await requireRound(manager, projectId, roundId, true); requireMutable(project);
       const handoff = await requireHandoff(manager, projectId, roundId, handoffId, true);
       if (handoff.state !== 'FAILED') throw new ConflictException('Csak ismert hibával meghiúsult küldés nyitható újra.');
+      if (handoff.correspondenceId) throw new ConflictException('A már átadott logikai verzió változatlan tartalommal próbálható újra.');
       handoff.state = 'DRAFT'; handoff.failureCode = null; clearPrepared(handoff);
       return toDetail(await manager.getRepository(InterviewCustomerHandoffEntity).save(handoff));
     });
@@ -127,25 +151,36 @@ export class InterviewCustomerHandoffService {
 
   private async deliver(prepared: InterviewCustomerHandoffEntity): Promise<InterviewCustomerHandoffDetail> {
     let state: 'SENT' | 'FAILED' | 'UNKNOWN' = 'SENT';
-    try { const result = await this.mailer.submit({ recipientAddress: prepared.recipientEmail!, subject: prepared.subject!, textContent: prepared.textContent!, htmlContent: prepared.htmlContent! }); if (result.acceptance === 'REJECTED') state = 'FAILED'; }
+    let acceptance: 'ACCEPTED' | 'REJECTED' | null = null;
+    let messageReference: string | null = null;
+    try { const result = await this.mailer.submit({ senderAddress: prepared.senderAddress!, senderName: prepared.senderName!, recipientAddress: prepared.recipientEmail!, replyToAddress: prepared.replyToAddress!, subject: prepared.subject!, textContent: prepared.textContent!, htmlContent: prepared.htmlContent! }); acceptance = result.acceptance; messageReference = result.messageReference; if (result.acceptance === 'REJECTED') state = 'FAILED'; }
     catch (error) { state = error instanceof CustomerMailBoundaryError && error.code !== 'OUTCOME_UNKNOWN' ? 'FAILED' : 'UNKNOWN'; }
     return this.dataSource.transaction(async (manager) => {
       const handoff = await requireHandoff(manager, prepared.projectId, prepared.roundId, prepared.id, true);
       if (handoff.state !== 'SENDING') throw new ConflictException('A küldési állapot megváltozott.');
-      handoff.state = state; handoff.sentAt = state === 'SENT' ? new Date() : null; handoff.failureCode = state === 'FAILED' ? 'SMTP_SEND_FAILED' : state === 'UNKNOWN' ? 'DELIVERY_RESULT_UNKNOWN' : null;
+      handoff.state = state; handoff.sentAt = state === 'SENT' ? new Date() : null; handoff.failureCode = state === 'FAILED' ? 'MAIL_SUBMISSION_FAILED' : state === 'UNKNOWN' ? 'SUBMISSION_RESULT_UNKNOWN' : null; handoff.mailSystemAcceptance = acceptance; handoff.messageReference = messageReference;
       const saved = await manager.getRepository(InterviewCustomerHandoffEntity).save(handoff);
+      if (!handoff.outboundCommunicationId) throw new ConflictException('A tartós kimenő kommunikáció hiányzik.');
+      await manager.getRepository(CustomerOutboundAttemptEntity).save({ id: randomUUID(), outboundCommunicationId: handoff.outboundCommunicationId, result: state === 'SENT' ? 'ACCEPTED' : state === 'FAILED' ? 'REJECTED' : 'UNKNOWN', failureCode: handoff.failureCode, messageReference });
+      if (state === 'SENT') {
+        const project = await manager.getRepository(Project).findOneByOrFail({ id: prepared.projectId });
+        project.lastCustomerSenderName = handoff.senderName;
+        project.lastCustomerSenderAddress = handoff.senderAddress;
+        await manager.getRepository(Project).save(project);
+      }
       await audit(manager, prepared.projectId, state === 'SENT' ? 'INTERVIEW_HANDOFF_SENT' : state === 'FAILED' ? 'INTERVIEW_HANDOFF_FAILED' : 'INTERVIEW_HANDOFF_UNKNOWN', saved);
       return toDetail(saved);
     });
   }
 }
 
-async function buildPreview(manager: EntityManager, project: Project, round: InterviewRoundEntity, handoff: InterviewCustomerHandoffEntity): Promise<InterviewCustomerHandoffPreview> {
+async function buildPreview(manager: EntityManager, project: Project, round: InterviewRoundEntity, handoff: InterviewCustomerHandoffEntity, sender: { name: string; address: string }): Promise<InterviewCustomerHandoffPreview> {
   if (!project.internalOwnerName) throw new ConflictException('A küldéshez meg kell adni a belső PO/PM nevét.');
   if (handoff.version > 1 && !normalize(handoff.modificationSummary)) throw new BadRequestException('A módosítás összefoglalása kötelező.');
   const projection = await loadProjection(manager, project, round, handoff);
   const rendered = renderHandoff(projection);
-  return { handoffId: handoff.id, version: handoff.version, recipientName: project.customerContactName, recipientEmail: project.customerContactEmail, ...rendered, sourceContentVersion: round.contentVersion };
+  const previewDigest = sha256([rendered.previewDigest, sender.name, sender.address.toLowerCase(), project.customerContactName, project.customerContactEmail.toLowerCase()].join('\n'));
+  return { handoffId: handoff.id, version: handoff.version, recipientName: project.customerContactName, recipientEmail: project.customerContactEmail, senderName: sender.name, senderAddress: sender.address, ...rendered, previewDigest, sourceContentVersion: round.contentVersion };
 }
 
 async function loadProjection(manager: EntityManager, project: Project, round: InterviewRoundEntity, handoff: InterviewCustomerHandoffEntity): Promise<HandoffProjection> {
@@ -174,7 +209,7 @@ async function requireHandoff(manager: EntityManager, projectId: string, roundId
 }
 
 function newDraft(repository: Repository<InterviewCustomerHandoffEntity>, projectId: string, roundId: string, version: number, supersedesHandoffId: string | null) {
-  return repository.create({ id: randomUUID(), projectId, roundId, version, supersedesHandoffId, state: 'DRAFT', modificationSummary: null, recipientName: null, recipientEmail: null, internalOwnerName: null, subject: null, htmlContent: null, textContent: null, previewDigest: null, sourceContentVersion: null, failureCode: null, attemptedAt: null, sentAt: null });
+  return repository.create({ id: randomUUID(), projectId, roundId, version, supersedesHandoffId, state: 'DRAFT', modificationSummary: null, recipientName: null, recipientEmail: null, senderName: null, senderAddress: null, replyToAddress: null, replyTokenHash: null, mailSystemAcceptance: null, messageReference: null, correspondenceId: null, outboundCommunicationId: null, internalOwnerName: null, subject: null, htmlContent: null, textContent: null, previewDigest: null, sourceContentVersion: null, failureCode: null, attemptedAt: null, sentAt: null });
 }
 
 async function reconcileExpiredSending(manager: EntityManager, projectId: string, roundId: string) {
@@ -182,9 +217,35 @@ async function reconcileExpiredSending(manager: EntityManager, projectId: string
   if (row?.attemptedAt && Date.now() - row.attemptedAt.getTime() >= sendingLeaseMs) { row.state = 'UNKNOWN'; row.failureCode = 'DELIVERY_LEASE_EXPIRED'; await manager.getRepository(InterviewCustomerHandoffEntity).save(row); }
 }
 
-function clearPrepared(row: InterviewCustomerHandoffEntity) { Object.assign(row, { recipientName: null, recipientEmail: null, internalOwnerName: null, subject: null, htmlContent: null, textContent: null, previewDigest: null, sourceContentVersion: null, attemptedAt: null, sentAt: null }); }
+function clearPrepared(row: InterviewCustomerHandoffEntity) { Object.assign(row, { recipientName: null, recipientEmail: null, senderName: null, senderAddress: null, replyToAddress: null, replyTokenHash: null, mailSystemAcceptance: null, messageReference: null, correspondenceId: null, outboundCommunicationId: null, internalOwnerName: null, subject: null, htmlContent: null, textContent: null, previewDigest: null, sourceContentVersion: null, attemptedAt: null, sentAt: null }); }
 function normalize(value: string | null) { const trimmed = value?.trim(); return trimmed ? trimmed : null; }
 function requireMutable(project: Project) { if (project.status === 'ARCHIVED') throw new ConflictException('Archived projects are read-only.'); }
-function toSummary(row: InterviewCustomerHandoffEntity): InterviewCustomerHandoffSummary { return { id: row.id, projectId: row.projectId, roundId: row.roundId, version: row.version, state: row.state, modificationSummary: row.modificationSummary, supersedesHandoffId: row.supersedesHandoffId, recipientName: row.recipientName, recipientEmail: row.recipientEmail, createdAt: row.createdAt.toISOString(), attemptedAt: row.attemptedAt?.toISOString() ?? null, sentAt: row.sentAt?.toISOString() ?? null }; }
-function toDetail(row: InterviewCustomerHandoffEntity): InterviewCustomerHandoffDetail { return { ...toSummary(row), internalOwnerName: row.internalOwnerName, subject: row.subject, htmlContent: row.htmlContent, textContent: row.textContent, sourceContentVersion: row.sourceContentVersion, failureCode: row.failureCode }; }
+function toSummary(row: InterviewCustomerHandoffEntity): InterviewCustomerHandoffSummary { return { id: row.id, projectId: row.projectId, roundId: row.roundId, version: row.version, state: row.state, modificationSummary: row.modificationSummary, supersedesHandoffId: row.supersedesHandoffId, recipientName: row.recipientName, recipientEmail: row.recipientEmail, senderName: row.senderName, senderAddress: row.senderAddress, createdAt: row.createdAt.toISOString(), attemptedAt: row.attemptedAt?.toISOString() ?? null, sentAt: row.sentAt?.toISOString() ?? null }; }
+function toDetail(row: InterviewCustomerHandoffEntity): InterviewCustomerHandoffDetail { return { ...toSummary(row), internalOwnerName: row.internalOwnerName, subject: row.subject, htmlContent: row.htmlContent, textContent: row.textContent, sourceContentVersion: row.sourceContentVersion, failureCode: row.failureCode, replyToAddress: row.replyToAddress, mailSystemAcceptance: row.mailSystemAcceptance, messageReference: row.messageReference, correspondenceId: row.correspondenceId }; }
 async function audit(manager: EntityManager, projectId: string, eventType: string, row: InterviewCustomerHandoffEntity) { await manager.getRepository(AuditEvent).save({ id: randomUUID(), projectId, eventType, payload: { roundId: row.roundId, handoffId: row.id, version: String(row.version), state: row.state } }); }
+
+function dedicatedSender(config: ConfigService): { name: string; address: string } {
+  const name = config.get<string>('CUSTOMER_MAILBOX_NAME')?.trim() || 'Project Maker';
+  const address = config.get<string>('CUSTOMER_MAILBOX_ADDRESS')?.trim() || '';
+  if (!isPteAddress(address)) throw new ConflictException('A dedikált @pte.hu postafiók nincs beállítva.');
+  return { name, address };
+}
+
+function resolveSender(selection: InterviewHandoffSenderSelection, config: ConfigService): { name: string; address: string } {
+  if (selection.mode === 'DEDICATED') return dedicatedSender(config);
+  const name = selection.name?.trim() ?? '';
+  const address = selection.address?.trim() ?? '';
+  if (!name || !isPteAddress(address)) throw new BadRequestException('A feladó neve és pontos @pte.hu címe kötelező.');
+  return { name, address };
+}
+
+function senderFromDigestInput(input: SendInterviewCustomerHandoffInput): { name: string; address: string } {
+  const name = input.senderName.trim();
+  const address = input.senderAddress.trim();
+  if (!name || !isPteAddress(address)) throw new BadRequestException('A feladó neve és pontos @pte.hu címe kötelező.');
+  return { name, address };
+}
+
+function isPteAddress(value: string): boolean { return /^[^@\s]+@pte\.hu$/i.test(value); }
+function sha256(value: string): string { return createHash('sha256').update(value, 'utf8').digest('hex'); }
+function plusAddress(mailbox: string, token: string): string { const at = mailbox.lastIndexOf('@'); return `${mailbox.slice(0, at)}+${token}${mailbox.slice(at)}`; }

@@ -10,11 +10,17 @@ import { RoundQuestionSnapshotEntity } from '../interviews/round-question-snapsh
 import { InterviewCustomerHandoffController } from './interview-customer-handoff.controller';
 import { InterviewCustomerHandoffEntity } from './interview-customer-handoff.entity';
 import { InterviewCustomerHandoffService } from './interview-customer-handoff.service';
+import { CustomerCorrespondenceEntity } from './customer-correspondence.entity';
+import { CustomerOutboundAttemptEntity } from './customer-outbound-attempt.entity';
+import { CustomerOutboundCommunicationEntity } from './customer-outbound-communication.entity';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([
       AuditEvent,
+      CustomerCorrespondenceEntity,
+      CustomerOutboundAttemptEntity,
+      CustomerOutboundCommunicationEntity,
       InterviewCustomerHandoffEntity,
       InterviewRoundEntity,
       Project,

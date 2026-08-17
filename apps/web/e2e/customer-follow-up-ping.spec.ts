@@ -1,17 +1,14 @@
 import { randomUUID } from 'node:crypto';
 import { createRequire } from 'node:module';
-import { createServer, type Server, type Socket } from 'node:net';
 import { resolve } from 'node:path';
 
 import { expect, test, type APIRequestContext, type Page } from '@playwright/test';
 
-const smtpPort = Number(process.env.SMTP_PORT ?? '25261');
-const smtpMessages: string[] = [];
+const graphFakeUrl = `http://127.0.0.1:${process.env.GRAPH_FAKE_PORT ?? '25260'}`;
 const requireFromApi = createRequire(resolve(process.cwd(), '..', 'api', 'package.json'));
 const { Client } = requireFromApi('pg') as {
   readonly Client: new (configuration: { readonly connectionString: string }) => DatabaseClient;
 };
-let smtpServer: Server;
 
 interface DatabaseClient {
   connect(): Promise<void>;
@@ -19,19 +16,7 @@ interface DatabaseClient {
   query(sql: string, parameters?: readonly unknown[]): Promise<unknown>;
 }
 
-test.beforeAll(async () => {
-  smtpServer = createSmtpCaptureServer(smtpMessages);
-  await new Promise<void>((resolve, reject) => {
-    smtpServer.once('error', reject);
-    smtpServer.listen(smtpPort, '127.0.0.1', resolve);
-  });
-});
-
-test.afterAll(async () => {
-  await new Promise<void>((resolve, reject) =>
-    smtpServer.close((error) => (error ? reject(error) : resolve())),
-  );
-});
+test.beforeEach(async ({ request }) => { await request.post(`${graphFakeUrl}/__test/reset`); });
 
 test('authors, previews, cancels, and explicitly sends one referenced customer ping', async ({
   page,
@@ -189,18 +174,18 @@ test('requires an explicit duplicate-risk acknowledgement after an expired deliv
   await expect(preview).toBeVisible();
   await forceExpiredCustomerPingAttempt(project.id, project.customerContactEmail);
 
-  const messagesBefore = smtpMessages.length;
+  const messagesBefore = await graphMessageCount(request);
   await page.getByRole('button', { name: 'Küldés az ügyfélnek' }).click();
   const warning = page.getByTestId('follow-up-unknown-recovery');
   await expect(warning).toContainText('bizonytalan');
   await expect(warning).toContainText('duplikált');
   await expect(preview).toBeHidden();
-  expect(smtpMessages).toHaveLength(messagesBefore);
+  expect(await graphMessageCount(request)).toBe(messagesBefore);
 
   await nativeButton(page, 'retry-unknown-follow-up-ping-button').click();
   await nativeButton(page, 'confirm-follow-up-retry-button').click();
   await expect(page.getByTestId('follow-up-send-result')).toContainText('Ping elküldve');
-  expect(smtpMessages).toHaveLength(messagesBefore + 1);
+  expect(await graphMessageCount(request)).toBe(messagesBefore + 1);
 });
 
 test('recovers a failed ping after reload with cancel, Escape, and deterministic focus', async ({
@@ -238,7 +223,7 @@ test('recovers a failed ping after reload with cancel, Escape, and deterministic
   await expect(confirmation).toBeHidden();
   await expect(retryTrigger).toBeFocused();
 
-  const messagesBefore = smtpMessages.length;
+  const messagesBefore = await graphMessageCount(request);
   await retryTrigger.click();
   const confirm = nativeButton(page, 'confirm-follow-up-retry-button');
   await confirm.dblclick();
@@ -248,7 +233,7 @@ test('recovers a failed ping after reload with cancel, Escape, and deterministic
   releaseRetry();
   await expect(page.getByTestId('follow-up-send-result')).toContainText('Ping elküldve');
   await expect(page.getByTestId('follow-up-send-result')).toBeFocused();
-  expect(smtpMessages).toHaveLength(messagesBefore + 1);
+  expect(await graphMessageCount(request)).toBe(messagesBefore + 1);
   expect(retryRequests).toBe(1);
 });
 
@@ -512,36 +497,7 @@ async function expireCustomerPingAttempt(attemptId: string): Promise<void> {
   }
 }
 
-function createSmtpCaptureServer(target: string[]): Server {
-  return createServer((socket) => handleSmtpConnection(socket, target));
-}
-
-function handleSmtpConnection(socket: Socket, target: string[]): void {
-  let buffer = '';
-  let dataMode = false;
-  socket.setEncoding('utf8');
-  socket.write('220 project-maker-test ESMTP\r\n');
-  socket.on('data', (chunk: string) => {
-    buffer += chunk;
-    if (dataMode) {
-      const end = buffer.indexOf('\r\n.\r\n');
-      if (end < 0) return;
-      target.push(buffer.slice(0, end));
-      buffer = buffer.slice(end + 5);
-      dataMode = false;
-      socket.write('250 accepted\r\n');
-    }
-    while (!dataMode) {
-      const end = buffer.indexOf('\r\n');
-      if (end < 0) return;
-      const command = buffer.slice(0, end);
-      buffer = buffer.slice(end + 2);
-      if (/^EHLO /i.test(command)) socket.write('250 project-maker-test\r\n');
-      else if (/^(MAIL FROM|RCPT TO):/i.test(command)) socket.write('250 ok\r\n');
-      else if (command === 'DATA') {
-        dataMode = true;
-        socket.write('354 end with dot\r\n');
-      } else socket.write('500 unsupported\r\n');
-    }
-  });
+async function graphMessageCount(request: APIRequestContext): Promise<number> {
+  const response = await request.get(`${graphFakeUrl}/__test/messages`);
+  return ((await response.json()) as unknown[]).length;
 }
