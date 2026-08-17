@@ -43,6 +43,7 @@ export class MicrosoftGraphMailClient implements GraphMailClient {
         headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' },
         body: JSON.stringify({
           message: {
+            from: outbound.from,
             subject: outbound.subject,
             body: outbound.body,
             toRecipients: outbound.toRecipients,

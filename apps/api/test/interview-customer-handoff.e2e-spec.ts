@@ -40,12 +40,13 @@ class ControlledGraphMailClient implements GraphMailClient {
 }
 
 describe('Interview customer handoff HTTP boundary', () => {
-  const sender = { mode: 'CUSTOM', address: 'po.peter@pte.hu' } as const;
+  const sender = { mode: 'CUSTOM', name: 'PO Péter', address: 'po.peter@pte.hu' } as const;
   let app: INestApplication;
   const graphClient = new ControlledGraphMailClient();
 
   before(async () => {
     process.env['CUSTOMER_MAILBOX_ADDRESS'] = 'project-maker@pte.hu';
+    process.env['CUSTOMER_MAILBOX_NAME'] = 'Project Maker';
     const module = await Test.createTestingModule({ imports: [AppModule] })
       .overrideProvider(graphMailClientToken)
       .useValue(graphClient)
@@ -80,11 +81,11 @@ describe('Interview customer handoff HTTP boundary', () => {
     assert.equal(history.body.length, 1);
     assert.equal(history.body[0].state, 'DRAFT');
     const firstId = history.body[0].id as string;
-    await request(app.getHttpServer()).post(`/projects/${project.body.id}/rounds/${roundId}/customer-handoffs/${firstId}/preview`).send({ mode: 'CUSTOM', address: 'a,b@pte.hu' }).expect(400);
-    await request(app.getHttpServer()).post(`/projects/${project.body.id}/rounds/${roundId}/customer-handoffs/${firstId}/preview`).send({ mode: 'CUSTOM', address: 'foo<bar>@pte.hu' }).expect(400);
-    await request(app.getHttpServer()).post(`/projects/${project.body.id}/rounds/${roundId}/customer-handoffs/${firstId}/preview`).send({ mode: 'CUSTOM', address: 'x..y@pte.hu' }).expect(400);
-    await request(app.getHttpServer()).post(`/projects/${project.body.id}/rounds/${roundId}/customer-handoffs/${firstId}/preview`).send({ mode: 'CUSTOM', address: 'po@sub.pte.hu' }).expect(400);
-    await request(app.getHttpServer()).post(`/projects/${project.body.id}/rounds/${roundId}/customer-handoffs/${firstId}/preview`).send({ mode: 'CUSTOM', address: 'po@pte.hu.example' }).expect(400);
+    await request(app.getHttpServer()).post(`/projects/${project.body.id}/rounds/${roundId}/customer-handoffs/${firstId}/preview`).send({ mode: 'CUSTOM', name: 'Téves', address: 'a,b@pte.hu' }).expect(400);
+    await request(app.getHttpServer()).post(`/projects/${project.body.id}/rounds/${roundId}/customer-handoffs/${firstId}/preview`).send({ mode: 'CUSTOM', name: 'Téves', address: 'foo<bar>@pte.hu' }).expect(400);
+    await request(app.getHttpServer()).post(`/projects/${project.body.id}/rounds/${roundId}/customer-handoffs/${firstId}/preview`).send({ mode: 'CUSTOM', name: 'Téves', address: 'x..y@pte.hu' }).expect(400);
+    await request(app.getHttpServer()).post(`/projects/${project.body.id}/rounds/${roundId}/customer-handoffs/${firstId}/preview`).send({ mode: 'CUSTOM', name: 'Téves', address: 'po@sub.pte.hu' }).expect(400);
+    await request(app.getHttpServer()).post(`/projects/${project.body.id}/rounds/${roundId}/customer-handoffs/${firstId}/preview`).send({ mode: 'CUSTOM', name: 'Téves', address: 'po@pte.hu.example' }).expect(400);
     const firstPreview = await request(app.getHttpServer()).post(`/projects/${project.body.id}/rounds/${roundId}/customer-handoffs/${firstId}/preview`).send(sender).expect(201);
     assert.match(firstPreview.body.textContent, /Nincs rögzített válasz/);
     await request(app.getHttpServer()).post(`/projects/${project.body.id}/rounds/${roundId}/customer-handoffs/${firstId}/send`).send({ ...sendInput(firstPreview.body), senderAddress: 'masik@pte.hu' }).expect(409);
@@ -174,8 +175,8 @@ describe('Interview customer handoff HTTP boundary', () => {
   });
 });
 
-function sendInput(preview: { sourceContentVersion: number; previewDigest: string; senderAddress: string }) {
-  return { sourceContentVersion: preview.sourceContentVersion, previewDigest: preview.previewDigest, senderAddress: preview.senderAddress };
+function sendInput(preview: { sourceContentVersion: number; previewDigest: string; senderName: string; senderAddress: string }) {
+  return { sourceContentVersion: preview.sourceContentVersion, previewDigest: preview.previewDigest, senderName: preview.senderName, senderAddress: preview.senderAddress };
 }
 
 async function createEndedInterview(app: INestApplication, label: string): Promise<{ projectId: string; roundId: string }> {

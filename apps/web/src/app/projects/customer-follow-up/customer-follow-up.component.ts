@@ -81,6 +81,7 @@ export class CustomerFollowUpComponent implements OnInit {
   readonly referenceOptions = signal<readonly CustomerFollowUpReferenceOption[]>([]);
   readonly senderOptions = signal<InterviewHandoffSenderOptions | null>(null);
   senderMode: 'DEDICATED' | 'CUSTOM' = 'DEDICATED';
+  senderName = '';
   senderAddress = '';
   readonly saving = computed(
     () => this.operationPolicy.activeOperation() === 'customer-follow-up-save',
@@ -263,7 +264,7 @@ export class CustomerFollowUpComponent implements OnInit {
         expectedVersion: current.draftVersion,
         senderMode: this.senderMode,
         ...(this.senderMode === 'CUSTOM'
-          ? { senderAddress: this.senderAddress }
+          ? { senderName: this.senderName, senderAddress: this.senderAddress }
           : {}),
       })
       .pipe(
@@ -304,7 +305,8 @@ export class CustomerFollowUpComponent implements OnInit {
 
   senderIsValid(): boolean {
     return this.senderMode === 'DEDICATED'
-      || exactPteCustomerSenderAddressPattern.test(this.senderAddress.trim());
+      || (this.senderName.trim().length > 0
+        && exactPteCustomerSenderAddressPattern.test(this.senderAddress.trim()));
   }
 
   sendPing(acknowledgeDuplicateRisk = false): void {
@@ -464,9 +466,10 @@ export class CustomerFollowUpComponent implements OnInit {
       .subscribe({
         next: (options) => {
           this.senderOptions.set(options);
-        if (options.lastUsedAddress) {
-          this.senderMode = 'CUSTOM';
-          this.senderAddress = options.lastUsedAddress;
+          if (options.lastUsedAddress && options.lastUsedName) {
+            this.senderMode = 'CUSTOM';
+            this.senderName = options.lastUsedName;
+            this.senderAddress = options.lastUsedAddress;
           }
         },
         error: (error: Error) => this.actionError.set(error.message),
