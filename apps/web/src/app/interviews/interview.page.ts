@@ -19,6 +19,7 @@ import type {
 
 import { InterviewApiService, isInterviewApiError } from './interview-api.service';
 import { InterviewHandoffComponent } from './interview-handoff/interview-handoff.component';
+import { ProjectApiService } from '../projects/project-api.service';
 import { QuestionBankApiService } from '../settings/question-bank-api.service';
 
 const supportedRoundType = 'INITIAL_INTAKE';
@@ -72,6 +73,7 @@ export class InterviewPage implements OnInit, OnDestroy {
   private readonly route = inject(ActivatedRoute);
   private readonly questionBankApi = inject(QuestionBankApiService);
   private readonly interviewApi = inject(InterviewApiService);
+  private readonly projectApi = inject(ProjectApiService);
   private readonly autosaveTimers = new Map<string, ReturnType<typeof setTimeout>>();
   private readonly inFlightRequestIds = new Map<string, Set<number>>();
 
@@ -92,6 +94,7 @@ export class InterviewPage implements OnInit, OnDestroy {
   readonly completing = signal(false);
   readonly endedEditable = signal(false);
   readonly previewAfterFinish = signal(false);
+  readonly projectArchived = signal(false);
 
   ngOnInit(): void {
     this.loadInterviewData();
@@ -125,8 +128,9 @@ export class InterviewPage implements OnInit, OnDestroy {
       bank: this.questionBankApi.loadBaseQuestionBank(),
       schema: this.questionBankApi.loadProjectSchema(this.projectId),
       activeRound: this.interviewApi.getActiveInitialIntake(this.projectId),
+      project: this.projectApi.loadProjectWorkspace(this.projectId),
     }).subscribe({
-      next: ({ bank, schema, activeRound }) => {
+      next: ({ bank, schema, activeRound, project }) => {
         if (activeRound && activeRound.type !== supportedRoundType) {
           this.loadError.set(
             'Nem támogatott aktív interjúkör érkezett a szervertől. Frissítsd az oldalt, és ha a hiba megmarad, ellenőrizd a projekt interjúállapotát.',
@@ -138,6 +142,7 @@ export class InterviewPage implements OnInit, OnDestroy {
         this.bank.set(bank);
         this.schema.set(schema);
         this.round.set(activeRound);
+        this.projectArchived.set(project.status === 'ARCHIVED');
         this.answerStates.set(buildAnswerStates(activeRound));
         this.assessmentStates.set(buildAssessmentStates(activeRound));
         this.selectedKeys.set(this.buildSelectedKeys(bank, schema, activeRound));

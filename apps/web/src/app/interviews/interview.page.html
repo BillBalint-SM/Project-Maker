@@ -424,6 +424,8 @@
                 [projectId]="projectId"
                 [roundId]="currentRound.id"
                 [openPreview]="previewAfterFinish()"
+                [readOnly]="projectArchived()"
+                (openPreviewConsumed)="previewAfterFinish.set(false)"
                 (editableChange)="endedEditable.set($event)"
               />
             }

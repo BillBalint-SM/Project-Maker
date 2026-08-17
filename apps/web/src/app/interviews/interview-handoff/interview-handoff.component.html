@@ -3,22 +3,28 @@
   <ng-template #title>Ügyfélnek küldött interjú-összefoglalók</ng-template>
   <ng-template #subtitle>Az elküldött verziók változatlan előzményként megmaradnak.</ng-template>
   @if (error()) { <p-message severity="error" role="alert">{{ error() }}</p-message> }
+  @if (readOnly()) { <p-message severity="info">Az archivált projekt ügyfélcsomagjai csak olvashatók.</p-message> }
   @if (activeDraft(); as active) {
     <section class="draft" aria-label="Aktív összefoglaló-tervezet">
-      <h3>{{ active.version }}. verzió – {{ active.state }}</h3>
+      <h3>{{ active.version }}. verzió – {{ stateLabel(active.state) }}</h3>
       @if (active.version > 1 && active.state === 'DRAFT') {
         <label for="handoff-summary">Módosítás összefoglalása</label>
-        <textarea pTextarea id="handoff-summary" [(ngModel)]="summary" rows="3" data-testid="handoff-modification-summary"></textarea>
-        <p-button label="Összefoglalás mentése" [disabled]="busy()" (onClick)="saveSummary()" />
+        <textarea pTextarea id="handoff-summary" [(ngModel)]="summary" rows="3" data-testid="handoff-modification-summary" [disabled]="readOnly()"></textarea>
+        <p-button label="Összefoglalás mentése" [disabled]="busy() || readOnly()" (onClick)="saveSummary()" />
       }
-      @if (active.state === 'DRAFT') { <p-button label="Előnézet és küldés" [disabled]="busy()" data-testid="handoff-preview-button" (onClick)="preview()" /> }
-      @if (active.state === 'FAILED' || active.state === 'UNKNOWN') {
-        <p-button label="Újrapróbálás" [disabled]="busy()" (onClick)="retry(active)" />
-        @if (active.state === 'FAILED') { <p-button label="Vissza a szerkesztéshez" severity="secondary" (onClick)="resume(active)" /> }
+      @if (active.state === 'DRAFT') { <p-button label="Előnézet és küldés" [disabled]="busy() || readOnly()" data-testid="handoff-preview-button" (onClick)="preview()" /> }
+      @if (active.state === 'FAILED') {
+        <p-message severity="error" data-testid="handoff-state-message">A küldés ismert hibával meghiúsult. Ugyanaz a tartalom újrapróbálható, vagy visszatérhetsz a szerkesztéshez.</p-message>
+        <p-button label="Újrapróbálás" [disabled]="busy() || readOnly()" data-testid="retry-failed-handoff" (onClick)="retry(active)" />
+        <p-button label="Vissza a szerkesztéshez" severity="secondary" [disabled]="busy() || readOnly()" data-testid="resume-handoff-editing" (onClick)="resume(active)" />
+      }
+      @if (active.state === 'UNKNOWN') {
+        <p-message severity="warn" data-testid="handoff-state-message">A kézbesítés eredménye nem ismert. Újrapróbálás előtt ellenőrizd a kimenő postafiókot vagy az SMTP-szolgáltatót.</p-message>
+        <p-button label="Ellenőrzés után újrapróbálás" [disabled]="busy() || readOnly()" data-testid="retry-unknown-handoff" (onClick)="confirmUnknownRetry(active, $any($event.currentTarget))" />
       }
     </section>
   } @else if (history().length > 0) {
-    <p-button label="Új verzió készítése" [disabled]="busy()" data-testid="start-handoff-version" (onClick)="startVersion()" />
+    <p-button label="Új verzió készítése" [disabled]="busy() || readOnly()" data-testid="start-handoff-version" (onClick)="startVersion()" />
   }
   @if (previewData(); as preview) {
     <section class="preview" aria-labelledby="handoff-preview-title">
@@ -26,13 +32,14 @@
       <p><strong>Címzett:</strong> {{ preview.recipientName }} &lt;{{ preview.recipientEmail }}&gt;</p>
       <p><strong>Tárgy:</strong> {{ preview.subject }}</p>
       <pre>{{ preview.textContent }}</pre>
-      <p-button label="Küldés az ügyfélnek" [disabled]="busy()" data-testid="send-handoff-button" (onClick)="confirmSend($any($event.currentTarget))" />
+      <p-button label="Küldés az ügyfélnek" [disabled]="busy() || readOnly()" data-testid="send-handoff-button" (onClick)="confirmSend($any($event.currentTarget))" />
     </section>
   }
   <section aria-labelledby="handoff-history-title">
     <h3 id="handoff-history-title">Verzióelőzmények</h3>
     @for (item of history(); track item.id) {
-      <button type="button" class="history-item" (click)="inspect(item.id)">{{ item.version }}. verzió – {{ item.state }} @if (item.sentAt) { – {{ item.sentAt }} }</button>
+      <h4 tabindex="-1" [attr.data-testid]="'handoff-version-heading-' + item.version">{{ item.version }}. verzió – {{ stateLabel(item.state) }}</h4>
+      <button type="button" class="history-item" [attr.data-testid]="'inspect-handoff-version-' + item.version" (click)="inspect(item.id)">Tartalom megnyitása @if (item.sentAt) { – {{ item.sentAt }} }</button>
     }
     @if (selectedContent()) { <pre class="history-content">{{ selectedContent() }}</pre> }
   </section>

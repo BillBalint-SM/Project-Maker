@@ -124,6 +124,7 @@ export class ProjectsService {
         project.status = input.status;
       }
 
+      validateNextActionOwner(project);
       synchronizeCompatibilityOwner(project);
       const savedProject = await projectRepository.save(project);
       if (previousStatus !== readyForPlanningStatus && savedProject.status === readyForPlanningStatus) {
@@ -319,6 +320,15 @@ function toWorkspace(project: Project): ProjectWorkspace {
     createdAt: toIso(project.createdAt, 'createdAt'),
     updatedAt: toIso(project.updatedAt, 'updatedAt'),
   };
+}
+
+function validateNextActionOwner(project: Project): void {
+  if (project.nextActionOwnerRole === 'INTERNAL_OWNER' && !project.internalOwnerName) {
+    throw new BadRequestException('The internal owner name is required when the next action belongs to the internal owner.');
+  }
+  if (project.nextActionOwnerRole === 'CUSTOMER_CONTACT' && !project.customerContactName.trim()) {
+    throw new BadRequestException('The customer contact name is required when the next action belongs to the customer contact.');
+  }
 }
 
 function synchronizeCompatibilityOwner(project: Project): void {
