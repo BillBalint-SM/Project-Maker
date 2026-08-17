@@ -64,7 +64,7 @@ const unknownDeliveryCode = 'SMTP_DELIVERY_UNKNOWN';
 const previewLifetimeMs = 15 * 60_000;
 const manualDeliveryLeaseMs = 15 * 60_000;
 
-interface ClaimedManualPing {
+interface ClaimedCustomerFollowUpPing {
   readonly attemptId: string;
   readonly state: CustomerFollowUpEntity;
   readonly rendered: RenderedCustomerFollowUpPing;
@@ -258,7 +258,7 @@ export class CustomerFollowUpService implements OnModuleInit, OnModuleDestroy {
     const attemptedAt = new Date();
     const claim = await this.dataSource.transaction(async (
       manager,
-    ): Promise<ClaimedManualPing | DuplicateRiskAcknowledgementRequired> => {
+    ): Promise<ClaimedCustomerFollowUpPing | DuplicateRiskAcknowledgementRequired> => {
       const project = await this.findProject(manager, projectId, true);
       rejectArchivedProject(project);
       const state = await findOrCreateLockedState(manager, projectId);
@@ -351,7 +351,7 @@ export class CustomerFollowUpService implements OnModuleInit, OnModuleDestroy {
   ): Promise<CustomerFollowUpPingDelivery> {
     this.requireMailer();
     const attemptedAt = new Date();
-    const claimed = await this.dataSource.transaction(async (manager): Promise<ClaimedManualPing> => {
+    const claimed = await this.dataSource.transaction(async (manager): Promise<ClaimedCustomerFollowUpPing> => {
       const project = await this.findProject(manager, projectId, true);
       rejectArchivedProject(project);
       const state = await findOrCreateLockedState(manager, projectId);
@@ -436,7 +436,7 @@ export class CustomerFollowUpService implements OnModuleInit, OnModuleDestroy {
     });
     const processedStates: CustomerFollowUpState[] = [];
     for (const candidate of candidates) {
-      const claimed = await this.claimDueState(candidate.id, now);
+      const claimed = await this.claimDueState(candidate.id, candidate.projectId, now);
       if (!claimed) continue;
       const state = await this.deliverClaimedScheduledPing(claimed, now);
       processedStates.push(toState(
@@ -448,7 +448,7 @@ export class CustomerFollowUpService implements OnModuleInit, OnModuleDestroy {
   }
 
   private async finalizeManualSuccess(
-    claimed: ClaimedManualPing,
+    claimed: ClaimedCustomerFollowUpPing,
   ): Promise<CustomerFollowUpPingDelivery> {
     const sentAt = new Date();
     return this.dataSource.transaction(async (manager) => {
@@ -494,7 +494,7 @@ export class CustomerFollowUpService implements OnModuleInit, OnModuleDestroy {
     });
   }
 
-  private async finalizeManualFailure(claimed: ClaimedManualPing): Promise<void> {
+  private async finalizeManualFailure(claimed: ClaimedCustomerFollowUpPing): Promise<void> {
     const failedAt = new Date();
     await this.dataSource.transaction(async (manager) => {
       const attempt = await manager.getRepository(CustomerFollowUpDeliveryAttemptEntity).findOne({
@@ -523,7 +523,7 @@ export class CustomerFollowUpService implements OnModuleInit, OnModuleDestroy {
   }
 
   private async deliverClaimedManualPing(
-    claimed: ClaimedManualPing,
+    claimed: ClaimedCustomerFollowUpPing,
   ): Promise<CustomerFollowUpPingDelivery> {
     try {
       await this.submitPing(claimed.rendered);
@@ -562,7 +562,7 @@ export class CustomerFollowUpService implements OnModuleInit, OnModuleDestroy {
     return activeAttempts;
   }
 
-  private async finalizeManualUnknown(claimed: ClaimedManualPing): Promise<void> {
+  private async finalizeManualUnknown(claimed: ClaimedCustomerFollowUpPing): Promise<void> {
     const reconciledAt = new Date();
     await this.dataSource.transaction(async (manager) => {
       const attempt = await manager.getRepository(CustomerFollowUpDeliveryAttemptEntity).findOne({
@@ -587,7 +587,7 @@ export class CustomerFollowUpService implements OnModuleInit, OnModuleDestroy {
   }
 
   private async finalizeManualDeliveryError(
-    claimed: ClaimedManualPing,
+    claimed: ClaimedCustomerFollowUpPing,
     error: unknown,
   ): Promise<never> {
     if (error instanceof CustomerMailBoundaryError && error.code !== 'OUTCOME_UNKNOWN') {
@@ -604,10 +604,15 @@ export class CustomerFollowUpService implements OnModuleInit, OnModuleDestroy {
     });
   }
 
-  private async claimDueState(id: string, now: Date): Promise<ClaimedManualPing | null> {
+  private async claimDueState(
+    id: string,
+    projectId: string,
+    now: Date,
+  ): Promise<ClaimedCustomerFollowUpPing | null> {
     return this.dataSource.transaction(async (manager) => {
+      const project = await this.findProject(manager, projectId, true);
       const state = await manager.getRepository(CustomerFollowUpEntity).findOne({
-        where: { id },
+        where: { id, projectId },
         lock: { mode: 'pessimistic_write' },
       });
       if (!state || !state.enabled || !state.nextPingAt || state.nextPingAt > now) {
@@ -620,7 +625,6 @@ export class CustomerFollowUpService implements OnModuleInit, OnModuleDestroy {
         return null;
       }
 
-      const project = await this.findProject(manager, state.projectId, false);
       if (project.status === 'ARCHIVED') {
         state.enabled = false;
         state.nextPingAt = null;
@@ -630,7 +634,7 @@ export class CustomerFollowUpService implements OnModuleInit, OnModuleDestroy {
       let rendered: RenderedCustomerFollowUpPing;
       let reference: DiscoveryFollowUpEntity | null;
       try {
-        ({ reference, rendered } = await renderCurrentPing(manager, project, state));
+        ({ reference, rendered } = await renderCurrentPing(manager, project, state, true));
       } catch (error) {
         if (!(error instanceof ConflictException)) {
           throw error;
@@ -680,7 +684,7 @@ export class CustomerFollowUpService implements OnModuleInit, OnModuleDestroy {
   }
 
   private async deliverClaimedScheduledPing(
-    claimed: ClaimedManualPing,
+    claimed: ClaimedCustomerFollowUpPing,
     completedAt: Date,
   ): Promise<CustomerFollowUpEntity> {
     try {
@@ -692,7 +696,7 @@ export class CustomerFollowUpService implements OnModuleInit, OnModuleDestroy {
   }
 
   private async finalizeScheduledSuccess(
-    claimed: ClaimedManualPing,
+    claimed: ClaimedCustomerFollowUpPing,
     sentAt: Date,
   ): Promise<CustomerFollowUpEntity> {
     return this.dataSource.transaction(async (manager) => {
@@ -720,7 +724,7 @@ export class CustomerFollowUpService implements OnModuleInit, OnModuleDestroy {
   }
 
   private async finalizeScheduledDeliveryError(
-    claimed: ClaimedManualPing,
+    claimed: ClaimedCustomerFollowUpPing,
     failedAt: Date,
     error: unknown,
   ): Promise<CustomerFollowUpEntity> {
@@ -792,7 +796,7 @@ export class CustomerFollowUpService implements OnModuleInit, OnModuleDestroy {
 
 async function requireClaimedScheduledState(
   manager: EntityManager,
-  claimed: ClaimedManualPing,
+  claimed: ClaimedCustomerFollowUpPing,
 ): Promise<{
   readonly attempt: CustomerFollowUpDeliveryAttemptEntity;
   readonly state: CustomerFollowUpEntity;
@@ -824,10 +828,11 @@ async function requireOpenReference(
   manager: EntityManager,
   projectId: string,
   followUpId: string,
+  lock = false,
 ): Promise<DiscoveryFollowUpEntity> {
-  const followUp = await manager.getRepository(DiscoveryFollowUpEntity).findOneBy({
-    id: followUpId,
-    projectId,
+  const followUp = await manager.getRepository(DiscoveryFollowUpEntity).findOne({
+    where: { id: followUpId, projectId },
+    lock: lock ? { mode: 'pessimistic_write' } : undefined,
   });
   if (!followUp || followUp.status !== (await initialDiscoveryFollowUpStatus())) {
     throw new ConflictException({
@@ -842,6 +847,7 @@ async function renderCurrentPing(
   manager: EntityManager,
   project: Project,
   state: CustomerFollowUpEntity,
+  lockReference = false,
 ): Promise<{
   readonly reference: DiscoveryFollowUpEntity | null;
   readonly rendered: RenderedCustomerFollowUpPing;
@@ -853,7 +859,12 @@ async function renderCurrentPing(
     });
   }
   const reference = state.referencedFollowUpId
-    ? await requireOpenReference(manager, project.id, state.referencedFollowUpId)
+    ? await requireOpenReference(
+        manager,
+        project.id,
+        state.referencedFollowUpId,
+        lockReference,
+      )
     : null;
   return {
     reference,
