@@ -283,11 +283,6 @@ describe('Customer follow-up ping draft and manual delivery', () => {
         expectedVersion: 1,
       })
       .expect(200);
-    const preview = await request(app.getHttpServer())
-      .post(`/projects/${projectId}/follow-up/ping/preview`)
-      .send({ expectedVersion: 2 })
-      .expect(201);
-
     const expiredAt = new Date(Date.now() - 16 * 60_000);
     await dataSource.query(
       `INSERT INTO customer_follow_up_delivery_attempts (
@@ -297,12 +292,24 @@ describe('Customer follow-up ping draft and manual delivery', () => {
       [
         randomUUID(),
         projectId,
-        preview.body.recipientEmail,
-        preview.body.subject.length,
-        preview.body.text.length,
+        'expired-delivery@example.test',
+        1,
+        1,
         expiredAt,
       ],
     );
+    await request(app.getHttpServer())
+      .patch(`/projects/${projectId}/follow-up/draft`)
+      .send({
+        messageDraft: 'Az újabb draft sem kerülheti meg a kézbesítési ellenőrzést',
+        referencedFollowUpId: null,
+        expectedVersion: 2,
+      })
+      .expect(200);
+    const preview = await request(app.getHttpServer())
+      .post(`/projects/${projectId}/follow-up/ping/preview`)
+      .send({ expectedVersion: 3 })
+      .expect(201);
 
     const blocked = await request(app.getHttpServer())
       .post(`/projects/${projectId}/follow-up/ping`)
@@ -330,7 +337,7 @@ describe('Customer follow-up ping draft and manual delivery', () => {
 
     const nextPreview = await request(app.getHttpServer())
       .post(`/projects/${projectId}/follow-up/ping/preview`)
-      .send({ expectedVersion: 2 })
+      .send({ expectedVersion: 3 })
       .expect(201);
     await request(app.getHttpServer())
       .post(`/projects/${projectId}/follow-up/ping`)

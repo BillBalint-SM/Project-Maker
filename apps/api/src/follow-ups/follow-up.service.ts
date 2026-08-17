@@ -271,15 +271,15 @@ export class CustomerFollowUpService implements OnModuleInit, OnModuleDestroy {
         });
       }
       const attemptRepository = manager.getRepository(CustomerFollowUpDeliveryAttemptEntity);
-      const activeAttempt = await attemptRepository.findOne({
+      const activeAttempts = await attemptRepository.find({
         where: {
           projectId,
-          draftVersion: state.draftVersion,
           state: 'SENDING',
         },
+        order: { attemptedAt: 'DESC', createdAt: 'DESC', id: 'ASC' },
         lock: { mode: 'pessimistic_write' },
       });
-      if (activeAttempt) {
+      for (const activeAttempt of activeAttempts) {
         const leaseExpiresAt = new Date(activeAttempt.attemptedAt.getTime() + manualDeliveryLeaseMs);
         if (leaseExpiresAt > attemptedAt) {
           throw new ConflictException({
@@ -299,10 +299,9 @@ export class CustomerFollowUpService implements OnModuleInit, OnModuleDestroy {
           reconciledAt: attemptedAt.toISOString(),
         });
       }
-      const latestAttempt = activeAttempt ?? await attemptRepository.findOne({
+      const latestAttempt = activeAttempts[0] ?? await attemptRepository.findOne({
         where: {
           projectId,
-          draftVersion: state.draftVersion,
         },
         order: { attemptedAt: 'DESC', createdAt: 'DESC', id: 'ASC' },
       });
