@@ -85,6 +85,9 @@ export class GraphCustomerMailBoundary implements CustomerOutboundMail, Customer
   }
 
   async submit(message: OutboundCustomerMessage): Promise<MailSubmissionResult> {
+    if (!this.isConfigured()) {
+      throw new CustomerMailBoundaryError('CONFIGURATION_ERROR');
+    }
     const outbound = toGraphMessage(message, this.config?.get<string>('CUSTOMER_MAILBOX_ADDRESS')?.trim());
     try {
       const accepted = await this.client.submit(outbound);
@@ -97,6 +100,9 @@ export class GraphCustomerMailBoundary implements CustomerOutboundMail, Customer
   }
 
   async readChanges(checkpoint: CustomerMailboxCheckpoint | null): Promise<CustomerMailboxChangePage> {
+    if (!this.isConfigured()) {
+      throw new CustomerMailBoundaryError('CONFIGURATION_ERROR');
+    }
     try {
       const page = await this.client.readMailboxPage(checkpoint?.value ?? null);
       return Object.freeze({
