@@ -5,6 +5,9 @@ import {
   IsOptional,
   IsString,
   IsUUID,
+  IsEmail,
+  IsIn,
+  Length,
   Matches,
   Max,
   MaxLength,
@@ -58,6 +61,22 @@ export class PreviewFollowUpPingDto {
   @IsInt()
   @Min(1)
   expectedVersion!: number;
+
+  @IsOptional()
+  @IsIn(['DEDICATED', 'CUSTOM'])
+  senderMode?: 'DEDICATED' | 'CUSTOM';
+
+  @ValidateIf((input: PreviewFollowUpPingDto) => input.senderMode === 'CUSTOM')
+  @IsString()
+  @Length(1, 255)
+  senderName?: string;
+
+  @ValidateIf((input: PreviewFollowUpPingDto) => input.senderMode === 'CUSTOM')
+  @IsString()
+  @Length(1, 320)
+  @IsEmail()
+  @Matches(/^[^@\s]+@pte\.hu$/i)
+  senderAddress?: string;
 }
 
 export const customerFollowUpDraftMaxLength = 10_000;

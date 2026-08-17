@@ -94,7 +94,12 @@ const graphServer = createServer((request, response) => {
         response.writeHead(400, { 'content-type': 'application/json' }).end('{}');
         return;
       }
-      graphMessages.push(JSON.parse(body));
+      const graphMessage = JSON.parse(body);
+      const senderSegment = request.url?.match(/\/users\/([^/]+)\/sendMail$/)?.[1];
+      graphMessages.push({
+        ...graphMessage,
+        __senderAddress: senderSegment ? decodeURIComponent(senderSegment) : null,
+      });
       response.writeHead(202).end();
     });
     return;

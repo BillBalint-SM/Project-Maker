@@ -34,6 +34,12 @@ export class CustomerFollowUpEntity {
   @Column({ name: 'preview_expires_at', type: 'timestamptz', nullable: true })
   previewExpiresAt!: Date | null;
 
+  @Column({ name: 'preview_sender_name', type: 'varchar', length: 255, nullable: true })
+  previewSenderName!: string | null;
+
+  @Column({ name: 'preview_sender_address', type: 'varchar', length: 320, nullable: true })
+  previewSenderAddress!: string | null;
+
   @Column({ type: 'boolean', default: false })
   enabled!: boolean;
 

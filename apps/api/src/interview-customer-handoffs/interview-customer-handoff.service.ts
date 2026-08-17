@@ -1,7 +1,6 @@
-import { createHash, randomBytes, randomUUID } from 'node:crypto';
+import { randomBytes, randomUUID } from 'node:crypto';
 import { BadRequestException, ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { isEmail } from 'class-validator';
 import type { InterviewCustomerHandoffDetail, InterviewCustomerHandoffPreview, InterviewCustomerHandoffSummary, InterviewHandoffSenderOptions, InterviewHandoffSenderSelection, SendInterviewCustomerHandoffInput } from '@project-maker/contracts';
 import { DataSource, EntityManager, In, Repository } from 'typeorm';
 
@@ -12,6 +11,13 @@ import { RoundQuestionAssessmentOverrideEntity } from '../interviews/round-quest
 import { RoundQuestionSnapshotEntity } from '../interviews/round-question-snapshot.entity';
 import { CustomerMailBoundaryError, type CustomerOutboundMail, customerOutboundMailToken, immutableOutboundCustomerMessage } from '../mail-delivery/customer-mail-boundary';
 import { Project } from '../projects/project.entity';
+import {
+  customerMailDigest as sha256,
+  customerReplyToAddress as plusAddress,
+  dedicatedCustomerSender as dedicatedSender,
+  requireCustomerSender,
+  resolveCustomerSender as resolveSender,
+} from '../mail-delivery/customer-mail-identity';
 import { InterviewCustomerHandoffEntity } from './interview-customer-handoff.entity';
 import { renderHandoff, type HandoffProjection } from './interview-customer-handoff.renderer';
 import { CustomerCorrespondenceEntity } from './customer-correspondence.entity';
@@ -225,28 +231,6 @@ function toSummary(row: InterviewCustomerHandoffEntity): InterviewCustomerHandof
 function toDetail(row: InterviewCustomerHandoffEntity): InterviewCustomerHandoffDetail { return { ...toSummary(row), internalOwnerName: row.internalOwnerName, subject: row.subject, htmlContent: row.htmlContent, textContent: row.textContent, sourceContentVersion: row.sourceContentVersion, failureCode: row.failureCode, replyToAddress: row.replyToAddress, mailSystemAcceptance: row.mailSystemAcceptance, messageReference: row.messageReference, correspondenceId: row.correspondenceId }; }
 async function audit(manager: EntityManager, projectId: string, eventType: string, row: InterviewCustomerHandoffEntity) { await manager.getRepository(AuditEvent).save({ id: randomUUID(), projectId, eventType, payload: { roundId: row.roundId, handoffId: row.id, version: String(row.version), state: row.state } }); }
 
-function dedicatedSender(config: ConfigService): { name: string; address: string } {
-  const name = config.get<string>('CUSTOMER_MAILBOX_NAME')?.trim() || 'Project Maker';
-  const address = config.get<string>('CUSTOMER_MAILBOX_ADDRESS')?.trim() || '';
-  if (!isPteAddress(address)) throw new ConflictException('A dedikált @pte.hu postafiók nincs beállítva.');
-  return { name, address };
-}
-
-function resolveSender(selection: InterviewHandoffSenderSelection, config: ConfigService): { name: string; address: string } {
-  if (selection.mode === 'DEDICATED') return dedicatedSender(config);
-  const name = selection.name?.trim() ?? '';
-  const address = selection.address?.trim() ?? '';
-  if (!name || !isPteAddress(address)) throw new BadRequestException('A feladó neve és pontos @pte.hu címe kötelező.');
-  return { name, address };
-}
-
 function senderFromDigestInput(input: SendInterviewCustomerHandoffInput): { name: string; address: string } {
-  const name = input.senderName.trim();
-  const address = input.senderAddress.trim();
-  if (!name || !isPteAddress(address)) throw new BadRequestException('A feladó neve és pontos @pte.hu címe kötelező.');
-  return { name, address };
+  return requireCustomerSender(input.senderName, input.senderAddress);
 }
-
-function isPteAddress(value: string): boolean { return isEmail(value) && /^[^@\s]+@pte\.hu$/i.test(value); }
-function sha256(value: string): string { return createHash('sha256').update(value, 'utf8').digest('hex'); }
-function plusAddress(mailbox: string, token: string): string { const at = mailbox.lastIndexOf('@'); return `${mailbox.slice(0, at)}+${token}${mailbox.slice(at)}`; }

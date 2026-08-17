@@ -13,7 +13,7 @@ import {
   signal,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
+import { FormControl, FormGroup, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import type {
   CustomerFollowUpPingPreview,
@@ -21,6 +21,7 @@ import type {
   CustomerFollowUpReferenceOption,
   CustomerFollowUpState,
   UpdateCustomerFollowUpInput,
+  InterviewHandoffSenderOptions,
 } from '@project-maker/contracts';
 import { ButtonModule } from 'primeng/button';
 import { CardModule } from 'primeng/card';
@@ -48,6 +49,7 @@ import {
     DatePipe,
     DatePickerModule,
     InputTextModule,
+    FormsModule,
     MessageModule,
     ProgressSpinnerModule,
     ReactiveFormsModule,
@@ -76,6 +78,10 @@ export class CustomerFollowUpComponent implements OnInit {
   readonly preview = signal<CustomerFollowUpPingPreview | null>(null);
   readonly retryConfirmation = signal<CustomerFollowUpManualAttempt | null>(null);
   readonly referenceOptions = signal<readonly CustomerFollowUpReferenceOption[]>([]);
+  readonly senderOptions = signal<InterviewHandoffSenderOptions | null>(null);
+  senderMode: 'DEDICATED' | 'CUSTOM' = 'DEDICATED';
+  senderName = '';
+  senderAddress = '';
   readonly saving = computed(
     () => this.operationPolicy.activeOperation() === 'customer-follow-up-save',
   );
@@ -165,6 +171,7 @@ export class CustomerFollowUpComponent implements OnInit {
           this.applyState(state);
           this.loading.set(false);
           this.loadReferenceOptions();
+          this.loadSenderOptions();
         },
         error: (error: Error) => {
           this.loadError.set(error.message);
@@ -252,7 +259,13 @@ export class CustomerFollowUpComponent implements OnInit {
     }
     this.actionError.set(null);
     this.api
-      .preview(this.projectId(), { expectedVersion: current.draftVersion })
+      .preview(this.projectId(), {
+        expectedVersion: current.draftVersion,
+        senderMode: this.senderMode,
+        ...(this.senderMode === 'CUSTOM'
+          ? { senderName: this.senderName, senderAddress: this.senderAddress }
+          : {}),
+      })
       .pipe(
         releaseCockpitOperationOnFinalize(lease),
         takeUntilDestroyed(this.destroyRef),
@@ -276,6 +289,23 @@ export class CustomerFollowUpComponent implements OnInit {
         injector: this.injector,
       });
     }
+  }
+
+  changeSenderMode(mode: 'DEDICATED' | 'CUSTOM'): void {
+    this.senderMode = mode;
+    this.preview.set(null);
+    this.sendResult.set(null);
+  }
+
+  changeSender(): void {
+    this.preview.set(null);
+    this.sendResult.set(null);
+  }
+
+  senderIsValid(): boolean {
+    return this.senderMode === 'DEDICATED'
+      || (this.senderName.trim().length > 0
+        && /^[^@\s]+@pte\.hu$/i.test(this.senderAddress.trim()));
   }
 
   sendPing(acknowledgeDuplicateRisk = false): void {
@@ -307,7 +337,7 @@ export class CustomerFollowUpComponent implements OnInit {
       .subscribe({
         next: () => {
           this.preview.set(null);
-          this.sendResult.set('Ping elküldve az ügyfélnek.');
+          this.sendResult.set('Átadva a levelezőrendszernek.');
           this.reloadState();
           this.focusAfterNextRender('[data-testid="follow-up-send-result"]');
           this.committedChange.emit();
@@ -382,7 +412,7 @@ export class CustomerFollowUpComponent implements OnInit {
       next: () => {
         this.retryConfirmation.set(null);
         this.retryFocusReturn = null;
-        this.sendResult.set('Ping elküldve az ügyfélnek.');
+        this.sendResult.set('Átadva a levelezőrendszernek.');
         this.reloadState();
         this.focusAfterNextRender('[data-testid="follow-up-send-result"]');
         this.committedChange.emit();
@@ -412,6 +442,7 @@ export class CustomerFollowUpComponent implements OnInit {
           this.applyState(state);
           if (!preserveActionError) this.actionError.set(null);
           this.loadReferenceOptions();
+          this.loadSenderOptions();
           if (focusSelector) this.focusAfterNextRender(focusSelector);
         },
         error: (error: Error) => this.actionError.set(error.message),
@@ -424,6 +455,22 @@ export class CustomerFollowUpComponent implements OnInit {
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (options) => this.referenceOptions.set(options),
+        error: (error: Error) => this.actionError.set(error.message),
+      });
+  }
+
+  private loadSenderOptions(): void {
+    this.api.senderOptions(this.projectId())
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (options) => {
+          this.senderOptions.set(options);
+          if (options.lastUsedAddress && options.lastUsedName) {
+            this.senderMode = 'CUSTOM';
+            this.senderName = options.lastUsedName;
+            this.senderAddress = options.lastUsedAddress;
+          }
+        },
         error: (error: Error) => this.actionError.set(error.message),
       });
   }
