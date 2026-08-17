@@ -11,6 +11,7 @@ import { customerMailerToken, type CustomerMailerMessage } from '../src/mail-del
 describe('Interview customer handoff HTTP boundary', () => {
   let app: INestApplication;
   const delivered: CustomerMailerMessage[] = [];
+  const deliveredMessageFrozen: boolean[] = [];
   let deliveryMode: 'SUCCESS' | 'SMTP_FAILURE' | 'UNKNOWN_FAILURE' | 'HOLD' = 'SUCCESS';
   let releaseHeldDelivery: (() => void) | null = null;
 
@@ -20,6 +21,7 @@ describe('Interview customer handoff HTTP boundary', () => {
       .useValue({
         isConfigured: () => true,
         submit: async (message: OutboundCustomerMessage) => {
+          deliveredMessageFrozen.push(Object.isFrozen(message));
           if (deliveryMode === 'SMTP_FAILURE') return { acceptance: 'REJECTED', messageReference: null } as const;
           if (deliveryMode === 'UNKNOWN_FAILURE') throw new Error('Connection outcome unknown.');
           if (deliveryMode === 'HOLD') await new Promise<void>((resolve) => { releaseHeldDelivery = resolve; });
@@ -63,6 +65,7 @@ describe('Interview customer handoff HTTP boundary', () => {
     const sent = await request(app.getHttpServer()).post(`/projects/${project.body.id}/rounds/${roundId}/customer-handoffs/${firstId}/send`).send({ sourceContentVersion: firstPreview.body.sourceContentVersion, previewDigest: firstPreview.body.previewDigest }).expect(201);
     assert.equal(sent.body.state, 'SENT');
     assert.equal(delivered.length, 1);
+    assert.equal(deliveredMessageFrozen.at(-1), true);
     assert.equal(delivered[0].text, firstPreview.body.textContent);
     assert.equal(delivered[0].html, firstPreview.body.htmlContent);
 
