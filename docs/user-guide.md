@@ -16,6 +16,7 @@ Megmutatja, mit érdemes rögzíteni, mit jelent az eredmény, mikor történik 
 - [A projekt cockpit használata](#a-projekt-cockpit-használata)
 - [A közös kérdésbank kezelése](#a-közös-kérdésbank-kezelése)
 - [Projektséma és kezdő interjú](#projektséma-és-kezdő-interjú)
+- [Interjú lezárása és ügyfélcsomag](#interjú-lezárása-és-ügyfélcsomag)
 - [Felkészültségi értékelés és hiányok](#felkészültségi-értékelés-és-hiányok)
 - [Discovery follow-upok kezelése](#discovery-follow-upok-kezelése)
 - [Ügyfél-emlékeztetők és review email](#ügyfél-emlékeztetők-és-review-email)
@@ -54,7 +55,7 @@ A Project Makerben egy projekt nem egyszerűen egy név. Egy közös munkatér, 
 - az ügyfél kapcsolattartóját;
 - az aktuális felelőst, következő lépést és határidőt;
 - a projektre kiválasztott kérdéssémát;
-- a vezetett kezdő interjú mentett válaszait;
+- a vezetett kezdő interjú mentett válaszait és verziózott ügyfélcsomagjait;
 - a nyitott és lezárt discovery-kérdéseket;
 - az ügyfél-emlékeztetők állapotát;
 - a változatlan Markdown-pillanatképeket;
@@ -67,7 +68,8 @@ Az alkalmazás napi használatának lényege röviden:
 | Új igény érkezett | Hozz létre projektet a kapcsolattartóval | Létrejön egy `DRAFT` cockpit |
 | Elindul az igényfelmérés | Adj felelőst, következő lépést, határidőt, és válassz státuszt | A portfólióban mindenki ugyanazt az operatív állapotot látja |
 | Megvan a workshop kérdésköre | Tedd közzé a projektsémát | Rögzül, mely kérdések tartoznak ehhez a projekthez |
-| Elindul az interjú | Indíts kezdő interjúkört és rögzítsd a válaszokat | A kör saját, változatlan kérdéspillanatképet kap |
+| Elindul az interjú | Indíts kezdő interjúkört és rögzítsd a válaszokat | A kör saját kérdéspillanatképet kap |
+| Befejeződik a meeting | Zárd le akkor is, ha maradt hiány, majd küldd az ügyfélcsomagot most vagy később | Verziózott piszkozat készül; a hiányok a readinessben maradnak láthatók |
 | Tisztázottságot kell ellenőrizni | Tekintsd át a cockpit `Felkészültségi értékelés` kártyáját és kövesd a hiányok műveleteit | Aktuális kitöltöttség, felkészültség, tényezők és rendezett hiányok látszanak |
 | Új bizonytalanság merült fel | Hozz létre discovery follow-upot felelőssel és dátummal | A tisztázandó pont számonkérhetően megmarad |
 | Átadási pont vagy review következik | Generálj és ellenőrizz Markdown-revíziót | Letölthető, változatlan projektpillanatkép készül |
@@ -117,7 +119,7 @@ Egy projekten belül az oldalak közötti visszalépő linkek őrzik a munkafoly
 | --- | --- | --- |
 | `Projects` | Aktív és archivált projektek áttekintése | Új projekt, cockpit megnyitása |
 | `Project cockpit` | Operatív állapot és projektközpont | Workspace mentése, follow-upok, e-mail, audit, lifecycle |
-| `Projektinterjú` | Projektséma és kezdő interjú | Séma közzététele, kör indítása, válaszadás, lezárás |
+| `Projektinterjú` | Projektséma, kezdő interjú és ügyfélcsomag | Séma közzététele, kör indítása, válaszadás, meeting lezárása, előnézet és küldés |
 | `Markdown specifikáció` | Változatlan kanonikus specifikációk | Revízió generálása, összehasonlítás, előnézet, letöltés |
 | `Base question bank` | Minden projekt közös kérdéskészlete | Kérdés létrehozása, új verziót létrehozó szerkesztés |
 
@@ -132,21 +134,23 @@ flowchart LR
     A[Projekt létrehozása] --> B[Cockpit és felelős kijelölése]
     B --> C[Projektséma közzététele]
     C --> D[Kezdő interjú]
-    D --> E{Minden kötelező válasz mentve?}
-    E -- Nem --> D
-    E -- Igen --> F[Interjúkör lezárása]
-    F --> G[Felkészültség és hiányok áttekintése]
-    G --> H[Discovery follow-upok lezárása]
-    H --> I[Markdown-revízió ellenőrzése]
-    I --> J[Ügyfél-review vagy belső átadás]
-    J --> K{Folytatódik az aktív munka?}
-    K -- Igen --> B
-    K -- Nem --> L[Archiválás]
+    D --> E[Meeting lezárása]
+    E --> F{Ügyfélcsomag küldése most?}
+    F -- Igen --> G[Előnézet és küldés]
+    F -- Később --> H[Piszkozat mentése]
+    G --> I[Felkészültség és hiányok áttekintése]
+    H --> I
+    I --> J[Discovery follow-upok lezárása]
+    J --> K[Markdown-revízió ellenőrzése]
+    K --> L[Ügyfél-review vagy belső átadás]
+    L --> M{Folytatódik az aktív munka?}
+    M -- Igen --> B
+    M -- Nem --> N[Archiválás]
 ```
 
 ### 1. Indítás és közös kontextus
 
-Hozd létre a projektet, majd a cockpitben tedd egyértelművé, ki viszi a következő labdát, mi az egyetlen konkrét következő lépés, és mikorra esedékes. A státusz azt fejezze ki, mi akadályozza vagy mi viszi előre az igényfelmérést.
+Hozd létre a projektet a megnevezett belső felelőssel, majd a cockpitben jelöld, hogy a következő feladat a belső felelősnél vagy az ügyfél kapcsolattartójánál van, mi az egyetlen konkrét következő lépés, és mikorra esedékes. A státusz azt fejezze ki, mi akadályozza vagy mi viszi előre az igényfelmérést.
 
 ### 2. Kérdéskör rögzítése
 
@@ -154,7 +158,7 @@ Válaszd ki az aktív alapkérdések közül az adott projekthez szükségeseket
 
 ### 3. Interjú és megszakításbiztos mentés
 
-Indíts kezdő interjúkört. Szöveges válasz után várd meg a `Mentve` állapotot; választó, jelölő, szám- és dátumválasz azonnal ment. Megszakítás után ugyanaz a nyitott kör töltődik vissza.
+Indíts kezdő interjúkört. Szöveges válasz után várd meg a `Mentve` állapotot; választó, jelölő, szám- és dátumválasz azonnal ment. Megszakítás után ugyanaz a nyitott kör töltődik vissza. A meeting végén a kört a tartalmi teljességtől függetlenül lezárhatod, majd előnézetből azonnal elküldheted az ügyfélcsomagot, vagy piszkozatként későbbre hagyhatod.
 
 ### 4. Felkészültség és nyitott tisztázások
 
@@ -185,17 +189,18 @@ Ez a gyorsindítás egy teljes, biztonságos első kört mutat. A részletes sza
 2. Add meg a projekt nevét, a kapcsolattartó nevét és e-mail-címét.
 3. Válaszd a `Create and open cockpit` gombot.
 4. A cockpit `Workspace` részében állítsd a státuszt `INTAKE_IN_PROGRESS` értékre.
-5. Add meg a `Ball owner`, `Next action` és szükség szerint a `Due date and time` mezőt, majd válaszd a `Save workspace` gombot.
+5. Ellenőrizd a belső felelős nevét, válaszd ki a következő feladat gazdáját (`Belső felelős` vagy `Ügyfél kapcsolattartó`), add meg a `Next action` és szükség szerint a `Due date and time` mezőt, majd válaszd a `Save workspace` gombot.
 6. Nyisd meg az `Open project interview` oldalt.
 7. Ellenőrizd a kijelölt kérdéseket, majd válaszd a `Séma közzététele` gombot.
 8. Indítsd el a kört a `Kezdő interjú indítása` gombbal.
 9. Rögzítsd a válaszokat. Szöveges mezőknél várd meg a `Mentve` visszajelzést.
-10. A kötelező válaszok mentése után válaszd az `Interjúkör lezárása` gombot.
-11. Térj vissza a cockpitbe. Minden későbbi tisztázandó pontból hozz létre külön discovery follow-upot.
-12. Átadás előtt nyisd meg az `Open Markdown plan` oldalt, és válaszd a `Generate Markdown revision` gombot.
-13. Ellenőrizd a `Content preview` tartalmát és a revízió metaadatait.
-14. Ha ügyfélnek küldesz, előbb ellenőrizd a kapcsolattartó címét a cockpitben, majd használd a megfelelő küldési műveletet.
-15. Amikor már nincs aktív munka, térj vissza a cockpitbe, és archiváld a projektet.
+10. A meeting végén válaszd a `Mentés, később küldöm` vagy a `Mentés és küldés` műveletet. A lezáráshoz nem kell minden üzleti hiányt kitölteni, de függőben lévő vagy hibás mentés nem maradhat.
+11. Küldés előtt olvasd át az ügyfélcsomag előnézetét és ellenőrizd a címzettet. A sikeres küldés változatlan verziót hoz létre.
+12. Ügyfél-módosítás esetén indíts új verziót, írd le a módosítás összefoglalását, szerkeszd a válaszokat, majd készíts új előnézetet és küldd el.
+13. Térj vissza a cockpitbe. Minden későbbi tisztázandó pontból hozz létre külön discovery follow-upot.
+14. Átadás előtt nyisd meg az `Open Markdown plan` oldalt, és válaszd a `Generate Markdown revision` gombot.
+15. Ellenőrizd a `Content preview` tartalmát és a revízió metaadatait.
+16. Amikor már nincs aktív munka, térj vissza a cockpitbe, és archiváld a projektet.
 
 ### A gyorsindítás akkor kész, ha
 
@@ -219,7 +224,7 @@ A `Projects` oldalon minden projekt egy kártya. A kártya megmutatja:
 
 - a projekt nevét;
 - az aktuális lifecycle státuszt;
-- a `Ball owner` értékét, vagy `Not assigned` jelzést;
+- a következő feladat konkrét gazdáját, vagy a `Nincs kijelölve` jelzést;
 - a `Next action` értékét, vagy `Not defined` jelzést;
 - az `Open cockpit` belépési pontot.
 
@@ -309,11 +314,12 @@ stateDiagram-v2
 | Mező | Üzleti jelentés | Jó kitöltési minta |
 | --- | --- | --- |
 | `Lifecycle status` | Hol tart vagy mire vár az igényfelmérés | `WAITING_CUSTOMER`, ha ténylegesen ügyfélválasz kell |
-| `Ball owner` | Kinél van a következő érdemi lépés felelőssége | Személy és szükség esetén szerep, legfeljebb 255 karakter |
+| `Belső felelős` | A projektet vivő PO/PM munkatárs konkrét neve | „Kiss Anna” |
+| `Következő feladat gazdája` | A megnevezett belső felelős vagy az ügyfél megnevezett kapcsolattartója | A ténylegesen következőként cselekvő fél |
 | `Next action` | Egyetlen konkrét, végrehajtható következő lépés | „Adatgazdával az API elérhetőségének megerősítése” |
 | `Due date and time` | Mikorra kell megtörténnie a következő lépésnek | A csapat helyi idejében kiválasztott pontos időpont |
 
-A `Ball owner`, a `Next action` és a határidő elhagyható. Az üres érték azonban a projektkártyán `Not assigned`, `Not defined` vagy `No due date` formában jelenik meg, ezért csak akkor hagyd üresen, ha ez valóban a közös álláspont.
+A `Következő feladat gazdája`, a `Next action` és a határidő elhagyható. Az üres érték azonban a projektkártyán `Nincs kijelölve`, `Nincs meghatározva` vagy `Nincs határidő` formában jelenik meg, ezért csak akkor hagyd üresen, ha ez valóban a közös álláspont.
 
 A `Next action` legfeljebb 10 000 karakter lehet, de a jó következő lépés rövid, cselekvő igével kezdődik, egy felelőshöz köthető és ellenőrizhető eredménye van. Ne használd jegyzőkönyv vagy backlog helyett.
 
@@ -425,12 +431,12 @@ Típusváltáskor mindig ellenőrizd, hogy a kérdés jelentése és a korábbi 
 
 | Jelölő | Jelenlegi tényleges hatás |
 | --- | --- |
-| `Required` | Válasz nélkül a szerver nem engedi lezárni az interjúkört |
+| `Required` | A readinessben és a későbbi tisztázásban hiányként látszik; a meeting lezárását önmagában nem akadályozza |
 | `Required for estimate` | Metaadatként megmarad; önmagában nem módosítja a kör lezárását vagy a projektstátuszt |
 | `Blocking` | A nyitott körben kiemelt tisztázási útmutatást mutat; önmagában nem akadályozza a lezárást |
 | `Active` | Bekapcsolva megjelenik az új projektséma-választásban; kikapcsolva új sémába nem választható |
 
-Ha egy blokkoló kérdésnek ténylegesen meg kell akadályoznia a kör lezárását, a `Required` jelölőt is kapcsold be. A `Required for estimate` nem külön pontszámkapu, és nem helyettesít Decision Score-t, ajánlott döntést vagy automatikus projektstátusz-váltást. A felkészültségi értékeléshez a [forráskörnek](#ha-az-értékelés-nem-elérhető-vagy-nem-töltődik-be) a jelenlegi kanonikus sémának kell megfelelnie.
+A `Required` és `Blocking` jelölő sem tartalmi lezárási kapu: kész, részben kész, nem releváns vagy hiányos eredménnyel is lezárható a meeting. Csak függőben lévő vagy hibás technikai mentés blokkolja a lezáró gombokat. A `Required for estimate` nem külön pontszámkapu, és nem helyettesít Decision Score-t, ajánlott döntést vagy automatikus projektstátusz-váltást. A felkészültségi értékeléshez a [forráskörnek](#ha-az-értékelés-nem-elérhető-vagy-nem-töltődik-be) a jelenlegi kanonikus sémának kell megfelelnie.
 
 ### Tipikus mentési hibák és helyreállítás
 
@@ -518,7 +524,7 @@ Minden kérdésnél látható:
 - a kérdés sorszáma és szövege;
 - a téma és a válasz típusa;
 - az ellenőrzési pont;
-- a `Kötelező kérdés` jelzés, ha a válasz lezárási feltétel;
+- a `Kötelező kérdés` jelzés, ha a hiány a felkészültségi értékelésben számít;
 - a `Blokkoló tisztázás` jelzés és külön figyelmeztetés;
 - a kérdésbanki hint;
 - a típushoz tartozó válaszadási útmutató;
@@ -550,22 +556,56 @@ Szöveges válasz után ne lépj azonnal tovább vagy ne zárd be az oldalt. Fig
 
 Ha egy sikertelen szöveges mentés után tovább gépelsz, a képernyőn lévő legfrissebb piszkozat marad a kiindulópont. Mindig azt olvasd vissza, majd próbáld újra. Ne másold át automatikusan új körbe, mert az eredeti kör és a helyi piszkozat még helyreállítható.
 
-### Interjúkör lezárása
+### A meeting lezárása
 
-**Előfeltétel:** nincs várakozó automatikus mentés, nincs folyamatban lévő kérés, nincs mentési hiba, és minden `Required` kérdésnek van mentett, érvényes válasza vagy indokolt `Nem releváns` értékelése. `Részben megvan` értékeléssel egy kötelező kérdés nem zárható le.
+**Előfeltétel:** nincs várakozó automatikus mentés, nincs folyamatban lévő kérés és nincs mentési hiba. A meetinget minden esetben le lehet zárni: kész, részben kész vagy nem releváns tartalommal is. A hiányzó és részleges válaszok nem technikai lezárási akadályok; a readiness és a későbbi tisztázások továbbra is láthatóvá teszik őket.
 
 1. Görgess végig a kérdéseken, és ellenőrizd a mentési állapotokat.
-2. Olvasd át a kötelező és blokkoló tisztázásokat üzleti szempontból is.
-3. Válaszd az `Interjúkör lezárása` gombot.
-4. Várd meg a `Lezárt` állapotot; a válaszmezők ekkor letiltódnak.
+2. Válaszd a `Mentés, később küldöm` műveletet, ha még szerkesztenéd az ügyfélcsomagot, vagy a `Mentés és küldés` műveletet, ha rögtön előnézetet és küldést szeretnél.
+3. Várd meg a `Meeting lezárva` állapotot és az 1. ügyfélcsomag-piszkozat megjelenését.
 
-Függőben lévő vagy hibás mentésnél a lezáró gomb letiltva marad. Ha egy kötelező válasz hiányzik, a szerver elutasítja a lezárást, és az oldal magyar hibaüzenetet mutat. A kör nyitott és szerkeszthető marad; töltsd ki a hiányt, várd meg a `Mentve` állapotot, majd próbáld újra.
+Függőben lévő vagy hibás technikai mentésnél a lezáró műveletek letiltva maradnak, hogy a képernyőn látható piszkozat ne vesszen el. A válasz tartalmi hiányossága azonban nem akadályozza meg a meeting lezárását.
 
-A lezárt kör változatlan. Nem szerkeszthető, és a válaszai sem írhatók át. Ugyanazon az oldalon közvetlenül a lezárás után még láthatod letiltva, de újratöltés után a jelenlegi interjúoldal már nem listázza a lezárt körök történetét.
+## Interjú lezárása és ügyfélcsomag
 
-Korábbi körök áttekintésére a létrehozásukkor vagy később generált Markdown-revízió szolgál.
+![Egy lezárt, részben kitöltött interjú első ügyfélcsomag-piszkozata címzettel, előnézettel, küldési művelettel és verzióelőzménnyel](assets/user-guide/09-interview-customer-handoff.png)
 
-Lezárás után indíthatsz újabb kezdő interjúkört. Az új kör az akkor legfrissebb projektsémáról készít új pillanatképet, és nem másolja automatikusan az előző kör válaszait.
+*Az előnézet a ténylegesen küldendő szöveget mutatja; a hiányzó válaszok láthatók maradnak, de a meeting lezárását nem akadályozzák.*
+
+### Első küldés most vagy később
+
+A lezárás automatikusan létrehozza az 1. verziójú ügyfélcsomag `DRAFT` állapotát. A címzett a projekt megnevezett ügyfél-kapcsolattartója, a belső felelős pedig a projekt létrehozásakor megadott PO/PM munkatárs.
+
+- `Mentés, később küldöm`: a meeting lezárul, az ügyfélcsomag piszkozat marad, és később ugyanerről az oldalról folytatható.
+- `Mentés és küldés`: a meeting lezárul, majd megnyílik az előnézet. A küldés csak a megerősítés után indul.
+
+Küldés előtt mindig olvasd át a tárgyat, a címzett nevét és címét, valamint a HTML- és szöveges tartalmat. Az előnézet a válaszok aktuális tartalomverziójához kötött. Ha az előnézet után választ vagy értékelést módosítasz, készíts új előnézetet; az elavult előnézetet a szerver `409` konfliktussal visszautasítja.
+
+### Állapotok és helyreállítás
+
+| Állapot | Jelentés | Biztonságos következő lépés |
+| --- | --- | --- |
+| `DRAFT` | Szerkeszthető, még nem küldött verzió | Módosítás, előnézet, majd küldés |
+| `SENDING` | A küldési kísérlet folyamatban van | Ne indíts második küldést; várj vagy töltsd újra |
+| `SENT` | A verzió elküldött, változatlan pillanatkép | Ügyfélmódosításhoz indíts új verziót |
+| `FAILED` | Ismert SMTP-hiba miatt nem sikerült | Ellenőrizd az okot, majd válaszd az újrapróbálást |
+| `UNKNOWN` | Nem bizonyítható, hogy a megszakadt kísérlet kézbesített-e | Előbb ellenőrizd a postafiókot/szolgáltatót; csak ezután válaszd a folytatást |
+
+A `SENT` verzió nem szerkeszthető. A `FAILED` ugyanazt a változatlan előnézeti tartalmat próbálja újra. Az `UNKNOWN` nem automatikus újraküldési engedély: a rendszer azért áll meg, hogy ne küldjön észrevétlenül duplikált levelet.
+
+### Ügyfél-visszajelzés és módosított újraküldés
+
+1. Nyisd meg a korábban elküldött interjú ügyfélcsomagját.
+2. Válaszd az `Új verzió készítése` műveletet.
+3. Írd le röviden, mit kért az ügyfél; a módosítási összefoglaló a 2. és későbbi verzióknál kötelező.
+4. Az új `DRAFT` feloldja az interjú válaszait és értékeléseit szerkesztésre. Módosítsd és várd meg minden mezőnél a mentést.
+5. Készíts új előnézetet, ellenőrizd a teljes tartalmat, majd küldd el.
+
+Az előző `SENT` verzió változatlanul megmarad. Egyszerre csak egy aktív, nem elküldött verzió lehet; ezért új verzió csak az előző sikeres küldése után indítható. Az új csomag nem külön interjúkör, hanem ugyanannak a lezárt meetingnek a következő, nyomon követhető átadási verziója.
+
+Archivált projektben a korábbi ügyfélcsomagok és tartalmuk továbbra is megnyithatók, de új verzió, szerkesztés, előnézet, küldés és újrapróbálás nem indítható. Aktív munka folytatásához előbb állítsd vissza a projektet.
+
+Lezárás után újabb kezdő interjúkört is indíthatsz. Az új kör az akkor legfrissebb projektsémáról készít új pillanatképet, és nem másolja automatikusan az előző kör válaszait.
 
 ## Felkészültségi értékelés és hiányok
 
@@ -577,10 +617,10 @@ Lezárás után indíthatsz újabb kezdő interjúkört. Az új kör az akkor le
 
 Minden kérdéskártyán az `Értékelés` résznél a szerver által meghatározott tényleges állapot látható. Érvényes mentett válaszból `Kész`, válasz nélkül `Nincs meg` lesz. Az `Automatikus állapot` visszaállítja ezt a válaszból következő értéket.
 
-- `Részben megvan`: akkor használd, ha van mentett, érvényes válasz, de az üzleti tartalom még hiányos vagy ellenőrzésre szorul. Ez fél értékként számít a felkészültségben és kötelező kérdésnél megakadályozza a kör lezárását.
-- `Nem releváns`: csak akkor használd, ha az adott kérdés valóban nem alkalmazható erre a projektre. Add meg az `Indoklás, miért nem releváns` szöveget, majd válaszd az `Indoklás mentése` gombot. Az indoklás kötelező, hogy a kizárás később értelmezhető legyen; az elem kimarad a kitöltöttségi és ellenőrzőlista-számításból, és kötelező kérdésnél is engedheti a lezárást.
+- `Részben megvan`: akkor használd, ha van mentett, érvényes válasz, de az üzleti tartalom még hiányos vagy ellenőrzésre szorul. Ez fél értékként számít a felkészültségben, de a meeting lezárását nem akadályozza.
+- `Nem releváns`: csak akkor használd, ha az adott kérdés valóban nem alkalmazható erre a projektre. Add meg az `Indoklás, miért nem releváns` szöveget, majd válaszd az `Indoklás mentése` gombot. Az indoklás kötelező, hogy a kizárás később értelmezhető legyen; az elem kimarad a kitöltöttségi és ellenőrzőlista-számításból.
 
-Ne használd a `Nem releváns` választ a hiányos információ elfedésére. Ha a kérdés releváns, de a válasz még nem elég jó, maradjon `Részben megvan`, és kövesd a hiány javítását. Sikertelen értékelésmentésnél a beírt indoklás és a választott állapot a képernyőn marad; ellenőrizd a hibaüzenetet, majd válaszd az `Értékelés újrapróbálása` gombot. Lezárt interjúkörben ezek a vezérlők szándékosan letiltottak.
+Ne használd a `Nem releváns` választ a hiányos információ elfedésére. Ha a kérdés releváns, de a válasz még nem elég jó, maradjon `Részben megvan`, és kövesd a hiány javítását. Sikertelen értékelésmentésnél a beírt indoklás és a választott állapot a képernyőn marad; ellenőrizd a hibaüzenetet, majd válaszd az `Értékelés újrapróbálása` gombot. Lezárt interjúban a vezérlők csak aktív ügyfélcsomag-piszkozat mellett szerkeszthetők.
 
 ### Az értékelés olvasása és javítása
 
@@ -916,7 +956,11 @@ Minden eseménynek van típusa, időpontja és egy JSON-formátumú payloadja. A
 | `INTERVIEW_ROUND_CREATED` | Új kezdő interjúkör és kérdéspillanatkép jött létre |
 | `ROUND_ANSWER_SAVED` | Egy körkérdéshez nem üres válasz mentődött |
 | `ROUND_ANSWER_CLEARED` | Egy korábbi válasz értéke üres állapotra változott |
-| `INTERVIEW_ROUND_COMPLETED` | A kör a szerver ellenőrzése után lezárult |
+| `INTERVIEW_ROUND_ENDED` | A meeting lezárult és létrejött az első ügyfélcsomag-piszkozat |
+| `INTERVIEW_HANDOFF_REVISION_STARTED` | Egy elküldött csomag után új, szerkeszthető verzió indult |
+| `INTERVIEW_HANDOFF_SENT` | Az ügyfélcsomag adott, változatlan verziójának küldése sikerült |
+| `INTERVIEW_HANDOFF_FAILED` | Ismert kézbesítési hiba történt; ugyanaz a csomag újrapróbálható |
+| `INTERVIEW_HANDOFF_UNKNOWN` | A megszakadt küldés eredménye nem bizonyítható, kézi ellenőrzés kell |
 | `DISCOVERY_FOLLOW_UP_CREATED` | Új, felelőshöz és dátumhoz kötött discovery-tétel jött létre |
 | `DISCOVERY_FOLLOW_UP_UPDATED` | Nyitott discovery-tétel valódi módosítása; a payload csak a `followUpId` és `changedFields` mezőt tartalmazza, utóbbiban csak a megváltozott mezők neveit, szerkesztett szöveget vagy értéket nem |
 | `DISCOVERY_FOLLOW_UP_RESOLVED` | A tétel terminális státuszt kapott; a teljes döntésszöveg nincs az audit payloadban |
@@ -1013,7 +1057,9 @@ A Project Maker gyorsan jelez, ha egy kérés nem hajtható végre. A hibaüzene
 | `Piszkozat – automatikus mentésre vár` | A szöveg a böngészőlapon látható, de még nem szerveradat | Maradj az oldalon, és hagyj legalább 750 ms gépelési szünetet |
 | `Mentés folyamatban…` | A legutóbbi mentett érték megmarad, az új kérés még bizonytalan | Ne zárd le a kört és ne navigálj el; várd meg a végállapotot |
 | `Nem sikerült menteni…` egy interjúválasznál | A sikertelen helyi piszkozat látható marad, a korábbi mentett válasz nem sérül | Ellenőrizd a piszkozatot, majd válaszd a `Mentés újrapróbálása` gombot |
-| A kör lezárása hiányzó kötelező válasz miatt sikertelen | A kör nyitott és a mentett válaszok változatlanok | Keresd meg a `Kötelező kérdés` jelzésű üres elemet, válaszolj, várd meg a `Mentve` állapotot, majd zárd le újra |
+| A meeting lezárása nem indítható | A kör nyitott, a mentett válaszok változatlanok | Várd meg a függő mentést vagy próbáld újra a hibás mentést; tartalmi hiány önmagában nem akadály |
+| Az ügyfélcsomag előnézete elavult | Semmi nem ment ki | Töltsd újra az előnézetet a legutóbbi mentett válaszokból, majd erősítsd meg újra a küldést |
+| A küldés állapota `UNKNOWN` | A kézbesítés és a duplikáció kockázata nem ismert | Ellenőrizd a kimenő postafiókot vagy az SMTP-szolgáltatót; csak ezután folytasd a felületen |
 | Nincs közzétett projektséma | Interjúkör nem jön létre | Jelölj ki legalább egy aktív kérdést, válaszd a `Séma közzététele` gombot, majd indítsd a kört |
 | Nincs aktív alapkérdés | A korábbi bankverziók és projektek nem sérülnek | A kijelölt kérdésbank-gazda aktiváljon megfelelő kérdést, majd töltsd újra az interjúoldalt |
 | A séma zárolt | A nyitott kör pillanatképe változatlan marad | Fejezd be és zárd le a nyitott kört; az utódsémát csak utána publikáld |
@@ -1048,7 +1094,8 @@ Ezekben az esetekben előbb töltsd vissza a szerver által ismert állapotot va
 | Projekt | Egy ügyféligény önálló discovery-munkatere, saját kapcsolattartóval és történettel |
 | Portfolio / portfólió | Az aktív és archivált projektek közös `Projects` listája |
 | Cockpit | A projekt operatív központja, ahol az élő workspace, follow-up, kommunikáció, audit és lifecycle kezelhető |
-| Ball owner | Az a személy vagy szerep, akinél a következő érdemi lépés felelőssége van |
+| Belső felelős | A projektet vivő, név szerint rögzített PO/PM munkatárs |
+| Következő feladat gazdája | A belső felelős vagy az ügyfél kapcsolattartója; a felület mindig a kiválasztott konkrét nevet mutatja |
 | Next action | Az egyetlen konkrét művelet, amely a projektet a következő állapot felé viszi |
 | Közös kérdésbank | Verziózott szervezeti kérdéskészlet, amelyből a projektsémák készülnek |
 | Stable key | Egy alapkérdés változatlan, verziókon átívelő azonosítója |
@@ -1075,7 +1122,12 @@ Ezekben az esetekben előbb töltsd vissza a szerver által ismert állapotot va
 | Terület | Állapot | Jelentés |
 | --- | --- | --- |
 | Interjúkör | `Nyitott` / `OPEN` | Válaszolható és később folytatható |
-| Interjúkör | `Lezárt` / `COMPLETED` | Változatlan, már nem szerkeszthető |
+| Interjúkör | `Meeting lezárva` / `ENDED` | A meeting véget ért; csak aktív ügyfélcsomag-piszkozat mellett szerkeszthető |
+| Ügyfélcsomag | `DRAFT` | Aktív, szerkeszthető verzió |
+| Ügyfélcsomag | `SENDING` | Küldési kísérlet folyamatban |
+| Ügyfélcsomag | `SENT` | Elküldött, változatlan verzió |
+| Ügyfélcsomag | `FAILED` | Ismert hiba után újrapróbálható |
+| Ügyfélcsomag | `UNKNOWN` | Kézi kézbesítési ellenőrzést igényel |
 | Discovery follow-up | `Nyitott` | Döntésre vagy válaszra vár |
 | Discovery follow-up | `Megválaszolva` | Terminális, érdemi válasz rögzítve |
 | Discovery follow-up | `Nem releváns` | Terminális, az elvetés indoka rögzítve |
@@ -1100,16 +1152,16 @@ Az alábbiak nem elrejtett funkciók és nem más menüpontban találhatók; a j
 
 - A projekt neve és a customer contact adatai létrehozás után nem szerkeszthetők.
 - Csak kezdő, `INITIAL_INTAKE` kör indítható; külön stakeholder- és clarification-kör nincs.
-- A lezárt körök története nem böngészhető az interjúoldalon; a Markdown-pillanatképekből tekinthető át.
+- A jelenlegi felület az aktuális kezdő interjúhoz tartozó ügyfélcsomag-verziókat mutatja; több külön történeti interjúkör összevont böngészője nincs.
 - A felkészültségi sáv nem állít át lifecycle státuszt, és nem helyettesíti a csapat üzleti döntését.
-- A `Blocking` önmagában útmutatás; csak `Required` jelöléssel együtt lesz lezárási kapu.
+- A `Blocking` és `Required` jelölés a readiness és a döntéstámogatás része; a meeting technikai lezárását egyik sem akadályozza.
 - A Decision Score és a becslési ajánlás döntéstámogatás, nem formális Go/Conditional Go/No-Go döntés és nem automatikusan generált kimenet.
 
 ### Follow-up és kommunikáció
 
 - Discovery follow-up újranyitása és törlése nem elérhető. Forráskapcsolat csak a cockpitban, nyitott follow-uphoz kezelhető; interjú- vagy readiness-oldalról nincs közvetlen linked létrehozás.
 - Nincs automatikus lejártság-kiemelés vagy overdue riasztás a discovery listában.
-- Nincs címzett-felülírás, küldés előtti megerősítés, kézbesítési/olvasási visszaigazolás vagy felhasználói levélszerkesztő.
+- Az interjú ügyfélcsomagja a projekt kapcsolattartójának küldhető, előnézettel és megerősítéssel; nincs címzett-felülírás, olvasási visszaigazolás vagy szabad levélsablon-szerkesztő.
 - A levélküldés nem rendelkezik felhasználói outboxszal vagy ismételt küldést láthatóan deduplikáló kezelőfelülettel.
 
 ### Dokumentumok és intelligens funkciók
@@ -1135,7 +1187,7 @@ Az alábbiak nem elrejtett funkciók és nem más menüpontban találhatók; a j
 
 - [ ] A helyes projektet nyitottam meg a `Projects` listából.
 - [ ] A lifecycle státusz megfelel a valós helyzetnek.
-- [ ] A `Ball owner` egyértelmű személyt vagy szerepet nevez meg.
+- [ ] A belső felelős konkrét személy, és a következő feladat gazdája a helyes megnevezett fél.
 - [ ] A `Next action` konkrét és még aktuális.
 - [ ] A `Due` érték reális, és az időzóna minden érintett számára egyértelmű.
 - [ ] A legkorábbi discovery follow-up dátumokat átnéztem.
@@ -1153,7 +1205,8 @@ Az alábbiak nem elrejtett funkciók és nem más menüpontban találhatók; a j
 
 ### Belső vagy ügyfél-átadás előtt
 
-- [ ] Minden kötelező interjúválasz `Mentve` és a szükséges kör lezárt.
+- [ ] Nincs függő vagy hibás interjúmentés, és a meeting lezárt.
+- [ ] Az ügyfélcsomag címzettjét és legfrissebb előnézetét ellenőriztem; módosítás esetén új verzió készült.
 - [ ] A blokkoló kérdések üzletileg is megválaszoltak, nem csak technikailag kitöltöttek.
 - [ ] Minden fennmaradó bizonytalanságnak van külön discovery follow-upja.
 - [ ] Minden follow-uphoz tartozik owner, valódi dátum és következő lépés.

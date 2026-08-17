@@ -8,6 +8,7 @@ import { TagModule } from 'primeng/tag';
 import type { ProjectWorkspace } from '@project-maker/contracts';
 
 import { ProjectApiService } from './project-api.service';
+import { projectStatusLabel } from './project-status-label';
 
 @Component({
   selector: 'app-project-list-page',
@@ -28,6 +29,7 @@ export class ProjectListPage implements OnInit {
   readonly projects = signal<readonly ProjectWorkspace[]>([]);
   readonly loading = signal(true);
   readonly loadError = signal<string | null>(null);
+  readonly statusLabel = projectStatusLabel;
 
   ngOnInit(): void {
     this.loadProjects();

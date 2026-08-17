@@ -1,6 +1,11 @@
 import { IsISO8601, IsIn, IsOptional, IsString, Matches, MaxLength } from 'class-validator';
 
-import { projectStatuses, type ProjectStatus } from '@project-maker/contracts/runtime';
+import {
+  nextActionOwnerRoles,
+  projectStatuses,
+  type NextActionOwnerRole,
+  type ProjectStatus,
+} from '@project-maker/contracts/runtime';
 
 const utcIsoDatePattern = /Z$/;
 const nonBlankPattern = /\S/;
@@ -11,7 +16,11 @@ export class UpdateProjectWorkspaceDto {
   @IsString()
   @Matches(nonBlankPattern)
   @MaxLength(255)
-  ballOwner?: string | null;
+  internalOwnerName?: string | null;
+
+  @IsOptional()
+  @IsIn([...nextActionOwnerRoles])
+  nextActionOwnerRole?: NextActionOwnerRole | null;
 
   @IsOptional()
   @IsString()

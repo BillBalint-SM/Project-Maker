@@ -12,6 +12,7 @@ async function createProject(request: APIRequestContext, name: string): Promise<
       name,
       customerContactName: 'Deletion E2E Contact',
       customerContactEmail: `delete-${Date.now()}@example.test`,
+      internalOwnerName: 'Delete Test PO/PM',
     },
   });
   expect(response.status()).toBe(201);

@@ -165,7 +165,8 @@ async function createProject(
       name,
       customerContactName: 'Decision Review E2E Contact',
       customerContactEmail: 'decision-review-e2e@example.test',
-      ...(withBallOwner ? { ballOwner: 'Decision Review owner' } : {}),
+      internalOwnerName: 'Decision Review owner',
+      ...(withBallOwner ? { nextActionOwnerRole: 'INTERNAL_OWNER' } : {}),
     },
   });
   expect(projectResponse.status()).toBe(201);

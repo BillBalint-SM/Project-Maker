@@ -106,12 +106,12 @@ export class InterviewApiService {
       .pipe(catchError((error: unknown) => failApiRequest(error, 'visszaállítani az automatikus értékelést')));
   }
 
-  completeRound(projectId: string, roundId: string): Observable<InterviewRound> {
+  finishRound(projectId: string, roundId: string): Observable<InterviewRound> {
     const encodedProjectId = encodeURIComponent(projectId);
     const encodedRoundId = encodeURIComponent(roundId);
     return this.http
       .post<InterviewRound>(
-        `/api/projects/${encodedProjectId}/rounds/${encodedRoundId}/complete`,
+        `/api/projects/${encodedProjectId}/rounds/${encodedRoundId}/finish`,
         {},
       )
       .pipe(
@@ -154,13 +154,6 @@ function mapApiError(error: unknown, action: string): ActionableApiError {
   if (error.status === 0) {
     return {
       userMessage: `Nem sikerült ${action}, mert az API nem érhető el. Ellenőrizd, hogy fut-e a szerver, majd próbáld újra.`,
-      diagnostics: { action, status: error.status, statusText: error.statusText },
-    };
-  }
-
-  if (error.status === 409 && action === 'lezárni az interjúkört') {
-    return {
-      userMessage: 'Nem sikerült lezárni az interjúkört, mert hiányoznak kötelező válaszok. Ments el minden kötelező kérdést, majd próbáld újra.',
       diagnostics: { action, status: error.status, statusText: error.statusText },
     };
   }

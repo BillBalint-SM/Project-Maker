@@ -1,4 +1,6 @@
-import { IsEmail, IsISO8601, IsNotEmpty, IsOptional, IsString, Matches, MaxLength } from 'class-validator';
+import { IsEmail, IsISO8601, IsIn, IsNotEmpty, IsOptional, IsString, Matches, MaxLength } from 'class-validator';
+
+import { nextActionOwnerRoles, type NextActionOwnerRole } from '@project-maker/contracts/runtime';
 
 const utcIsoDatePattern = /Z$/;
 const nonBlankPattern = /\S/;
@@ -20,11 +22,15 @@ export class CreateProjectDto {
   @MaxLength(320)
   customerContactEmail!: string;
 
-  @IsOptional()
   @IsString()
+  @IsNotEmpty()
   @Matches(nonBlankPattern)
   @MaxLength(255)
-  ballOwner?: string | null;
+  internalOwnerName!: string;
+
+  @IsOptional()
+  @IsIn([...nextActionOwnerRoles])
+  nextActionOwnerRole?: NextActionOwnerRole | null;
 
   @IsOptional()
   @IsString()

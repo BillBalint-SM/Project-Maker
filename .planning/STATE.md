@@ -35,12 +35,18 @@ delivery change; no future merge identity is predicted here.
   remain readable, reject creation, editing, resolution, and source changes, and
   allow eligible open-item actions again after restore. A persisted discovery
   follow-up also prevents permanent project deletion.
-- Guided intake: a published project question schema can start one open
-  `INITIAL_INTAKE` round, recover that active round, persist answers, complete
-  after server validation, and keep completed rounds immutable.
+- Guided intake and customer handoff: a published project question schema can
+  start one open `INITIAL_INTAKE` round, recover it, persist answers, and end the
+  meeting regardless of business completeness once all technical saves settle.
+  Ending creates an editable version-1 customer-handoff draft. The employee can
+  preview and send it immediately or later; sent versions are immutable, and a
+  customer change request starts a summarized new draft that temporarily
+  re-enables answer and assessment edits. Known delivery failures are retryable;
+  uncertain outcomes require explicit operator verification before continuation.
 - SCORE-01.1 readiness assessment: a valid answer is effective `Kész`; a
-  persisted `Részben megvan` remains a completion blocker, while justified
-  `Nem releváns` is excluded from relevant completion and checklist readiness.
+  persisted `Részben megvan` lowers completion/readiness, while justified `Nem
+  releváns` is excluded from relevant completion and checklist readiness. These
+  business states do not block ending the interview meeting.
   `GET /projects/:projectId/readiness` uses the canonical eligible initial
   intake source and returns an available review or an explicit unavailable
   state. The Cockpit shows completion, readiness, factors, and redacted gaps
@@ -66,14 +72,18 @@ delivery change; no future merge identity is predicted here.
   a selected immutable published Markdown template version. Named drafts,
   preview, publication, a Default template, remembered project selection, and
   safe required/optional placeholders are delivered.
-- Customer communication: manual customer review and configurable follow-up ping
-  delivery exist; they are not `INTAKE-04` operational follow-up management.
+- Project coordination: creation records a named internal PO/PM owner. The next
+  action is assigned by role to that concrete person or to the named customer
+  contact; free-form `Ball owner` is no longer product language.
+- Customer communication: versioned interview handoffs, manual Markdown review,
+  and configurable follow-up ping delivery exist; they are separate from
+  `INTAKE-04` operational follow-up management.
 - Web intake UX: the interview page resumes the server active round, autosaves
   text answers after 750 ms, saves discrete values immediately, keeps failed
   drafts visible with retry, and renders deterministic Hungarian coaching from
   persisted question metadata.
 - End-user documentation: `docs/user-guide.md` teaches every stable delivered
-  route and business workflow with eight sanitized application screenshots,
+  route and business workflow with nine sanitized application screenshots,
   three state/workflow diagrams, recovery guidance, and explicit unavailable
   capability boundaries.
 
@@ -104,9 +114,9 @@ define `DOC-01` scope and evidence; the
 The verified guided-intake scope is intentionally limited to `INITIAL_INTAKE`.
 `INTAKE-04` delivers discovery-follow-up creation, review, resolution,
 conflict-safe editing of open items, and optional source linkage. Fresh
-PostgreSQL 18.4 closeout verification passed 13/13 contracts tests, 132/132 API
-tests, 25/25 web unit tests, the canonical migration sequence through `0013`,
-repository typecheck/build, and 42/42 full browser workflows. SCORE-01.2
+The canonical migration sequence now runs through `0014`; current aggregate
+closeout counts are recorded only after the complete INTAKE-06 verification
+receipt is available. SCORE-01.2
 Decision Review has API coverage for
 availability, atomic validation/persistence, recommendation precedence,
 current-source recalculation, audit redaction, archive/delete lifecycle, and a

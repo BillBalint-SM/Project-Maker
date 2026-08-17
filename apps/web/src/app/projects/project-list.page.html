@@ -1,11 +1,11 @@
 <section aria-labelledby="projects-title">
   <div class="heading-row">
     <div class="page-heading">
-      <span class="eyebrow">Portfolio</span>
-      <h1 id="projects-title">Projects</h1>
-      <p>See every active workspace and open its delivery cockpit.</p>
+      <span class="eyebrow">Portfólió</span>
+      <h1 id="projects-title">Projektek</h1>
+      <p>Az aktív projektek és a következő feladatok áttekintése.</p>
     </div>
-    <a pButton routerLink="/projects/new" data-testid="new-project-button">New project</a>
+    <a pButton routerLink="/projects/new" data-testid="new-project-button">Új projekt</a>
   </div>
 
   @if (loading()) {
@@ -40,16 +40,16 @@
         >
           <div class="project-card-header">
             <h2>{{ project.name }}</h2>
-            <p-tag [value]="project.status" />
+            <p-tag [value]="statusLabel(project.status)" />
           </div>
           <dl>
             <div>
-              <dt>Ball owner</dt>
-              <dd>{{ project.ballOwner || 'Not assigned' }}</dd>
+              <dt>Következő lépés felelőse</dt>
+              <dd>{{ project.nextActionOwner.displayName || 'Nincs kijelölve' }}</dd>
             </div>
             <div>
-              <dt>Next action</dt>
-              <dd>{{ project.nextAction || 'Not defined' }}</dd>
+              <dt>Következő lépés</dt>
+              <dd>{{ project.nextAction || 'Nincs megadva' }}</dd>
             </div>
           </dl>
           <span class="open-label">Projektállapot megnyitása <span aria-hidden="true">→</span></span>

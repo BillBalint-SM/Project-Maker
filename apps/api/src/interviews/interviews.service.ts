@@ -16,6 +16,7 @@ import type {
 import { DataSource, EntityManager, In, QueryFailedError } from 'typeorm';
 
 import { AuditEvent } from '../audit/audit-event.entity';
+import { InterviewCustomerHandoffService } from '../interview-customer-handoffs/interview-customer-handoff.service';
 import { Project } from '../projects/project.entity';
 import { BaseQuestionEntity } from '../question-bank/base-question.entity';
 import { ProjectQuestionSchemaEntity } from '../question-bank/project-question-schema.entity';
@@ -24,6 +25,7 @@ import { CreateInterviewRoundDto } from './dto/create-interview-round.dto';
 import { SetRoundQuestionAssessmentDto } from './dto/set-round-question-assessment.dto';
 import { UpdateRoundAnswerDto } from './dto/update-round-answer.dto';
 import { InterviewRoundEntity } from './interview-round.entity';
+import { findCurrentInitialIntakeSource } from './current-initial-intake-source';
 import { RoundAnswerEntity } from './round-answer.entity';
 import {
   assessmentRationaleMaxLength,
@@ -40,12 +42,15 @@ const openInitialIntakeConstraintName = 'uq_interview_rounds_open_initial_intake
 
 @Injectable()
 export class InterviewsService {
-  constructor(private readonly dataSource: DataSource) {}
+  constructor(
+    private readonly dataSource: DataSource,
+    private readonly handoffService: InterviewCustomerHandoffService,
+  ) {}
 
   async getActiveInitialIntake(projectId: string): Promise<InterviewRound | null> {
     return this.dataSource.transaction(async (manager) => {
       await requireProject(manager, projectId, false);
-      const activeRound = await findOpenInitialIntakeRound(manager, projectId);
+      const activeRound = await findCurrentInitialIntakeSource(manager, projectId);
       if (!activeRound) {
         return null;
       }
@@ -56,7 +61,7 @@ export class InterviewsService {
   async createRound(projectId: string, input: CreateInterviewRoundDto): Promise<InterviewRound> {
     return this.dataSource.transaction(async (manager) => {
       const assessmentPolicy = await loadRoundQuestionAssessmentPolicy();
-      await requireProject(manager, projectId, true);
+      await requireMutableProject(manager, projectId);
       const schema = await manager.getRepository(ProjectQuestionSchemaEntity).findOne({
         where: { projectId },
         order: { schemaVersion: 'DESC' },
@@ -93,7 +98,8 @@ export class InterviewsService {
         type: input.type,
         status: 'OPEN',
         createdAt: new Date(),
-        completedAt: null,
+        endedAt: null,
+        contentVersion: 1,
         source: 'ROUNDS_API',
       });
       try {
@@ -145,6 +151,7 @@ export class InterviewsService {
     input: UpdateRoundAnswerDto,
   ): Promise<RoundQuestionSnapshot> {
     return this.dataSource.transaction(async (manager) => {
+      await requireMutableProject(manager, projectId, 'pessimistic_read');
       const assessmentPolicy = await loadRoundQuestionAssessmentPolicy();
       let existingOverride = await findLockedRoundQuestionAssessmentOverride(
         manager,
@@ -159,9 +166,7 @@ export class InterviewsService {
         snapshotId,
       );
       const round = await findLockedRound(manager, projectId, roundId);
-      if (round.status === 'COMPLETED') {
-        throw new ConflictException('Completed rounds cannot be edited.');
-      }
+      await this.handoffService.requireEditableRound(manager, round);
       if (!existingOverride) {
         existingOverride = await manager
           .getRepository(RoundQuestionAssessmentOverrideEntity)
@@ -237,6 +242,7 @@ export class InterviewsService {
     input: SetRoundQuestionAssessmentDto,
   ): Promise<RoundQuestionSnapshot> {
     return this.dataSource.transaction(async (manager) => {
+      await requireMutableProject(manager, projectId, 'pessimistic_read');
       const assessmentPolicy = await loadRoundQuestionAssessmentPolicy();
       let existingOverride = await findLockedRoundQuestionAssessmentOverride(
         manager,
@@ -250,7 +256,7 @@ export class InterviewsService {
           ? await findLockedRoundAnswer(manager, projectId, roundId, snapshotId)
           : null;
       const round = await findLockedRound(manager, projectId, roundId);
-      requireEditableRound(round);
+      await this.handoffService.requireEditableRound(manager, round);
       if (!existingOverride) {
         existingOverride = await manager
           .getRepository(RoundQuestionAssessmentOverrideEntity)
@@ -330,6 +336,7 @@ export class InterviewsService {
     snapshotId: string,
   ): Promise<RoundQuestionSnapshot> {
     return this.dataSource.transaction(async (manager) => {
+      await requireMutableProject(manager, projectId, 'pessimistic_read');
       const assessmentPolicy = await loadRoundQuestionAssessmentPolicy();
       let existingOverride = await findLockedRoundQuestionAssessmentOverride(
         manager,
@@ -338,7 +345,7 @@ export class InterviewsService {
         snapshotId,
       );
       const round = await findLockedRound(manager, projectId, roundId);
-      requireEditableRound(round);
+      await this.handoffService.requireEditableRound(manager, round);
       if (!existingOverride) {
         existingOverride = await manager
           .getRepository(RoundQuestionAssessmentOverrideEntity)
@@ -360,59 +367,20 @@ export class InterviewsService {
     });
   }
 
-  async completeRound(projectId: string, roundId: string): Promise<InterviewRound> {
+  async finishRound(projectId: string, roundId: string): Promise<InterviewRound> {
     return this.dataSource.transaction(async (manager) => {
-      const assessmentPolicy = await loadRoundQuestionAssessmentPolicy();
+      await requireMutableProject(manager, projectId);
       const round = await findLockedRound(manager, projectId, roundId);
-      if (round.status === 'COMPLETED') {
-        throw new ConflictException('Interview round is already completed.');
+      if (round.status === 'ENDED') {
+        await this.handoffService.establishFirstDraft(manager, projectId, roundId);
+        return loadInterviewRound(manager, round);
       }
-      const snapshots = await manager.getRepository(RoundQuestionSnapshotEntity).find({
-        where: { roundId },
-        order: { order: 'ASC' },
-      });
       const answers = await manager.getRepository(RoundAnswerEntity).findBy({ roundId });
-      const overrides = await manager
-        .getRepository(RoundQuestionAssessmentOverrideEntity)
-        .findBy({ roundId });
-      const answersBySnapshotId = new Map(
-        answers.map((answer) => [answer.snapshotId, answer]),
-      );
-      const overridesBySnapshotId = new Map(
-        overrides.map((override) => [override.snapshotId, override]),
-      );
-      const missingSnapshotIds = snapshots
-        .filter((snapshot) => snapshot.required)
-        .filter((snapshot) => {
-          const override = overridesBySnapshotId.get(snapshot.id);
-          if (
-            override?.status === assessmentPolicy.notRelevantStatus &&
-            override.rationale !== null &&
-            override.rationale.trim().length > 0
-          ) {
-            return false;
-          }
-          if (override?.status === assessmentPolicy.partialStatus) {
-            return true;
-          }
-          const answer = answersBySnapshotId.get(snapshot.id);
-          return (
-            !answer ||
-            roundAnswerValidationError(snapshot.type, snapshot.options, answer.value) !== null
-          );
-        })
-        .map((snapshot) => snapshot.id);
-      if (missingSnapshotIds.length > 0) {
-        throw new ConflictException({
-          message: 'All required round questions must have valid answers before completion.',
-          missingSnapshotIds,
-        });
-      }
-
-      round.status = 'COMPLETED';
-      round.completedAt = new Date();
+      round.status = 'ENDED';
+      round.endedAt = new Date();
       await manager.getRepository(InterviewRoundEntity).save(round);
-      await saveAuditEvent(manager, projectId, 'INTERVIEW_ROUND_COMPLETED', {
+      await this.handoffService.establishFirstDraft(manager, projectId, roundId);
+      await saveAuditEvent(manager, projectId, 'INTERVIEW_ROUND_ENDED', {
         roundId,
         schemaId: round.projectSchemaId,
         answeredQuestionCount: String(answers.length),
@@ -433,6 +401,24 @@ async function requireProject(
   });
   if (!project) {
     throw new NotFoundException('Project not found.');
+  }
+  return project;
+}
+
+async function requireMutableProject(
+  manager: EntityManager,
+  projectId: string,
+  lockMode: 'pessimistic_read' | 'pessimistic_write' = 'pessimistic_write',
+): Promise<Project> {
+  const project = await manager.getRepository(Project).findOne({
+    where: { id: projectId },
+    lock: { mode: lockMode },
+  });
+  if (!project) {
+    throw new NotFoundException('Project not found.');
+  }
+  if (project.status === 'ARCHIVED') {
+    throw new ConflictException('Archived projects cannot change interviews.');
   }
   return project;
 }
@@ -498,12 +484,6 @@ async function findLockedRoundQuestionAssessmentOverride(
     .andWhere('round.projectId = :projectId', { projectId })
     .setLock('pessimistic_write', undefined, ['override'])
     .getOne();
-}
-
-function requireEditableRound(round: InterviewRoundEntity): void {
-  if (round.status === 'COMPLETED') {
-    throw new ConflictException('Completed rounds cannot be edited.');
-  }
 }
 
 async function findRoundSnapshot(
@@ -666,8 +646,9 @@ function toInterviewRound(
     schemaVersion,
     type: round.type,
     status: round.status,
+    contentVersion: round.contentVersion,
     createdAt: toIso(round.createdAt, 'createdAt'),
-    completedAt: round.completedAt ? toIso(round.completedAt, 'completedAt') : null,
+    endedAt: round.endedAt ? toIso(round.endedAt, 'endedAt') : null,
     questions: snapshots.map((snapshot) =>
       toEffectiveRoundQuestionSnapshot(
         snapshot,

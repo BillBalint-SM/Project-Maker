@@ -10,7 +10,7 @@ export const interviewRoundTypeValues: readonly InterviewRoundType[] = [
 
 export const interviewRoundStatusValues: readonly InterviewRoundStatus[] = [
   'OPEN',
-  'COMPLETED',
+  'ENDED',
 ];
 
 @Entity({ name: 'interview_rounds' })
@@ -38,7 +38,10 @@ export class InterviewRoundEntity {
   createdAt!: Date;
 
   @Column({ name: 'completed_at', type: 'timestamptz', nullable: true })
-  completedAt!: Date | null;
+  endedAt!: Date | null;
+
+  @Column({ name: 'content_version', type: 'integer', default: 1 })
+  contentVersion!: number;
 
   @Column({ type: 'varchar', length: 50 })
   source!: string;

@@ -29,18 +29,18 @@
   <section aria-labelledby="cockpit-title">
     <div class="cockpit-heading">
       <div class="page-heading">
-        <span class="eyebrow">Project cockpit</span>
+        <span class="eyebrow">Projektmunka</span>
         <h1 id="cockpit-title">{{ current.project.name }}</h1>
-        <p>Keep ownership, the next action, and delivery timing explicit.</p>
+        <p>Tartsd egyértelműen a következő lépés felelősét, feladatát és határidejét.</p>
         <p-button
-          label="Open project interview"
+          label="Projektinterjú megnyitása"
           icon="pi pi-comments"
           [outlined]="true"
           [routerLink]="['/projects', projectId, 'interview']"
           data-testid="open-project-interview-button"
         />
         <p-button
-          label="Open Markdown plan"
+          label="Markdown terv megnyitása"
           icon="pi pi-file-edit"
           [outlined]="true"
           [routerLink]="['/projects', projectId, 'markdown']"
@@ -48,7 +48,7 @@
         />
       </div>
       <p-tag
-        [value]="current.cockpit.status"
+          [value]="statusLabel(current.cockpit.status)"
         data-testid="project-lifecycle-status"
       />
     </div>
@@ -64,26 +64,26 @@
       </p-message>
     }
 
-    <div class="summary-grid" aria-label="Current delivery summary">
+    <div class="summary-grid" aria-label="Aktuális projektkoordináció">
       <article>
-        <span>Lifecycle status</span>
-        <strong>{{ current.cockpit.status }}</strong>
+        <span>Projektállapot</span>
+        <strong>{{ statusLabel(current.cockpit.status) }}</strong>
       </article>
       <article>
-        <span>Ball owner</span>
-        <strong>{{ current.cockpit.ballOwner || 'Not assigned' }}</strong>
+        <span>Következő lépés felelőse</span>
+        <strong>{{ current.cockpit.nextActionOwner.displayName || 'Nincs kijelölve' }}</strong>
       </article>
       <article>
-        <span>Next action</span>
-        <strong>{{ current.cockpit.nextAction || 'Not defined' }}</strong>
+        <span>Következő lépés</span>
+        <strong>{{ current.cockpit.nextAction || 'Nincs megadva' }}</strong>
       </article>
       <article>
-        <span>Due</span>
+        <span>Határidő</span>
         <strong>
           {{
             current.cockpit.dueAt
               ? (current.cockpit.dueAt | date: 'medium')
-              : 'No due date'
+                : 'Nincs megadva'
           }}
         </strong>
       </article>
@@ -91,9 +91,9 @@
 
     <div class="cockpit-grid">
       <p-card id="workspace">
-        <ng-template #title>Workspace</ng-template>
+        <ng-template #title>Projektkoordináció</ng-template>
         <ng-template #subtitle>
-          Update the exact delivery state. Archived projects are read-only until restored.
+          Add meg a projekt állapotát és a következő konkrét feladat felelősét.
         </ng-template>
         <form
           class="workspace-form"
@@ -106,7 +106,7 @@
             [disabled]="cockpitMutationInProgress() || isArchived()"
           >
           <div class="field">
-            <label for="project-status">Lifecycle status</label>
+            <label for="project-status">Projektállapot</label>
             <p-select
               inputId="project-status"
               styleClass="full-width"
@@ -119,24 +119,34 @@
           </div>
 
           <div class="field">
-            <label for="ball-owner">Ball owner</label>
+            <label for="internal-owner-name">Belső PO/PM neve</label>
             <input
               pInputText
-              id="ball-owner"
+              id="internal-owner-name"
               class="full-width"
-              formControlName="ballOwner"
-              data-testid="workspace-ball-owner-input"
-              [attr.aria-invalid]="workspaceForm.controls.ballOwner.invalid && workspaceForm.controls.ballOwner.touched"
-              [attr.aria-describedby]="workspaceForm.controls.ballOwner.invalid && workspaceForm.controls.ballOwner.touched ? 'ball-owner-help ball-owner-error' : 'ball-owner-help'"
+              formControlName="internalOwnerName"
+              data-testid="workspace-internal-owner-input"
             />
-            <small id="ball-owner-help">Leave empty when ownership is not assigned.</small>
-            @if (workspaceForm.controls.ballOwner.hasError('maxlength') && workspaceForm.controls.ballOwner.touched) {
-              <small class="field-error" id="ball-owner-error">Ball owner must be 255 characters or fewer.</small>
-            }
+            <small>A projektet vezető belső felhasználó neve.</small>
           </div>
 
           <div class="field">
-            <label for="next-action">Next action</label>
+            <label for="next-action-owner">Következő lépés felelőse</label>
+            <p-select
+              inputId="next-action-owner"
+              styleClass="full-width"
+              formControlName="nextActionOwnerRole"
+              [options]="ownerRoleOptions()"
+              optionLabel="label"
+              optionValue="value"
+              optionDisabled="disabled"
+              placeholder="Válassz felelőst"
+              data-testid="workspace-next-action-owner-select"
+            />
+          </div>
+
+          <div class="field">
+            <label for="next-action">Következő lépés</label>
             <textarea
               pTextarea
               id="next-action"

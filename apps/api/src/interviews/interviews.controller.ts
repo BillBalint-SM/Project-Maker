@@ -77,6 +77,14 @@ export class InterviewsController {
     @Param('projectId', new ParseUUIDPipe()) projectId: string,
     @Param('roundId', new ParseUUIDPipe()) roundId: string,
   ): Promise<InterviewRound> {
-    return this.interviewsService.completeRound(projectId, roundId);
+    return this.interviewsService.finishRound(projectId, roundId);
+  }
+
+  @Post(':roundId/finish')
+  finishRound(
+    @Param('projectId', new ParseUUIDPipe()) projectId: string,
+    @Param('roundId', new ParseUUIDPipe()) roundId: string,
+  ): Promise<InterviewRound> {
+    return this.interviewsService.finishRound(projectId, roundId);
   }
 }

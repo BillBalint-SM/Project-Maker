@@ -13,6 +13,7 @@ import { RoundAnswerValidationParity0010RoundAnswerValidationParity1786694400000
 import { DiscoveryFollowUpSourceLinkage0011DiscoveryFollowUpSourceLinkage1786780800000 } from '../migrations/0011-discovery-follow-up-source-linkage';
 import { DecisionReviewInputs0012DecisionReviewInputs1786867200000 } from '../migrations/0012-decision-review-inputs';
 import { MarkdownTemplateLibrary0013MarkdownTemplateLibrary1786953600000 } from '../migrations/0013-markdown-template-library';
+import { InterviewCustomerHandoff0014InterviewCustomerHandoff1787039999000 } from '../migrations/0014-interview-customer-handoff';
 
 export type ApiMigration = new () => MigrationInterface;
 
@@ -30,6 +31,7 @@ export const migrationSequence: readonly ApiMigration[] = [
   DiscoveryFollowUpSourceLinkage0011DiscoveryFollowUpSourceLinkage1786780800000,
   DecisionReviewInputs0012DecisionReviewInputs1786867200000,
   MarkdownTemplateLibrary0013MarkdownTemplateLibrary1786953600000,
+  InterviewCustomerHandoff0014InterviewCustomerHandoff1787039999000,
 ];
 
 export function migrationsThrough(migrationName: string): readonly ApiMigration[] {
