@@ -15,7 +15,7 @@
   background: var(--p-content-background);
   border: 1px solid var(--p-content-border-color);
   border-radius: 1rem;
-  box-shadow: 0 0.3rem 1.25rem rgb(15 23 42 / 5%);
+  box-shadow: 0 0.3rem 1.25rem color-mix(in srgb, var(--pm-deep-navy) 5%, transparent);
   color: inherit;
   display: flex;
   flex-direction: column;
@@ -31,7 +31,7 @@
 
 .project-card:hover {
   border-color: var(--p-primary-color);
-  box-shadow: 0 0.8rem 2rem rgb(15 23 42 / 10%);
+  box-shadow: 0 0.8rem 2rem color-mix(in srgb, var(--pm-deep-navy) 10%, transparent);
   transform: translateY(-2px);
 }
 

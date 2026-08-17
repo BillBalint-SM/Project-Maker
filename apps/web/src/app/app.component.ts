@@ -33,7 +33,7 @@ import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 
     .app-header {
       border-bottom: 1px solid var(--p-content-border-color);
-      background: rgb(255 255 255 / 92%);
+      background: color-mix(in srgb, white 92%, var(--pm-cyan));
       backdrop-filter: blur(0.75rem);
       position: sticky;
       top: 0;

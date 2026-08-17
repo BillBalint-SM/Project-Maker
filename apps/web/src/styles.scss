@@ -1,10 +1,14 @@
 :root {
   color-scheme: light;
+  --pm-electric-blue: #0088ff;
+  --pm-cyan: #00e5ff;
+  --pm-deep-navy: #071426;
+  --pm-steel-gray: #8ca0b3;
   font-family:
     Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
     sans-serif;
-  background: #f7f8fb;
-  color: #182230;
+  background: color-mix(in srgb, var(--pm-steel-gray) 8%, white);
+  color: var(--pm-deep-navy);
 }
 
 * {
@@ -26,7 +30,7 @@ a:focus-visible,
 button:focus-visible,
 input:focus-visible,
 textarea:focus-visible {
-  outline: 3px solid color-mix(in srgb, var(--p-primary-color) 35%, transparent);
+  outline: 3px solid color-mix(in srgb, var(--pm-cyan) 55%, transparent);
   outline-offset: 2px;
 }
 
