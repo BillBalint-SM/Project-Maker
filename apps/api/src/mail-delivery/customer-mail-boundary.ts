@@ -19,6 +19,17 @@ export interface CustomerMailboxChanges {
   readChanges(checkpoint: CustomerMailboxCheckpoint | null): Promise<CustomerMailboxChangePage>;
 }
 
+export function immutableOutboundCustomerMessage(
+  message: OutboundCustomerMessage,
+): OutboundCustomerMessage {
+  return Object.freeze({
+    recipientAddress: message.recipientAddress,
+    subject: message.subject,
+    textContent: message.textContent,
+    ...(message.htmlContent === undefined ? {} : { htmlContent: message.htmlContent }),
+  });
+}
+
 export class CustomerMailBoundaryError extends Error {
   constructor(readonly code: CustomerMailErrorCode) {
     super('Customer mail operation failed.');
