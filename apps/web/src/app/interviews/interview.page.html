@@ -60,83 +60,15 @@
       />
     </div>
   } @else if (bank(); as currentBank) {
-    @if (canEditBasics()) {
-      <p-card data-testid="project-basics-editor">
-        <ng-template #title>Projekt alapadatai</ng-template>
-        <ng-template #subtitle>
-          A kérdésséma elfogadásáig ezek az adatok még módosíthatók.
-        </ng-template>
-
-        <form
-          class="round-questions"
-          [formGroup]="basicsForm"
-          (ngSubmit)="saveProjectBasics()"
-        >
-          <div class="field">
-            <label for="draft-project-name">Projekt neve</label>
-            <input
-              pInputText
-              id="draft-project-name"
-              class="full-width"
-              formControlName="name"
-              data-testid="draft-project-name-input"
-              [attr.aria-invalid]="basicsForm.controls.name.invalid && basicsForm.controls.name.touched"
-            />
-          </div>
-          <div class="field">
-            <label for="draft-internal-owner-name">Belső PO/PM neve</label>
-            <input
-              pInputText
-              id="draft-internal-owner-name"
-              class="full-width"
-              formControlName="internalOwnerName"
-              data-testid="draft-internal-owner-name-input"
-              [attr.aria-invalid]="basicsForm.controls.internalOwnerName.invalid && basicsForm.controls.internalOwnerName.touched"
-            />
-          </div>
-          <div class="field">
-            <label for="draft-customer-contact-name">Ügyfél kapcsolattartó neve</label>
-            <input
-              pInputText
-              id="draft-customer-contact-name"
-              class="full-width"
-              formControlName="customerContactName"
-              data-testid="draft-customer-contact-name-input"
-              [attr.aria-invalid]="basicsForm.controls.customerContactName.invalid && basicsForm.controls.customerContactName.touched"
-            />
-          </div>
-          <div class="field">
-            <label for="draft-customer-contact-email">Ügyfél kapcsolattartó e-mail-címe</label>
-            <input
-              pInputText
-              id="draft-customer-contact-email"
-              type="email"
-              class="full-width"
-              formControlName="customerContactEmail"
-              data-testid="draft-customer-contact-email-input"
-              [attr.aria-invalid]="basicsForm.controls.customerContactEmail.invalid && basicsForm.controls.customerContactEmail.touched"
-            />
-          </div>
-
-          @if (basicsForm.invalid && basicsForm.touched) {
-            <p-message severity="error">Minden alapadatot érvényesen tölts ki a mentéshez.</p-message>
-          }
-          @if (basicsError()) {
-            <p-message severity="error" data-testid="project-basics-error">{{ basicsError() }}</p-message>
-          }
-          @if (basicsFeedback()) {
-            <p-message severity="success" data-testid="project-basics-feedback">{{ basicsFeedback() }}</p-message>
-          }
-
-          <p-button
-            type="submit"
-            label="Alapadatok mentése"
-            [loading]="basicsSaving()"
-            [disabled]="basicsSaving()"
-            data-testid="save-project-basics"
-          />
-        </form>
-      </p-card>
+    @if (!schema() && !round() && !projectArchived()) {
+      <a
+        class="back-link"
+        [routerLink]="['/projects', projectId]"
+        fragment="project-basics"
+        data-testid="edit-project-basics-link"
+      >
+        Projekt alapadatainak szerkesztése
+      </a>
     }
 
     <div class="interview-grid">
