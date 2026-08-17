@@ -58,7 +58,7 @@ describe('cockpit operation policy', () => {
 
     const cancelledPolicy = createCockpitOperationPolicy();
     const cancelledLease =
-      cancelledPolicy.tryAcquire('customer-review-email');
+      cancelledPolicy.tryAcquire('customer-follow-up-ping');
     expect(cancelledLease).not.toBeNull();
     const subscription = NEVER.pipe(
       releaseCockpitOperationOnFinalize(cancelledLease!),

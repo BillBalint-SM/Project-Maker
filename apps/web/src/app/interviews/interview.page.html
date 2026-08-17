@@ -24,6 +24,15 @@
       Az archivált projekt interjúja és ügyfélcsomagjai csak olvashatók. Módosításhoz előbb állítsd vissza a projektet.
     </p-message>
   }
+  @if (!loading() && !loadError() && handoffRequested && !round()) {
+    <p-message
+      severity="info"
+      data-testid="interview-handoff-prerequisite"
+      role="status"
+    >
+      Az interjúösszegzés még nem érhető el. Előbb fogadd el a kérdéssémát és indítsd el az Initial Intake felmérést ezen az oldalon.
+    </p-message>
+  }
 
   @if (loading()) {
     <div class="state-panel" data-testid="interview-loading" aria-live="polite">
@@ -426,6 +435,7 @@
             }
             @if (currentRound.status === 'ENDED') {
               <app-interview-handoff
+                id="customer-handoff"
                 [projectId]="projectId"
                 [roundId]="currentRound.id"
                 [openPreview]="previewAfterFinish()"

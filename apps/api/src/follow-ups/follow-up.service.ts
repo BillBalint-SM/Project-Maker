@@ -14,11 +14,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
-import type {
-  CustomerEmailDelivery,
-  CustomerFollowUpState,
-  FollowUpDeliveryStatus,
-} from '@project-maker/contracts';
+import type { CustomerFollowUpState, FollowUpDeliveryStatus } from '@project-maker/contracts';
 import {
   DataSource,
   EntityManager,
@@ -28,7 +24,6 @@ import {
 
 import { createFollowUpConfiguration } from '../config/follow-up.config';
 import { AuditEvent } from '../audit/audit-event.entity';
-import { MarkdownRevisionEntity } from '../markdown/markdown-revision.entity';
 import { Project } from '../projects/project.entity';
 import {
   CustomerMailer,
@@ -36,11 +31,7 @@ import {
 } from './smtp-mailer.service';
 import { CustomerFollowUpEntity } from './follow-up.entity';
 import { minimumFollowUpIntervalMinutes, maximumFollowUpIntervalMinutes } from './dto/update-follow-up.dto';
-import {
-  SendCustomerReviewEmailDto,
-  SendFollowUpPingDto,
-  UpdateFollowUpDto,
-} from './dto/update-follow-up.dto';
+import { SendFollowUpPingDto, UpdateFollowUpDto } from './dto/update-follow-up.dto';
 
 const defaultFollowUpIntervalMinutes = 10_080;
 const neverDeliveryStatus: FollowUpDeliveryStatus = 'NEVER';
@@ -151,15 +142,11 @@ export class CustomerFollowUpService implements OnModuleInit, OnModuleDestroy {
       const project = await this.findProject(manager, projectId, true);
       rejectArchivedProject(project);
       const state = await findOrCreateLockedState(manager, projectId);
-      const revision = input.revisionId
-        ? await findRevision(manager, projectId, input.revisionId)
-        : await findLatestRevision(manager, projectId);
-
       try {
         await this.mailer.send({
           to: project.customerContactEmail,
           subject: `Follow-up reminder — ${project.name}`,
-          text: createFollowUpBody(project, revision?.content ?? null),
+          text: createFollowUpBody(project),
         });
       } catch {
         await markDeliveryFailure(manager, state, now, state.enabled);
@@ -180,55 +167,6 @@ export class CustomerFollowUpService implements OnModuleInit, OnModuleDestroy {
       throw new ServiceUnavailableException('Customer follow-up email could not be delivered.');
     }
     return toState(result.state);
-  }
-
-  async sendCustomerReviewEmail(
-    projectId: string,
-    input: SendCustomerReviewEmailDto,
-  ): Promise<CustomerEmailDelivery> {
-    this.requireMailer();
-    const delivery = await this.dataSource.transaction(async (manager) => {
-      const project = await this.findProject(manager, projectId, true);
-      rejectArchivedProject(project);
-      const revision = await findRevision(
-        manager,
-        projectId,
-        input.revisionId ?? null,
-      );
-      const sentAt = new Date();
-      try {
-        await this.mailer.send({
-          to: project.customerContactEmail,
-          subject: `Customer review — ${project.name}`,
-          text: createCustomerReviewBody(project, revision.content),
-        });
-      } catch {
-        await saveAuditEvent(manager, projectId, 'CUSTOMER_REVIEW_EMAIL_FAILED', {
-          revisionId: revision.id,
-          revisionVersion: String(revision.version),
-          errorCode: smtpFailureCode,
-        });
-        // Return a failure marker so the audit event commits with the locked
-        // project transaction. Throwing here would roll the audit event back.
-        return null;
-      }
-
-      await saveAuditEvent(manager, projectId, 'CUSTOMER_REVIEW_EMAIL_SENT', {
-        revisionId: revision.id,
-        revisionVersion: String(revision.version),
-        contentLength: String(revision.content.length),
-      });
-      return {
-        projectId,
-        revisionId: revision.id,
-        revisionVersion: revision.version,
-        sentAt: sentAt.toISOString(),
-      };
-    });
-    if (delivery === null) {
-      throw new ServiceUnavailableException('Customer review email could not be delivered.');
-    }
-    return delivery;
   }
 
   async processDuePings(now: Date): Promise<readonly CustomerFollowUpState[]> {
@@ -275,12 +213,11 @@ export class CustomerFollowUpService implements OnModuleInit, OnModuleDestroy {
         await manager.getRepository(CustomerFollowUpEntity).save(state);
         return null;
       }
-      const revision = await findLatestRevision(manager, project.id);
       try {
         await this.mailer.send({
           to: project.customerContactEmail,
           subject: `Follow-up reminder — ${project.name}`,
-          text: createFollowUpBody(project, revision?.content ?? null),
+          text: createFollowUpBody(project),
         });
       } catch {
         await markDeliveryFailure(manager, state, now, true);
@@ -353,31 +290,6 @@ async function findOrCreateLockedState(
   }
   const created = repository.create(createDefaultState(projectId));
   return repository.save(created);
-}
-
-async function findRevision(
-  manager: EntityManager,
-  projectId: string,
-  revisionId: string | null,
-): Promise<MarkdownRevisionEntity> {
-  const repository = manager.getRepository(MarkdownRevisionEntity);
-  const revision = revisionId
-    ? await repository.findOneBy({ id: revisionId, projectId })
-    : await repository.findOne({ where: { projectId }, order: { version: 'DESC', id: 'ASC' } });
-  if (!revision) {
-    throw new ConflictException('A Markdown revision is required before sending a customer email.');
-  }
-  return revision;
-}
-
-async function findLatestRevision(
-  manager: EntityManager,
-  projectId: string,
-): Promise<MarkdownRevisionEntity | null> {
-  return manager.getRepository(MarkdownRevisionEntity).findOne({
-    where: { projectId },
-    order: { version: 'DESC', id: 'ASC' },
-  });
 }
 
 async function markDeliverySuccess(
@@ -468,29 +380,13 @@ function rejectArchivedProject(project: Project): void {
   }
 }
 
-function createFollowUpBody(project: Project, revisionContent: string | null): string {
-  const lines = [
+function createFollowUpBody(project: Project): string {
+  return [
     `Hello ${project.customerContactName},`,
     '',
     `This is a follow-up on the Project Maker discovery work for “${project.name}”.`,
     '',
     'Please reply with any outstanding answers or corrections when convenient.',
-  ];
-  if (revisionContent) {
-    lines.push('', 'The current execution-plan revision is included below for reference.', '', revisionContent);
-  }
-  return `${lines.join('\n')}\n`;
-}
-
-function createCustomerReviewBody(project: Project, revisionContent: string): string {
-  return [
-    `Hello ${project.customerContactName},`,
-    '',
-    `Please review the current execution plan for “${project.name}”.`,
-    '',
-    revisionContent,
-    '',
-    'Please reply with any corrections or approval.',
     '',
   ].join('\n');
 }

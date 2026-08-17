@@ -194,7 +194,7 @@
         <p-card id="customer-communication" data-testid="follow-up-card">
           <ng-template #title>Customer follow-up</ng-template>
           <ng-template #subtitle>
-            PO/PM cadence and delivery controls. Emails use the latest Markdown revision when available.
+            PO/PM cadence and delivery controls for a short customer reminder.
           </ng-template>
 
           <form
@@ -314,16 +314,16 @@
               data-testid="send-follow-up-ping-button"
               (onClick)="sendFollowUpPing()"
             />
-            <p-button
-              type="button"
-              label="Send customer review email"
-              icon="pi pi-envelope"
-              [outlined]="true"
-              [loading]="reviewSending()"
-              [disabled]="emailActionsDisabled()"
-              data-testid="send-customer-review-email-button"
-              (onClick)="sendCustomerReviewEmail()"
-            />
+            <a
+              pButton
+              [routerLink]="['/projects', projectId, 'interview']"
+              fragment="customer-handoff"
+              class="p-button-outlined"
+              data-testid="open-interview-handoff-button"
+            >
+              <i class="pi pi-file" aria-hidden="true"></i>
+              <span>Interjúösszegzés megnyitása</span>
+            </a>
           </div>
         </p-card>
 
