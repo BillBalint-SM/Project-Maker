@@ -8,7 +8,7 @@ import { InterviewRoundEntity } from '../interviews/interview-round.entity';
 import { RoundAnswerEntity } from '../interviews/round-answer.entity';
 import { RoundQuestionAssessmentOverrideEntity } from '../interviews/round-question-assessment-override.entity';
 import { RoundQuestionSnapshotEntity } from '../interviews/round-question-snapshot.entity';
-import { customerMailerToken, type CustomerMailer, SmtpDeliveryError } from '../mail-delivery/smtp-mailer.service';
+import { CustomerMailBoundaryError, type CustomerOutboundMail, customerOutboundMailToken } from '../mail-delivery/customer-mail-boundary';
 import { Project } from '../projects/project.entity';
 import { InterviewCustomerHandoffEntity } from './interview-customer-handoff.entity';
 import { renderHandoff, type HandoffProjection } from './interview-customer-handoff.renderer';
@@ -17,7 +17,7 @@ const sendingLeaseMs = 600_000;
 
 @Injectable()
 export class InterviewCustomerHandoffService {
-  constructor(private readonly dataSource: DataSource, @Inject(customerMailerToken) private readonly mailer: CustomerMailer) {}
+  constructor(private readonly dataSource: DataSource, @Inject(customerOutboundMailToken) private readonly mailer: CustomerOutboundMail) {}
 
   async establishFirstDraft(manager: EntityManager, projectId: string, roundId: string): Promise<InterviewCustomerHandoffEntity> {
     const repository = manager.getRepository(InterviewCustomerHandoffEntity);
@@ -127,8 +127,8 @@ export class InterviewCustomerHandoffService {
 
   private async deliver(prepared: InterviewCustomerHandoffEntity): Promise<InterviewCustomerHandoffDetail> {
     let state: 'SENT' | 'FAILED' | 'UNKNOWN' = 'SENT';
-    try { await this.mailer.send({ to: prepared.recipientEmail!, subject: prepared.subject!, text: prepared.textContent!, html: prepared.htmlContent! }); }
-    catch (error) { state = error instanceof SmtpDeliveryError ? 'FAILED' : 'UNKNOWN'; }
+    try { const result = await this.mailer.submit({ recipientAddress: prepared.recipientEmail!, subject: prepared.subject!, textContent: prepared.textContent!, htmlContent: prepared.htmlContent! }); if (result.acceptance === 'REJECTED') state = 'FAILED'; }
+    catch (error) { state = error instanceof CustomerMailBoundaryError && error.code !== 'OUTCOME_UNKNOWN' ? 'FAILED' : 'UNKNOWN'; }
     return this.dataSource.transaction(async (manager) => {
       const handoff = await requireHandoff(manager, prepared.projectId, prepared.roundId, prepared.id, true);
       if (handoff.state !== 'SENDING') throw new ConflictException('A küldési állapot megváltozott.');

@@ -35,10 +35,10 @@ import { AuditEvent } from '../audit/audit-event.entity';
 import { Project } from '../projects/project.entity';
 import { DiscoveryFollowUpEntity } from '../discovery-follow-ups/discovery-follow-up.entity';
 import {
-  CustomerMailer,
-  customerMailerToken,
-  SmtpDeliveryError,
-} from './smtp-mailer.service';
+  CustomerMailBoundaryError,
+  type CustomerOutboundMail,
+  customerOutboundMailToken,
+} from '../mail-delivery/customer-mail-boundary';
 import { CustomerFollowUpEntity } from './follow-up.entity';
 import { CustomerFollowUpDeliveryAttemptEntity } from './follow-up-delivery-attempt.entity';
 import {
@@ -91,8 +91,8 @@ export class CustomerFollowUpService implements OnModuleInit, OnModuleDestroy {
     @InjectRepository(CustomerFollowUpEntity)
     private readonly followUpRepository: Repository<CustomerFollowUpEntity>,
     private readonly dataSource: DataSource,
-    @Inject(customerMailerToken)
-    private readonly mailer: CustomerMailer,
+    @Inject(customerOutboundMailToken)
+    private readonly mailer: CustomerOutboundMail,
     configService: ConfigService,
   ) {
     this.pollIntervalMs = createFollowUpConfiguration(configService).pollIntervalMs;
@@ -520,11 +520,12 @@ export class CustomerFollowUpService implements OnModuleInit, OnModuleDestroy {
     claimed: ClaimedManualPing,
   ): Promise<CustomerFollowUpPingDelivery> {
     try {
-      await this.mailer.send({
-        to: claimed.rendered.recipientEmail,
+      const result = await this.mailer.submit({
+        recipientAddress: claimed.rendered.recipientEmail,
         subject: claimed.rendered.subject,
-        text: claimed.rendered.text,
+        textContent: claimed.rendered.text,
       });
+      if (result.acceptance === 'REJECTED') throw new CustomerMailBoundaryError('SUBMISSION_REJECTED');
     } catch (error) {
       await this.finalizeManualDeliveryError(claimed, error);
     }
@@ -588,7 +589,7 @@ export class CustomerFollowUpService implements OnModuleInit, OnModuleDestroy {
     claimed: ClaimedManualPing,
     error: unknown,
   ): Promise<never> {
-    if (error instanceof SmtpDeliveryError) {
+    if (error instanceof CustomerMailBoundaryError && error.code !== 'OUTCOME_UNKNOWN') {
       await this.finalizeManualFailure(claimed);
       throw new ServiceUnavailableException({
         code: 'FOLLOW_UP_DELIVERY_FAILED',
@@ -638,11 +639,12 @@ export class CustomerFollowUpService implements OnModuleInit, OnModuleDestroy {
         return null;
       }
       try {
-        await this.mailer.send({
-          to: rendered.recipientEmail,
+        const result = await this.mailer.submit({
+          recipientAddress: rendered.recipientEmail,
           subject: rendered.subject,
-          text: rendered.text,
+          textContent: rendered.text,
         });
+        if (result.acceptance === 'REJECTED') throw new CustomerMailBoundaryError('SUBMISSION_REJECTED');
       } catch {
         await markDeliveryFailure(manager, state, now, true);
         await saveAuditEvent(manager, project.id, 'FOLLOW_UP_PING_FAILED', {

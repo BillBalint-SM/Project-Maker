@@ -1,12 +1,13 @@
 import { Module } from '@nestjs/common';
 
-import { customerMailerToken, SmtpMailerService } from './smtp-mailer.service';
+import { customerOutboundMailToken } from './customer-mail-boundary';
+import { SmtpMailerService } from './smtp-mailer.service';
 
 @Module({
   providers: [
     SmtpMailerService,
-    { provide: customerMailerToken, useExisting: SmtpMailerService },
+    { provide: customerOutboundMailToken, useExisting: SmtpMailerService },
   ],
-  exports: [customerMailerToken],
+  exports: [customerOutboundMailToken],
 })
 export class MailDeliveryModule {}

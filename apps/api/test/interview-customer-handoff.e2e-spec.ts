@@ -3,9 +3,10 @@ import { Test } from '@nestjs/testing';
 import assert from 'node:assert/strict';
 import { after, before, describe, it } from 'node:test';
 import request from 'supertest';
+import type { OutboundCustomerMessage } from '@project-maker/contracts';
 
 import { AppModule } from '../src/app.module';
-import { customerMailerToken, type CustomerMailerMessage, SmtpDeliveryError } from '../src/mail-delivery/smtp-mailer.service';
+import { customerMailerToken, type CustomerMailerMessage } from '../src/mail-delivery/smtp-mailer.service';
 
 describe('Interview customer handoff HTTP boundary', () => {
   let app: INestApplication;
@@ -18,11 +19,12 @@ describe('Interview customer handoff HTTP boundary', () => {
       .overrideProvider(customerMailerToken)
       .useValue({
         isConfigured: () => true,
-        send: async (message: CustomerMailerMessage) => {
-          if (deliveryMode === 'SMTP_FAILURE') throw new SmtpDeliveryError();
+        submit: async (message: OutboundCustomerMessage) => {
+          if (deliveryMode === 'SMTP_FAILURE') return { acceptance: 'REJECTED', messageReference: null } as const;
           if (deliveryMode === 'UNKNOWN_FAILURE') throw new Error('Connection outcome unknown.');
           if (deliveryMode === 'HOLD') await new Promise<void>((resolve) => { releaseHeldDelivery = resolve; });
-          delivered.push(message);
+          delivered.push({ to: message.recipientAddress, subject: message.subject, text: message.textContent, html: message.htmlContent });
+          return { acceptance: 'ACCEPTED', messageReference: null } as const;
         },
       })
       .compile();

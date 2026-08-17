@@ -5,12 +5,12 @@ import { randomUUID } from 'node:crypto';
 import { after, before, beforeEach, describe, it } from 'node:test';
 import request from 'supertest';
 import { DataSource } from 'typeorm';
+import type { OutboundCustomerMessage } from '@project-maker/contracts';
 
 import { AppModule } from '../src/app.module';
 import {
   customerMailerToken,
   type CustomerMailerMessage,
-  SmtpDeliveryError,
 } from '../src/mail-delivery/smtp-mailer.service';
 
 describe('Customer follow-up ping draft and manual delivery', () => {
@@ -26,10 +26,15 @@ describe('Customer follow-up ping draft and manual delivery', () => {
       .overrideProvider(customerMailerToken)
       .useValue({
         isConfigured: () => true,
-        send: async (message: CustomerMailerMessage) => {
-          if (deliveryMode === 'FAILED') throw new SmtpDeliveryError();
+        submit: async (message: OutboundCustomerMessage) => {
+          if (deliveryMode === 'FAILED') return { acceptance: 'REJECTED', messageReference: null } as const;
           if (deliveryMode === 'UNKNOWN') throw new Error('Delivery result is uncertain.');
-          delivered.push(message);
+          delivered.push({
+            to: message.recipientAddress,
+            subject: message.subject,
+            text: message.textContent,
+            ...(message.htmlContent === undefined ? {} : { html: message.htmlContent }),
+          });
           deliveryStarted?.();
           if (releaseDelivery) {
             await new Promise<void>((resolve) => {
@@ -40,6 +45,7 @@ describe('Customer follow-up ping draft and manual delivery', () => {
               };
             });
           }
+          return { acceptance: 'ACCEPTED', messageReference: null } as const;
         },
       })
       .compile();
