@@ -1,10 +1,10 @@
 import { provideHttpClient } from '@angular/common/http';
 import { ApplicationConfig } from '@angular/core';
 import { provideRouter } from '@angular/router';
-import Aura from '@primeuix/themes/aura';
 import { providePrimeNG } from 'primeng/config';
 
 import { routes } from './app.routes';
+import { ProjectMakerPreset } from './app.theme';
 
 const PRIMEUI_LICENSE =
   'eyJpZCI6ImU4NTEzMzYyLWZmZmMtNDdkZC1iMGVhLWIyMTU0MTY4NmEzNSIsInByb2R1Y3QiOiJwcmltZXVpIiwidGllciI6ImNvbW11bml0eSIsInR5cGUiOiJkZXYiLCJpYXQiOjE3ODYwMTkwNzYsImV4cCI6MTgxNzU1NTA3Nn0.5m4EjSjYjkFbzebLQ6Gv0LkY5HirW8bj2ZuuCOt0NDJqa8RxP7pMw3VO10Wb9D0UAUeCqOU-IIa7Y9bOqyUgDQ';
@@ -16,7 +16,7 @@ export const appConfig: ApplicationConfig = {
     providePrimeNG({
       license: PRIMEUI_LICENSE,
       theme: {
-        preset: Aura,
+        preset: ProjectMakerPreset,
         options: {
           darkModeSelector: false,
         },
