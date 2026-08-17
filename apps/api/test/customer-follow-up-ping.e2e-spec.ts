@@ -300,7 +300,7 @@ describe('Customer follow-up ping draft and manual delivery', () => {
 
     const settingsSaved = await request(app.getHttpServer())
       .patch(`/projects/${projectId}/follow-up`)
-      .send({ enabled: true })
+      .send({ intervalMinutes: 2 })
       .expect(200);
     assert.equal(
       settingsSaved.body.latestManualAttempt.attemptId,
