@@ -75,9 +75,10 @@ delivery change; no future merge identity is predicted here.
 - Project coordination: creation records a named internal PO/PM owner. The next
   action is assigned by role to that concrete person or to the named customer
   contact; free-form `Ball owner` is no longer product language.
-- Customer communication: versioned interview handoffs, manual Markdown review,
-  and configurable follow-up ping delivery exist; they are separate from
-  `INTAKE-04` operational follow-up management.
+- Customer communication: versioned interview handoffs and configurable,
+  authored, previewed customer follow-up ping delivery exist. Customer SMTP is
+  separate from Claude Markdown and from `INTAKE-04` operational follow-up
+  management.
 - Web intake UX: the interview page resumes the server active round, autosaves
   text answers after 750 ms, saves discrete values immediately, keeps failed
   drafts visible with retry, and renders deterministic Hungarian coaching from
@@ -113,8 +114,8 @@ define `DOC-01` scope and evidence; the
 
 The verified guided-intake scope is intentionally limited to `INITIAL_INTAKE`.
 `INTAKE-04` delivers discovery-follow-up creation, review, resolution,
-conflict-safe editing of open items, and optional source linkage. Fresh
-The canonical migration sequence now runs through `0014`; current aggregate
+conflict-safe editing of open items, and optional source linkage. The canonical
+migration sequence now runs through `0015`; current aggregate
 closeout counts are recorded only after the complete INTAKE-06 verification
 receipt is available. SCORE-01.2
 Decision Review has API coverage for

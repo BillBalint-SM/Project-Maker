@@ -1,7 +1,6 @@
 import type {
   AuditEventPage,
   AuditEventRecord,
-  CustomerFollowUpState,
   NextActionOwnerRole,
   ProjectCockpit,
   ProjectStatus,
@@ -23,7 +22,6 @@ export interface UpdateProjectWorkspaceInput {
 export interface CockpitView {
   readonly project: ProjectWorkspace;
   readonly cockpit: ProjectCockpit;
-  readonly followUp: CustomerFollowUpState;
 }
 
 export interface StatusOption {

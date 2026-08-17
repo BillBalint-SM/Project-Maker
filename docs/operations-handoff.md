@@ -97,6 +97,7 @@ ordered TypeORM migrations registered in
 12. `0012-decision-review-inputs.ts` — validated nullable Decision input ratings with guarded rollback when project input exists.
 13. `0013-markdown-template-library.ts` — named Markdown template drafts and immutable published versions, Default template seed, remembered project choice, and immutable revision provenance; rollback refuses retained template activity.
 14. `0014-interview-customer-handoff.ts` — named internal ownership, concrete next-action owner role, `OPEN`/`ENDED` interview meeting semantics, content versions, immutable sent customer-handoff versions, editable draft gating, and guarded rollback while handoff history exists.
+15. `0015-customer-follow-up-ping-draft.ts` — one optimistic customer-ping draft per project, same-project Discovery reference integrity, bounded preview state, durable delivery attempts, and guarded rollback while new ping activity is retained.
 
 The deployed API image contains the compiled migration classes, but not the
 TypeScript migration source tree used by the development-only
@@ -186,6 +187,10 @@ discovery follow-up itself or any immutable snapshot.
 Migration `0012` is guarded: its rollback refuses before DDL if any Decision
 input rating is persisted. Do not clear ratings merely to make a rollback pass
 without an approved data operation and backup.
+Migration `0015` locks the affected tables and refuses rollback before DDL when
+a non-empty ping draft, Discovery reference, advanced draft version, preview,
+or delivery attempt is retained. Existing empty schedule rows can roll back
+without fabricating message content.
 Before any revert, inspect the migration and choose the rollback procedure
 appropriate to the affected objects.
 
@@ -314,7 +319,7 @@ The project cockpit also shows a bounded, paginated audit history with event
 type, timestamp, and payload. Audit loading is independent from the core
 cockpit load and has its own retry state.
 
-### Customer review and follow-up email semantics
+### Customer email and follow-up semantics
 
 These are intentionally separate flows:
 
@@ -328,14 +333,19 @@ These are intentionally separate flows:
   explicitly acknowledged retry after checking external delivery evidence and
   accepting the possible duplicate-delivery risk.
 
-- **Customer review:** always manually initiated by the PO/PM. It requires a
-  Markdown revision (the latest one is selected when no revision ID is sent),
-  sends the full canonical Markdown specification to the project contact email, and records a
-  success/failure audit event.
 - **Follow-up ping:** can be sent manually from the cockpit or automatically by
-  the due-state timer. It includes the latest available Markdown revision when
-  one exists, records `lastPingAt`, `nextPingAt`, `lastDeliveryStatus`, and a
-  non-sensitive error code, and can be disabled or given an expiry time.
+  the due-state timer. One trimmed, nonblank draft of at most 10,000 characters
+  is stored per project with a positive optimistic version. It may reference one
+  open Discovery follow-up from the same project. Manual send requires a
+  15-minute, single-use preview token whose fingerprint binds the recipient,
+  normalized draft, draft version, and referenced follow-up version/status.
+  The manual delivery claim also has a 15-minute lease. A stale `SENDING`
+  attempt reconciles once to `UNKNOWN`; the same current preview can be sent
+  again only when the caller explicitly acknowledges duplicate-delivery risk.
+  A durable attempt and redacted audit metadata are retained. The message
+  contains no Markdown, Claude instruction, interview package, follow-up owner,
+  category, answer, source linkage, identifiers, or audit content. The timer
+  uses the same saved projection; invalid or empty drafts are not sent.
 
 The follow-up state in this section is an email-delivery schedule. It is not the
 delivered `INTAKE-04` discovery-follow-up work-item management slice, including
@@ -346,8 +356,10 @@ Relevant API routes:
 ```text
 GET   /api/projects/{projectId}/follow-up
 PATCH /api/projects/{projectId}/follow-up
+PATCH /api/projects/{projectId}/follow-up/draft
+GET   /api/projects/{projectId}/follow-up/reference-options
+POST  /api/projects/{projectId}/follow-up/ping/preview
 POST  /api/projects/{projectId}/follow-up/ping
-POST  /api/projects/{projectId}/customer-review-email
 GET   /api/projects/{projectId}/rounds/{roundId}/customer-handoffs
 POST  /api/projects/{projectId}/rounds/{roundId}/customer-handoffs
 PUT   /api/projects/{projectId}/rounds/{roundId}/customer-handoffs/{handoffId}/draft

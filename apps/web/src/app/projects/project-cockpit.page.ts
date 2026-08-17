@@ -20,11 +20,9 @@ import { SelectModule } from 'primeng/select';
 import { TagModule } from 'primeng/tag';
 import { TextareaModule } from 'primeng/textarea';
 import {
-  type CustomerFollowUpState,
   type NextActionOwnerRole,
   type ProjectStatus,
   type ProjectWorkspace,
-  type UpdateCustomerFollowUpInput,
 } from '@project-maker/contracts';
 
 import {
@@ -34,6 +32,7 @@ import {
 } from './cockpit-operation-policy';
 import { DiscoveryFollowUpsComponent } from './discovery-follow-ups/discovery-follow-ups.component';
 import { DecisionReviewComponent } from './decision-review/decision-review.component';
+import { CustomerFollowUpComponent } from './customer-follow-up/customer-follow-up.component';
 import type { AuditEventPage, CockpitView } from './project-api.models';
 import { ProjectApiService } from './project-api.service';
 import { activeProjectStatusOptions, projectStatusLabel } from './project-status-label';
@@ -47,6 +46,7 @@ type ActiveProjectStatus = Exclude<ProjectStatus, 'ARCHIVED'>;
     ButtonModule,
     CardModule,
     ConfirmDialog,
+    CustomerFollowUpComponent,
     DatePipe,
     DatePickerModule,
     DecisionReviewComponent,
@@ -95,12 +95,6 @@ export class ProjectCockpitPage implements OnInit {
     const operation = this.operationPolicy.activeOperation();
     return operation === 'project-archive' || operation === 'project-restore';
   });
-  readonly followUpSaving = computed(
-    () => this.operationPolicy.activeOperation() === 'customer-follow-up-save',
-  );
-  readonly pinging = computed(
-    () => this.operationPolicy.activeOperation() === 'customer-follow-up-ping',
-  );
   readonly deleting = computed(
     () => this.operationPolicy.activeOperation() === 'project-delete',
   );
@@ -127,22 +121,6 @@ export class ProjectCockpitPage implements OnInit {
       validators: [Validators.maxLength(10000)],
     }),
     dueAt: new FormControl<Date | null>(null),
-  });
-
-  readonly followUpForm = new FormGroup({
-    enabled: new FormControl(false, {
-      nonNullable: true,
-    }),
-    intervalMinutes: new FormControl(10_080, {
-      nonNullable: true,
-      validators: [
-        Validators.required,
-        Validators.min(1),
-        Validators.max(525_600),
-        Validators.pattern(/^\d+$/),
-      ],
-    }),
-    expiresAt: new FormControl<Date | null>(null),
   });
 
   ngOnInit(): void {
@@ -293,78 +271,6 @@ export class ProjectCockpitPage implements OnInit {
       });
   }
 
-  saveFollowUp(): void {
-    this.followUpForm.markAllAsTouched();
-    if (
-      this.followUpForm.invalid ||
-      this.deleting() ||
-      this.followUpControlsDisabled() ||
-      !this.view()
-    ) {
-      return;
-    }
-
-    const value = this.followUpForm.getRawValue();
-    const input: UpdateCustomerFollowUpInput = {
-      enabled: value.enabled,
-      intervalMinutes: value.intervalMinutes,
-      expiresAt: value.expiresAt?.toISOString() ?? null,
-    };
-    const lease = this.operationPolicy.tryAcquire('customer-follow-up-save');
-    if (!lease) {
-      return;
-    }
-    this.actionError.set(null);
-    this.feedback.set(null);
-    this.api
-      .updateFollowUp(this.projectId, input)
-      .pipe(
-        releaseCockpitOperationOnFinalize(lease),
-        takeUntilDestroyed(this.destroyRef),
-      )
-      .subscribe({
-        next: (followUp) => {
-          this.applyFollowUpResponse(followUp);
-          this.feedback.set('Customer follow-up settings saved.');
-          this.refreshAuditEvents();
-        },
-        error: (error: Error) => {
-          this.actionError.set(error.message);
-        },
-      });
-  }
-
-  sendFollowUpPing(): void {
-    if (this.deleting() || this.emailActionsDisabled() || !this.view()) {
-      return;
-    }
-
-    const input = {};
-    const lease = this.operationPolicy.tryAcquire('customer-follow-up-ping');
-    if (!lease) {
-      return;
-    }
-    this.actionError.set(null);
-    this.feedback.set(null);
-    this.api
-      .sendFollowUpPing(this.projectId, input)
-      .pipe(
-        releaseCockpitOperationOnFinalize(lease),
-        takeUntilDestroyed(this.destroyRef),
-      )
-      .subscribe({
-        next: (followUp) => {
-          this.applyFollowUpStatus(followUp);
-          this.feedback.set('Customer follow-up ping sent.');
-          this.refreshAuditEvents();
-        },
-        error: (error: Error) => {
-          this.actionError.set(error.message);
-          this.refreshAuditEvents();
-        },
-      });
-  }
-
   archiveProject(): void {
     if (
       this.cockpitMutationInProgress() ||
@@ -482,18 +388,9 @@ export class ProjectCockpitPage implements OnInit {
     return this.view()?.cockpit.status === 'DRAFT';
   }
 
-  followUpControlsDisabled(): boolean {
-    return this.cockpitMutationInProgress() || this.isArchived();
-  }
-
-  emailActionsDisabled(): boolean {
-    return this.followUpControlsDisabled() || this.followUpForm.dirty;
-  }
-
   private setView(view: CockpitView): void {
     this.view.set(view);
     this.resetForm(view.project);
-    this.resetFollowUpForm(view.followUp);
   }
 
   private applyWorkspaceResponse(project: ProjectWorkspace): void {
@@ -512,18 +409,8 @@ export class ProjectCockpitPage implements OnInit {
         nextAction: project.nextAction,
         dueAt: project.dueAt,
       },
-      followUp: current.followUp,
     });
     this.resetForm(project);
-  }
-
-  private applyFollowUpResponse(followUp: CustomerFollowUpState): void {
-    this.view.update((current) => (current ? { ...current, followUp } : current));
-    this.resetFollowUpForm(followUp);
-  }
-
-  private applyFollowUpStatus(followUp: CustomerFollowUpState): void {
-    this.view.update((current) => (current ? { ...current, followUp } : current));
   }
 
   private resetForm(project: ProjectWorkspace): void {
@@ -541,14 +428,6 @@ export class ProjectCockpitPage implements OnInit {
     }
 
     this.workspaceForm.enable();
-  }
-
-  private resetFollowUpForm(followUp: CustomerFollowUpState): void {
-    this.followUpForm.reset({
-      enabled: followUp.enabled,
-      intervalMinutes: followUp.intervalMinutes,
-      expiresAt: followUp.expiresAt ? new Date(followUp.expiresAt) : null,
-    });
   }
 
 }

@@ -1074,6 +1074,9 @@ describe('ProjectsController (e2e)', () => {
       nextPingAt: null,
       lastDeliveryStatus: 'NEVER',
       lastDeliveryError: null,
+      messageDraft: null,
+      referencedFollowUpId: null,
+      draftVersion: 1,
     });
 
     const beforePatch = await dataSource.query<Array<{ count: string }>>(

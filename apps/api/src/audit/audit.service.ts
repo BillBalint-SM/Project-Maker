@@ -117,6 +117,10 @@ const projectActivitySummaries: Readonly<Record<string, string>> = {
   FOLLOW_UP_SETTINGS_UPDATED: 'Az ügyfél-utánkövetés beállításai frissítve lettek.',
   FOLLOW_UP_PING_FAILED: 'Az ügyfél-utánkövető emlékeztető küldése nem sikerült.',
   FOLLOW_UP_PING_SENT: 'Ügyfél-utánkövető emlékeztető elküldve.',
+  CUSTOMER_FOLLOW_UP_DRAFT_UPDATED: 'Az ügyfél-ping piszkozata frissítve lett.',
+  CUSTOMER_FOLLOW_UP_PING_SENT: 'Az ügyfél-ping elküldve az ügyfélnek.',
+  CUSTOMER_FOLLOW_UP_PING_FAILED: 'Az ügyfél-ping küldése sikertelen; újrapróbálható.',
+  CUSTOMER_FOLLOW_UP_PING_UNKNOWN: 'Az ügyfél-ping küldési eredménye bizonytalan; kézi ellenőrzés szükséges.',
   CUSTOMER_REVIEW_EMAIL_FAILED: 'Az ügyfél-review e-mail küldése nem sikerült.',
   CUSTOMER_REVIEW_EMAIL_SENT: 'Ügyfél-review e-mail elküldve.',
 };
