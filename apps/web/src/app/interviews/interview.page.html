@@ -78,7 +78,21 @@
           Bankverzió {{ currentBank.version }} · {{ selectedCount() }} aktív kérdés kiválasztva
         </ng-template>
 
-        @if (activeQuestions().length === 0) {
+        @if (schema() && !round()) {
+          <div class="round-start" data-testid="initial-intake-start-recovery">
+            <span data-testid="project-schema-status">
+              Elfogadott kérdésséma v{{ schema()!.schemaVersion }} (bank v{{ schema()!.bankVersion }})
+            </span>
+            <p>A kérdésséma elfogadva. A kezdő interjú indítása még hátravan.</p>
+            <p-button
+              label="Interjú indításának újrapróbálása"
+              [loading]="roundSaving()"
+              [disabled]="roundSaving() || projectArchived()"
+              data-testid="retry-initial-intake-button"
+              (onClick)="retryInitialRoundStart()"
+            />
+          </div>
+        } @else if (activeQuestions().length === 0) {
           <div class="state-panel compact" data-testid="interview-no-active-questions">
             <h2>Nincs aktív alapkérdés</h2>
             <p>Kérj meg egy Beállítások-adminisztrátort, hogy legalább egy alapkérdést aktiváljon.</p>
@@ -127,37 +141,14 @@
         }
       </p-card>
 
+      @if (round()) {
       <p-card>
         <ng-template #title>Kezdő interjúkör</ng-template>
         <ng-template #subtitle>
           Az interjúkör a kiválasztott séma változatlan pillanatképét őrzi.
         </ng-template>
 
-        @if (!round()) {
-          <div class="round-start">
-            @if (initialRoundStartFailed()) {
-              <p-button
-                label="Interjú indításának újrapróbálása"
-                [loading]="roundSaving()"
-                [disabled]="roundSaving() || projectArchived()"
-                data-testid="retry-initial-intake-button"
-                (onClick)="retryInitialRoundStart()"
-              />
-            } @else {
-              <p-button
-                label="Kezdő interjú indítása"
-                [loading]="roundSaving()"
-                [disabled]="roundSaving() || !schema() || projectArchived()"
-                data-testid="create-interview-round-button"
-                (onClick)="createRound()"
-              />
-            }
-            @if (!schema()) {
-              <small class="muted">Az indítás előtt tedd közzé a projekt kérdéssémáját.</small>
-            }
-          </div>
-        } @else {
-          @if (round(); as currentRound) {
+        @if (round(); as currentRound) {
             @if (currentRound.status === 'OPEN') {
               <div class="resume-state" data-testid="active-round-resume-state">
                 <strong>Folyamatban lévő kezdő interjúkör folytatása</strong>
@@ -466,9 +457,9 @@
                 (editableChange)="endedEditable.set($event)"
               />
             }
-          }
         }
       </p-card>
+      }
     </div>
   }
 </section>
