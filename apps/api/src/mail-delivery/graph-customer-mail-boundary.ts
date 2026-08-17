@@ -19,6 +19,9 @@ export { CustomerMailBoundaryError } from './customer-mail-boundary';
 
 export interface GraphOutboundMessage {
   readonly senderAddress: string;
+  readonly from: {
+    readonly emailAddress: { readonly name: string; readonly address: string };
+  };
   readonly toRecipients: readonly { readonly emailAddress: { readonly address: string } }[];
   readonly replyTo: readonly { readonly emailAddress: { readonly address: string } }[];
   readonly subject: string;
@@ -119,6 +122,12 @@ function toGraphMessage(message: OutboundCustomerMessage, defaultMailbox?: strin
   }
   return Object.freeze({
     senderAddress,
+    from: Object.freeze({
+      emailAddress: Object.freeze({
+        name: message.senderName ?? senderAddress,
+        address: senderAddress,
+      }),
+    }),
     toRecipients: Object.freeze([Object.freeze({ emailAddress: Object.freeze({ address: message.recipientAddress }) })]),
     replyTo: Object.freeze([Object.freeze({ emailAddress: Object.freeze({ address: replyToAddress }) })]),
     subject: message.subject,

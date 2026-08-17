@@ -125,6 +125,7 @@ const apiProcess = spawnPnpm(
       ...process.env,
       CORS_ORIGIN: process.env.CORS_ORIGIN ?? 'http://127.0.0.1:4200',
       CUSTOMER_MAILBOX_ADDRESS: process.env.CUSTOMER_MAILBOX_ADDRESS ?? 'project-maker@pte.hu',
+      CUSTOMER_MAILBOX_NAME: process.env.CUSTOMER_MAILBOX_NAME ?? 'Project Maker',
       GRAPH_BASE_URL: `http://127.0.0.1:${graphPort}`,
       GRAPH_LOGIN_BASE_URL: `http://127.0.0.1:${graphPort}`,
       GRAPH_TENANT_ID: 'playwright-tenant',

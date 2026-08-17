@@ -59,7 +59,7 @@ do not commit `.env` or real credentials.
 | `WEB_PORT` | yes | Host port mapped to Nginx port `8080`. |
 | `CORS_ORIGIN` | yes | One exact browser origin, for example `http://localhost:8080`; paths, wildcards, credentials, and origin lists are rejected. |
 | `FOLLOW_UP_POLL_INTERVAL_MS` | no | Automatic follow-up poll interval. Valid range is 5,000–86,400,000 ms; default is 60,000. |
-| `CUSTOMER_MAILBOX_ADDRESS` | yes | Dedicated Microsoft 365 mailbox. Reply correlation uses high-entropy plus-addresses at this mailbox; the recipient-visible display name comes from the Microsoft 365 directory. |
+| `CUSTOMER_MAILBOX_NAME` / `CUSTOMER_MAILBOX_ADDRESS` | yes | Dedicated Microsoft 365 sender identity. Graph receives both values in the message `from`; reply correlation uses high-entropy plus-addresses at this mailbox. |
 | `GRAPH_TENANT_ID` / `GRAPH_CLIENT_ID` | yes | Microsoft Graph application identity. |
 | `GRAPH_CLIENT_CERTIFICATE_THUMBPRINT` / `GRAPH_CLIENT_PRIVATE_KEY_BASE64` | yes | Certificate credential registered for the application. Supply the SHA-1 thumbprint as exactly 40 hexadecimal characters without separators. Inject the base64-encoded PEM private key only through deployment secrets; never commit or log it. |
 | `GRAPH_BASE_URL` | no | Graph API base URL; defaults to `https://graph.microsoft.com`. |
@@ -336,9 +336,9 @@ These are intentionally separate flows:
   open Discovery follow-up from the same project. Manual send requires a
   15-minute, single-use preview token whose fingerprint binds the recipient,
   normalized draft, draft version, and referenced follow-up version/status.
-  Before preview the employee selects the dedicated mailbox or another mailbox
-  at the exact `@pte.hu` domain. The preview fingerprints and displays the
-  mailbox address; Microsoft 365 supplies the recipient-visible display name.
+  Before preview the employee selects the dedicated mailbox or a named sender
+  at the exact `@pte.hu` domain. The preview fingerprint includes that sender,
+  and Graph receives the same confirmed name and address in the message `from`.
   The manual delivery claim also has a 15-minute lease. Each new logical ping
   creates one immutable outbound communication, tokenized central Reply-To and
   Customer correspondence before Microsoft Graph I/O, then finalizes in a
