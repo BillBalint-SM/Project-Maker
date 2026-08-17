@@ -9,11 +9,83 @@ const { Client } = requireFromApi('pg') as {
 };
 
 test.describe('project start journey', () => {
+  test('rejects invalid basics through both Project-start actions without creating a Project', async ({ page }) => {
+    let createRequests = 0;
+    page.on('request', (request) => {
+      if (
+        request.method() === 'POST' &&
+        new URL(request.url()).pathname === '/api/projects'
+      ) {
+        createRequests += 1;
+      }
+    });
+
+    await page.goto('/projects/new');
+    await (await nativeButton(page, 'save-project-draft')).click();
+    await (await nativeButton(page, 'create-project-submit')).click();
+
+    await expect(page.getByTestId('project-name-input')).toHaveAttribute('aria-invalid', 'true');
+    await expect(page).toHaveURL(/\/projects\/new$/);
+    expect(createRequests).toBe(0);
+  });
+
+  test('saves a valid Project-start draft, returns to the Portfolio, and resumes at schema selection', async ({ page }) => {
+    const uniquePart = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const projectName = `Mentett projektindítás ${uniquePart}`;
+
+    await page.goto('/projects/new');
+    await page.getByTestId('project-name-input').fill(projectName);
+    await page.getByTestId('internal-owner-name-input').fill('Projektindító PO/PM');
+    await page.getByTestId('customer-contact-name-input').fill('Projektindító Kapcsolattartó');
+    await page
+      .getByTestId('customer-contact-email-input')
+      .fill(`saved-project-start-${uniquePart}@example.test`);
+
+    const createResponse = page.waitForResponse(
+      (response) =>
+        response.request().method() === 'POST' &&
+        new URL(response.url()).pathname === '/api/projects',
+    );
+    await (await nativeButton(page, 'save-project-draft')).click();
+    expect((await createResponse).status()).toBe(201);
+
+    await expect(page).toHaveURL(/\/$/);
+    const projectCard = page.getByRole('link', { name: new RegExp(projectName) });
+    await expect(projectCard).toContainText('Kérdésséma szükséges');
+    await projectCard.click();
+    await expect(page).toHaveURL(/\/projects\/[^/]+\/interview$/);
+    await expect(page.getByTestId('project-schema-status')).toBeVisible();
+  });
+
   test('creates a project from its own page and opens the project schema', async ({ page }) => {
     await createProjectAndOpenSchema(page);
 
     await expect(page).toHaveURL(/\/projects\/[^/]+\/interview$/);
     await expect(page.getByTestId('project-schema-status')).toBeVisible();
+  });
+
+  test('edits and reloads valid Project basics before schema acceptance', async ({ page }) => {
+    await createProjectAndOpenSchema(page);
+    const projectId = projectIdFromInterviewUrl(page);
+    const updatedName = `Módosított projektindítás ${Date.now()}`;
+    const updatedEmail = `updated-project-start-${Date.now()}@example.test`;
+
+    await expect(page.getByTestId('project-basics-editor')).toBeVisible();
+    await page.getByTestId('draft-project-name-input').fill(updatedName);
+    await page.getByTestId('draft-customer-contact-email-input').fill(updatedEmail);
+
+    const updateResponse = page.waitForResponse(
+      (response) =>
+        response.request().method() === 'PATCH' &&
+        new URL(response.url()).pathname === `/api/projects/${projectId}/basics`,
+    );
+    await (await nativeButton(page, 'save-project-basics')).click();
+    expect((await updateResponse).status()).toBe(200);
+    await expect(page.getByTestId('project-basics-feedback')).toContainText('Alapadatok mentve');
+
+    await page.reload();
+    await expect(page.getByTestId('draft-project-name-input')).toHaveValue(updatedName);
+    await expect(page.getByTestId('draft-customer-contact-email-input')).toHaveValue(updatedEmail);
   });
 
   test('starts exactly one initial interview when the first project schema is accepted', async ({ page }) => {
@@ -37,6 +109,7 @@ test.describe('project start journey', () => {
     await (await nativeButton(page, 'publish-project-schema-button')).click();
     expect((await schemaResponse).status()).toBe(201);
 
+    await expect(page.getByTestId('project-basics-editor')).toHaveCount(0);
     await expect(page.getByTestId('active-round-resume-state')).toBeVisible();
     await expect(page.getByTestId('round-questions')).toBeVisible();
     expect(roundRequests).toHaveLength(1);

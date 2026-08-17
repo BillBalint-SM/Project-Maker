@@ -13,7 +13,7 @@
     <form
       class="create-form"
       [formGroup]="createForm"
-      (ngSubmit)="createProject()"
+      (ngSubmit)="createProject('schema')"
       data-testid="new-project-form"
     >
       <div class="field">
@@ -95,8 +95,17 @@
 
       <div class="form-actions">
         <p-button
+          type="button"
+          label="Piszkozat mentése és kilépés"
+          severity="secondary"
+          [loading]="saving()"
+          [disabled]="saving()"
+          data-testid="save-project-draft"
+          (onClick)="createProject('portfolio')"
+        />
+        <p-button
           type="submit"
-          label="Tovább a kérdéssémához"
+          label="Mentés és tovább a kérdéssémához"
           [loading]="saving()"
           [disabled]="saving()"
           data-testid="create-project-submit"

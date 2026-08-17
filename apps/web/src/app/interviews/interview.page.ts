@@ -1,5 +1,12 @@
 import { DOCUMENT } from '@angular/common';
 import { afterNextRender, Component, Injector, OnDestroy, OnInit, inject, signal } from '@angular/core';
+import {
+  AbstractControl,
+  FormControl,
+  FormGroup,
+  ReactiveFormsModule,
+  Validators,
+} from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { forkJoin } from 'rxjs';
 import { ButtonModule } from 'primeng/button';
@@ -7,6 +14,7 @@ import { CardModule } from 'primeng/card';
 import { MessageModule } from 'primeng/message';
 import { ProgressSpinnerModule } from 'primeng/progressspinner';
 import { TagModule } from 'primeng/tag';
+import { InputTextModule } from 'primeng/inputtext';
 import type {
   AnswerValue,
   BaseQuestion,
@@ -14,6 +22,7 @@ import type {
   BaseQuestionType,
   InterviewRound,
   ProjectQuestionSchema,
+  ProjectWorkspace,
   PublishProjectQuestionSchemaInput,
   RoundQuestionSnapshot,
 } from '@project-maker/contracts';
@@ -61,9 +70,11 @@ interface QuestionAssessmentState {
   imports: [
     ButtonModule,
     CardModule,
+    InputTextModule,
     MessageModule,
     InterviewHandoffComponent,
     ProgressSpinnerModule,
+    ReactiveFormsModule,
     RouterLink,
     TagModule,
   ],
@@ -99,7 +110,30 @@ export class InterviewPage implements OnInit, OnDestroy {
   readonly endedEditable = signal(false);
   readonly previewAfterFinish = signal(false);
   readonly projectArchived = signal(false);
+  readonly project = signal<ProjectWorkspace | null>(null);
+  readonly basicsSaving = signal(false);
+  readonly basicsError = signal<string | null>(null);
+  readonly basicsFeedback = signal<string | null>(null);
   readonly handoffContentRevision = signal(0);
+
+  readonly basicsForm = new FormGroup({
+    name: new FormControl('', {
+      nonNullable: true,
+      validators: [nonBlankValidator, Validators.maxLength(255)],
+    }),
+    customerContactName: new FormControl('', {
+      nonNullable: true,
+      validators: [nonBlankValidator, Validators.maxLength(255)],
+    }),
+    customerContactEmail: new FormControl('', {
+      nonNullable: true,
+      validators: [Validators.required, Validators.email, Validators.maxLength(320)],
+    }),
+    internalOwnerName: new FormControl('', {
+      nonNullable: true,
+      validators: [nonBlankValidator, Validators.maxLength(255)],
+    }),
+  });
 
   ngOnInit(): void {
     this.loadInterviewData();
@@ -126,6 +160,8 @@ export class InterviewPage implements OnInit, OnDestroy {
     this.actionError.set(null);
     this.feedback.set(null);
     this.initialRoundStartFailed.set(false);
+    this.basicsError.set(null);
+    this.basicsFeedback.set(null);
     this.round.set(null);
     this.answerStates.set(new Map());
     this.assessmentStates.set(new Map());
@@ -147,7 +183,14 @@ export class InterviewPage implements OnInit, OnDestroy {
         this.bank.set(bank);
         this.schema.set(schema);
         this.round.set(activeRound);
+        this.project.set(project);
         this.projectArchived.set(project.status === 'ARCHIVED');
+        this.basicsForm.reset({
+          name: project.name,
+          customerContactName: project.customerContactName,
+          customerContactEmail: project.customerContactEmail,
+          internalOwnerName: project.internalOwnerName ?? '',
+        });
         this.answerStates.set(buildAnswerStates(activeRound));
         this.assessmentStates.set(buildAssessmentStates(activeRound));
         this.selectedKeys.set(this.buildSelectedKeys(bank, schema, activeRound));
@@ -163,6 +206,48 @@ export class InterviewPage implements OnInit, OnDestroy {
 
   activeQuestions(): readonly BaseQuestion[] {
     return this.bank()?.questions.filter((question) => question.active) ?? [];
+  }
+
+  canEditBasics(): boolean {
+    return (
+      this.project()?.status === 'DRAFT' &&
+      this.schema() === null &&
+      this.round() === null
+    );
+  }
+
+  saveProjectBasics(): void {
+    this.basicsForm.markAllAsTouched();
+    if (this.basicsForm.invalid || this.basicsSaving() || !this.canEditBasics()) {
+      return;
+    }
+
+    const value = this.basicsForm.getRawValue();
+    this.basicsSaving.set(true);
+    this.basicsError.set(null);
+    this.basicsFeedback.set(null);
+    this.projectApi.updateProjectBasics(this.projectId, {
+      name: value.name.trim(),
+      customerContactName: value.customerContactName.trim(),
+      customerContactEmail: value.customerContactEmail.trim(),
+      internalOwnerName: value.internalOwnerName.trim(),
+    }).subscribe({
+      next: (project) => {
+        this.project.set(project);
+        this.basicsForm.reset({
+          name: project.name,
+          customerContactName: project.customerContactName,
+          customerContactEmail: project.customerContactEmail,
+          internalOwnerName: project.internalOwnerName ?? '',
+        });
+        this.basicsFeedback.set('Alapadatok mentve.');
+        this.basicsSaving.set(false);
+      },
+      error: (error: Error) => {
+        this.basicsError.set(error.message);
+        this.basicsSaving.set(false);
+      },
+    });
   }
 
   isSelected(stableKey: string): boolean {
@@ -1204,4 +1289,10 @@ function resolveSchemaPublishError(hasExistingSchema: boolean): string {
   }
 
   return 'Nem sikerült közzétenni a projektsémát. Frissítsd az oldalt, ellenőrizd a kiválasztott kérdéseket, majd próbáld újra.';
+}
+
+function nonBlankValidator(control: AbstractControl): { nonBlank: true } | null {
+  return typeof control.value === 'string' && control.value.trim().length > 0
+    ? null
+    : { nonBlank: true };
 }

@@ -23,6 +23,7 @@ const expectedMigrationNames = [
   'MarkdownTemplateLibrary0013MarkdownTemplateLibrary1786953600000',
   'InterviewCustomerHandoff0014InterviewCustomerHandoff1787039999000',
   'CustomerFollowUpPingDraft0015CustomerFollowUpPingDraft1787126400000',
+  'ProjectStartCreationRequest0016ProjectStartCreationRequest1787212800000',
 ] as const;
 
 type MigrationConstructor = new () => { readonly name?: string };
@@ -42,7 +43,7 @@ function isMigrationConstructor(candidate: string | Function): candidate is Migr
 }
 
 describe('Canonical API migration sequence', () => {
-  it('publishes every migration through the versioned interview customer handoff in order', () => {
+  it('publishes every migration in canonical order', () => {
     assert.deepEqual(namesOf(migrationSequence), expectedMigrationNames);
   });
 

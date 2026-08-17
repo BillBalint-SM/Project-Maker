@@ -7,6 +7,9 @@ export class Project {
   @PrimaryColumn('uuid')
   id!: string;
 
+  @Column({ name: 'creation_request_id', type: 'uuid', nullable: true, unique: true })
+  creationRequestId!: string | null;
+
   @Column({ type: 'varchar', length: 255 })
   name!: string;
 

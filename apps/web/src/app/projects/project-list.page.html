@@ -32,24 +32,24 @@
     </div>
   } @else {
     <div class="project-grid" data-testid="project-list">
-      @for (project of projects(); track project.id) {
+      @for (entry of projects(); track entry.project.id) {
         <a
           class="project-card"
-          [routerLink]="['/projects', project.id, 'status']"
-          [attr.data-testid]="'project-card-' + project.id"
+          [routerLink]="projectRoute(entry)"
+          [attr.data-testid]="'project-card-' + entry.project.id"
         >
           <div class="project-card-header">
-            <h2>{{ project.name }}</h2>
-            <p-tag [value]="statusLabel(project.status)" />
+            <h2>{{ entry.project.name }}</h2>
+            <p-tag [value]="portfolioStatusLabel(entry)" />
           </div>
           <dl>
             <div>
               <dt>Következő lépés felelőse</dt>
-              <dd>{{ project.nextActionOwner.displayName || 'Nincs kijelölve' }}</dd>
+              <dd>{{ entry.project.nextActionOwner.displayName || 'Nincs kijelölve' }}</dd>
             </div>
             <div>
               <dt>Következő lépés</dt>
-              <dd>{{ project.nextAction || 'Nincs megadva' }}</dd>
+              <dd>{{ entry.project.nextAction || 'Nincs megadva' }}</dd>
             </div>
           </dl>
           <span class="open-label">Projektállapot megnyitása <span aria-hidden="true">→</span></span>
