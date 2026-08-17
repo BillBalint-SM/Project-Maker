@@ -2,7 +2,6 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { AuditEvent } from '../audit/audit-event.entity';
-import { MailDeliveryModule } from '../mail-delivery/mail-delivery.module';
 import { Project } from '../projects/project.entity';
 import { InterviewRoundEntity } from '../interviews/interview-round.entity';
 import { RoundAnswerEntity } from '../interviews/round-answer.entity';
@@ -14,7 +13,6 @@ import { InterviewCustomerHandoffService } from './interview-customer-handoff.se
 
 @Module({
   imports: [
-    MailDeliveryModule,
     TypeOrmModule.forFeature([
       AuditEvent,
       InterviewCustomerHandoffEntity,

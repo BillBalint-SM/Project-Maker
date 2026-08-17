@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
+import { Inject, Injectable, Module } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 
 import {
@@ -12,7 +13,23 @@ import {
   graphMailClientToken,
 } from '../src/mail-delivery/graph-customer-mail-boundary';
 import { customerMailboxChangesToken, customerOutboundMailToken, type CustomerMailboxChanges, type CustomerOutboundMail, UnavailableCustomerMailboxChanges } from '../src/mail-delivery/customer-mail-boundary';
-import { GraphMailDeliveryModule } from '../src/mail-delivery/mail-delivery.module';
+import { MailDeliveryModule } from '../src/mail-delivery/mail-delivery.module';
+
+@Injectable()
+class FollowUpMailProbe {
+  constructor(@Inject(customerOutboundMailToken) readonly mail: CustomerOutboundMail) {}
+}
+
+@Module({ providers: [FollowUpMailProbe], exports: [FollowUpMailProbe] })
+class FollowUpFeatureProbeModule {}
+
+@Injectable()
+class HandoffMailProbe {
+  constructor(@Inject(customerOutboundMailToken) readonly mail: CustomerOutboundMail) {}
+}
+
+@Module({ providers: [HandoffMailProbe], exports: [HandoffMailProbe] })
+class HandoffFeatureProbeModule {}
 
 class ControlledGraphMailClient implements GraphMailClient {
   readonly submitted: GraphOutboundMessage[] = [];
@@ -54,14 +71,21 @@ describe('Graph customer mail boundary', () => {
     );
   });
 
-  it('registers Graph as both selectable provider-neutral application seams', async () => {
+  it('shares the selected Graph provider with feature-module scopes', async () => {
     const client = new ControlledGraphMailClient();
     client.pages.set('initial', { value: [], nextCheckpoint: null, completedCheckpoint: 'baseline' });
     const module = await Test.createTestingModule({
-      imports: [GraphMailDeliveryModule.register({ provide: graphMailClientToken, useValue: client })],
+      imports: [
+        MailDeliveryModule.graph({ provide: graphMailClientToken, useValue: client }),
+        FollowUpFeatureProbeModule,
+        HandoffFeatureProbeModule,
+      ],
     }).compile();
 
-    assert.equal(module.get<CustomerOutboundMail>(customerOutboundMailToken).isConfigured(), true);
+    const followUpMail = module.get(FollowUpMailProbe).mail;
+    const handoffMail = module.get(HandoffMailProbe).mail;
+    assert.strictEqual(followUpMail, handoffMail);
+    assert.equal(followUpMail.isConfigured(), true);
     assert.deepEqual(
       await module.get<CustomerMailboxChanges>(customerMailboxChangesToken).readChanges(null),
       { changes: [], nextPageCheckpoint: null, completedCheckpoint: { value: 'baseline' } },
@@ -121,7 +145,7 @@ describe('Graph customer mail boundary', () => {
         internetMessageHeaders: [{ name: 'In-Reply-To', value: '<original@example.test>' }],
         from: { emailAddress: { address: 'customer@example.test' } },
         subject: 'Re: Kérdésséma',
-        body: { content: 'Válasz' },
+        body: { contentType: 'text', content: 'Válasz' },
         receivedDateTime: '2026-08-17T08:00:00.000Z',
       }],
       nextCheckpoint: 'page-2',
@@ -147,6 +171,27 @@ describe('Graph customer mail boundary', () => {
       nextPageCheckpoint: { value: 'page-2' },
       completedCheckpoint: null,
     });
+  });
+
+  it('converts untrusted Graph HTML bodies to safe plain text', async () => {
+    const client = new ControlledGraphMailClient();
+    client.pages.set('initial', {
+      value: [{
+        id: 'message-html',
+        body: {
+          contentType: 'html',
+          content: '<p>Hello<br>World &amp; team</p><script>steal()</script><img src=x onerror=steal()>',
+        },
+      }],
+      nextCheckpoint: null,
+      completedCheckpoint: 'done',
+    });
+
+    const page = await new GraphCustomerMailBoundary(client).readChanges(null);
+
+    assert.equal(page.changes[0]?.textContent, 'Hello\nWorld & team');
+    assert.equal(page.changes[0]?.textContent?.includes('<'), false);
+    assert.equal(page.changes[0]?.textContent?.includes('steal'), false);
   });
 
   it('maps provider failures to bounded, provider-neutral errors', async () => {

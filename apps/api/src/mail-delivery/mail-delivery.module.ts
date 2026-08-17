@@ -1,4 +1,4 @@
-import { DynamicModule, Module, type Provider } from '@nestjs/common';
+import { DynamicModule, Global, Module, type Provider } from '@nestjs/common';
 
 import {
   customerMailboxChangesToken,
@@ -8,22 +8,25 @@ import {
 import { GraphCustomerMailBoundary, type GraphMailClient } from './graph-customer-mail-boundary';
 import { SmtpMailerService } from './smtp-mailer.service';
 
-@Module({
-  providers: [
-    SmtpMailerService,
-    UnavailableCustomerMailboxChanges,
-    { provide: customerOutboundMailToken, useExisting: SmtpMailerService },
-    { provide: customerMailboxChangesToken, useExisting: UnavailableCustomerMailboxChanges },
-  ],
-  exports: [customerOutboundMailToken, customerMailboxChangesToken],
-})
-export class MailDeliveryModule {}
-
+@Global()
 @Module({})
-export class GraphMailDeliveryModule {
-  static register(clientProvider: Provider<GraphMailClient>): DynamicModule {
+export class MailDeliveryModule {
+  static smtp(): DynamicModule {
     return {
-      module: GraphMailDeliveryModule,
+      module: MailDeliveryModule,
+      providers: [
+        SmtpMailerService,
+        UnavailableCustomerMailboxChanges,
+        { provide: customerOutboundMailToken, useExisting: SmtpMailerService },
+        { provide: customerMailboxChangesToken, useExisting: UnavailableCustomerMailboxChanges },
+      ],
+      exports: [customerOutboundMailToken, customerMailboxChangesToken],
+    };
+  }
+
+  static graph(clientProvider: Provider<GraphMailClient>): DynamicModule {
+    return {
+      module: MailDeliveryModule,
       providers: [
         clientProvider,
         GraphCustomerMailBoundary,
