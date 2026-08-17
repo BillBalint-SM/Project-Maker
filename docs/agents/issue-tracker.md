@@ -27,6 +27,33 @@ Infer the repo from `git remote -v` — `gh` does this automatically when run in
 
 GitHub shares one number space across issues and PRs, so a bare `#42` may be either — resolve with `gh pr view 42` and fall back to `gh issue view 42`.
 
+### Delivery reconciliation
+
+An atomic implementation PR that completes an issue must use a GitHub closing
+keyword such as `Closes #42`. Use `Refs #42` only when the PR is intentionally
+partial and the issue must remain open. `Implements #42`, `Reference: #42`, and
+a plain issue URL do not close the issue.
+
+After a completing PR merges, verify that the issue is closed and remove stale
+dispatch metadata (`ready-for-agent` and any completed claim). A successful
+merge is not a complete tracker transition while its ticket still appears as
+unassigned agent-ready work.
+
+Before scheduling any `ready-for-agent` candidate:
+
+- exclude map, epic, parent, and umbrella issues whose executable work is
+  represented by child tickets;
+- inspect cross-referenced PRs and the relevant merge history; if the complete
+  acceptance scope is already merged, reconcile and close the ticket instead
+  of dispatching it again;
+- require no assignee and no open native blocker;
+- do not treat green CI as proof of an untested acceptance criterion. Confirm
+  that each material negative path named by the issue has an observable test at
+  the agreed public seam.
+
+When a PR body references the wrong issue, record the correction on both the
+delivered ticket and any incorrectly referenced ticket before changing state.
+
 ## When a skill says "publish to the issue tracker"
 
 Create a GitHub issue.
