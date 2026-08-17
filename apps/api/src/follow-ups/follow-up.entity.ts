@@ -16,6 +16,24 @@ export class CustomerFollowUpEntity {
   @Column({ name: 'project_id', type: 'uuid', unique: true })
   projectId!: string;
 
+  @Column({ name: 'message_draft', type: 'text', nullable: true })
+  messageDraft!: string | null;
+
+  @Column({ name: 'referenced_follow_up_id', type: 'uuid', nullable: true })
+  referencedFollowUpId!: string | null;
+
+  @Column({ name: 'draft_version', type: 'integer', default: 1 })
+  draftVersion!: number;
+
+  @Column({ name: 'preview_token_digest', type: 'varchar', length: 64, nullable: true })
+  previewTokenDigest!: string | null;
+
+  @Column({ name: 'preview_fingerprint', type: 'varchar', length: 64, nullable: true })
+  previewFingerprint!: string | null;
+
+  @Column({ name: 'preview_expires_at', type: 'timestamptz', nullable: true })
+  previewExpiresAt!: Date | null;
+
   @Column({ type: 'boolean', default: false })
   enabled!: boolean;
 

@@ -19,7 +19,7 @@ Megmutatja, mit érdemes rögzíteni, mit jelent az eredmény, mikor történik 
 - [Interjú lezárása és ügyfélcsomag](#interjú-lezárása-és-ügyfélcsomag)
 - [Felkészültségi értékelés és hiányok](#felkészültségi-értékelés-és-hiányok)
 - [Discovery follow-upok kezelése](#discovery-follow-upok-kezelése)
-- [Ügyfél-emlékeztetők és review email](#ügyfél-emlékeztetők-és-review-email)
+- [Ügyfél-emlékeztetők](#ügyfél-emlékeztetők)
 - [Markdown-revíziók és átadási pillanatképek](#markdown-revíziók-és-átadási-pillanatképek)
 - [Audit history: mi történt a projekttel?](#audit-history-mi-történt-a-projekttel)
 - [Archiválás, visszaállítás és végleges törlés](#archiválás-visszaállítás-és-végleges-törlés)
@@ -92,7 +92,7 @@ Az alkalmazás nem mutatja meg, ki végzett egy műveletet. Egyezzetek meg a csa
 - Csak a discoveryhez szükséges üzleti adatot rögzítsd.
 - Ne írj jelszót, hozzáférési tokent, privát kulcsot vagy más titkot válaszba, follow-upba, Markdownba vagy mezőbe.
 - Ügyfélnek küldés előtt ellenőrizd a projekt létrehozásakor megadott kapcsolattartó e-mail-címét.
-- Ügyfél-review előtt olvasd át a legfrissebb Markdown-előnézetet; a kiküldés annak tartalmát használja.
+- A Claude Code-nak szánt Markdownot ne küldd ügyfélnek; ügyfélkommunikációhoz az interjú-átadást vagy az előnézett pinget használd.
 - Hasznos történettel rendelkező projektet archiválj. A törlés csak üres, korai piszkozat eltávolítására való.
 - Archivált projektet előbb állíts vissza, és csak utána hozz létre új tartalmat, még akkor is, ha egy közvetlen oldal technikailag megnyitható.
 
@@ -142,7 +142,7 @@ flowchart LR
     H --> I
     I --> J[Discovery follow-upok lezárása]
     J --> K[Markdown-revízió ellenőrzése]
-    K --> L[Ügyfél-review vagy belső átadás]
+    K --> L[Claude Code vagy belső átadás]
     L --> M{Folytatódik az aktív munka?}
     M -- Igen --> B
     M -- Nem --> N[Archiválás]
@@ -166,7 +166,7 @@ Az interjú értékelése után nyisd meg a cockpit `Felkészültségi értékel
 
 ### 5. Pillanatkép és kommunikáció
 
-Átadás vagy ügyfél-review előtt generálj friss Markdown-revíziót. Nézd meg a forráspillanatképet és az előnézetet. Csak ezután használd a customer review küldést. Egyszerű emlékeztető pinghez nem kötelező Markdown, de ha van, a legfrissebb bekerülhet az üzenetbe.
+Claude Code átadás előtt generálj friss Markdown-revíziót, majd nézd meg a forráspillanatképet és az előnézetet. Ez a `.md` fájl nem ügyfélkommunikáció. Ügyfélnek az interjú összegzését vagy a külön megírt follow-up pinget küldd; egyik levél sem csatolja és nem másolja be a Markdown-revíziót.
 
 ### 6. Megőrzés
 
@@ -753,15 +753,14 @@ Archiválás után a discovery lista és a kompakt forráshivatkozások olvashat
 
 Ha archivált állapotban kell valódi új döntést rögzíteni, előbb válaszd a `Restore project` műveletet, ellenőrizd a `DRAFT` állapotot, majd végezd el a follow-up műveletet.
 
-## Ügyfél-emlékeztetők és review email
+## Ügyfél-emlékeztetők
 
-A cockpit `Customer follow-up` része három különböző műveletet fog össze. Ezeket ne kezeld felcserélhetőként:
+A cockpit `Customer follow-up` része két összetartozó műveletet fog össze:
 
 1. a follow-up beállítások egy jövőbeli automatikus emlékeztető-sorozatot vezérelnek;
-2. a `Send follow-up ping` azonnal elküld egyetlen emlékeztetőt;
-3. a `Send customer review email` azonnal elküldi a legfrissebb Markdown-revíziót review-ra.
+2. a mentett ügyfél-ping piszkozatból ellenőrzött előnézet után egyetlen kézi levél küldhető.
 
-Mindhárom ugyanarra a címzettre támaszkodik: a projekt létrehozásakor rögzített `Customer contact email` címre. A jelenlegi felületen nincs címzett-felülírás és nincs küldés előtti megerősítő párbeszédablak.
+Mindkettő a projekt létrehozásakor rögzített `Customer contact email` címre küld. A címzett nem írható felül. A kézi küldés előtt a rendszer pontos előnézetben mutatja a címzettet, a tárgyat és a teljes egyszerű szöveges levelet. A Claude Code-nak szánt Markdown és az interjúcsomag nem része ennek a levélnek.
 
 ### Automatikus follow-up beállítása
 
@@ -775,16 +774,17 @@ Mindhárom ugyanarra a címzettre támaszkodik: a projekt létrehozásakor rögz
 
 Az alapértelmezett cadence 10 080 perc, vagyis hét nap, de ez csak kiindulási érték. A projekt valós kommunikációs megállapodása szerint állítsd be.
 
-1. Állítsd be az engedélyezést, a cadence értéket és szükség esetén a `Stop after` időpontot.
-2. Engedélyezett ütemezésnél a lejárat csak jövőbeli időpont lehet.
-3. Válaszd a `Save follow-up settings` gombot.
-4. Ellenőrizd az `Automatic pings`, `Cadence`, `Expires` és `Next ping` összefoglalót.
+1. Előbb ments egy nem üres ügyfél-ping piszkozatot.
+2. Állítsd be az engedélyezést, a cadence értéket és szükség esetén a `Stop after` időpontot.
+3. Engedélyezett ütemezésnél a lejárat csak jövőbeli időpont lehet.
+4. Válaszd a `Save follow-up settings` gombot.
+5. Ellenőrizd az `Automatic pings`, `Cadence`, `Expires` és `Next ping` összefoglalót.
 
 Ha bekapcsolod az automatikát, a következő ping a mentés időpontjától számított cadence alapján ütemeződik. Ha kikapcsolod, a `Next ping` megszűnik. Üres `Stop after` esetén az ütemezés nem jár le magától; a csapatnak kell kikapcsolnia vagy archiválnia a projektet.
 
 Engedélyezéskor a rendszer ellenőrzi, hogy a levélküldés szervezetileg be van-e állítva. Ha nincs, a mentés hibával leáll, és az előző beállítás marad érvényes. Ilyenkor ne próbálkozz másik címzettel vagy ismételt kattintással; kérd az üzemeltetőt a levélküldés beállításának ellenőrzésére.
 
-Ha a beállítások bármelyikét átírtad, de még nem mentetted, mindkét azonnali küldési gomb letiltva marad. Előbb mentsd vagy állítsd vissza a mezőket, így a küldés nem egy félkész ütemezési állapotból indul.
+Az automatikus küldés ugyanazt a mentett piszkozatot és opcionális Discovery follow-up hivatkozást használja, mint a kézi ping. Üres vagy időközben lezárt hivatkozás mellett az ütemezés nem küld levelet.
 
 ### A follow-up állapot értelmezése
 
@@ -804,37 +804,20 @@ Lejárat után az automatikus feldolgozás kikapcsolja az ütemezést és törli
 
 ### Egyetlen kézi emlékeztető küldése
 
-> **Külső hatás — kattintás előtt ellenőrizd:** a `Send follow-up ping` azonnal levelet küld, megerősítés és címzettválasztás nélkül. Ellenőrizd a cockpit `Customer contact` kártyáján a nevet és az e-mail-címet. Ha az adat hibás, ne küldj.
+> **Külső hatás — küldés előtt ellenőrizd:** a `Küldés az ügyfélnek` valódi SMTP-levelet indít a pontos előnézetben mutatott címzettnek. Ha a címzett vagy a tartalom hibás, válaszd a `Mégse` gombot.
 
-A kézi ping akkor is használható, ha az automatikus ütemezés `Disabled`. Nem kötelező hozzá Markdown-revízió. Ha van legalább egy revízió, a rendszer a legfrissebb tartalmát is hozzáadja az emlékeztetőhöz.
+A kézi ping akkor is használható, ha az automatikus ütemezés `Disabled`. A piszkozat kötelező, a kapcsolódó nyitott Discovery follow-up opcionális. A levélbe csak a megírt üzenet, valamint választás esetén a kérdés, a következő lépés és a határidő kerül. A felelős, kategória, válasz/döntés, forráshivatkozás, azonosítók, auditadatok, Markdown és Claude-instrukciók kimaradnak. A piszkozat környező szóközeit a szerver levágja; a mentett tartalom nem lehet üres és legfeljebb 10 000 karakteres.
 
-1. Győződj meg róla, hogy a follow-up beállítási űrlap nem módosított, és a projekt nem archivált.
-2. Ellenőrizd a címzettet.
-3. Ha van Markdown-revízió, szükség esetén nyisd meg külön, és olvasd át a legfrissebbet.
-4. Válaszd a `Send follow-up ping` gombot.
-5. Várd meg a `Customer follow-up ping sent.` sikerüzenetet.
-6. Ellenőrizd a `Last ping`, `Last delivery` és az audit history értékét.
+1. Írd meg az `Üzenet az ügyfélnek` mezőt, és szükség esetén válassz egy nyitott Discovery follow-upot.
+2. Válaszd a `Piszkozat mentése` gombot. Ha közben más mentett, a saját szöveged megmarad; csak az `Aktuális piszkozat újratöltése` írja felül.
+3. Válaszd a `Pontos előnézet` gombot.
+4. Ellenőrizd a címzettet, a tárgyat és a teljes levélszöveget.
+5. A `Mégse` visszavisz az előnézetet megnyitó gombra. A `Küldés az ügyfélnek` egyszer használható előnézeti tokennel indítja a levelet.
+6. Várd meg a `Customer follow-up ping sent.` sikerüzenetet, majd ellenőrizd a `Last ping`, `Last delivery` és az audit history értékét.
 
-Sikertelen küldéskor `FAILED` állapot, biztonságos hibakód és `FOLLOW_UP_PING_FAILED` audit-esemény marad. A projekt, a Markdown és a beállítás nem vész el. Engedélyezett automatikánál a következő kísérlet a cadence szerint újra ütemeződik; kézi üzleti újraküldés előtt azonban előbb derítsd ki a hiba okát.
+Ha az előnézet óta megváltozik a címzett, a piszkozat vagy a hivatkozott follow-up, a küldés konfliktussal leáll. Töltsd újra az aktuális állapotot, mentsd újra a szándékos módosítást, és készíts új előnézetet. Sikertelen SMTP-küldéskor `FAILED` állapot, biztonságos hibakód és redaktált audit-esemény marad; az audit nem tartalmazza a címzettet vagy a levél szövegét.
 
-### Customer review email küldése
-
-> **Külső hatás — nincs előnézet a cockpitben:** a `Send customer review email` azonnal a projekt legfrissebb Markdown-revízióját küldi a rögzített kapcsolattartónak.
->
-> Előbb nyisd meg az `Open Markdown plan` oldalt, ellenőrizd a kijelölt legfrissebb revízió teljes `Content preview` tartalmát, majd térj vissza a cockpitbe.
-
-A review emailhez legalább egy Markdown-revízió kötelező. Nem a follow-up ping állapotát küldi, hanem az aktuális kanonikus Markdown-specifikációt kéri jóváhagyásra vagy javításra.
-
-1. Ellenőrizd a legfrissebb revízió verziószámát, létrehozási okát és előnézetét.
-2. Ellenőrizd a cockpitben a címzettet.
-3. Győződj meg róla, hogy a follow-up beállítások mentve vannak, és nincs más művelet folyamatban.
-4. Válaszd a `Send customer review email` gombot.
-5. Siker esetén olvasd el, melyik Markdown-verzióval ment ki a levél.
-6. Ellenőrizd a `CUSTOMER_REVIEW_EMAIL_SENT` audit-eseményt.
-
-Ha nincs revízió, a küldést a rendszer elutasítja; előbb generálj és ellenőrizz egyet. Ha a levélküldés nincs beállítva vagy a szolgáltató elutasítja a küldést, hibaüzenet és `CUSTOMER_REVIEW_EMAIL_FAILED` esemény marad. Az audit-esemény még nem bizonyít ügyféloldali kézbesítést vagy olvasást.
-
-Archivált projektből sem kézi ping, sem customer review nem küldhető. Ha a munka valóban újraindult, előbb állítsd vissza a projektet `DRAFT` állapotba, frissítsd a workspace-t és a Markdownot, és csak utána kommunikálj.
+Archivált projektben a mentett ping olvasható marad, de a szerkesztés, előnézet és küldés letiltott. Ha a munka valóban újraindult, előbb állítsd vissza a projektet, ellenőrizd a címzettet és a hivatkozott follow-up nyitott állapotát, majd készíts friss előnézetet.
 
 ## Markdown-revíziók és átadási pillanatképek
 
@@ -968,8 +951,9 @@ Minden eseménynek van típusa, időpontja és egy JSON-formátumú payloadja. A
 | `FOLLOW_UP_SETTINGS_UPDATED` | Az automatikus ping engedélyezése, cadence-e vagy lejárata változott |
 | `FOLLOW_UP_PING_SENT` | Kézi vagy automatikus follow-up ping küldési kísérlete sikerült |
 | `FOLLOW_UP_PING_FAILED` | A ping küldése nem sikerült; biztonságos hibakód maradt |
-| `CUSTOMER_REVIEW_EMAIL_SENT` | Egy konkrét Markdown-verzió customer review küldése sikerült |
-| `CUSTOMER_REVIEW_EMAIL_FAILED` | A konkrét Markdown-verzió review küldése nem sikerült |
+| `CUSTOMER_REVIEW_EMAIL_SENT` / `CUSTOMER_REVIEW_EMAIL_FAILED` | Csak korábban létrejött, történeti legacy customer-review esemény; új ilyen küldés már nem indítható |
+| `CUSTOMER_FOLLOW_UP_DRAFT_UPDATED` | Az ügyfél-ping piszkozata vagy hivatkozása megváltozott; az esemény csak verziót, hivatkozás-jelzőt és hosszt tárol |
+| `CUSTOMER_FOLLOW_UP_PING_SENT` / `CUSTOMER_FOLLOW_UP_PING_FAILED` | Előnézetből indított ügyfél-ping kézbesítési kísérlete; a címzett és a levélszöveg nem kerül az auditba |
 
 Projekt létrehozásáról és közönséges workspace-mentésről nem készül teljes, felhasználóhoz kötött auditbejegyzés. Az auditból az sem látszik, ki kattintott. Ha szervezeti felelősség vagy jóváhagyó személy bizonyítása szükséges, azt a jelenlegi Project Maker önmagában nem biztosítja.
 
@@ -1065,7 +1049,7 @@ A Project Maker gyorsan jelez, ha egy kérés nem hajtható végre. A hibaüzene
 | A séma zárolt | A nyitott kör pillanatképe változatlan marad | Fejezd be és zárd le a nyitott kört; az utódsémát csak utána publikáld |
 | Már van nyitott kezdő kör | A meglévő kör és válaszai megmaradnak | Ne indíts újat. Töltsd újra az interjúoldalt, és folytasd a visszatöltött aktív kört |
 | A levélküldés nincs beállítva | Projekt, revízió és follow-up állapot nem vész el; engedélyezési vagy küldési kérés sikertelen | Ne ismételd vakon. Kérd az üzemeltetőt a levélküldés ellenőrzésére |
-| Nincs Markdown-revízió customer review-hoz | Nem ment ki levél | Generálj `MANUAL` vagy indokolt `MILESTONE` revíziót, olvasd át, majd küldd újra |
+| Az ügyfél-ping előnézete elavult | Nem ment ki levél, a helyi piszkozat megmaradt | Töltsd újra az aktuális piszkozatot, ellenőrizd a címzettet és a hivatkozást, majd készíts új előnézetet |
 | E-mail-küldés `FAILED` | A projekt és a revízió megmarad; auditban hibakód rögzül | Ellenőrizd a címzettet és a szolgáltatás állapotát. Csak az ok tisztázása után ismételd meg a megfelelő küldést |
 | Az e-mail gomb letiltott módosított follow-up űrlap mellett | Semmi nem ment ki | Mentsd a follow-up beállítást, vagy állítsd vissza a mezőket a mentett értékre |
 | Archivált projektben módosítás vagy küldés nem engedett | Minden megőrzött projektadat változatlan | Ha valóban újraindul a munka, válaszd a `Restore project` gombot, állíts be friss workspace-adatot, majd folytasd |
@@ -1198,9 +1182,9 @@ Az alábbiak nem elrejtett funkciók és nem más menüpontban találhatók; a j
 - [ ] A projekt nem archivált.
 - [ ] A cockpitben szereplő kapcsolattartói név és e-mail-cím helyes.
 - [ ] A follow-up beállítási űrlapon nincs nem mentett módosítás.
-- [ ] Customer review esetén létezik friss Markdown-revízió.
+- [ ] Ügyfél-ping esetén a mentett piszkozat és a pontos előnézet aktuális.
 - [ ] A legfrissebb revízió verzióját és `Content preview` tartalmát végigolvastam.
-- [ ] Tudom, hogy pinget vagy teljes review-t küldök; a két műveletet nem tévesztettem össze.
+- [ ] Tudom, hogy interjú-összegzést vagy rövid pinget küldök; a Claude Markdown egyik levélbe sem kerül.
 - [ ] Küldés után ellenőriztem a sikerüzenetet és a megfelelő audit-eseményt.
 
 ### Belső vagy ügyfél-átadás előtt

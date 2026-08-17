@@ -4,7 +4,10 @@ import { after, before, describe, it } from 'node:test';
 
 import { DataSource } from 'typeorm';
 
-import { migrationsForFreshDatabase } from './migration-harness';
+import { migrationsForHistoricalDatabase } from './migration-harness';
+
+const INTERVIEW_HANDOFF_MIGRATION =
+  'InterviewCustomerHandoff0014InterviewCustomerHandoff1787039999000';
 
 describe('Interview customer handoff migration boundary (PostgreSQL)', () => {
   let adminDataSource: DataSource;
@@ -27,7 +30,7 @@ describe('Interview customer handoff migration boundary (PostgreSQL)', () => {
     migrationDataSource = new DataSource({
       type: 'postgres',
       url: databaseUrl.toString(),
-      migrations: [...migrationsForFreshDatabase()],
+      migrations: [...migrationsForHistoricalDatabase(INTERVIEW_HANDOFF_MIGRATION)],
       migrationsTransactionMode: 'each',
     });
     await migrationDataSource.initialize();
@@ -259,7 +262,7 @@ describe('Interview customer handoff migration boundary (PostgreSQL)', () => {
       rollbackDataSource = new DataSource({
         type: 'postgres',
         url: rollbackDatabaseUrl.toString(),
-        migrations: [...migrationsForFreshDatabase()],
+        migrations: [...migrationsForHistoricalDatabase(INTERVIEW_HANDOFF_MIGRATION)],
         migrationsTransactionMode: 'each',
       });
       await rollbackDataSource.initialize();

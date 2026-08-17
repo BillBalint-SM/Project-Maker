@@ -22,6 +22,7 @@ const expectedMigrationNames = [
   'DecisionReviewInputs0012DecisionReviewInputs1786867200000',
   'MarkdownTemplateLibrary0013MarkdownTemplateLibrary1786953600000',
   'InterviewCustomerHandoff0014InterviewCustomerHandoff1787039999000',
+  'CustomerFollowUpPingDraft0015CustomerFollowUpPingDraft1787126400000',
 ] as const;
 
 type MigrationConstructor = new () => { readonly name?: string };
