@@ -72,7 +72,7 @@ test.describe.serial('guided intake real Hungarian browser flow', () => {
     );
     await expect(page.getByTestId('project-schema-status')).toBeVisible();
 
-    const createButton = await nativeButton(page, 'create-interview-round-button');
+    const createButton = await nativeButton(page, 'retry-initial-intake-button');
     await expect(createButton).toBeEnabled();
 
     const createRoundResponsePromise = page.waitForResponse(
@@ -172,7 +172,8 @@ test.describe.serial('guided intake real Hungarian browser flow', () => {
       hungarianTextPattern,
     );
     await expect(page.getByTestId('project-schema-status')).toContainText(hungarianTextPattern);
-    await expect(await nativeButton(page, 'create-interview-round-button')).toBeDisabled();
+    await expect(page.getByTestId('create-interview-round-button')).toHaveCount(0);
+    await expect(page.getByRole('heading', { name: 'Kezdő interjúkör' })).toHaveCount(0);
     await expect(page.getByTestId('round-questions')).toHaveCount(0);
     expect(await getActiveRound(request, project.id)).toBeNull();
   });
