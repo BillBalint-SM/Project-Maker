@@ -810,18 +810,30 @@ describe('Customer follow-up ping draft and manual delivery', () => {
       'UPDATE customer_follow_ups SET next_ping_at = $2 WHERE project_id = $1',
       [projectId, dueAt],
     );
-    await dataSource.query(
-      'UPDATE projects SET customer_contact_email = $2 WHERE id = $1',
-      [projectId, 'current-scheduled-recipient@example.test'],
-    );
-
     let deliveryBegan!: () => void;
     const deliveryBeganPromise = new Promise<void>((resolve) => {
       deliveryBegan = resolve;
     });
     deliveryStarted = deliveryBegan;
     releaseDelivery = () => undefined;
-    const firstWorker = followUpService.processDuePings(dueAt);
+    const projectChange = dataSource.createQueryRunner();
+    await projectChange.connect();
+    let firstWorker!: ReturnType<CustomerFollowUpService['processDuePings']>;
+    try {
+      await projectChange.startTransaction();
+      await projectChange.query(
+        'UPDATE projects SET customer_contact_email = $2 WHERE id = $1',
+        [projectId, 'current-scheduled-recipient@example.test'],
+      );
+      firstWorker = followUpService.processDuePings(dueAt);
+      await waitForProjectClaimLock(dataSource);
+      await projectChange.commitTransaction();
+    } finally {
+      if (projectChange.isTransactionActive) {
+        await projectChange.rollbackTransaction();
+      }
+      await projectChange.release();
+    }
     await deliveryBeganPromise;
 
     const secondWorker = await followUpService.processDuePings(dueAt);
@@ -950,4 +962,21 @@ async function createDiscoveryFollowUp(
     })
     .expect(201);
   return response.body as { readonly id: string };
+}
+
+async function waitForProjectClaimLock(dataSource: DataSource): Promise<void> {
+  for (let attempt = 0; attempt < 200; attempt += 1) {
+    const waiting = await dataSource.query<Array<{ waiting: boolean }>>(
+      `SELECT EXISTS (
+         SELECT 1
+         FROM pg_stat_activity
+         WHERE datname = current_database()
+           AND wait_event_type = 'Lock'
+           AND query ILIKE '%project%'
+       ) AS waiting`,
+    );
+    if (waiting[0]?.waiting) return;
+    await new Promise<void>((resolve) => setImmediate(resolve));
+  }
+  throw new Error('Scheduled claim did not wait for the current project lock.');
 }
