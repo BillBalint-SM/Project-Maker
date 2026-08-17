@@ -38,6 +38,7 @@ export class InterviewHandoffComponent {
   readonly senderOptions = signal<InterviewHandoffSenderOptions | null>(null);
   summary = '';
   senderMode: OutboundSenderMode = 'DEDICATED';
+  senderName = '';
   senderAddress = '';
 
   constructor() {
@@ -53,7 +54,7 @@ export class InterviewHandoffComponent {
 
   activeDraft(): InterviewCustomerHandoffSummary | null { return this.history().find((item) => item.state !== 'SENT') ?? null; }
   load(focusVersion?: number): void {
-    this.api.senderOptions(this.projectId(), this.roundId()).subscribe({ next: (options) => { this.senderOptions.set(options); if (options.lastUsedAddress) { this.senderMode = 'CUSTOM'; this.senderAddress = options.lastUsedAddress; } }, error: (error: Error) => this.error.set(error.message) });
+    this.api.senderOptions(this.projectId(), this.roundId()).subscribe({ next: (options) => { this.senderOptions.set(options); if (options.lastUsedAddress) { this.senderMode = 'CUSTOM'; this.senderName = options.lastUsedName ?? ''; this.senderAddress = options.lastUsedAddress; } }, error: (error: Error) => this.error.set(error.message) });
     this.api.list(this.projectId(), this.roundId()).subscribe({ next: (items) => { this.history.set(items); const active = this.activeDraft(); this.summary = active?.modificationSummary ?? ''; this.editableChange.emit(active?.state === 'DRAFT' && !this.readOnly()); if (focusVersion !== undefined) this.focusVersionAfterNextRender(focusVersion); }, error: (error: Error) => this.error.set(error.message) });
   }
   startVersion(): void { if (this.readOnly()) return; this.run(this.api.start(this.projectId(), this.roundId()), () => this.load()); }
@@ -61,7 +62,7 @@ export class InterviewHandoffComponent {
   changeSenderMode(mode: OutboundSenderMode): void { this.senderMode = mode; this.previewData.set(null); }
   changeSender(): void { this.previewData.set(null); }
   saveSummary(): void { const active = this.activeDraft(); if (!active || this.readOnly()) return; this.run(this.api.update(this.projectId(), this.roundId(), active.id, this.summary), () => { this.previewData.set(null); this.load(); }); }
-  preview(): void { const active = this.activeDraft(); if (!active || active.state !== 'DRAFT' || this.readOnly()) return; this.busy.set(true); this.error.set(null); const sender = this.senderMode === 'DEDICATED' ? { mode: 'DEDICATED' as const } : { mode: 'CUSTOM' as const, address: this.senderAddress }; this.api.preview(this.projectId(), this.roundId(), active.id, sender).subscribe({ next: (value) => { this.previewData.set(value); this.busy.set(false); }, error: (error: Error) => { this.error.set(error.message); this.busy.set(false); } }); }
+  preview(): void { const active = this.activeDraft(); if (!active || active.state !== 'DRAFT' || this.readOnly()) return; this.busy.set(true); this.error.set(null); const sender = this.senderMode === 'DEDICATED' ? { mode: 'DEDICATED' as const } : { mode: 'CUSTOM' as const, name: this.senderName, address: this.senderAddress }; this.api.preview(this.projectId(), this.roundId(), active.id, sender).subscribe({ next: (value) => { this.previewData.set(value); this.busy.set(false); }, error: (error: Error) => { this.error.set(error.message); this.busy.set(false); } }); }
   confirmSend(trigger: HTMLElement): void { const preview = this.previewData(); if (!preview || this.readOnly()) return; this.confirmation.confirm({ key: 'interview-handoff-send', target: trigger, message: `${preview.recipientName} (${preview.recipientEmail}) részére küldöd a ${preview.version}. verziót.`, header: 'Interjú-összefoglaló küldése', acceptLabel: 'Küldés az ügyfélnek', rejectLabel: 'Mégse', reject: () => this.focusElementAfterNextRender(trigger), accept: () => this.run(this.api.send(this.projectId(), this.roundId(), preview), (detail) => { this.previewData.set(null); this.load(detail.version); }, () => { this.previewData.set(null); this.focusPreviewButtonAfterNextRender(); }) }); }
   inspect(id: string): void { this.run(this.api.get(this.projectId(), this.roundId(), id), (detail) => this.selectedDetail.set(detail)); }
   retry(active: InterviewCustomerHandoffSummary): void { if (this.readOnly() || active.state !== 'FAILED') return; this.run(this.api.retry(this.projectId(), this.roundId(), active.id, false), (detail) => this.load(detail.version)); }
