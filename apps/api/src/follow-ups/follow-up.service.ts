@@ -50,6 +50,7 @@ import {
   customerReplyToAddress,
   dedicatedCustomerSender,
   preferredCustomerSender,
+  rememberedCustomerSender,
   resolveCustomerSender,
   type ResolvedCustomerSender,
 } from '../mail-delivery/customer-mail-identity';
@@ -251,18 +252,20 @@ export class CustomerFollowUpService implements OnModuleInit, OnModuleDestroy {
       const { reference, rendered } = await renderCurrentPing(manager, project, state);
       const sender = resolveCustomerSender({
         mode: input.senderMode ?? 'DEDICATED',
+        name: input.senderName,
         address: input.senderAddress,
       }, this.configService);
       const previewToken = randomBytes(32).toString('base64url');
       const expiresAt = new Date(now.getTime() + previewLifetimeMs);
       state.previewTokenDigest = digest(previewToken);
-      state.previewSenderName = sender.address;
+      state.previewSenderName = sender.name;
       state.previewSenderAddress = sender.address;
       state.previewFingerprint = pingFingerprint(state, rendered, reference, sender);
       state.previewExpiresAt = expiresAt;
       await manager.getRepository(CustomerFollowUpEntity).save(state);
       return {
         ...rendered,
+        senderName: sender.name,
         senderAddress: sender.address,
         draftVersion: state.draftVersion,
         previewToken,
@@ -445,6 +448,7 @@ export class CustomerFollowUpService implements OnModuleInit, OnModuleDestroy {
             latestAttempt,
             rendered,
             preferredCustomerSender(
+              project.lastCustomerSenderName,
               project.lastCustomerSenderAddress,
               this.configService,
             ),
@@ -764,6 +768,7 @@ export class CustomerFollowUpService implements OnModuleInit, OnModuleDestroy {
         messageReference: null,
       });
       const sender = preferredCustomerSender(
+        project.lastCustomerSenderName,
         project.lastCustomerSenderAddress,
         this.configService,
       );
@@ -812,9 +817,15 @@ export class CustomerFollowUpService implements OnModuleInit, OnModuleDestroy {
     return this.dataSource.transaction(async (manager) => {
       const project = await this.findProject(manager, projectId, false);
       const dedicated = dedicatedCustomerSender(this.configService);
+      const remembered = rememberedCustomerSender(
+        project.lastCustomerSenderName,
+        project.lastCustomerSenderAddress,
+      );
       return {
+        dedicatedName: dedicated.name,
         dedicatedAddress: dedicated.address,
-        lastUsedAddress: project.lastCustomerSenderAddress,
+        lastUsedName: remembered?.name ?? null,
+        lastUsedAddress: remembered?.address ?? null,
       };
     });
   }
@@ -908,6 +919,7 @@ export class CustomerFollowUpService implements OnModuleInit, OnModuleDestroy {
 
   private submitPing(outbound: CustomerOutboundCommunicationEntity): Promise<MailSubmissionResult> {
     return this.mailer.submit(immutableOutboundCustomerMessage({
+      senderName: outbound.senderName,
       senderAddress: outbound.senderAddress,
       recipientAddress: outbound.recipientAddress,
       replyToAddress: outbound.replyToAddress,
@@ -948,6 +960,7 @@ async function createPingCorrespondence(
     draftVersion: attempt.draftVersion,
     referencedFollowUpId: reference?.id ?? null,
     referencedFollowUpVersion: reference?.version ?? null,
+    senderName: sender.name,
     senderAddress: sender.address.toLowerCase(),
     recipientName: rendered.recipientName,
     recipientEmail: rendered.recipientEmail.toLowerCase(),
@@ -959,7 +972,7 @@ async function createPingCorrespondence(
     projectId: project.id,
     sourceType: 'CUSTOMER_FOLLOW_UP_PING',
     sourceId: attempt.id,
-    senderName: sender.address,
+    senderName: sender.name,
     senderAddress: sender.address,
     recipientName: rendered.recipientName,
     recipientAddress: rendered.recipientEmail,
@@ -1128,6 +1141,7 @@ function pingFingerprint(
     recipientEmail: rendered.recipientEmail,
     subject: rendered.subject,
     text: rendered.text,
+    senderName: sender.name,
     senderAddress: sender.address.toLowerCase(),
   }));
 }

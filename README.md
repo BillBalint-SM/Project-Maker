@@ -88,7 +88,7 @@ The API requires `CORS_ORIGIN`; `@nestjs/config` reads it from the root `.env` w
 | `WEB_PORT` | Host port published by Nginx |
 | `CORS_ORIGIN` | Exact browser origin allowed by the API |
 | `FOLLOW_UP_POLL_INTERVAL_MS` | Automatic follow-up poll interval (5,000–86,400,000 ms) |
-| `CUSTOMER_MAILBOX_ADDRESS` | Dedicated Microsoft 365 mailbox used for the default sender and correlated Reply-To addresses; the visible display name comes from the Microsoft 365 directory |
+| `CUSTOMER_MAILBOX_NAME` / `CUSTOMER_MAILBOX_ADDRESS` | Dedicated Microsoft 365 sender identity; both values are sent in the Graph message `from`, and the address is also used for correlated Reply-To addresses |
 | `GRAPH_TENANT_ID` / `GRAPH_CLIENT_ID` | Microsoft Graph application identity |
 | `GRAPH_CLIENT_CERTIFICATE_THUMBPRINT` / `GRAPH_CLIENT_PRIVATE_KEY_BASE64` | Certificate credential; use the SHA-1 thumbprint as exactly 40 hexadecimal characters without separators, and inject the base64-encoded PEM private key as a deployment secret that is never committed or logged |
 | `GRAPH_BASE_URL` | Graph API base URL; normally `https://graph.microsoft.com` |

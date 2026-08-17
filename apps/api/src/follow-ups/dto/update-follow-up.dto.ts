@@ -69,6 +69,11 @@ export class PreviewFollowUpPingDto {
 
   @ValidateIf((input: PreviewFollowUpPingDto) => input.senderMode === 'CUSTOM')
   @IsString()
+  @Length(1, 255)
+  senderName?: string;
+
+  @ValidateIf((input: PreviewFollowUpPingDto) => input.senderMode === 'CUSTOM')
+  @IsString()
   @Length(1, 320)
   @IsEmail()
   @Matches(exactPteCustomerSenderAddressPattern)

@@ -15,9 +15,11 @@
       @if (active.state === 'DRAFT' && senderOptions(); as options) {
         <fieldset class="sender-selection" data-testid="handoff-sender-selection">
           <legend>Feladó</legend>
-          <label><input type="radio" name="handoff-sender-mode" value="DEDICATED" [ngModel]="senderMode" (ngModelChange)="changeSenderMode($event)" /> Dedikált postafiók – {{ options.dedicatedAddress }}</label>
+          <label><input type="radio" name="handoff-sender-mode" value="DEDICATED" [ngModel]="senderMode" (ngModelChange)="changeSenderMode($event)" /> Dedikált postafiók – {{ options.dedicatedName }} &lt;{{ options.dedicatedAddress }}&gt;</label>
           <label><input type="radio" name="handoff-sender-mode" value="CUSTOM" [ngModel]="senderMode" (ngModelChange)="changeSenderMode($event)" /> Saját PO/PM postafiók</label>
           @if (senderMode === 'CUSTOM') {
+            <label for="handoff-sender-name">Feladó neve</label>
+            <input id="handoff-sender-name" data-testid="handoff-sender-name" [ngModel]="senderName" (ngModelChange)="senderName = $event; changeSender()" />
             <label for="handoff-sender-address">Feladó @pte.hu címe</label>
             <input id="handoff-sender-address" type="email" data-testid="handoff-sender-address" [ngModel]="senderAddress" (ngModelChange)="senderAddress = $event; changeSender()" />
           }
@@ -40,8 +42,7 @@
     <section class="preview" aria-labelledby="handoff-preview-title">
       <h3 id="handoff-preview-title">{{ preview.version }}. verzió előnézete</h3>
       <p><strong>Címzett:</strong> {{ preview.recipientName }} &lt;{{ preview.recipientEmail }}&gt;</p>
-      <p><strong>Feladó postafiók:</strong> {{ preview.senderAddress }}</p>
-      <p>A címzett által látott feladónév a Microsoft 365 címtárából származik.</p>
+      <p><strong>Feladó:</strong> {{ preview.senderName }} &lt;{{ preview.senderAddress }}&gt;</p>
       <p><strong>Tárgy:</strong> {{ preview.subject }}</p>
       <pre>{{ preview.textContent }}</pre>
       <p-button label="Küldés az ügyfélnek" [disabled]="busy() || readOnly()" data-testid="send-handoff-button" (onClick)="confirmSend($any($event.currentTarget))" />

@@ -99,6 +99,7 @@ describe('Graph customer mail boundary', () => {
 
     const result = await boundary.submit({
       senderAddress: 'po.peter@pte.hu',
+      senderName: 'PO Péter',
       recipientAddress: 'customer@example.test',
       replyToAddress: 'project-maker+opaque-token@pte.hu',
       subject: 'Kérdésséma',
@@ -108,6 +109,7 @@ describe('Graph customer mail boundary', () => {
     assert.deepEqual(result, { acceptance: 'ACCEPTED', messageReference: 'graph-message-1' });
     assert.deepEqual(client.submitted, [{
       senderAddress: 'po.peter@pte.hu',
+      from: { emailAddress: { name: 'PO Péter', address: 'po.peter@pte.hu' } },
       toRecipients: [{ emailAddress: { address: 'customer@example.test' } }],
       replyTo: [{ emailAddress: { address: 'project-maker+opaque-token@pte.hu' } }],
       subject: 'Kérdésséma',

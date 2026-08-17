@@ -56,12 +56,14 @@ export interface CustomerFollowUpReferenceOption {
 export interface PreviewCustomerFollowUpPingInput {
   readonly expectedVersion: number;
   readonly senderMode?: 'DEDICATED' | 'CUSTOM';
+  readonly senderName?: string;
   readonly senderAddress?: string;
 }
 
 export interface CustomerFollowUpPingPreview {
   readonly recipientName: string;
   readonly recipientEmail: string;
+  readonly senderName: string;
   readonly senderAddress: string;
   readonly subject: string;
   readonly text: string;

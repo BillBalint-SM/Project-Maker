@@ -29,7 +29,7 @@ test.describe.serial('interview customer handoff browser journey', () => {
     await expect(page.getByTestId('handoff-preview-button')).toBeVisible();
     await expect(page.getByText('1. verzió előnézete')).toBeVisible();
     await page.getByLabel('Saját PO/PM postafiók').check();
-    await expect(page.getByTestId('handoff-sender-name')).toHaveCount(0);
+    await page.getByTestId('handoff-sender-name').fill('Teszt PO');
     const invalidPreviewResponse = page.waitForResponse((response) => response.request().method() === 'POST' && response.url().endsWith('/preview'));
     await page.getByTestId('handoff-sender-address').fill('x..y@pte.hu');
     await nativeButton(page, 'handoff-preview-button').click();
@@ -39,7 +39,7 @@ test.describe.serial('interview customer handoff browser journey', () => {
     await page.getByTestId('handoff-sender-address').fill('teszt.po@pte.hu');
     await expect(page.locator('.preview')).toBeHidden();
     await nativeButton(page, 'handoff-preview-button').click();
-    await expect(page.locator('.preview')).toContainText('teszt.po@pte.hu');
+    await expect(page.locator('.preview')).toContainText('Teszt PO <teszt.po@pte.hu>');
     await sendCurrentPreview(page, fixture.projectId, fixture.roundId);
     await expect.poll(() => graphMessages(request).then((items) => items.length)).toBe(1);
     await expect(page.getByRole('heading', { name: /Verzióelőzmények/ })).toBeVisible();
@@ -85,8 +85,18 @@ test.describe.serial('interview customer handoff browser journey', () => {
     expect(JSON.stringify(messages[0])).not.toContain(answer);
     expect(JSON.stringify(messages[1])).toContain(answerAfterPreview);
     expect(JSON.stringify(messages[1])).toContain('Az ügyfél pontosította az elvárt eredményt.');
-    const firstGraphRequest = messages[0] as { saveToSentItems?: unknown; message?: { replyTo?: Array<{ emailAddress?: { address?: string } }> } };
+    const firstGraphRequest = messages[0] as {
+      saveToSentItems?: unknown;
+      message?: {
+        from?: { emailAddress?: { name?: string; address?: string } };
+        replyTo?: Array<{ emailAddress?: { address?: string } }>;
+      };
+    };
     expect(firstGraphRequest.saveToSentItems).toBe(true);
+    expect(firstGraphRequest.message?.from?.emailAddress).toEqual({
+      name: 'Teszt PO',
+      address: 'teszt.po@pte.hu',
+    });
     expect(firstGraphRequest.message?.replyTo?.[0]?.emailAddress?.address).toMatch(/^project-maker\+[A-Za-z0-9_-]{43}@pte\.hu$/);
 
     await page.getByTestId('inspect-handoff-version-1').click();
