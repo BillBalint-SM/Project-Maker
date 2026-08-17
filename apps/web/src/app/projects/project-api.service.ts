@@ -64,15 +64,18 @@ export class ProjectApiService {
         `/api/projects/${encodedProjectId}/cockpit`,
       ),
       projects: this.http.get<readonly ProjectWorkspace[]>('/api/projects'),
+      preparationStatus: this.http.get<ProjectPreparationStatus>(
+        `/api/projects/${encodedProjectId}/preparation-status`,
+      ),
     }).pipe(
-      map(({ cockpit, projects }) => {
+      map(({ cockpit, projects, preparationStatus }) => {
         const project = projects.find((candidate) => candidate.id === projectId);
         if (!project) {
           throw new Error(
             'The cockpit loaded, but its project is missing from the project list. Refresh the page; if the problem continues, check the API data.',
           );
         }
-        return { cockpit, project };
+        return { cockpit, project, preparationStatus };
       }),
       catchError((error: unknown) => this.fail(error, 'load the project cockpit')),
     );
