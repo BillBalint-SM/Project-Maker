@@ -317,8 +317,8 @@ test.describe('project start journey', () => {
       .filter((question) => question.active)
       .map((question) => question.stableKey);
 
-    await setBaseQuestionActivity(page, activeStableKeys, false);
     try {
+      await setBaseQuestionActivity(page, activeStableKeys, false);
       await createProjectAndOpenSchema(page);
       const projectId = projectIdFromInterviewUrl(page);
       await expect(page.getByTestId('interview-no-active-questions')).toContainText(
