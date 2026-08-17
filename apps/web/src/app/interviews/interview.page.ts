@@ -95,6 +95,7 @@ export class InterviewPage implements OnInit, OnDestroy {
   readonly endedEditable = signal(false);
   readonly previewAfterFinish = signal(false);
   readonly projectArchived = signal(false);
+  readonly handoffContentRevision = signal(0);
 
   ngOnInit(): void {
     this.loadInterviewData();
@@ -164,7 +165,7 @@ export class InterviewPage implements OnInit, OnDestroy {
   }
 
   setSelected(stableKey: string, checked: boolean): void {
-    if (this.hasOpenRound()) {
+    if (this.hasOpenRound() || this.projectArchived()) {
       return;
     }
     const next = new Set(this.selectedKeys());
@@ -182,7 +183,7 @@ export class InterviewPage implements OnInit, OnDestroy {
   }
 
   publishSchema(): void {
-    if (this.schemaSaving()) {
+    if (this.schemaSaving() || this.projectArchived()) {
       return;
     }
     if (this.hasOpenRound()) {
@@ -252,7 +253,7 @@ export class InterviewPage implements OnInit, OnDestroy {
   }
 
   private startInitialRound(mode: InitialRoundStartMode): void {
-    if (this.roundSaving() || this.schema() === null) {
+    if (this.roundSaving() || this.schema() === null || this.projectArchived()) {
       if (this.schema() === null) {
         this.actionError.set('Az interjúkör indítása előtt fogadd el a projekt kérdéssémáját.');
       }
@@ -294,6 +295,7 @@ export class InterviewPage implements OnInit, OnDestroy {
       return;
     }
 
+    this.invalidateHandoffPreview();
     if (value.trim().length === 0) {
       this.setAnswerDraft(question.id, null);
       this.persistAnswer(question);
@@ -309,6 +311,7 @@ export class InterviewPage implements OnInit, OnDestroy {
       return;
     }
 
+    this.invalidateHandoffPreview();
     this.setAnswerDraft(question.id, value);
     this.persistAnswer(question);
   }
@@ -407,6 +410,7 @@ export class InterviewPage implements OnInit, OnDestroy {
       return;
     }
 
+    this.invalidateHandoffPreview();
     this.setAssessmentState(question.id, {
       ...this.assessmentState(question),
       mode: 'partial',
@@ -421,6 +425,7 @@ export class InterviewPage implements OnInit, OnDestroy {
       return;
     }
 
+    this.invalidateHandoffPreview();
     const state = this.assessmentState(question);
     this.setAssessmentState(question.id, {
       ...state,
@@ -436,6 +441,7 @@ export class InterviewPage implements OnInit, OnDestroy {
       return;
     }
 
+    this.invalidateHandoffPreview();
     this.setAssessmentState(question.id, {
       ...state,
       rationale,
@@ -464,6 +470,7 @@ export class InterviewPage implements OnInit, OnDestroy {
       return;
     }
 
+    this.invalidateHandoffPreview();
     this.setAssessmentState(question.id, {
       ...this.assessmentState(question),
       mode: 'automatic',
@@ -518,7 +525,7 @@ export class InterviewPage implements OnInit, OnDestroy {
 
   finishRound(sendNow: boolean): void {
     const round = this.round();
-    if (!round || round.status === 'ENDED' || this.completing()) {
+    if (!round || round.status === 'ENDED' || this.completing() || this.projectArchived()) {
       return;
     }
 
@@ -578,6 +585,7 @@ export class InterviewPage implements OnInit, OnDestroy {
   isCompleteDisabled(): boolean {
     return (
       this.completing() ||
+      this.projectArchived() ||
       this.hasPendingAnswerWork() ||
       this.hasAnswerSaveErrors() ||
       this.hasPendingAssessmentWork() ||
@@ -717,6 +725,12 @@ export class InterviewPage implements OnInit, OnDestroy {
       this.answerStates().get(question.id) ??
       createQuestionAnswerState(question.answer, question.answeredAt)
     );
+  }
+
+  private invalidateHandoffPreview(): void {
+    if (this.round()?.status === 'ENDED') {
+      this.handoffContentRevision.update((revision) => revision + 1);
+    }
   }
 
   private assessmentState(question: RoundQuestionSnapshot): QuestionAssessmentState {
@@ -1043,13 +1057,14 @@ export class InterviewPage implements OnInit, OnDestroy {
 
   private isAnswerEditingLocked(question: RoundQuestionSnapshot): boolean {
     const round = this.round();
-    return (round?.status === 'ENDED' && !this.endedEditable()) || this.completing() || !this.answerStates().has(question.id);
+    return this.projectArchived() || (round?.status === 'ENDED' && !this.endedEditable()) || this.completing() || !this.answerStates().has(question.id);
   }
 
   private isAssessmentEditingLocked(question: RoundQuestionSnapshot): boolean {
     const round = this.round();
     return (
       (round?.status === 'ENDED' && !this.endedEditable()) ||
+      this.projectArchived() ||
       this.completing() ||
       !this.assessmentStates().has(question.id)
     );

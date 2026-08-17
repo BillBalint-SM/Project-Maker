@@ -83,7 +83,7 @@ delivery change; no future merge identity is predicted here.
   drafts visible with retry, and renders deterministic Hungarian coaching from
   persisted question metadata.
 - End-user documentation: `docs/user-guide.md` teaches every stable delivered
-  route and business workflow with eight sanitized application screenshots,
+  route and business workflow with nine sanitized application screenshots,
   three state/workflow diagrams, recovery guidance, and explicit unavailable
   capability boundaries.
 

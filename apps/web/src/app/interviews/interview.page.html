@@ -19,6 +19,11 @@
       {{ feedback() }}
     </p-message>
   }
+  @if (projectArchived()) {
+    <p-message severity="info" data-testid="archived-interview-read-only">
+      Az archivált projekt interjúja és ügyfélcsomagjai csak olvashatók. Módosításhoz előbb állítsd vissza a projektet.
+    </p-message>
+  }
 
   @if (loading()) {
     <div class="state-panel" data-testid="interview-loading" aria-live="polite">
@@ -57,7 +62,7 @@
                 <input
                   type="checkbox"
                   [checked]="isSelected(question.stableKey)"
-                  [disabled]="schemaSaving() || hasOpenRound()"
+                  [disabled]="schemaSaving() || hasOpenRound() || projectArchived()"
                   [attr.aria-label]="'Kérdés használata: ' + question.text"
                   (change)="setSelected(question.stableKey, $any($event.target).checked)"
                 />
@@ -80,7 +85,7 @@
             <p-button
               [label]="schema() ? 'Séma frissítése' : 'Séma elfogadása és interjú indítása'"
               [loading]="schemaSaving()"
-              [disabled]="schemaSaving() || selectedCount() === 0 || hasOpenRound()"
+              [disabled]="schemaSaving() || selectedCount() === 0 || hasOpenRound() || projectArchived()"
               data-testid="publish-project-schema-button"
               (onClick)="publishSchema()"
             />
@@ -105,7 +110,7 @@
               <p-button
                 label="Interjú indításának újrapróbálása"
                 [loading]="roundSaving()"
-                [disabled]="roundSaving()"
+                [disabled]="roundSaving() || projectArchived()"
                 data-testid="retry-initial-intake-button"
                 (onClick)="retryInitialRoundStart()"
               />
@@ -113,7 +118,7 @@
               <p-button
                 label="Kezdő interjú indítása"
                 [loading]="roundSaving()"
-                [disabled]="roundSaving() || !schema()"
+                [disabled]="roundSaving() || !schema() || projectArchived()"
                 data-testid="create-interview-round-button"
                 (onClick)="createRound()"
               />
@@ -425,6 +430,7 @@
                 [roundId]="currentRound.id"
                 [openPreview]="previewAfterFinish()"
                 [readOnly]="projectArchived()"
+                [contentRevision]="handoffContentRevision()"
                 (openPreviewConsumed)="previewAfterFinish.set(false)"
                 (editableChange)="endedEditable.set($event)"
               />
