@@ -114,8 +114,8 @@ define `DOC-01` scope and evidence; the
 
 The verified guided-intake scope is intentionally limited to `INITIAL_INTAKE`.
 `INTAKE-04` delivers discovery-follow-up creation, review, resolution,
-conflict-safe editing of open items, and optional source linkage. Fresh
-The canonical migration sequence now runs through `0014`; current aggregate
+conflict-safe editing of open items, and optional source linkage. The canonical
+migration sequence now runs through `0015`; current aggregate
 closeout counts are recorded only after the complete INTAKE-06 verification
 receipt is available. SCORE-01.2
 Decision Review has API coverage for

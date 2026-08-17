@@ -73,6 +73,9 @@ export class CustomerFollowUpComponent implements OnInit {
   readonly saving = computed(
     () => this.operationPolicy.activeOperation() === 'customer-follow-up-save',
   );
+  readonly previewing = computed(
+    () => this.operationPolicy.activeOperation() === 'customer-follow-up-preview',
+  );
   readonly pinging = computed(
     () => this.operationPolicy.activeOperation() === 'customer-follow-up-ping',
   );
@@ -221,10 +224,17 @@ export class CustomerFollowUpComponent implements OnInit {
     const trigger = this.document.querySelector<HTMLElement>(
       '[data-testid="preview-follow-up-ping-button"] button',
     );
+    const lease = this.operationPolicy.tryAcquire('customer-follow-up-preview');
+    if (!lease) {
+      return;
+    }
     this.actionError.set(null);
     this.api
       .preview(this.projectId(), { expectedVersion: current.draftVersion })
-      .pipe(takeUntilDestroyed(this.destroyRef))
+      .pipe(
+        releaseCockpitOperationOnFinalize(lease),
+        takeUntilDestroyed(this.destroyRef),
+      )
       .subscribe({
         next: (preview) => {
           this.preview.set(preview);
