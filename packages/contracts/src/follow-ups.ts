@@ -20,17 +20,4 @@ export interface UpdateCustomerFollowUpInput {
   readonly expiresAt?: string | null;
 }
 
-export interface SendFollowUpPingInput {
-  readonly revisionId?: string;
-}
-
-export interface SendCustomerReviewEmailInput {
-  readonly revisionId?: string;
-}
-
-export interface CustomerEmailDelivery {
-  readonly projectId: string;
-  readonly revisionId: string;
-  readonly revisionVersion: number;
-  readonly sentAt: string;
-}
+export type SendFollowUpPingInput = Record<string, never>;

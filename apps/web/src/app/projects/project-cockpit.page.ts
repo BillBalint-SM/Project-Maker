@@ -101,9 +101,6 @@ export class ProjectCockpitPage implements OnInit {
   readonly pinging = computed(
     () => this.operationPolicy.activeOperation() === 'customer-follow-up-ping',
   );
-  readonly reviewSending = computed(
-    () => this.operationPolicy.activeOperation() === 'customer-review-email',
-  );
   readonly deleting = computed(
     () => this.operationPolicy.activeOperation() === 'project-delete',
   );
@@ -359,38 +356,6 @@ export class ProjectCockpitPage implements OnInit {
         next: (followUp) => {
           this.applyFollowUpStatus(followUp);
           this.feedback.set('Customer follow-up ping sent.');
-          this.refreshAuditEvents();
-        },
-        error: (error: Error) => {
-          this.actionError.set(error.message);
-          this.refreshAuditEvents();
-        },
-      });
-  }
-
-  sendCustomerReviewEmail(): void {
-    if (this.deleting() || this.emailActionsDisabled() || !this.view()) {
-      return;
-    }
-
-    const input = {};
-    const lease = this.operationPolicy.tryAcquire('customer-review-email');
-    if (!lease) {
-      return;
-    }
-    this.actionError.set(null);
-    this.feedback.set(null);
-    this.api
-      .sendCustomerReviewEmail(this.projectId, input)
-      .pipe(
-        releaseCockpitOperationOnFinalize(lease),
-        takeUntilDestroyed(this.destroyRef),
-      )
-      .subscribe({
-        next: (delivery) => {
-          this.feedback.set(
-            `Customer review email sent using Markdown revision v${delivery.revisionVersion}.`,
-          );
           this.refreshAuditEvents();
         },
         error: (error: Error) => {

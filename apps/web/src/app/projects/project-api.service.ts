@@ -4,14 +4,12 @@ import { forkJoin, map, Observable, throwError } from 'rxjs';
 import { catchError } from 'rxjs/operators';
 import type {
   AuditEventPage,
-  CustomerEmailDelivery,
   CustomerFollowUpState,
   CreateProjectInput,
   ProjectCockpit,
   ProjectActivityFeed,
   ProjectPreparationStatus,
   ProjectWorkspace,
-  SendCustomerReviewEmailInput,
   SendFollowUpPingInput,
   UpdateCustomerFollowUpInput,
 } from '@project-maker/contracts';
@@ -142,22 +140,6 @@ export class ProjectApiService {
       );
   }
 
-  sendCustomerReviewEmail(
-    projectId: string,
-    input?: SendCustomerReviewEmailInput,
-  ): Observable<CustomerEmailDelivery> {
-    return this.http
-      .post<CustomerEmailDelivery>(
-        `/api/projects/${encodeURIComponent(projectId)}/customer-review-email`,
-        input ?? {},
-      )
-      .pipe(
-        catchError((error: unknown) =>
-          this.fail(error, 'send the customer review email'),
-        ),
-      );
-  }
-
   updateWorkspace(
     projectId: string,
     input: UpdateProjectWorkspaceInput,
@@ -244,17 +226,11 @@ function followUpErrorNextStep(status: number, action: string): string {
     if (action === 'send a follow-up ping') {
       return 'The project may be archived or changed. Refresh the cockpit, then try again.';
     }
-    if (action === 'send the customer review email') {
-      return 'The project may be archived or have no Markdown revision. Open Markdown or restore the project, then try again.';
-    }
     return 'Refresh the project to see its latest lifecycle state.';
   }
 
   if (status === 503) {
-    if (
-      action === 'send a follow-up ping' ||
-      action === 'send the customer review email'
-    ) {
+    if (action === 'send a follow-up ping') {
       return 'Customer email delivery is unavailable. Check the API email configuration, then try again.';
     }
     return 'Review the entered values and try again.';

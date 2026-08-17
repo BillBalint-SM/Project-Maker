@@ -11,7 +11,6 @@ export const cockpitOperationIds = [
   'workspace-save',
   'customer-follow-up-save',
   'customer-follow-up-ping',
-  'customer-review-email',
   'discovery-create',
   'discovery-update',
   'discovery-source-link',

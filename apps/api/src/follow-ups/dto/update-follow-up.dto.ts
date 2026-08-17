@@ -3,7 +3,6 @@ import {
   IsISO8601,
   IsInt,
   IsOptional,
-  IsUUID,
   Matches,
   Max,
   Min,
@@ -34,13 +33,4 @@ export class UpdateFollowUpDto {
 }
 
 export class SendFollowUpPingDto {
-  @IsOptional()
-  @IsUUID()
-  revisionId?: string;
-}
-
-export class SendCustomerReviewEmailDto {
-  @IsOptional()
-  @IsUUID()
-  revisionId?: string;
 }
