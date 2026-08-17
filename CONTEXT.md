@@ -204,6 +204,55 @@ template can render. It is not arbitrary executable logic or an exposed raw
 data payload.
 _Avoid_: Script, unrestricted interpolation, default JSON dump
 
+**Customer correspondence**:
+A project-owned conversation anchored to one outbound Customer communication
+and containing every related Customer inbound message in received order.
+_Avoid_: Delivery attempt, single reply field, project-wide mailbox
+
+**Customer communication mailbox**:
+The organization-owned mailbox dedicated to Project Maker Customer messages.
+It is a transport boundary shared by Projects, not an employee's personal
+working inbox or the owner of Customer correspondence status.
+_Avoid_: Internal project owner's mailbox, Project inbox, employee task queue
+
+**Mail-system acceptance**:
+Confirmation that an outbound Customer message was accepted by the
+organization's mail system for processing. It does not prove delivery to or
+reading by the Customer.
+_Avoid_: Delivered, read receipt, Customer response
+
+**Outbound Customer sender**:
+The organization mailbox entered by a VPN-trusted employee and captured as the
+immutable `From` identity of one outbound Customer communication. Project Maker
+does not treat that address as proof of employee identity, and Reply-To remains
+separate.
+_Avoid_: Reply-To address, authenticated employee identity, current Project owner
+
+**Customer correspondence status**:
+The employee-owned processing state of a Customer correspondence: `Válaszra
+vár`, `Új válasz`, `Feldolgozás alatt`, or `Lezárva`. Unread count and outbound
+delivery state are separate; a later inbound message returns a closed
+correspondence to `Új válasz`.
+_Avoid_: Email delivery status, unread flag, Project preparation state
+
+**Customer inbound message**:
+One retained, human-readable reply received through the Customer correspondence
+channel. It preserves safe message text and bounded attachment metadata, but
+not attachment content.
+_Avoid_: Delivery receipt, audit payload, executable email content
+
+**Unmatched Customer message**:
+A message received by the Customer communication mailbox that cannot yet be
+linked to a Project-owned Customer correspondence. It remains available for
+explicit linking or dismissal rather than being silently discarded.
+_Avoid_: Spam, deleted reply, automatically inferred Project message
+
+**Mail-system event**:
+A non-conversational message such as a delivery failure, delivery report, or
+automatic absence response received through the Customer communication mailbox.
+It may explain delivery state but is not a Customer reply.
+_Avoid_: Customer inbound message, Customer decision, unread reply
+
 **Discovery follow-up**:
 A project-owned accountable discovery work item with a question, owner, due date, status, and next step.
 _Avoid_: Customer email follow-up, task
