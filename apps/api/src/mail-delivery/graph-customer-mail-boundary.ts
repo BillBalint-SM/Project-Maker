@@ -1,10 +1,12 @@
 import type {
   CustomerMailErrorCode,
+  CustomerMailboxCheckpoint,
   CustomerMailboxChange,
   CustomerMailboxChangePage,
   MailSubmissionResult,
   OutboundCustomerMessage,
 } from '@project-maker/contracts';
+import { Inject, Injectable } from '@nestjs/common';
 
 import {
   CustomerMailBoundaryError,
@@ -54,6 +56,7 @@ export class GraphMailClientError extends Error {
 }
 
 export interface GraphMailClient {
+  isConfigured(): boolean;
   submit(message: GraphOutboundMessage): Promise<
     | { readonly accepted: true; readonly id: string | null }
     | { readonly accepted: false }
@@ -61,11 +64,14 @@ export interface GraphMailClient {
   readMailboxPage(checkpoint: string | null): Promise<GraphMailboxPage>;
 }
 
+export const graphMailClientToken = 'GRAPH_MAIL_CLIENT';
+
+@Injectable()
 export class GraphCustomerMailBoundary implements CustomerOutboundMail, CustomerMailboxChanges {
-  constructor(private readonly client: GraphMailClient) {}
+  constructor(@Inject(graphMailClientToken) private readonly client: GraphMailClient) {}
 
   isConfigured(): boolean {
-    return true;
+    return this.client.isConfigured();
   }
 
   async submit(message: OutboundCustomerMessage): Promise<MailSubmissionResult> {
@@ -80,18 +86,22 @@ export class GraphCustomerMailBoundary implements CustomerOutboundMail, Customer
     }
   }
 
-  async readChanges(checkpoint: string | null): Promise<CustomerMailboxChangePage> {
+  async readChanges(checkpoint: CustomerMailboxCheckpoint | null): Promise<CustomerMailboxChangePage> {
     try {
-      const page = await this.client.readMailboxPage(checkpoint);
+      const page = await this.client.readMailboxPage(checkpoint?.value ?? null);
       return Object.freeze({
         changes: Object.freeze(page.value.map(normalizeMailboxChange)),
-        nextPageCursor: page.nextCheckpoint,
-        checkpointCursor: page.completedCheckpoint,
+        nextPageCheckpoint: toCheckpoint(page.nextCheckpoint),
+        completedCheckpoint: toCheckpoint(page.completedCheckpoint),
       });
     } catch (error) {
       throw normalizeGraphError(error);
     }
   }
+}
+
+function toCheckpoint(value: string | null): CustomerMailboxCheckpoint | null {
+  return value === null ? null : Object.freeze({ value });
 }
 
 function toGraphMessage(message: OutboundCustomerMessage): GraphOutboundMessage {

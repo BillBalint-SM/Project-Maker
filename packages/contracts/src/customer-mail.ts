@@ -48,8 +48,12 @@ export interface CustomerMailboxChange {
 
 export interface CustomerMailboxChangePage {
   readonly changes: readonly CustomerMailboxChange[];
-  readonly nextPageCursor: string | null;
-  readonly checkpointCursor: string | null;
+  readonly nextPageCheckpoint: CustomerMailboxCheckpoint | null;
+  readonly completedCheckpoint: CustomerMailboxCheckpoint | null;
+}
+
+export interface CustomerMailboxCheckpoint {
+  readonly value: string;
 }
 
 export function parseMailSystemAcceptanceState(value: unknown): MailSystemAcceptanceState {
