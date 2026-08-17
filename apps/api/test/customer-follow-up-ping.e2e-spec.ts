@@ -12,10 +12,12 @@ import {
   customerMailerToken,
   type CustomerMailerMessage,
 } from '../src/mail-delivery/smtp-mailer.service';
+import { CustomerFollowUpService } from '../src/follow-ups/follow-up.service';
 
 describe('Customer follow-up ping draft and manual delivery', () => {
   let app: INestApplication;
   let dataSource: DataSource;
+  let followUpService: CustomerFollowUpService;
   const delivered: CustomerMailerMessage[] = [];
   const deliveredMessageFrozen: boolean[] = [];
   let deliveryMode: 'SUCCESS' | 'FAILED' | 'UNKNOWN' = 'SUCCESS';
@@ -55,9 +57,13 @@ describe('Customer follow-up ping draft and manual delivery', () => {
     app = module.createNestApplication({ logger: false });
     await app.init();
     dataSource = app.get(DataSource);
+    followUpService = app.get(CustomerFollowUpService);
   });
 
-  beforeEach(() => {
+  beforeEach(async () => {
+    await dataSource.query(
+      'UPDATE customer_follow_ups SET enabled = false, next_ping_at = NULL WHERE enabled = true',
+    );
     delivered.length = 0;
     deliveryMode = 'SUCCESS';
     deliveryStarted = null;
@@ -678,6 +684,309 @@ describe('Customer follow-up ping draft and manual delivery', () => {
 
     assert.equal(delivered.length, 0);
   });
+
+  it('pauses an automatic schedule after an uncertain submission until explicit recovery', async () => {
+    const projectId = await createProject(app, 'scheduled-unknown');
+    await request(app.getHttpServer())
+      .patch(`/projects/${projectId}/follow-up/draft`)
+      .send({
+        messageDraft: 'Kérlek, erősítsd meg a még nyitott kérdést.',
+        referencedFollowUpId: null,
+        expectedVersion: 1,
+      })
+      .expect(200);
+    await request(app.getHttpServer())
+      .patch(`/projects/${projectId}/follow-up`)
+      .send({ enabled: true, intervalMinutes: 60 })
+      .expect(200);
+
+    const dueAt = new Date('2026-08-17T09:00:00.000Z');
+    await dataSource.query(
+      'UPDATE customer_follow_ups SET next_ping_at = $2 WHERE project_id = $1',
+      [projectId, dueAt],
+    );
+    deliveryMode = 'UNKNOWN';
+
+    await followUpService.processDuePings(dueAt);
+
+    const paused = await request(app.getHttpServer())
+      .get(`/projects/${projectId}/follow-up`)
+      .expect(200);
+    assert.equal(paused.body.enabled, true);
+    assert.equal(paused.body.nextPingAt, null);
+    assert.equal(paused.body.latestManualAttempt.state, 'UNKNOWN');
+    assert.equal(paused.body.latestManualAttempt.draftVersion, 2);
+    assert.equal(delivered.length, 0);
+
+    deliveryMode = 'SUCCESS';
+    await request(app.getHttpServer())
+      .post(`/projects/${projectId}/follow-up/ping/retry`)
+      .send({
+        attemptId: paused.body.latestManualAttempt.attemptId,
+        acknowledgeDuplicateRisk: true,
+      })
+      .expect(201);
+    const resumed = await request(app.getHttpServer())
+      .get(`/projects/${projectId}/follow-up`)
+      .expect(200);
+    assert.equal(resumed.body.enabled, true);
+    assert.notEqual(resumed.body.nextPingAt, null);
+  });
+
+  it('prevents a due schedule from bypassing an unresolved manual UNKNOWN attempt', async () => {
+    const projectId = await createProject(app, 'manual-unknown-schedule');
+    await request(app.getHttpServer())
+      .patch(`/projects/${projectId}/follow-up/draft`)
+      .send({
+        messageDraft: 'Kérlek, erősítsd meg a még nyitott kérdést.',
+        referencedFollowUpId: null,
+        expectedVersion: 1,
+      })
+      .expect(200);
+    await request(app.getHttpServer())
+      .patch(`/projects/${projectId}/follow-up`)
+      .send({ enabled: true, intervalMinutes: 60 })
+      .expect(200);
+    const preview = await request(app.getHttpServer())
+      .post(`/projects/${projectId}/follow-up/ping/preview`)
+      .send({ expectedVersion: 2 })
+      .expect(201);
+
+    deliveryMode = 'UNKNOWN';
+    await request(app.getHttpServer())
+      .post(`/projects/${projectId}/follow-up/ping`)
+      .send({ previewToken: preview.body.previewToken })
+      .expect(503);
+
+    const paused = await request(app.getHttpServer())
+      .get(`/projects/${projectId}/follow-up`)
+      .expect(200);
+    assert.equal(paused.body.enabled, true);
+    assert.equal(paused.body.nextPingAt, null);
+    assert.equal(paused.body.latestManualAttempt.state, 'UNKNOWN');
+    const unknownAttemptId = paused.body.latestManualAttempt.attemptId as string;
+
+    const dueAt = new Date('2026-08-17T10:00:00.000Z');
+    await dataSource.query(
+      'UPDATE customer_follow_ups SET next_ping_at = $2 WHERE project_id = $1',
+      [projectId, dueAt],
+    );
+    const processed = await followUpService.processDuePings(dueAt);
+    assert.deepEqual(processed, []);
+    const stillPaused = await request(app.getHttpServer())
+      .get(`/projects/${projectId}/follow-up`)
+      .expect(200);
+    assert.equal(stillPaused.body.nextPingAt, null);
+    assert.equal(stillPaused.body.latestManualAttempt.attemptId, unknownAttemptId);
+
+    deliveryMode = 'SUCCESS';
+    await request(app.getHttpServer())
+      .post(`/projects/${projectId}/follow-up/ping/retry`)
+      .send({ attemptId: unknownAttemptId, acknowledgeDuplicateRisk: true })
+      .expect(201);
+    const resumed = await request(app.getHttpServer())
+      .get(`/projects/${projectId}/follow-up`)
+      .expect(200);
+    assert.equal(resumed.body.enabled, true);
+    assert.notEqual(resumed.body.nextPingAt, null);
+  });
+
+  it('pauses a stale scheduled reference before submission and resumes after a valid draft save', async () => {
+    const projectId = await createProject(app, 'scheduled-reference-pause');
+    const reference = await createDiscoveryFollowUp(
+      app,
+      projectId,
+      'Melyik jóváhagyásra várunk?',
+    );
+    await request(app.getHttpServer())
+      .patch(`/projects/${projectId}/follow-up/draft`)
+      .send({
+        messageDraft: 'Kérlek, jelezd a jóváhagyás állapotát.',
+        referencedFollowUpId: reference.id,
+        expectedVersion: 1,
+      })
+      .expect(200);
+    await request(app.getHttpServer())
+      .patch(`/projects/${projectId}/follow-up`)
+      .send({ enabled: true, intervalMinutes: 60 })
+      .expect(200);
+    await request(app.getHttpServer())
+      .post(`/projects/${projectId}/discovery-follow-ups/${reference.id}/resolve`)
+      .send({ status: 'Megválaszolva', decisionOrAnswer: 'A jóváhagyás megérkezett.' })
+      .expect(200);
+
+    const dueAt = new Date('2026-08-17T11:00:00.000Z');
+    await dataSource.query(
+      'UPDATE customer_follow_ups SET next_ping_at = $2 WHERE project_id = $1',
+      [projectId, dueAt],
+    );
+    await followUpService.processDuePings(dueAt);
+
+    const paused = await request(app.getHttpServer())
+      .get(`/projects/${projectId}/follow-up`)
+      .expect(200);
+    assert.equal(paused.body.enabled, true);
+    assert.equal(paused.body.nextPingAt, null);
+    assert.equal(paused.body.lastDeliveryStatus, 'NEVER');
+    assert.equal(paused.body.lastDeliveryError, null);
+    assert.equal(paused.body.latestManualAttempt, null);
+    assert.equal(delivered.length, 0);
+
+    const resumed = await request(app.getHttpServer())
+      .patch(`/projects/${projectId}/follow-up/draft`)
+      .send({
+        messageDraft: 'Kérlek, erősítsd meg a következő egyeztetés időpontját.',
+        referencedFollowUpId: null,
+        expectedVersion: 2,
+      })
+      .expect(200);
+    assert.equal(resumed.body.enabled, true);
+    assert.notEqual(resumed.body.nextPingAt, null);
+  });
+
+  it('claims one canonical scheduled ping across concurrent workers and advances from the controlled clock', async () => {
+    const projectId = await createProject(app, 'scheduled-concurrency');
+    const reference = await createDiscoveryFollowUp(
+      app,
+      projectId,
+      'Melyik döntést kell megerősíteni?',
+    );
+    await request(app.getHttpServer())
+      .patch(`/projects/${projectId}/follow-up/draft`)
+      .send({
+        messageDraft: 'Kérlek, erősítsd meg a döntést.',
+        referencedFollowUpId: reference.id,
+        expectedVersion: 1,
+      })
+      .expect(200);
+    await request(app.getHttpServer())
+      .patch(`/projects/${projectId}/follow-up`)
+      .send({ enabled: true, intervalMinutes: 60 })
+      .expect(200);
+    const dueAt = new Date('2026-08-17T12:00:00.000Z');
+    await dataSource.query(
+      'UPDATE customer_follow_ups SET next_ping_at = $2 WHERE project_id = $1',
+      [projectId, dueAt],
+    );
+    let deliveryBegan!: () => void;
+    const deliveryBeganPromise = new Promise<void>((resolve) => {
+      deliveryBegan = resolve;
+    });
+    deliveryStarted = deliveryBegan;
+    releaseDelivery = () => undefined;
+    const projectChange = dataSource.createQueryRunner();
+    await projectChange.connect();
+    let firstWorker!: ReturnType<CustomerFollowUpService['processDuePings']>;
+    try {
+      await projectChange.startTransaction();
+      await projectChange.query(
+        'UPDATE projects SET customer_contact_email = $2 WHERE id = $1',
+        [projectId, 'current-scheduled-recipient@example.test'],
+      );
+      firstWorker = followUpService.processDuePings(dueAt);
+      await waitForProjectClaimLock(dataSource);
+      await projectChange.commitTransaction();
+    } finally {
+      if (projectChange.isTransactionActive) {
+        await projectChange.rollbackTransaction();
+      }
+      await projectChange.release();
+    }
+    await deliveryBeganPromise;
+
+    const secondWorker = await followUpService.processDuePings(dueAt);
+    assert.deepEqual(secondWorker, []);
+    releaseDelivery?.();
+    const firstResult = await firstWorker;
+
+    assert.equal(firstResult.length, 1);
+    assert.equal(firstResult[0].nextPingAt, '2026-08-17T13:00:00.000Z');
+    assert.equal(delivered.length, 1);
+    assert.equal(delivered[0].to, 'current-scheduled-recipient@example.test');
+    assert.match(delivered[0].text, /Kérlek, erősítsd meg a döntést\./);
+    assert.match(delivered[0].text, /Kérdés: Melyik döntést kell megerősíteni\?/);
+    const attempts = await dataSource.query<Array<{ state: string }>>(
+      'SELECT state FROM customer_follow_up_delivery_attempts WHERE project_id = $1',
+      [projectId],
+    );
+    assert.deepEqual(attempts, [{ state: 'SENT' }]);
+  });
+
+  it('waits for the next cadence after a known scheduled rejection', async () => {
+    const projectId = await createProject(app, 'scheduled-failed');
+    await request(app.getHttpServer())
+      .patch(`/projects/${projectId}/follow-up/draft`)
+      .send({
+        messageDraft: 'Kérlek, válaszolj a rövid emlékeztetőre.',
+        referencedFollowUpId: null,
+        expectedVersion: 1,
+      })
+      .expect(200);
+    await request(app.getHttpServer())
+      .patch(`/projects/${projectId}/follow-up`)
+      .send({ enabled: true, intervalMinutes: 90 })
+      .expect(200);
+    const dueAt = new Date('2026-08-17T14:00:00.000Z');
+    await dataSource.query(
+      'UPDATE customer_follow_ups SET next_ping_at = $2 WHERE project_id = $1',
+      [projectId, dueAt],
+    );
+    deliveryMode = 'FAILED';
+
+    await followUpService.processDuePings(dueAt);
+
+    const state = await request(app.getHttpServer())
+      .get(`/projects/${projectId}/follow-up`)
+      .expect(200);
+    assert.equal(state.body.enabled, true);
+    assert.equal(state.body.nextPingAt, '2026-08-17T15:30:00.000Z');
+    assert.equal(state.body.lastDeliveryStatus, 'FAILED');
+    assert.equal(state.body.latestManualAttempt.state, 'FAILED');
+    assert.equal(delivered.length, 0);
+  });
+
+  it('stops expired and archived schedules without creating a delivery attempt', async () => {
+    const expiredProjectId = await createProject(app, 'scheduled-expired');
+    const archivedProjectId = await createProject(app, 'scheduled-archived');
+    for (const projectId of [expiredProjectId, archivedProjectId]) {
+      await request(app.getHttpServer())
+        .patch(`/projects/${projectId}/follow-up/draft`)
+        .send({
+          messageDraft: 'Kérlek, válaszolj az emlékeztetőre.',
+          referencedFollowUpId: null,
+          expectedVersion: 1,
+        })
+        .expect(200);
+      await request(app.getHttpServer())
+        .patch(`/projects/${projectId}/follow-up`)
+        .send({ enabled: true, intervalMinutes: 60 })
+        .expect(200);
+    }
+    await request(app.getHttpServer())
+      .post(`/projects/${archivedProjectId}/archive`)
+      .send({})
+      .expect(201);
+    const dueAt = new Date('2026-08-17T16:00:00.000Z');
+    await dataSource.query(
+      `UPDATE customer_follow_ups
+       SET next_ping_at = $2::timestamptz,
+           expires_at = CASE WHEN project_id = $1 THEN $2::timestamptz ELSE NULL END
+       WHERE project_id = ANY($3::uuid[])`,
+      [expiredProjectId, dueAt, [expiredProjectId, archivedProjectId]],
+    );
+
+    await followUpService.processDuePings(dueAt);
+
+    for (const projectId of [expiredProjectId, archivedProjectId]) {
+      const state = await request(app.getHttpServer())
+        .get(`/projects/${projectId}/follow-up`)
+        .expect(200);
+      assert.equal(state.body.enabled, false);
+      assert.equal(state.body.nextPingAt, null);
+      assert.equal(state.body.latestManualAttempt, null);
+    }
+    assert.equal(delivered.length, 0);
+  });
 });
 
 async function createProject(app: INestApplication, label: string): Promise<string> {
@@ -711,4 +1020,21 @@ async function createDiscoveryFollowUp(
     })
     .expect(201);
   return response.body as { readonly id: string };
+}
+
+async function waitForProjectClaimLock(dataSource: DataSource): Promise<void> {
+  for (let attempt = 0; attempt < 200; attempt += 1) {
+    const waiting = await dataSource.query<Array<{ waiting: boolean }>>(
+      `SELECT EXISTS (
+         SELECT 1
+         FROM pg_stat_activity
+         WHERE datname = current_database()
+           AND wait_event_type = 'Lock'
+           AND query ILIKE '%project%'
+       ) AS waiting`,
+    );
+    if (waiting[0]?.waiting) return;
+    await new Promise<void>((resolve) => setImmediate(resolve));
+  }
+  throw new Error('Scheduled claim did not wait for the current project lock.');
 }
