@@ -1,8 +1,7 @@
 import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post } from '@nestjs/common';
-import type { CustomerEmailDelivery, CustomerFollowUpState } from '@project-maker/contracts';
+import type { CustomerFollowUpState } from '@project-maker/contracts';
 
 import {
-  SendCustomerReviewEmailDto,
   SendFollowUpPingDto,
   UpdateFollowUpDto,
 } from './dto/update-follow-up.dto';
@@ -33,13 +32,5 @@ export class CustomerFollowUpController {
     @Body() input: SendFollowUpPingDto,
   ): Promise<CustomerFollowUpState> {
     return this.customerFollowUpService.sendManualPing(projectId, input);
-  }
-
-  @Post('customer-review-email')
-  sendCustomerReviewEmail(
-    @Param('projectId', new ParseUUIDPipe()) projectId: string,
-    @Body() input: SendCustomerReviewEmailDto,
-  ): Promise<CustomerEmailDelivery> {
-    return this.customerFollowUpService.sendCustomerReviewEmail(projectId, input);
   }
 }
