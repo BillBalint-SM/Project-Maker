@@ -20,6 +20,7 @@ export interface NextActionOwner {
 }
 
 export interface CreateProjectInput {
+  readonly creationRequestId?: string;
   readonly name: string;
   readonly customerContactName: string;
   readonly customerContactEmail: string;
@@ -27,6 +28,13 @@ export interface CreateProjectInput {
   readonly nextActionOwnerRole?: NextActionOwnerRole | null;
   readonly nextAction?: string | null;
   readonly dueAt?: string | null;
+}
+
+export interface UpdateProjectBasicsInput {
+  readonly name: string;
+  readonly customerContactName: string;
+  readonly customerContactEmail: string;
+  readonly internalOwnerName: string;
 }
 
 export interface ProjectWorkspace {

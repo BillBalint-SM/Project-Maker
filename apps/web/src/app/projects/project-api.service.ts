@@ -9,6 +9,7 @@ import type {
   ProjectActivityFeed,
   ProjectPreparationStatus,
   ProjectWorkspace,
+  UpdateProjectBasicsInput,
 } from '@project-maker/contracts';
 
 import {
@@ -44,6 +45,18 @@ export class ProjectApiService {
       .pipe(catchError((error: unknown) => this.fail(error, 'create the project')));
   }
 
+  updateProjectBasics(
+    projectId: string,
+    input: UpdateProjectBasicsInput,
+  ): Observable<ProjectWorkspace> {
+    return this.http
+      .patch<ProjectWorkspace>(
+        `/api/projects/${encodeURIComponent(projectId)}/basics`,
+        input,
+      )
+      .pipe(catchError((error: unknown) => this.fail(error, 'save the project basics')));
+  }
+
   loadCockpit(projectId: string): Observable<CockpitView> {
     const encodedProjectId = encodeURIComponent(projectId);
     return forkJoin({
@@ -51,15 +64,18 @@ export class ProjectApiService {
         `/api/projects/${encodedProjectId}/cockpit`,
       ),
       projects: this.http.get<readonly ProjectWorkspace[]>('/api/projects'),
+      preparationStatus: this.http.get<ProjectPreparationStatus>(
+        `/api/projects/${encodedProjectId}/preparation-status`,
+      ),
     }).pipe(
-      map(({ cockpit, projects }) => {
+      map(({ cockpit, projects, preparationStatus }) => {
         const project = projects.find((candidate) => candidate.id === projectId);
         if (!project) {
           throw new Error(
             'The cockpit loaded, but its project is missing from the project list. Refresh the page; if the problem continues, check the API data.',
           );
         }
-        return { cockpit, project };
+        return { cockpit, project, preparationStatus };
       }),
       catchError((error: unknown) => this.fail(error, 'load the project cockpit')),
     );

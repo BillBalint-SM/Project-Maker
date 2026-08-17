@@ -5,7 +5,8 @@ import { CardModule } from 'primeng/card';
 import { MessageModule } from 'primeng/message';
 import { ProgressSpinnerModule } from 'primeng/progressspinner';
 import { TagModule } from 'primeng/tag';
-import type { ProjectWorkspace } from '@project-maker/contracts';
+import type { ProjectPreparationStatus, ProjectWorkspace } from '@project-maker/contracts';
+import { forkJoin, map, of, switchMap } from 'rxjs';
 
 import { ProjectApiService } from './project-api.service';
 import { projectStatusLabel } from './project-status-label';
@@ -26,10 +27,22 @@ import { projectStatusLabel } from './project-status-label';
 export class ProjectListPage implements OnInit {
   private readonly api = inject(ProjectApiService);
 
-  readonly projects = signal<readonly ProjectWorkspace[]>([]);
+  readonly projects = signal<readonly PortfolioProject[]>([]);
   readonly loading = signal(true);
   readonly loadError = signal<string | null>(null);
   readonly statusLabel = projectStatusLabel;
+
+  projectRoute(entry: PortfolioProject): readonly string[] {
+    return entry.preparationStatus?.state === 'SCHEMA_REQUIRED'
+      ? ['/projects', entry.project.id, 'interview']
+      : ['/projects', entry.project.id, 'status'];
+  }
+
+  portfolioStatusLabel(entry: PortfolioProject): string {
+    return entry.preparationStatus?.state === 'SCHEMA_REQUIRED'
+      ? entry.preparationStatus.label
+      : this.statusLabel(entry.project.status);
+  }
 
   ngOnInit(): void {
     this.loadProjects();
@@ -38,7 +51,22 @@ export class ProjectListPage implements OnInit {
   loadProjects(): void {
     this.loading.set(true);
     this.loadError.set(null);
-    this.api.listProjects().subscribe({
+    this.api.listProjects().pipe(
+      switchMap((projects) => {
+        if (projects.length === 0) {
+          return of([] as readonly PortfolioProject[]);
+        }
+        return forkJoin(
+          projects.map((project) =>
+            project.status === 'ARCHIVED'
+              ? of({ project, preparationStatus: null })
+              : this.api.loadPreparationStatus(project.id).pipe(
+                  map((preparationStatus) => ({ project, preparationStatus })),
+                ),
+          ),
+        );
+      }),
+    ).subscribe({
       next: (projects) => {
         this.projects.set(projects);
         this.loading.set(false);
@@ -50,4 +78,9 @@ export class ProjectListPage implements OnInit {
     });
   }
 
+}
+
+interface PortfolioProject {
+  readonly project: ProjectWorkspace;
+  readonly preparationStatus: ProjectPreparationStatus | null;
 }

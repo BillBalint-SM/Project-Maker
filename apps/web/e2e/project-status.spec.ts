@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 
-test('shows the server-derived next action and opens the project interview', async ({ page }) => {
+test('resumes schema-required projects directly and keeps the server-derived status available', async ({ page }) => {
   const uniquePart = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
   const created = await page.request.post('/api/projects', {
     data: {
@@ -15,7 +15,9 @@ test('shows the server-derived next action and opens the project interview', asy
 
   await page.goto('/');
   await page.getByTestId(`project-card-${project.id}`).click();
-  await expect(page).toHaveURL(`/projects/${project.id}/status`);
+  await expect(page).toHaveURL(`/projects/${project.id}/interview`);
+
+  await page.goto(`/projects/${project.id}/status`);
 
   await expect(page.getByRole('heading', { name: 'Projektállapot' })).toBeVisible();
   await expect(page.getByTestId('project-preparation-state')).toHaveText(

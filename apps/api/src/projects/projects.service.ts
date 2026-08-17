@@ -24,6 +24,7 @@ import { MarkdownRevisionEntity } from '../markdown/markdown-revision.entity';
 import { ProjectQuestionSchemaEntity } from '../question-bank/project-question-schema.entity';
 import { MarkdownService } from '../markdown/markdown.service';
 import { CreateProjectDto } from './dto/create-project.dto';
+import { UpdateProjectBasicsDto } from './dto/update-project-basics.dto';
 import { UpdateProjectWorkspaceDto } from './dto/update-project-workspace.dto';
 import { Project } from './project.entity';
 
@@ -48,21 +49,37 @@ export class ProjectsService {
   ) {}
 
   async create(input: CreateProjectDto): Promise<ProjectWorkspace> {
-    const project = this.projectRepository.create({
-      id: randomUUID(),
-      name: requireText(input.name, 'name'),
-      customerContactName: requireText(input.customerContactName, 'customerContactName'),
-      customerContactEmail: requireText(input.customerContactEmail, 'customerContactEmail'),
-      status: draftStatus,
-      internalOwnerName: requireText(input.internalOwnerName, 'internalOwnerName'),
-      nextActionOwnerRole: input.nextActionOwnerRole ?? null,
-      ballOwner: null,
-      nextAction: optionalText(input.nextAction, 'nextAction'),
-      dueAt: parseDueAt(input.dueAt),
-    });
+    return this.dataSource.transaction(async (manager) => {
+      const creationRequestId = input.creationRequestId ?? null;
+      const projectRepository = manager.getRepository(Project);
+      if (creationRequestId) {
+        await manager.query(
+          'SELECT pg_advisory_xact_lock(hashtext($1))',
+          [creationRequestId],
+        );
+        const existingProject = await projectRepository.findOneBy({ creationRequestId });
+        if (existingProject) {
+          return toWorkspace(existingProject);
+        }
+      }
 
-    synchronizeCompatibilityOwner(project);
-    return toWorkspace(await this.projectRepository.save(project));
+      const project = projectRepository.create({
+        id: randomUUID(),
+        creationRequestId,
+        name: requireText(input.name, 'name'),
+        customerContactName: requireText(input.customerContactName, 'customerContactName'),
+        customerContactEmail: requireText(input.customerContactEmail, 'customerContactEmail'),
+        status: draftStatus,
+        internalOwnerName: requireText(input.internalOwnerName, 'internalOwnerName'),
+        nextActionOwnerRole: input.nextActionOwnerRole ?? null,
+        ballOwner: null,
+        nextAction: optionalText(input.nextAction, 'nextAction'),
+        dueAt: parseDueAt(input.dueAt),
+      });
+
+      synchronizeCompatibilityOwner(project);
+      return toWorkspace(await projectRepository.save(project));
+    });
   }
 
   async list(): Promise<readonly ProjectWorkspace[]> {
@@ -136,6 +153,41 @@ export class ProjectsService {
       }
 
       return toWorkspace(savedProject);
+    });
+  }
+
+  async updateBasics(
+    projectId: string,
+    input: UpdateProjectBasicsDto,
+  ): Promise<ProjectWorkspace> {
+    return this.dataSource.transaction(async (manager) => {
+      const project = await findLockedProject(manager, projectId);
+      if (
+        project.status === archivedStatus ||
+        await manager.getRepository(ProjectQuestionSchemaEntity).existsBy({ projectId })
+      ) {
+        throw new ConflictException(
+          'Project basics can only be changed before the first question schema is accepted and while the project is active.',
+        );
+      }
+
+      project.name = requireText(input.name, 'name');
+      project.customerContactName = requireText(
+        input.customerContactName,
+        'customerContactName',
+      );
+      project.customerContactEmail = requireText(
+        input.customerContactEmail,
+        'customerContactEmail',
+      );
+      project.internalOwnerName = requireText(
+        input.internalOwnerName,
+        'internalOwnerName',
+      );
+      validateNextActionOwner(project);
+      synchronizeCompatibilityOwner(project);
+
+      return toWorkspace(await manager.getRepository(Project).save(project));
     });
   }
 
