@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 
 import { BadRequestException, ConflictException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { exactPteCustomerSenderAddressPattern } from '@project-maker/contracts/customer-mail';
 import { isEmail } from 'class-validator';
 
 export interface CustomerSenderSelection {
@@ -67,5 +68,5 @@ export function customerReplyToAddress(mailbox: string, token: string): string {
 }
 
 function isExactPteAddress(value: string): boolean {
-  return isEmail(value) && /^[^@\s]+@pte\.hu$/i.test(value);
+  return isEmail(value) && exactPteCustomerSenderAddressPattern.test(value);
 }
