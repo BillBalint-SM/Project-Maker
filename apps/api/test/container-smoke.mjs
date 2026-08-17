@@ -6,6 +6,7 @@ const project = await requestJson(201, 'POST', '/projects', {
   name: 'Container smoke project',
   customerContactName: 'Container Smoke Contact',
   customerContactEmail: 'container-smoke@example.test',
+  internalOwnerName: 'Container Smoke PO/PM',
 });
 
 assert.equal(typeof project.id, 'string');
