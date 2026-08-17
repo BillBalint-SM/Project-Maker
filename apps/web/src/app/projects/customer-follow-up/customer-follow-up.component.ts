@@ -17,6 +17,7 @@ import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angula
 import { RouterLink } from '@angular/router';
 import type {
   CustomerFollowUpPingPreview,
+  CustomerFollowUpManualAttempt,
   CustomerFollowUpReferenceOption,
   CustomerFollowUpState,
   UpdateCustomerFollowUpInput,
@@ -31,6 +32,7 @@ import { TextareaModule } from 'primeng/textarea';
 
 import {
   COCKPIT_OPERATION_POLICY,
+  type CockpitOperationLease,
   releaseCockpitOperationOnFinalize,
 } from '../cockpit-operation-policy';
 import {
@@ -72,7 +74,7 @@ export class CustomerFollowUpComponent implements OnInit {
   readonly draftFeedback = signal<string | null>(null);
   readonly sendResult = signal<string | null>(null);
   readonly preview = signal<CustomerFollowUpPingPreview | null>(null);
-  readonly duplicateRiskPending = signal(false);
+  readonly retryConfirmation = signal<CustomerFollowUpManualAttempt | null>(null);
   readonly referenceOptions = signal<readonly CustomerFollowUpReferenceOption[]>([]);
   readonly saving = computed(
     () => this.operationPolicy.activeOperation() === 'customer-follow-up-save',
@@ -84,6 +86,8 @@ export class CustomerFollowUpComponent implements OnInit {
     () => this.operationPolicy.activeOperation() === 'customer-follow-up-ping',
   );
   private previewFocusReturn: HTMLElement | null = null;
+  private retryFocusReturn: HTMLElement | null = null;
+  private recoveredPendingLease: CockpitOperationLease | null = null;
 
   readonly settingsForm = new FormGroup({
     enabled: new FormControl(false, { nonNullable: true }),
@@ -108,6 +112,10 @@ export class CustomerFollowUpComponent implements OnInit {
   });
 
   constructor() {
+    this.destroyRef.onDestroy(() => {
+      this.recoveredPendingLease?.release();
+      this.recoveredPendingLease = null;
+    });
     let initialized = false;
     let wasArchived = false;
     effect(() => {
@@ -242,7 +250,6 @@ export class CustomerFollowUpComponent implements OnInit {
       .subscribe({
         next: (preview) => {
           this.preview.set(preview);
-          this.duplicateRiskPending.set(false);
           this.previewFocusReturn = trigger;
           this.focusAfterNextRender('[data-testid="cancel-follow-up-preview-button"] button');
         },
@@ -253,7 +260,6 @@ export class CustomerFollowUpComponent implements OnInit {
   cancelPreview(): void {
     const focusReturn = this.previewFocusReturn;
     this.preview.set(null);
-    this.duplicateRiskPending.set(false);
     this.previewFocusReturn = null;
     if (focusReturn) {
       afterNextRender(() => focusReturn.isConnected && focusReturn.focus(), {
@@ -262,7 +268,7 @@ export class CustomerFollowUpComponent implements OnInit {
     }
   }
 
-  sendPing(acknowledgeDuplicateRisk = false): void {
+  sendPing(): void {
     const currentPreview = this.preview();
     if (!currentPreview || this.controlsDisabled()) {
       return;
@@ -276,7 +282,6 @@ export class CustomerFollowUpComponent implements OnInit {
     this.api
       .send(this.projectId(), {
         previewToken: currentPreview.previewToken,
-        acknowledgeDuplicateRisk,
       })
       .pipe(
         releaseCockpitOperationOnFinalize(lease),
@@ -285,7 +290,6 @@ export class CustomerFollowUpComponent implements OnInit {
       .subscribe({
         next: () => {
           this.preview.set(null);
-          this.duplicateRiskPending.set(false);
           this.sendResult.set('Ping elküldve az ügyfélnek.');
           this.reloadState();
           this.focusAfterNextRender('[data-testid="follow-up-send-result"]');
@@ -296,35 +300,111 @@ export class CustomerFollowUpComponent implements OnInit {
             error instanceof CustomerFollowUpApiError &&
             error.code === 'FOLLOW_UP_DELIVERY_UNKNOWN'
           ) {
-            this.duplicateRiskPending.set(true);
-            this.actionError.set(null);
-            this.focusAfterNextRender(
-              '[data-testid="acknowledge-follow-up-duplicate-risk-button"] button',
+            this.preview.set(null);
+            this.actionError.set(error.message);
+            this.reloadState(
+              '[data-testid="retry-unknown-follow-up-ping-button"] button',
+              true,
+            );
+            this.committedChange.emit();
+            return;
+          }
+          if (
+            error instanceof CustomerFollowUpApiError &&
+            error.code === 'FOLLOW_UP_DELIVERY_FAILED'
+          ) {
+            this.preview.set(null);
+            this.actionError.set(error.message);
+            this.reloadState(
+              '[data-testid="retry-failed-follow-up-ping-button"] button',
+              true,
             );
             this.committedChange.emit();
             return;
           }
           this.preview.set(null);
-          this.duplicateRiskPending.set(false);
           this.actionError.set(error.message);
           this.committedChange.emit();
         },
       });
   }
 
-  controlsDisabled(): boolean {
-    return this.operationPolicy.busy() || this.archived();
+  openRetryConfirmation(attempt: CustomerFollowUpManualAttempt): void {
+    if (this.controlsDisabled()) return;
+    const testId = attempt.state === 'UNKNOWN'
+      ? 'retry-unknown-follow-up-ping-button'
+      : 'retry-failed-follow-up-ping-button';
+    this.retryFocusReturn = this.document.querySelector<HTMLElement>(
+      `[data-testid="${testId}"] button`,
+    );
+    this.retryConfirmation.set(attempt);
+    this.focusAfterNextRender('[data-testid="cancel-follow-up-retry-button"] button');
   }
 
-  reloadState(): void {
+  cancelRetry(event?: Event): void {
+    event?.preventDefault();
+    event?.stopPropagation();
+    const focusReturn = this.retryFocusReturn;
+    this.retryConfirmation.set(null);
+    this.retryFocusReturn = null;
+    if (focusReturn) {
+      afterNextRender(() => focusReturn.isConnected && focusReturn.focus(), {
+        injector: this.injector,
+      });
+    }
+  }
+
+  retryPing(): void {
+    const attempt = this.retryConfirmation();
+    if (!attempt || this.controlsDisabled()) return;
+    const retrySelector = attempt.state === 'UNKNOWN'
+      ? '[data-testid="retry-unknown-follow-up-ping-button"] button'
+      : '[data-testid="retry-failed-follow-up-ping-button"] button';
+    const lease = this.operationPolicy.tryAcquire('customer-follow-up-ping');
+    if (!lease) return;
+    this.actionError.set(null);
+    this.sendResult.set(null);
+    this.api.retry(this.projectId(), {
+      attemptId: attempt.attemptId,
+      acknowledgeDuplicateRisk: attempt.state === 'UNKNOWN',
+    }).pipe(
+      releaseCockpitOperationOnFinalize(lease),
+      takeUntilDestroyed(this.destroyRef),
+    ).subscribe({
+      next: () => {
+        this.retryConfirmation.set(null);
+        this.retryFocusReturn = null;
+        this.sendResult.set('Ping elküldve az ügyfélnek.');
+        this.reloadState();
+        this.focusAfterNextRender('[data-testid="follow-up-send-result"]');
+        this.committedChange.emit();
+      },
+      error: (error: Error) => {
+        this.retryConfirmation.set(null);
+        this.retryFocusReturn = null;
+        this.actionError.set(error.message);
+        this.reloadState(retrySelector, true);
+        this.committedChange.emit();
+      },
+    });
+  }
+
+  controlsDisabled(): boolean {
+    return this.operationPolicy.busy()
+      || this.archived()
+      || this.state()?.latestManualAttempt?.state === 'SENDING';
+  }
+
+  reloadState(focusSelector?: string, preserveActionError = false): void {
     this.api
       .load(this.projectId())
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (state) => {
           this.applyState(state);
-          this.actionError.set(null);
+          if (!preserveActionError) this.actionError.set(null);
           this.loadReferenceOptions();
+          if (focusSelector) this.focusAfterNextRender(focusSelector);
         },
         error: (error: Error) => this.actionError.set(error.message),
       });
@@ -348,6 +428,7 @@ export class CustomerFollowUpComponent implements OnInit {
     } = {},
   ): void {
     this.state.set(state);
+    this.synchronizeRecoveredPendingLease(state);
     if (!options.preserveSettings) {
       this.settingsForm.reset({
         enabled: state.enabled,
@@ -364,6 +445,17 @@ export class CustomerFollowUpComponent implements OnInit {
         { emitEvent: false },
       );
     }
+  }
+
+  private synchronizeRecoveredPendingLease(state: CustomerFollowUpState): void {
+    if (state.latestManualAttempt?.state === 'SENDING') {
+      if (!this.recoveredPendingLease && !this.operationPolicy.busy()) {
+        this.recoveredPendingLease = this.operationPolicy.tryAcquire('customer-follow-up-ping');
+      }
+      return;
+    }
+    this.recoveredPendingLease?.release();
+    this.recoveredPendingLease = null;
   }
 
   private focusAfterNextRender(selector: string): void {

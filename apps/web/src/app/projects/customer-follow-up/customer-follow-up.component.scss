@@ -97,3 +97,14 @@
   color: var(--p-green-700);
   font-weight: 700;
 }
+
+.follow-up-recovery {
+  border: 1px solid var(--p-red-300);
+  border-radius: 0.75rem;
+  margin-block: 1rem;
+  padding: 1rem;
+}
+
+.follow-up-recovery--warning {
+  border-color: var(--p-yellow-400);
+}

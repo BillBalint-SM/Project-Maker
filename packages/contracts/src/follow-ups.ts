@@ -2,6 +2,27 @@ export const followUpDeliveryStatuses = ['NEVER', 'SENT', 'FAILED'] as const;
 
 export type FollowUpDeliveryStatus = (typeof followUpDeliveryStatuses)[number];
 
+export const customerFollowUpManualAttemptStates = [
+  'SENDING',
+  'SENT',
+  'FAILED',
+  'UNKNOWN',
+] as const;
+
+export type CustomerFollowUpManualAttemptState =
+  (typeof customerFollowUpManualAttemptStates)[number];
+
+export interface CustomerFollowUpManualAttempt {
+  readonly attemptId: string;
+  readonly state: CustomerFollowUpManualAttemptState;
+  readonly draftVersion: number;
+  readonly referencedFollowUpId: string | null;
+  readonly referencedFollowUpVersion: number | null;
+  readonly failureCode: string | null;
+  readonly attemptedAt: string;
+  readonly sentAt: string | null;
+}
+
 export interface CustomerFollowUpState {
   readonly projectId: string;
   readonly messageDraft: string | null;
@@ -15,6 +36,7 @@ export interface CustomerFollowUpState {
   readonly lastDeliveryStatus: FollowUpDeliveryStatus;
   /** A stable, non-sensitive error code; transport responses are never exposed. */
   readonly lastDeliveryError: string | null;
+  readonly latestManualAttempt: CustomerFollowUpManualAttempt | null;
 }
 
 export interface UpdateCustomerFollowUpDraftInput {
@@ -63,5 +85,9 @@ export interface UpdateCustomerFollowUpInput {
 
 export interface SendFollowUpPingInput {
   readonly previewToken: string;
+}
+
+export interface RetryFollowUpPingInput {
+  readonly attemptId: string;
   readonly acknowledgeDuplicateRisk?: boolean;
 }
