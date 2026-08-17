@@ -51,6 +51,10 @@ export class ProjectCreatePage {
         Validators.maxLength(320),
       ],
     }),
+    internalOwnerName: new FormControl('', {
+      nonNullable: true,
+      validators: [nonBlankValidator, Validators.maxLength(255)],
+    }),
   });
 
   createProject(): void {
@@ -67,6 +71,8 @@ export class ProjectCreatePage {
         name: value.name.trim(),
         customerContactName: value.customerContactName.trim(),
         customerContactEmail: value.customerContactEmail.trim(),
+        internalOwnerName: value.internalOwnerName.trim(),
+        nextActionOwnerRole: 'INTERNAL_OWNER',
       })
       .subscribe({
         next: (project) => {

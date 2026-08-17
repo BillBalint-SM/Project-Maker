@@ -14,6 +14,7 @@ test.describe.serial('OUTPUT-01 Markdown template library employee workflow', ()
         name: `OUTPUT-01 böngészős projekt ${suffix}`,
         customerContactName: 'Teszt Ügyfél',
         customerContactEmail: 'output-01@example.test',
+        internalOwnerName: 'Output PO/PM',
       },
     });
     expect(projectResponse.status()).toBe(201);
@@ -100,6 +101,7 @@ test.describe.serial('OUTPUT-01 Markdown template library employee workflow', ()
         name: `OUTPUT-01 hiányos projekt ${suffix}`,
         customerContactName: 'Teszt Ügyfél',
         customerContactEmail: 'output-01-blocked@example.test',
+        internalOwnerName: 'Output PO/PM',
       },
     });
     const blockedProject = (await blockedProjectResponse.json()) as { readonly id: string };

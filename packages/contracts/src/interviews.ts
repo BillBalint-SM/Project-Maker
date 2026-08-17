@@ -8,7 +8,7 @@ export const interviewRoundTypes = [
 
 export type InterviewRoundType = (typeof interviewRoundTypes)[number];
 
-export const interviewRoundStatuses = ['OPEN', 'COMPLETED'] as const;
+export const interviewRoundStatuses = ['OPEN', 'ENDED'] as const;
 
 export type InterviewRoundStatus = (typeof interviewRoundStatuses)[number];
 
@@ -44,8 +44,9 @@ export interface InterviewRound {
   readonly schemaVersion: number;
   readonly type: InterviewRoundType;
   readonly status: InterviewRoundStatus;
+  readonly contentVersion: number;
   readonly createdAt: string;
-  readonly completedAt: string | null;
+  readonly endedAt: string | null;
   readonly questions: readonly RoundQuestionSnapshot[];
 }
 

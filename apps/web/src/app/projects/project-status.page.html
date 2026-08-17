@@ -56,8 +56,8 @@
         } @else if (project(); as currentProject) {
           <dl class="status-details">
             <div>
-              <dt>Felelős</dt>
-              <dd>{{ currentProject.ballOwner ?? 'Még nincs kijelölve.' }}</dd>
+              <dt>Következő lépés felelőse</dt>
+              <dd>{{ currentProject.nextActionOwner.displayName ?? 'Még nincs kijelölve.' }}</dd>
             </div>
             <div>
               <dt>Következő lépés</dt>

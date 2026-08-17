@@ -1,0 +1,39 @@
+<p-confirmdialog key="interview-handoff-send" [closeOnEscape]="true" />
+<p-card data-testid="interview-handoff">
+  <ng-template #title>Ügyfélnek küldött interjú-összefoglalók</ng-template>
+  <ng-template #subtitle>Az elküldött verziók változatlan előzményként megmaradnak.</ng-template>
+  @if (error()) { <p-message severity="error" role="alert">{{ error() }}</p-message> }
+  @if (activeDraft(); as active) {
+    <section class="draft" aria-label="Aktív összefoglaló-tervezet">
+      <h3>{{ active.version }}. verzió – {{ active.state }}</h3>
+      @if (active.version > 1 && active.state === 'DRAFT') {
+        <label for="handoff-summary">Módosítás összefoglalása</label>
+        <textarea pTextarea id="handoff-summary" [(ngModel)]="summary" rows="3" data-testid="handoff-modification-summary"></textarea>
+        <p-button label="Összefoglalás mentése" [disabled]="busy()" (onClick)="saveSummary()" />
+      }
+      @if (active.state === 'DRAFT') { <p-button label="Előnézet és küldés" [disabled]="busy()" data-testid="handoff-preview-button" (onClick)="preview()" /> }
+      @if (active.state === 'FAILED' || active.state === 'UNKNOWN') {
+        <p-button label="Újrapróbálás" [disabled]="busy()" (onClick)="retry(active)" />
+        @if (active.state === 'FAILED') { <p-button label="Vissza a szerkesztéshez" severity="secondary" (onClick)="resume(active)" /> }
+      }
+    </section>
+  } @else if (history().length > 0) {
+    <p-button label="Új verzió készítése" [disabled]="busy()" data-testid="start-handoff-version" (onClick)="startVersion()" />
+  }
+  @if (previewData(); as preview) {
+    <section class="preview" aria-labelledby="handoff-preview-title">
+      <h3 id="handoff-preview-title">{{ preview.version }}. verzió előnézete</h3>
+      <p><strong>Címzett:</strong> {{ preview.recipientName }} &lt;{{ preview.recipientEmail }}&gt;</p>
+      <p><strong>Tárgy:</strong> {{ preview.subject }}</p>
+      <pre>{{ preview.textContent }}</pre>
+      <p-button label="Küldés az ügyfélnek" [disabled]="busy()" data-testid="send-handoff-button" (onClick)="confirmSend($any($event.currentTarget))" />
+    </section>
+  }
+  <section aria-labelledby="handoff-history-title">
+    <h3 id="handoff-history-title">Verzióelőzmények</h3>
+    @for (item of history(); track item.id) {
+      <button type="button" class="history-item" (click)="inspect(item.id)">{{ item.version }}. verzió – {{ item.state }} @if (item.sentAt) { – {{ item.sentAt }} }</button>
+    }
+    @if (selectedContent()) { <pre class="history-content">{{ selectedContent() }}</pre> }
+  </section>
+</p-card>

@@ -136,8 +136,8 @@
                 <p>{{ currentRound.questions.length }} pillanatkép-kérdés</p>
               </div>
               <p-tag
-                [value]="currentRound.status === 'COMPLETED' ? 'Lezárt' : 'Nyitott'"
-                [severity]="currentRound.status === 'COMPLETED' ? 'success' : 'info'"
+                [value]="currentRound.status === 'ENDED' ? 'Meeting lezárva' : 'Folyamatban'"
+                [severity]="currentRound.status === 'ENDED' ? 'success' : 'info'"
                 data-testid="round-status"
               />
             </div>
@@ -402,14 +402,30 @@
                   </p>
                 }
                 <p-button
-                  label="Interjúkör lezárása"
+                  label="Mentés, később küldöm"
                   severity="success"
                   [loading]="completing()"
                   [disabled]="isCompleteDisabled()"
-                  data-testid="complete-interview-round-button"
-                  (onClick)="completeRound()"
+                  data-testid="finish-interview-later-button"
+                  (onClick)="finishRound(false)"
+                />
+                <p-button
+                  label="Mentés és küldés"
+                  severity="success"
+                  [loading]="completing()"
+                  [disabled]="isCompleteDisabled()"
+                  data-testid="finish-interview-and-send-button"
+                  (onClick)="finishRound(true)"
                 />
               </div>
+            }
+            @if (currentRound.status === 'ENDED') {
+              <app-interview-handoff
+                [projectId]="projectId"
+                [roundId]="currentRound.id"
+                [openPreview]="previewAfterFinish()"
+                (editableChange)="endedEditable.set($event)"
+              />
             }
           }
         }

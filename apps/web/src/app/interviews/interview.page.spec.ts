@@ -273,7 +273,7 @@ describe('InterviewPage', () => {
         .querySelector('[data-testid="set-partial-assessment-snapshot-1"]')
         ?.getAttribute('aria-pressed'),
     ).toBe('true');
-    expect(findButton(page.nativeElement, '[data-testid="complete-interview-round-button"]')?.disabled).toBe(
+    expect(findButton(page.nativeElement, '[data-testid="finish-interview-later-button"]')?.disabled).toBe(
       true,
     );
 
@@ -290,7 +290,7 @@ describe('InterviewPage', () => {
         .querySelector('[data-testid="set-partial-assessment-snapshot-1"]')
         ?.getAttribute('aria-pressed'),
     ).toBe('true');
-    expect(findButton(page.nativeElement, '[data-testid="complete-interview-round-button"]')?.disabled).toBe(
+    expect(findButton(page.nativeElement, '[data-testid="finish-interview-later-button"]')?.disabled).toBe(
       true,
     );
 
@@ -300,7 +300,7 @@ describe('InterviewPage', () => {
 
     expect(setAssessment).toHaveBeenCalledTimes(2);
     expect(resetAssessment).not.toHaveBeenCalled();
-    expect(findButton(page.nativeElement, '[data-testid="complete-interview-round-button"]')?.disabled).toBe(
+    expect(findButton(page.nativeElement, '[data-testid="finish-interview-later-button"]')?.disabled).toBe(
       false,
     );
   });
@@ -348,19 +348,19 @@ describe('InterviewPage', () => {
       .fn()
       .mockReturnValueOnce(pendingAssessment.asObservable())
       .mockReturnValueOnce(of(savedQuestion));
-    const completeRound = vi.fn().mockReturnValue(of(buildCompletedRound(savedQuestion)));
+    const finishRound = vi.fn().mockReturnValue(of(buildCompletedRound(savedQuestion)));
     const questionBankApi = createQuestionBankApi(null, null);
     const interviewApi = {
       ...createInterviewApi(buildOpenRound(buildTextQuestion({})), null),
       setAssessment,
-      completeRound,
+      finishRound,
     };
 
     const page = await renderInterviewPage('project-123', questionBankApi, interviewApi);
     findButton(page.nativeElement, '[data-testid="set-partial-assessment-snapshot-1"]')?.click();
     page.fixture.detectChanges();
 
-    expect(findButton(page.nativeElement, '[data-testid="complete-interview-round-button"]')?.disabled).toBe(
+    expect(findButton(page.nativeElement, '[data-testid="finish-interview-later-button"]')?.disabled).toBe(
       true,
     );
     expect(
@@ -371,7 +371,7 @@ describe('InterviewPage', () => {
     await page.fixture.whenStable();
     page.fixture.detectChanges();
 
-    expect(findButton(page.nativeElement, '[data-testid="complete-interview-round-button"]')?.disabled).toBe(
+    expect(findButton(page.nativeElement, '[data-testid="finish-interview-later-button"]')?.disabled).toBe(
       true,
     );
     expect(
@@ -382,10 +382,10 @@ describe('InterviewPage', () => {
     await page.fixture.whenStable();
     page.fixture.detectChanges();
 
-    expect(findButton(page.nativeElement, '[data-testid="complete-interview-round-button"]')?.disabled).toBe(
+    expect(findButton(page.nativeElement, '[data-testid="finish-interview-later-button"]')?.disabled).toBe(
       false,
     );
-    expect(completeRound).not.toHaveBeenCalled();
+    expect(finishRound).not.toHaveBeenCalled();
   });
 
   it('disables every assessment control in a completed round', async () => {
@@ -624,11 +624,11 @@ describe('InterviewPage', () => {
       ),
     );
     const completedRound = buildCompletedRound(failedQuestion);
-    const completeRound = vi.fn().mockReturnValue(of(completedRound));
+    const finishRound = vi.fn().mockReturnValue(of(completedRound));
     const questionBankApi = createQuestionBankApi(buildOptionalTextBank(), buildOptionalTextSchema());
     const interviewApi = {
       ...createInterviewApi(buildOpenRound(failedQuestion), updateAnswer),
-      completeRound,
+      finishRound,
     };
 
     const page = await renderInterviewPage('project-123', questionBankApi, interviewApi);
@@ -642,7 +642,7 @@ describe('InterviewPage', () => {
     page.fixture.detectChanges();
 
     const completeButtonHost = page.nativeElement.querySelector(
-      '[data-testid="complete-interview-round-button"]',
+      '[data-testid="finish-interview-later-button"]',
     ) as HTMLElement | null;
     const completeButton = completeButtonHost?.querySelector('button') as HTMLButtonElement | null;
     const blockedMessage = page.nativeElement.querySelector(
@@ -655,13 +655,13 @@ describe('InterviewPage', () => {
       'Az interjúkör nem zárható le, amíg van sikertelen válaszmentés. Mentsd újra a hibás válaszokat, majd próbáld újra.',
     );
 
-    page.fixture.componentInstance.completeRound();
+    page.fixture.componentInstance.finishRound(false);
     page.fixture.detectChanges();
 
     const actionError = page.nativeElement.querySelector(
       '[data-testid="interview-action-error-text"]',
     ) as HTMLElement | null;
-    expect(completeRound).not.toHaveBeenCalled();
+    expect(finishRound).not.toHaveBeenCalled();
     expect(actionError?.textContent?.trim()).toBe(
       'Az interjúkör nem zárható le, amíg van sikertelen válaszmentés. Mentsd újra a hibás válaszokat, majd próbáld újra.',
     );
@@ -822,7 +822,7 @@ async function renderInterviewPage(
     readonly updateAnswer: ReturnType<typeof vi.fn>;
     readonly setAssessment: ReturnType<typeof vi.fn>;
     readonly resetAssessment: ReturnType<typeof vi.fn>;
-    readonly completeRound: ReturnType<typeof vi.fn>;
+    readonly finishRound: ReturnType<typeof vi.fn>;
   },
 ): Promise<{ readonly fixture: ComponentFixture<InterviewPage>; readonly nativeElement: HTMLElement }> {
   TestBed.resetTestingModule();
@@ -882,7 +882,7 @@ function createInterviewApi(
   readonly updateAnswer: ReturnType<typeof vi.fn>;
   readonly setAssessment: ReturnType<typeof vi.fn>;
   readonly resetAssessment: ReturnType<typeof vi.fn>;
-  readonly completeRound: ReturnType<typeof vi.fn>;
+  readonly finishRound: ReturnType<typeof vi.fn>;
 } {
   return {
     getActiveInitialIntake: vi.fn().mockReturnValue(of(activeRound)),
@@ -890,7 +890,7 @@ function createInterviewApi(
     updateAnswer: updateAnswer ?? vi.fn(),
     setAssessment: vi.fn(),
     resetAssessment: vi.fn(),
-    completeRound: vi.fn(),
+    finishRound: vi.fn(),
   };
 }
 
@@ -930,8 +930,9 @@ function buildOpenRound(question: RoundQuestionSnapshot): InterviewRound {
     schemaVersion: 2,
     type: 'INITIAL_INTAKE',
     status: 'OPEN',
+    contentVersion: 1,
     createdAt: '2026-08-06T10:10:00.000Z',
-    completedAt: null,
+    endedAt: null,
     questions: [question],
   };
 }
@@ -952,8 +953,8 @@ function buildCompletedRound(question: RoundQuestionSnapshot): InterviewRound {
       answer: question.answer,
       answeredAt: question.answeredAt,
     }),
-    status: 'COMPLETED',
-    completedAt: '2026-08-06T10:30:00.000Z',
+    status: 'ENDED',
+    endedAt: '2026-08-06T10:30:00.000Z',
   };
 }
 

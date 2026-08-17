@@ -21,6 +21,7 @@ import { TagModule } from 'primeng/tag';
 import { TextareaModule } from 'primeng/textarea';
 import {
   type CustomerFollowUpState,
+  type NextActionOwnerRole,
   type ProjectStatus,
   type ProjectWorkspace,
   type UpdateCustomerFollowUpInput,
@@ -40,11 +41,11 @@ import { ReadinessReviewComponent } from './readiness-review/readiness-review.co
 type ActiveProjectStatus = Exclude<ProjectStatus, 'ARCHIVED'>;
 
 const statusOptions: StatusOption[] = [
-  { label: 'DRAFT', value: 'DRAFT' },
-  { label: 'INTAKE_IN_PROGRESS', value: 'INTAKE_IN_PROGRESS' },
-  { label: 'WAITING_INTERNAL', value: 'WAITING_INTERNAL' },
-  { label: 'WAITING_CUSTOMER', value: 'WAITING_CUSTOMER' },
-  { label: 'READY_FOR_PLANNING', value: 'READY_FOR_PLANNING' },
+  { label: 'Előkészítés alatt', value: 'DRAFT' },
+  { label: 'Interjú folyamatban', value: 'INTAKE_IN_PROGRESS' },
+  { label: 'Belső feladatra vár', value: 'WAITING_INTERNAL' },
+  { label: 'Ügyfélre vár', value: 'WAITING_CUSTOMER' },
+  { label: 'Becslésre kész', value: 'READY_FOR_PLANNING' },
 ];
 
 @Component({
@@ -82,6 +83,13 @@ export class ProjectCockpitPage implements OnInit {
 
   readonly projectId = this.route.snapshot.paramMap.get('projectId') ?? '';
   readonly statusOptions = statusOptions;
+  readonly ownerRoleOptions = computed(() => {
+    const project = this.view()?.project;
+    return [
+      { label: `PO/PM – ${project?.internalOwnerName || 'név hiányzik'}`, value: 'INTERNAL_OWNER' as const, disabled: !project?.internalOwnerName },
+      { label: `Ügyfél – ${project?.customerContactName || 'név hiányzik'}`, value: 'CUSTOMER_CONTACT' as const, disabled: !project?.customerContactName },
+    ];
+  });
   readonly view = signal<CockpitView | null>(null);
   readonly loading = signal(true);
   readonly loadError = signal<string | null>(null);
@@ -119,10 +127,11 @@ export class ProjectCockpitPage implements OnInit {
       nonNullable: true,
       validators: [Validators.required],
     }),
-    ballOwner: new FormControl('', {
+    internalOwnerName: new FormControl('', {
       nonNullable: true,
       validators: [Validators.maxLength(255)],
     }),
+    nextActionOwnerRole: new FormControl<NextActionOwnerRole | null>(null),
     nextAction: new FormControl('', {
       nonNullable: true,
       validators: [Validators.maxLength(10000)],
@@ -242,6 +251,11 @@ export class ProjectCockpitPage implements OnInit {
     }
   }
 
+  statusLabel(status: ProjectStatus): string {
+    if (status === 'ARCHIVED') return 'Archivált';
+    return statusOptions.find((option) => option.value === status)?.label ?? status;
+  }
+
   handleDiscoveryCommittedChange(): void {
     this.readinessRefreshKey.update((value) => value + 1);
     this.refreshAuditEvents();
@@ -260,7 +274,8 @@ export class ProjectCockpitPage implements OnInit {
     const value = this.workspaceForm.getRawValue();
     const input = {
       status: value.status,
-      ballOwner: emptyToNull(value.ballOwner),
+      internalOwnerName: emptyToNull(value.internalOwnerName),
+      nextActionOwnerRole: value.nextActionOwnerRole,
       nextAction: emptyToNull(value.nextAction),
       dueAt: value.dueAt?.toISOString() ?? null,
     };
@@ -534,7 +549,9 @@ export class ProjectCockpitPage implements OnInit {
       cockpit: {
         projectId: project.id,
         status: project.status,
-        ballOwner: project.ballOwner,
+        internalOwnerName: project.internalOwnerName,
+        nextActionOwnerRole: project.nextActionOwnerRole,
+        nextActionOwner: project.nextActionOwner,
         nextAction: project.nextAction,
         dueAt: project.dueAt,
       },
@@ -555,7 +572,8 @@ export class ProjectCockpitPage implements OnInit {
   private resetForm(project: ProjectWorkspace): void {
     this.workspaceForm.reset({
       status: project.status as ActiveProjectStatus,
-      ballOwner: project.ballOwner ?? '',
+      internalOwnerName: project.internalOwnerName ?? '',
+      nextActionOwnerRole: project.nextActionOwnerRole,
       nextAction: project.nextAction ?? '',
       dueAt: project.dueAt ? new Date(project.dueAt) : null,
     });

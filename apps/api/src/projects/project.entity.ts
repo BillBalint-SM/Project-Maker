@@ -1,6 +1,6 @@
 import { Column, CreateDateColumn, Entity, PrimaryColumn, UpdateDateColumn } from 'typeorm';
 
-import { projectStatuses, type ProjectStatus } from '@project-maker/contracts/runtime';
+import { projectStatuses, type NextActionOwnerRole, type ProjectStatus } from '@project-maker/contracts/runtime';
 
 @Entity({ name: 'projects' })
 export class Project {
@@ -26,6 +26,17 @@ export class Project {
 
   @Column({ name: 'ball_owner', type: 'varchar', length: 255, nullable: true })
   ballOwner!: string | null;
+
+  @Column({ name: 'internal_owner_name', type: 'varchar', length: 255, nullable: true })
+  internalOwnerName!: string | null;
+
+  @Column({
+    name: 'next_action_owner_role',
+    type: 'varchar',
+    length: 30,
+    nullable: true,
+  })
+  nextActionOwnerRole!: NextActionOwnerRole | null;
 
   @Column({ name: 'next_action', type: 'text', nullable: true })
   nextAction!: string | null;
