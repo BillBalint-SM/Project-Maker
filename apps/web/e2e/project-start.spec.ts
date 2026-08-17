@@ -66,6 +66,20 @@ test.describe('project start journey', () => {
     const updatedName = `Módosított projektindítás ${Date.now()}`;
     const updatedEmail = `updated-project-start-${Date.now()}@example.test`;
 
+    const coordinationUpdate = await page.request.patch(
+      `/api/projects/${projectId}/workspace`,
+      {
+        data: {
+          status: 'WAITING_CUSTOMER',
+          internalOwnerName: 'Projektindító PO/PM',
+          nextActionOwnerRole: null,
+          nextAction: null,
+          dueAt: null,
+        },
+      },
+    );
+    expect(coordinationUpdate.status()).toBe(200);
+
     await page.getByTestId('edit-project-basics-link').click();
     await expect(page).toHaveURL(new RegExp(`/projects/${projectId}(?:#project-basics)?$`));
     await expect(page.getByTestId('project-basics-editor')).toBeVisible();
@@ -84,6 +98,31 @@ test.describe('project start journey', () => {
     await page.reload();
     await expect(page.getByTestId('draft-project-name-input')).toHaveValue(updatedName);
     await expect(page.getByTestId('draft-customer-contact-email-input')).toHaveValue(updatedEmail);
+  });
+
+  test('keeps Project settings mutations single-flight while basics are saving', async ({ page }) => {
+    await createProjectAndOpenSchema(page);
+    const projectId = projectIdFromInterviewUrl(page);
+    await page.getByTestId('edit-project-basics-link').click();
+
+    let releaseBasicsRequest: (() => void) | undefined;
+    const basicsRequestIntercepted = new Promise<void>((resolveIntercepted) => {
+      void page.route(`**/api/projects/${projectId}/basics`, async (route) => {
+        resolveIntercepted();
+        await new Promise<void>((resolveRelease) => {
+          releaseBasicsRequest = resolveRelease;
+        });
+        await route.continue();
+      });
+    });
+
+    await page.getByTestId('draft-project-name-input').fill(`Zárolt mentés ${Date.now()}`);
+    await (await nativeButton(page, 'save-project-basics')).click();
+    await basicsRequestIntercepted;
+
+    await expect(await nativeButton(page, 'save-workspace-button')).toBeDisabled();
+    releaseBasicsRequest?.();
+    await expect(page.getByTestId('project-basics-feedback')).toContainText('Alapadatok mentve');
   });
 
   test('retries a lost create response without persisting a duplicate Project', async ({ page }) => {

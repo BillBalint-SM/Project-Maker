@@ -163,11 +163,11 @@ export class ProjectsService {
     return this.dataSource.transaction(async (manager) => {
       const project = await findLockedProject(manager, projectId);
       if (
-        project.status !== draftStatus ||
+        project.status === archivedStatus ||
         await manager.getRepository(ProjectQuestionSchemaEntity).existsBy({ projectId })
       ) {
         throw new ConflictException(
-          'Project basics can only be changed before the first question schema is accepted.',
+          'Project basics can only be changed before the first question schema is accepted and while the project is active.',
         );
       }
 

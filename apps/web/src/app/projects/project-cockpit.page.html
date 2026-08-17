@@ -96,6 +96,7 @@
           A kérdésséma elfogadásáig ezek az adatok még módosíthatók.
         </ng-template>
         <form class="workspace-form" [formGroup]="basicsForm" (ngSubmit)="saveProjectBasics()">
+          <fieldset class="workspace-fields" [disabled]="cockpitMutationInProgress()">
           <div class="field">
             <label for="draft-project-name">Projekt neve</label>
             <input pInputText id="draft-project-name" class="full-width" formControlName="name" data-testid="draft-project-name-input" />
@@ -112,6 +113,7 @@
             <label for="draft-customer-contact-email">Ügyfél kapcsolattartó e-mail-címe</label>
             <input pInputText id="draft-customer-contact-email" type="email" class="full-width" formControlName="customerContactEmail" data-testid="draft-customer-contact-email-input" />
           </div>
+          </fieldset>
           @if (basicsForm.invalid && basicsForm.touched) {
             <p-message severity="error">Minden alapadatot érvényesen tölts ki a mentéshez.</p-message>
           }
@@ -121,7 +123,7 @@
           @if (basicsFeedback()) {
             <p-message severity="success" data-testid="project-basics-feedback">{{ basicsFeedback() }}</p-message>
           }
-          <p-button type="submit" label="Alapadatok mentése" [loading]="basicsSaving()" [disabled]="basicsSaving()" data-testid="save-project-basics" />
+          <p-button type="submit" label="Alapadatok mentése" [loading]="basicsSaving()" [disabled]="cockpitMutationInProgress()" data-testid="save-project-basics" />
         </form>
       </p-card>
     }

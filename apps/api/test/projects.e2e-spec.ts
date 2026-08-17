@@ -96,6 +96,11 @@ describe('ProjectsController (e2e)', () => {
       internalOwnerName: 'Updated PO/PM',
     };
 
+    await request(app.getHttpServer())
+      .patch(`/projects/${projectId}/workspace`)
+      .send({ status: 'WAITING_CUSTOMER' })
+      .expect(200);
+
     const updated = await request(app.getHttpServer())
       .patch(`/projects/${projectId}/basics`)
       .send(acceptedBasics)
