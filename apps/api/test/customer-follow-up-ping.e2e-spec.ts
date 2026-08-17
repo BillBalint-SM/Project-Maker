@@ -17,6 +17,7 @@ describe('Customer follow-up ping draft and manual delivery', () => {
   let app: INestApplication;
   let dataSource: DataSource;
   const delivered: CustomerMailerMessage[] = [];
+  const deliveredMessageFrozen: boolean[] = [];
   let deliveryMode: 'SUCCESS' | 'FAILED' | 'UNKNOWN' = 'SUCCESS';
   let deliveryStarted: (() => void) | null = null;
   let releaseDelivery: (() => void) | null = null;
@@ -27,6 +28,7 @@ describe('Customer follow-up ping draft and manual delivery', () => {
       .useValue({
         isConfigured: () => true,
         submit: async (message: OutboundCustomerMessage) => {
+          deliveredMessageFrozen.push(Object.isFrozen(message));
           if (deliveryMode === 'FAILED') return { acceptance: 'REJECTED', messageReference: null } as const;
           if (deliveryMode === 'UNKNOWN') throw new Error('Delivery result is uncertain.');
           delivered.push({
@@ -165,6 +167,7 @@ describe('Customer follow-up ping draft and manual delivery', () => {
     assert.equal(sent.body.state, 'SENT');
     assert.equal(sent.body.draftVersion, 2);
     assert.equal(delivered.length, 1);
+    assert.equal(deliveredMessageFrozen.at(-1), true);
     assert.deepEqual(delivered[0], {
       to: preview.body.recipientEmail,
       subject: preview.body.subject,
