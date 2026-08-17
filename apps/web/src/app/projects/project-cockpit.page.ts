@@ -454,7 +454,7 @@ export class ProjectCockpitPage implements OnInit {
       .subscribe({
         next: (project) => {
           this.applyWorkspaceResponse(project);
-          this.feedback.set('Project restored to DRAFT.');
+          this.feedback.set('A projekt visszaállt Előkészítés alatt állapotba.');
           this.readinessRefreshKey.update((value) => value + 1);
           this.refreshAuditEvents();
         },
