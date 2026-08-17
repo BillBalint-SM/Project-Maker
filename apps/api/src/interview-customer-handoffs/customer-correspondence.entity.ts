@@ -16,6 +16,12 @@ export class CustomerCorrespondenceEntity {
   @Column({ name: 'predecessor_id', type: 'uuid', nullable: true })
   predecessorId!: string | null;
 
+  @Column({ name: 'source_follow_up_id', type: 'uuid', nullable: true })
+  sourceFollowUpId!: string | null;
+
+  @Column({ name: 'source_follow_up_version', type: 'integer', nullable: true })
+  sourceFollowUpVersion!: number | null;
+
   @Column({ type: 'varchar', length: 40, default: 'Válaszra vár' })
   status!: CustomerCorrespondenceStatus;
 

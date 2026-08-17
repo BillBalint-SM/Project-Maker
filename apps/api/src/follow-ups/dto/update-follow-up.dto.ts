@@ -5,12 +5,16 @@ import {
   IsOptional,
   IsString,
   IsUUID,
+  IsEmail,
+  IsIn,
+  Length,
   Matches,
   Max,
   MaxLength,
   Min,
   ValidateIf,
 } from 'class-validator';
+import { exactPteCustomerSenderAddressPattern } from '@project-maker/contracts/customer-mail';
 
 const utcIsoDatePattern = /Z$/;
 
@@ -58,6 +62,17 @@ export class PreviewFollowUpPingDto {
   @IsInt()
   @Min(1)
   expectedVersion!: number;
+
+  @IsOptional()
+  @IsIn(['DEDICATED', 'CUSTOM'])
+  senderMode?: 'DEDICATED' | 'CUSTOM';
+
+  @ValidateIf((input: PreviewFollowUpPingDto) => input.senderMode === 'CUSTOM')
+  @IsString()
+  @Length(1, 320)
+  @IsEmail()
+  @Matches(exactPteCustomerSenderAddressPattern)
+  senderAddress?: string;
 }
 
 export const customerFollowUpDraftMaxLength = 10_000;

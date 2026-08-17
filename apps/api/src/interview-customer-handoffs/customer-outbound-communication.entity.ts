@@ -4,7 +4,7 @@ import { Column, CreateDateColumn, Entity, PrimaryColumn } from 'typeorm';
 export class CustomerOutboundCommunicationEntity {
   @PrimaryColumn('uuid') id!: string;
   @Column({ name: 'project_id', type: 'uuid' }) projectId!: string;
-  @Column({ name: 'source_type', type: 'varchar', length: 40 }) sourceType!: 'INTERVIEW_HANDOFF';
+  @Column({ name: 'source_type', type: 'varchar', length: 40 }) sourceType!: 'INTERVIEW_HANDOFF' | 'CUSTOMER_FOLLOW_UP_PING';
   @Column({ name: 'source_id', type: 'uuid', unique: true }) sourceId!: string;
   @Column({ name: 'sender_name', type: 'varchar', length: 255 }) senderName!: string;
   @Column({ name: 'sender_address', type: 'varchar', length: 320 }) senderAddress!: string;

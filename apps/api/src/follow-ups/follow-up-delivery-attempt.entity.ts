@@ -42,4 +42,16 @@ export class CustomerFollowUpDeliveryAttemptEntity {
 
   @Column({ name: 'sent_at', type: 'timestamptz', nullable: true })
   sentAt!: Date | null;
+
+  @Column({ name: 'outbound_communication_id', type: 'uuid', nullable: true, unique: true })
+  outboundCommunicationId!: string | null;
+
+  @Column({ name: 'correspondence_id', type: 'uuid', nullable: true, unique: true })
+  correspondenceId!: string | null;
+
+  @Column({ name: 'mail_system_acceptance', type: 'varchar', length: 20, nullable: true })
+  mailSystemAcceptance!: 'ACCEPTED' | 'REJECTED' | null;
+
+  @Column({ name: 'message_reference', type: 'varchar', length: 500, nullable: true })
+  messageReference!: string | null;
 }

@@ -26,7 +26,6 @@ services:
       CORS_ORIGIN: ${CORS_ORIGIN:?Set CORS_ORIGIN in the selected env file}
       DATABASE_URL: ${DATABASE_URL:?Set DATABASE_URL in the selected env file}
       FOLLOW_UP_POLL_INTERVAL_MS: ${FOLLOW_UP_POLL_INTERVAL_MS:-60000}
-      CUSTOMER_MAILBOX_NAME: ${CUSTOMER_MAILBOX_NAME:-Project Maker}
       CUSTOMER_MAILBOX_ADDRESS: ${CUSTOMER_MAILBOX_ADDRESS:?Set CUSTOMER_MAILBOX_ADDRESS in the selected env file}
       GRAPH_BASE_URL: ${GRAPH_BASE_URL:-https://graph.microsoft.com}
       GRAPH_LOGIN_BASE_URL: ${GRAPH_LOGIN_BASE_URL:-https://login.microsoftonline.com}

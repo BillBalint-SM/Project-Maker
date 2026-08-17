@@ -47,12 +47,16 @@ test('authors, previews, cancels, and explicitly sends one referenced customer p
   await page.reload();
   await expect(page.getByTestId('follow-up-message-draft')).toHaveValue(message);
   await expect(page.getByTestId('follow-up-reference-select')).toHaveValue(reference.id);
+  await page.getByTestId('follow-up-sender-custom').check();
+  await expect(page.getByTestId('follow-up-sender-name')).toHaveCount(0);
+  await page.getByTestId('follow-up-sender-address').fill('po.ping@pte.hu');
 
   const previewTrigger = nativeButton(page, 'preview-follow-up-ping-button');
   await previewTrigger.focus();
   await previewTrigger.click();
   const preview = page.getByRole('alertdialog', { name: 'Customer follow-up ping előnézete' });
   await expect(preview).toContainText(project.customerContactEmail);
+  await expect(preview).toContainText('po.ping@pte.hu');
   await expect(preview).toContainText(message);
   await expect(preview).toContainText('Kérdés: Melyik jóváhagyás hiányzik?');
   await expect(preview).toContainText('Következő lépés: Az ügyfél elküldi a jóváhagyást.');
@@ -66,9 +70,23 @@ test('authors, previews, cancels, and explicitly sends one referenced customer p
 
   await previewTrigger.click();
   await page.getByRole('button', { name: 'Küldés az ügyfélnek' }).click();
-  await expect(page.getByTestId('follow-up-send-result')).toContainText('Ping elküldve');
+  await expect(page.getByTestId('follow-up-send-result')).toContainText(
+    'Átadva a levelezőrendszernek',
+  );
   await expect(page.getByTestId('follow-up-send-result')).toBeFocused();
   await expect(page.getByTestId('follow-up-last-delivery-status-value')).toContainText('SENT');
+  const graphMessages = await graphMessagesFor(request);
+  const graphRequest = graphMessages[0] as {
+    saveToSentItems?: unknown;
+    __senderAddress?: string;
+    message?: {
+      replyTo?: Array<{ emailAddress?: { address?: string } }>;
+    };
+  };
+  expect(graphRequest.saveToSentItems).toBe(true);
+  expect(graphRequest.__senderAddress).toBe('po.ping@pte.hu');
+  expect(graphRequest.message?.replyTo?.[0]?.emailAddress?.address)
+    .toMatch(/^project-maker\+[A-Za-z0-9_-]{43}@pte\.hu$/);
 });
 
 test('preserves the local draft after a stale preview and reloads only on explicit request', async ({
@@ -245,7 +263,7 @@ test('requires an explicit duplicate-risk acknowledgement after an expired deliv
 
   await nativeButton(page, 'retry-unknown-follow-up-ping-button').click();
   await nativeButton(page, 'confirm-follow-up-retry-button').click();
-  await expect(page.getByTestId('follow-up-send-result')).toContainText('Ping elküldve');
+  await expect(page.getByTestId('follow-up-send-result')).toContainText('Átadva a levelezőrendszernek');
   expect(await graphMessageCount(request)).toBe(messagesBefore + 1);
 });
 
@@ -292,7 +310,7 @@ test('recovers a failed ping after reload with cancel, Escape, and deterministic
   await expect(page.getByTestId('follow-up-message-draft')).toBeDisabled();
   await expect(nativeButton(page, 'save-follow-up-settings-button')).toBeDisabled();
   releaseRetry();
-  await expect(page.getByTestId('follow-up-send-result')).toContainText('Ping elküldve');
+  await expect(page.getByTestId('follow-up-send-result')).toContainText('Átadva a levelezőrendszernek');
   await expect(page.getByTestId('follow-up-send-result')).toBeFocused();
   expect(await graphMessageCount(request)).toBe(messagesBefore + 1);
   expect(retryRequests).toBe(1);
@@ -327,7 +345,7 @@ test('requires a visible request-specific acknowledgement for an uncertain ping'
     'duplikált levelet',
   );
   await nativeButton(page, 'confirm-follow-up-retry-button').click();
-  await expect(page.getByTestId('follow-up-send-result')).toContainText('Ping elküldve');
+  await expect(page.getByTestId('follow-up-send-result')).toContainText('Átadva a levelezőrendszernek');
   expect(retryBody).toEqual({ attemptId, acknowledgeDuplicateRisk: true });
 });
 
@@ -363,7 +381,7 @@ test('keeps uncertain recovery visible after editing and explicitly acknowledges
   });
   await expect(confirmation).toContainText('duplikált levelet');
   await nativeButton(page, 'acknowledge-fresh-follow-up-ping-button').click();
-  await expect(page.getByTestId('follow-up-send-result')).toContainText('Ping elküldve');
+  await expect(page.getByTestId('follow-up-send-result')).toContainText('Átadva a levelezőrendszernek');
   expect(sendBody).toEqual({
     previewToken: expect.any(String),
     acknowledgeDuplicateRiskForAttemptId: attemptId,
@@ -561,6 +579,11 @@ async function expireCustomerPingAttempt(attemptId: string): Promise<void> {
 async function graphMessageCount(request: APIRequestContext): Promise<number> {
   const response = await request.get(`${graphFakeUrl}/__test/messages`);
   return ((await response.json()) as unknown[]).length;
+}
+
+async function graphMessagesFor(request: APIRequestContext): Promise<unknown[]> {
+  const response = await request.get(`${graphFakeUrl}/__test/messages`);
+  return await response.json() as unknown[];
 }
 
 async function pauseCustomerSchedule(projectId: string): Promise<void> {

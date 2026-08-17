@@ -5,6 +5,7 @@ import type {
   CustomerFollowUpPingPreview,
   CustomerFollowUpReferenceOption,
   CustomerFollowUpState,
+  InterviewHandoffSenderOptions,
   PreviewCustomerFollowUpPingInput,
   RetryFollowUpPingInput,
   SendFollowUpPingInput,
@@ -42,6 +43,13 @@ export class CustomerFollowUpApiService {
         `${this.route(projectId)}/reference-options`,
       ),
       'betölteni a hivatkozható Discovery follow-upokat',
+    );
+  }
+
+  senderOptions(projectId: string): Observable<InterviewHandoffSenderOptions> {
+    return this.request(
+      this.http.get<InterviewHandoffSenderOptions>(`${this.route(projectId)}/sender-options`),
+      'betölteni az ügyfél-ping feladóit',
     );
   }
 
@@ -153,7 +161,7 @@ export class CustomerFollowUpApiService {
       }
       return throwError(() =>
         new CustomerFollowUpApiError(
-          `Nem sikerült ${action}, mert az e-mail-küldés nem érhető el. Ellenőrizd az SMTP-beállítást.`,
+          `Nem sikerült ${action}, mert az e-mail-küldés nem érhető el. Ellenőrizd a Microsoft 365 beállításait.`,
           code,
         ),
       );

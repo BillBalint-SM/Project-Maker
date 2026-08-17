@@ -55,11 +55,14 @@ export interface CustomerFollowUpReferenceOption {
 
 export interface PreviewCustomerFollowUpPingInput {
   readonly expectedVersion: number;
+  readonly senderMode?: 'DEDICATED' | 'CUSTOM';
+  readonly senderAddress?: string;
 }
 
 export interface CustomerFollowUpPingPreview {
   readonly recipientName: string;
   readonly recipientEmail: string;
+  readonly senderAddress: string;
   readonly subject: string;
   readonly text: string;
   readonly draftVersion: number;
@@ -75,6 +78,9 @@ export interface CustomerFollowUpPingDelivery {
   readonly referencedFollowUpId: string | null;
   readonly referencedFollowUpVersion: number | null;
   readonly sentAt: string;
+  readonly correspondenceId: string;
+  readonly mailSystemAcceptance: 'ACCEPTED';
+  readonly messageReference: string | null;
 }
 
 export interface UpdateCustomerFollowUpInput {

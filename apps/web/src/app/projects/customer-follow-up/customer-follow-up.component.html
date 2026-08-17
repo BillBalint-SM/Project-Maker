@@ -152,6 +152,49 @@
         </select>
       </div>
     </fieldset>
+    @if (senderOptions(); as options) {
+      <fieldset class="follow-up-fields" data-testid="follow-up-sender-selection" [disabled]="controlsDisabled()">
+        <legend>Feladó</legend>
+        <label>
+          <input
+            type="radio"
+            name="follow-up-sender-mode"
+            value="DEDICATED"
+            data-testid="follow-up-sender-dedicated"
+            [ngModel]="senderMode"
+            [ngModelOptions]="{ standalone: true }"
+            (ngModelChange)="changeSenderMode($event)"
+          />
+          Dedikált postafiók – {{ options.dedicatedAddress }}
+        </label>
+        <label>
+          <input
+            type="radio"
+            name="follow-up-sender-mode"
+            value="CUSTOM"
+            data-testid="follow-up-sender-custom"
+            [ngModel]="senderMode"
+            [ngModelOptions]="{ standalone: true }"
+            (ngModelChange)="changeSenderMode($event)"
+          />
+          Saját PO/PM postafiók
+        </label>
+        @if (senderMode === 'CUSTOM') {
+          <div class="field">
+            <label for="follow-up-sender-address">Feladó pontos @pte.hu címe</label>
+            <input
+              pInputText
+              id="follow-up-sender-address"
+              type="email"
+              data-testid="follow-up-sender-address"
+              [ngModel]="senderAddress"
+              [ngModelOptions]="{ standalone: true }"
+              (ngModelChange)="senderAddress = $event; changeSender()"
+            />
+          </div>
+        }
+      </fieldset>
+    }
     <div class="follow-up-actions">
       <p-button
         type="submit"
@@ -165,7 +208,7 @@
         label="Pontos előnézet"
         [outlined]="true"
         [loading]="previewing()"
-        [disabled]="controlsDisabled() || draftForm.dirty || !current.messageDraft"
+        [disabled]="controlsDisabled() || draftForm.dirty || !current.messageDraft || !senderIsValid()"
         data-testid="preview-follow-up-ping-button"
         (onClick)="previewPing()"
       />
@@ -180,9 +223,10 @@
       aria-describedby="follow-up-preview-description"
     >
       <h3 id="follow-up-preview-title">Customer follow-up ping előnézete</h3>
-      <p id="follow-up-preview-description">Ezt a pontos címzettet és tartalmat küldi el a rendszer.</p>
+      <p id="follow-up-preview-description">Ezt a postafiókot, pontos címzettet és tartalmat küldi el a rendszer. A megjelenített feladónév a Microsoft 365 címtárából származik.</p>
       <dl>
         <div><dt>Címzett</dt><dd>{{ preview.recipientName }} &lt;{{ preview.recipientEmail }}&gt;</dd></div>
+        <div><dt>Feladó postafiók</dt><dd>{{ preview.senderAddress }}</dd></div>
         <div><dt>Tárgy</dt><dd>{{ preview.subject }}</dd></div>
       </dl>
       <pre>{{ preview.text }}</pre>
