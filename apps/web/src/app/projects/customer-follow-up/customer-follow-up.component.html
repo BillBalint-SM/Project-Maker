@@ -42,6 +42,75 @@
     </p>
   }
 
+  @if (current.latestManualAttempt?.state === 'SENDING') {
+    <section class="follow-up-recovery" aria-live="polite" data-testid="follow-up-sending-recovery">
+      <h3>Az ügyfél-ping küldése folyamatban van</h3>
+      <p>A kézbesítési eredményig a projekt többi művelete nem indítható el.</p>
+    </section>
+  } @else if (current.latestManualAttempt?.state === 'FAILED') {
+    <section class="follow-up-recovery" data-testid="follow-up-failed-recovery">
+      <h3>Az ügyfél-ping küldése sikertelen</h3>
+      <p>A rendszer bizonyított kézbesítési hibát kapott. A küldést csak kézzel lehet újrapróbálni.</p>
+      <p-button
+        type="button"
+        label="Küldés újrapróbálása"
+        [disabled]="controlsDisabled()"
+        data-testid="retry-failed-follow-up-ping-button"
+        (onClick)="openRetryConfirmation(current.latestManualAttempt!)"
+      />
+    </section>
+  } @else if (current.latestManualAttempt?.state === 'UNKNOWN') {
+    <section class="follow-up-recovery follow-up-recovery--warning" data-testid="follow-up-unknown-recovery">
+      <h3>Az ügyfél-ping eredménye bizonytalan</h3>
+      <p>Ellenőrizd a kimenő postafiókot. Az újraküldés duplikált levelet eredményezhet.</p>
+      <p-button
+        type="button"
+        label="Ellenőriztem, újraküldöm"
+        severity="warn"
+        [disabled]="controlsDisabled()"
+        data-testid="retry-unknown-follow-up-ping-button"
+        (onClick)="openRetryConfirmation(current.latestManualAttempt!)"
+      />
+    </section>
+  }
+
+  @if (retryConfirmation(); as attempt) {
+    <section
+      class="follow-up-preview"
+      role="alertdialog"
+      aria-labelledby="follow-up-retry-title"
+      aria-describedby="follow-up-retry-description"
+      (keydown.escape)="cancelRetry($event)"
+    >
+      <h3 id="follow-up-retry-title">Ügyfél-ping újraküldése</h3>
+      <p id="follow-up-retry-description">
+        @if (attempt.state === 'UNKNOWN') {
+          A korábbi kézbesítés eredménye bizonytalan; az újraküldés duplikált levelet eredményezhet.
+        } @else {
+          A korábbi küldés bizonyítottan sikertelen volt. Indíts új, kézi kézbesítési kísérletet?
+        }
+      </p>
+      <div class="follow-up-actions">
+        <p-button
+          type="button"
+          label="Mégse"
+          [autofocus]="true"
+          data-testid="cancel-follow-up-retry-button"
+          (onClick)="cancelRetry()"
+        />
+        <p-button
+          type="button"
+          [label]="attempt.state === 'UNKNOWN' ? 'Kockázat elfogadása és újraküldés' : 'Újraküldés'"
+          [severity]="attempt.state === 'UNKNOWN' ? 'warn' : 'success'"
+          [loading]="pinging()"
+          [disabled]="controlsDisabled()"
+          data-testid="confirm-follow-up-retry-button"
+          (onClick)="retryPing()"
+        />
+      </div>
+    </section>
+  }
+
   <form
     class="follow-up-form"
     [formGroup]="draftForm"
@@ -110,15 +179,11 @@
         <div><dt>Tárgy</dt><dd>{{ preview.subject }}</dd></div>
       </dl>
       <pre>{{ preview.text }}</pre>
-      @if (duplicateRiskPending()) {
-        <p-message
-          severity="warn"
-          role="alert"
-          data-testid="follow-up-duplicate-risk-warning"
-        >
-          A korábbi küldés eredménye nem bizonyítható. Ellenőrizd a kimenő
-          postafiókot; az újraküldés duplikált levelet eredményezhet.
-        </p-message>
+      @if (current.latestManualAttempt?.state === 'UNKNOWN') {
+        <p class="follow-up-warning" data-testid="fresh-follow-up-duplicate-risk">
+          A korábbi küldés eredménye bizonytalan. A friss küldés duplikált levelet
+          eredményezhet; csak a kimenő postafiók ellenőrzése után folytasd.
+        </p>
       }
       <div class="follow-up-actions">
         <p-button
@@ -128,14 +193,14 @@
           data-testid="cancel-follow-up-preview-button"
           (onClick)="cancelPreview()"
         />
-        @if (duplicateRiskPending()) {
+        @if (current.latestManualAttempt?.state === 'UNKNOWN') {
           <p-button
             type="button"
-            label="Kockázat elfogadása és újraküldés"
+            label="Kockázat elfogadása és friss küldés"
             severity="warn"
             [loading]="pinging()"
             [disabled]="controlsDisabled()"
-            data-testid="acknowledge-follow-up-duplicate-risk-button"
+            data-testid="acknowledge-fresh-follow-up-ping-button"
             (onClick)="sendPing(true)"
           />
         } @else {
