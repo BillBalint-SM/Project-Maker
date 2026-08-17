@@ -10,13 +10,14 @@ import { AppModule } from '../src/app.module';
 import {
   customerMailerToken,
   type CustomerMailerMessage,
+  SmtpDeliveryError,
 } from '../src/mail-delivery/smtp-mailer.service';
 
 describe('Customer follow-up ping draft and manual delivery', () => {
   let app: INestApplication;
   let dataSource: DataSource;
   const delivered: CustomerMailerMessage[] = [];
-  let deliveryShouldFail = false;
+  let deliveryMode: 'SUCCESS' | 'FAILED' | 'UNKNOWN' = 'SUCCESS';
   let deliveryStarted: (() => void) | null = null;
   let releaseDelivery: (() => void) | null = null;
 
@@ -26,9 +27,8 @@ describe('Customer follow-up ping draft and manual delivery', () => {
       .useValue({
         isConfigured: () => true,
         send: async (message: CustomerMailerMessage) => {
-          if (deliveryShouldFail) {
-            throw new Error('Deliberate SMTP boundary failure.');
-          }
+          if (deliveryMode === 'FAILED') throw new SmtpDeliveryError();
+          if (deliveryMode === 'UNKNOWN') throw new Error('Delivery result is uncertain.');
           delivered.push(message);
           deliveryStarted?.();
           if (releaseDelivery) {
@@ -51,7 +51,7 @@ describe('Customer follow-up ping draft and manual delivery', () => {
 
   beforeEach(() => {
     delivered.length = 0;
-    deliveryShouldFail = false;
+    deliveryMode = 'SUCCESS';
     deliveryStarted = null;
     releaseDelivery = null;
   });
@@ -273,6 +273,190 @@ describe('Customer follow-up ping draft and manual delivery', () => {
     assert.equal(delivered.length, 1);
   });
 
+  it('exposes a failed attempt after reload and retries it only by an explicit request', async () => {
+    const projectId = await createProject(app, 'failed-retry');
+    await request(app.getHttpServer())
+      .patch(`/projects/${projectId}/follow-up/draft`)
+      .send({ messageDraft: 'Kifejezetten újrapróbálható üzenet', referencedFollowUpId: null, expectedVersion: 1 })
+      .expect(200);
+    const preview = await request(app.getHttpServer())
+      .post(`/projects/${projectId}/follow-up/ping/preview`)
+      .send({ expectedVersion: 2 })
+      .expect(201);
+
+    deliveryMode = 'FAILED';
+    await request(app.getHttpServer())
+      .post(`/projects/${projectId}/follow-up/ping`)
+      .send({ previewToken: preview.body.previewToken })
+      .expect(503);
+
+    const reloaded = await request(app.getHttpServer())
+      .get(`/projects/${projectId}/follow-up`)
+      .expect(200);
+    assert.equal(reloaded.body.latestManualAttempt.state, 'FAILED');
+    assert.equal(reloaded.body.latestManualAttempt.failureCode, 'SMTP_SEND_FAILED');
+    assert.equal(reloaded.body.latestManualAttempt.draftVersion, 2);
+    assert.equal(delivered.length, 0);
+
+    const settingsSaved = await request(app.getHttpServer())
+      .patch(`/projects/${projectId}/follow-up`)
+      .send({ intervalMinutes: 2 })
+      .expect(200);
+    assert.equal(
+      settingsSaved.body.latestManualAttempt.attemptId,
+      reloaded.body.latestManualAttempt.attemptId,
+    );
+    assert.equal(settingsSaved.body.latestManualAttempt.state, 'FAILED');
+
+    deliveryMode = 'SUCCESS';
+    const retried = await request(app.getHttpServer())
+      .post(`/projects/${projectId}/follow-up/ping/retry`)
+      .send({
+        attemptId: reloaded.body.latestManualAttempt.attemptId,
+        acknowledgeDuplicateRisk: false,
+      })
+      .expect(201);
+    assert.equal(retried.body.state, 'SENT');
+    assert.equal(delivered.length, 1);
+  });
+
+  it('persists an uncertain result and requires acknowledgement on that exact retry request', async () => {
+    const projectId = await createProject(app, 'unknown-retry');
+    await request(app.getHttpServer())
+      .patch(`/projects/${projectId}/follow-up/draft`)
+      .send({ messageDraft: 'Bizonytalan kézbesítésű üzenet', referencedFollowUpId: null, expectedVersion: 1 })
+      .expect(200);
+    const preview = await request(app.getHttpServer())
+      .post(`/projects/${projectId}/follow-up/ping/preview`)
+      .send({ expectedVersion: 2 })
+      .expect(201);
+
+    deliveryMode = 'UNKNOWN';
+    const uncertain = await request(app.getHttpServer())
+      .post(`/projects/${projectId}/follow-up/ping`)
+      .send({ previewToken: preview.body.previewToken })
+      .expect(503);
+    assert.equal(uncertain.body.code, 'FOLLOW_UP_DELIVERY_UNKNOWN');
+
+    const reloaded = await request(app.getHttpServer())
+      .get(`/projects/${projectId}/follow-up`)
+      .expect(200);
+    assert.equal(reloaded.body.latestManualAttempt.state, 'UNKNOWN');
+    assert.equal(reloaded.body.latestManualAttempt.failureCode, 'SMTP_DELIVERY_UNKNOWN');
+
+    deliveryMode = 'SUCCESS';
+    const blocked = await request(app.getHttpServer())
+      .post(`/projects/${projectId}/follow-up/ping/retry`)
+      .send({ attemptId: reloaded.body.latestManualAttempt.attemptId })
+      .expect(409);
+    assert.equal(blocked.body.code, 'FOLLOW_UP_DUPLICATE_RISK_ACKNOWLEDGEMENT_REQUIRED');
+    assert.equal(delivered.length, 0);
+
+    const retried = await request(app.getHttpServer())
+      .post(`/projects/${projectId}/follow-up/ping/retry`)
+      .send({
+        attemptId: reloaded.body.latestManualAttempt.attemptId,
+        acknowledgeDuplicateRisk: true,
+      })
+      .expect(201);
+    assert.equal(retried.body.state, 'SENT');
+    assert.equal(delivered.length, 1);
+  });
+
+  it('revalidates retry provenance and preserves project-level single flight', async () => {
+    const staleProjectId = await createProject(app, 'stale-retry');
+    await request(app.getHttpServer())
+      .patch(`/projects/${staleProjectId}/follow-up/draft`)
+      .send({ messageDraft: 'Első mentett változat', referencedFollowUpId: null, expectedVersion: 1 })
+      .expect(200);
+    const stalePreview = await request(app.getHttpServer())
+      .post(`/projects/${staleProjectId}/follow-up/ping/preview`)
+      .send({ expectedVersion: 2 })
+      .expect(201);
+    deliveryMode = 'FAILED';
+    await request(app.getHttpServer())
+      .post(`/projects/${staleProjectId}/follow-up/ping`)
+      .send({ previewToken: stalePreview.body.previewToken })
+      .expect(503);
+    const staleState = await request(app.getHttpServer())
+      .get(`/projects/${staleProjectId}/follow-up`)
+      .expect(200);
+    await request(app.getHttpServer())
+      .patch(`/projects/${staleProjectId}/follow-up/draft`)
+      .send({ messageDraft: 'Időközben módosított változat', referencedFollowUpId: null, expectedVersion: 2 })
+      .expect(200);
+    deliveryMode = 'SUCCESS';
+    const staleRetry = await request(app.getHttpServer())
+      .post(`/projects/${staleProjectId}/follow-up/ping/retry`)
+      .send({ attemptId: staleState.body.latestManualAttempt.attemptId })
+      .expect(409);
+    assert.equal(staleRetry.body.code, 'FOLLOW_UP_RETRY_STALE');
+
+    const projectId = await createProject(app, 'retry-single-flight');
+    await request(app.getHttpServer())
+      .patch(`/projects/${projectId}/follow-up/draft`)
+      .send({ messageDraft: 'Csak egyszer induló retry', referencedFollowUpId: null, expectedVersion: 1 })
+      .expect(200);
+    const preview = await request(app.getHttpServer())
+      .post(`/projects/${projectId}/follow-up/ping/preview`)
+      .send({ expectedVersion: 2 })
+      .expect(201);
+    deliveryMode = 'FAILED';
+    await request(app.getHttpServer())
+      .post(`/projects/${projectId}/follow-up/ping`)
+      .send({ previewToken: preview.body.previewToken })
+      .expect(503);
+    const current = await request(app.getHttpServer())
+      .get(`/projects/${projectId}/follow-up`)
+      .expect(200);
+
+    let notifyStarted!: () => void;
+    const started = new Promise<void>((resolve) => { notifyStarted = resolve; });
+    deliveryStarted = notifyStarted;
+    releaseDelivery = () => undefined;
+    deliveryMode = 'SUCCESS';
+    const first = request(app.getHttpServer())
+      .post(`/projects/${projectId}/follow-up/ping/retry`)
+      .send({ attemptId: current.body.latestManualAttempt.attemptId })
+      .then((response) => response);
+    await started;
+    await request(app.getHttpServer())
+      .post(`/projects/${projectId}/follow-up/ping/retry`)
+      .send({ attemptId: current.body.latestManualAttempt.attemptId })
+      .expect(409);
+    releaseDelivery?.();
+    releaseDelivery = null;
+    assert.equal((await first).status, 201);
+    assert.equal(delivered.length, 1);
+
+    const archivedProjectId = await createProject(app, 'archived-retry');
+    await request(app.getHttpServer())
+      .patch(`/projects/${archivedProjectId}/follow-up/draft`)
+      .send({ messageDraft: 'Archiválás előtt hibás küldés', referencedFollowUpId: null, expectedVersion: 1 })
+      .expect(200);
+    const archivedPreview = await request(app.getHttpServer())
+      .post(`/projects/${archivedProjectId}/follow-up/ping/preview`)
+      .send({ expectedVersion: 2 })
+      .expect(201);
+    deliveryMode = 'FAILED';
+    await request(app.getHttpServer())
+      .post(`/projects/${archivedProjectId}/follow-up/ping`)
+      .send({ previewToken: archivedPreview.body.previewToken })
+      .expect(503);
+    const archivedState = await request(app.getHttpServer())
+      .get(`/projects/${archivedProjectId}/follow-up`)
+      .expect(200);
+    await request(app.getHttpServer())
+      .post(`/projects/${archivedProjectId}/archive`)
+      .send({})
+      .expect(201);
+    deliveryMode = 'SUCCESS';
+    await request(app.getHttpServer())
+      .post(`/projects/${archivedProjectId}/follow-up/ping/retry`)
+      .send({ attemptId: archivedState.body.latestManualAttempt.attemptId })
+      .expect(409);
+  });
+
   it('reconciles an expired delivery lease and requires explicit duplicate-risk acknowledgement', async () => {
     const projectId = await createProject(app, 'expired-delivery');
     await request(app.getHttpServer())
@@ -298,7 +482,11 @@ describe('Customer follow-up ping draft and manual delivery', () => {
         expiredAt,
       ],
     );
-    await request(app.getHttpServer())
+    const reconciledAfterReload = await request(app.getHttpServer())
+      .get(`/projects/${projectId}/follow-up`)
+      .expect(200);
+    assert.equal(reconciledAfterReload.body.latestManualAttempt.state, 'UNKNOWN');
+    const draftSaved = await request(app.getHttpServer())
       .patch(`/projects/${projectId}/follow-up/draft`)
       .send({
         messageDraft: 'Az újabb draft sem kerülheti meg a kézbesítési ellenőrzést',
@@ -306,6 +494,11 @@ describe('Customer follow-up ping draft and manual delivery', () => {
         expectedVersion: 2,
       })
       .expect(200);
+    assert.equal(
+      draftSaved.body.latestManualAttempt.attemptId,
+      reconciledAfterReload.body.latestManualAttempt.attemptId,
+    );
+    assert.equal(draftSaved.body.latestManualAttempt.state, 'UNKNOWN');
     const preview = await request(app.getHttpServer())
       .post(`/projects/${projectId}/follow-up/ping/preview`)
       .send({ expectedVersion: 3 })
@@ -321,29 +514,47 @@ describe('Customer follow-up ping draft and manual delivery', () => {
       .get(`/projects/${projectId}/activity`)
       .expect(200);
     assert.equal(
-      unknownActivity.body.events[0]?.summary,
-      'Az ügyfél-ping küldési eredménye bizonytalan; kézi ellenőrzés szükséges.',
+      unknownActivity.body.events.some(
+        (event: { summary: string }) => event.summary ===
+          'Az ügyfél-ping küldési eredménye bizonytalan; kézi ellenőrzés szükséges.',
+      ),
+      true,
     );
 
-    const sent = await request(app.getHttpServer())
+    const reconciled = await request(app.getHttpServer())
+      .get(`/projects/${projectId}/follow-up`)
+      .expect(200);
+    assert.equal(reconciled.body.latestManualAttempt.state, 'UNKNOWN');
+    const staleRetry = await request(app.getHttpServer())
+      .post(`/projects/${projectId}/follow-up/ping/retry`)
+      .send({
+        attemptId: reconciled.body.latestManualAttempt.attemptId,
+        acknowledgeDuplicateRisk: true,
+      })
+      .expect(409);
+    assert.equal(staleRetry.body.code, 'FOLLOW_UP_RETRY_STALE');
+    assert.equal(delivered.length, 0);
+
+    const wrongAcknowledgement = await request(app.getHttpServer())
       .post(`/projects/${projectId}/follow-up/ping`)
       .send({
         previewToken: preview.body.previewToken,
-        acknowledgeDuplicateRisk: true,
+        acknowledgeDuplicateRiskForAttemptId: randomUUID(),
+      })
+      .expect(409);
+    assert.equal(wrongAcknowledgement.body.code, 'FOLLOW_UP_DELIVERY_UNKNOWN');
+    assert.equal(delivered.length, 0);
+
+    const freshSend = await request(app.getHttpServer())
+      .post(`/projects/${projectId}/follow-up/ping`)
+      .send({
+        previewToken: preview.body.previewToken,
+        acknowledgeDuplicateRiskForAttemptId:
+          reconciled.body.latestManualAttempt.attemptId,
       })
       .expect(201);
-    assert.equal(sent.body.state, 'SENT');
+    assert.equal(freshSend.body.state, 'SENT');
     assert.equal(delivered.length, 1);
-
-    const nextPreview = await request(app.getHttpServer())
-      .post(`/projects/${projectId}/follow-up/ping/preview`)
-      .send({ expectedVersion: 3 })
-      .expect(201);
-    await request(app.getHttpServer())
-      .post(`/projects/${projectId}/follow-up/ping`)
-      .send({ previewToken: nextPreview.body.previewToken })
-      .expect(201);
-    assert.equal(delivered.length, 2);
   });
 
   it('describes draft, successful, and failed ping activity in employee language', async () => {
@@ -377,12 +588,12 @@ describe('Customer follow-up ping draft and manual delivery', () => {
       .post(`/projects/${projectId}/follow-up/ping/preview`)
       .send({ expectedVersion: 3 })
       .expect(201);
-    deliveryShouldFail = true;
+    deliveryMode = 'FAILED';
     await request(app.getHttpServer())
       .post(`/projects/${projectId}/follow-up/ping`)
       .send({ previewToken: failedPreview.body.previewToken })
       .expect(503);
-    deliveryShouldFail = false;
+    deliveryMode = 'SUCCESS';
 
     const activity = await request(app.getHttpServer())
       .get(`/projects/${projectId}/activity`)

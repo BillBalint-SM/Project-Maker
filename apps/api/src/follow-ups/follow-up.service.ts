@@ -16,6 +16,7 @@ import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import type {
   CustomerFollowUpReferenceOption,
+  CustomerFollowUpManualAttempt,
   CustomerFollowUpPingDelivery,
   CustomerFollowUpPingPreview,
   CustomerFollowUpState,
@@ -36,6 +37,7 @@ import { DiscoveryFollowUpEntity } from '../discovery-follow-ups/discovery-follo
 import {
   CustomerMailer,
   customerMailerToken,
+  SmtpDeliveryError,
 } from './smtp-mailer.service';
 import { CustomerFollowUpEntity } from './follow-up.entity';
 import { CustomerFollowUpDeliveryAttemptEntity } from './follow-up-delivery-attempt.entity';
@@ -46,6 +48,7 @@ import {
 import { minimumFollowUpIntervalMinutes, maximumFollowUpIntervalMinutes } from './dto/update-follow-up.dto';
 import {
   SendFollowUpPingDto,
+  RetryFollowUpPingDto,
   PreviewFollowUpPingDto,
   UpdateFollowUpDraftDto,
   UpdateFollowUpDto,
@@ -121,9 +124,13 @@ export class CustomerFollowUpService implements OnModuleInit, OnModuleDestroy {
   }
 
   async get(projectId: string): Promise<CustomerFollowUpState> {
-    await this.findProject(this.dataSource.manager, projectId, false);
-    const existing = await this.followUpRepository.findOneBy({ projectId });
-    return toState(existing ?? createDefaultState(projectId));
+    return this.dataSource.transaction(async (manager) => {
+      await this.findProject(manager, projectId, false);
+      const existing = await manager.getRepository(CustomerFollowUpEntity).findOneBy({ projectId });
+      await this.reconcileExpiredManualAttempts(manager, projectId, new Date());
+      const latestManualAttempt = await findLatestManualAttempt(manager, projectId);
+      return toState(existing ?? createDefaultState(projectId), latestManualAttempt);
+    });
   }
 
   async update(projectId: string, input: UpdateFollowUpDto): Promise<CustomerFollowUpState> {
@@ -158,7 +165,7 @@ export class CustomerFollowUpService implements OnModuleInit, OnModuleDestroy {
         intervalMinutes: String(saved.intervalMinutes),
         expiresAt: saved.expiresAt ? saved.expiresAt.toISOString() : 'NONE',
       });
-      return toState(saved);
+      return toState(saved, await findLatestManualAttempt(manager, projectId));
     });
   }
 
@@ -207,7 +214,7 @@ export class CustomerFollowUpService implements OnModuleInit, OnModuleDestroy {
         hasReference: String(referencedFollowUp !== null),
         messageLength: String(messageDraft.length),
       });
-      return toState(saved);
+      return toState(saved, await findLatestManualAttempt(manager, projectId));
     });
   }
 
@@ -271,32 +278,15 @@ export class CustomerFollowUpService implements OnModuleInit, OnModuleDestroy {
         });
       }
       const attemptRepository = manager.getRepository(CustomerFollowUpDeliveryAttemptEntity);
-      const activeAttempts = await attemptRepository.find({
-        where: {
-          projectId,
-          state: 'SENDING',
-        },
-        order: { attemptedAt: 'DESC', createdAt: 'DESC', id: 'ASC' },
-        lock: { mode: 'pessimistic_write' },
-      });
-      for (const activeAttempt of activeAttempts) {
-        const leaseExpiresAt = new Date(activeAttempt.attemptedAt.getTime() + manualDeliveryLeaseMs);
-        if (leaseExpiresAt > attemptedAt) {
-          throw new ConflictException({
-            code: 'FOLLOW_UP_DELIVERY_IN_PROGRESS',
-            message: 'Az ügyfél-ping küldése már folyamatban van. Várj a kézbesítési eredményre.',
-          });
-        }
-        activeAttempt.state = 'UNKNOWN';
-        activeAttempt.failureCode = unknownDeliveryCode;
-        await attemptRepository.save(activeAttempt);
-        await saveAuditEvent(manager, projectId, 'CUSTOMER_FOLLOW_UP_PING_UNKNOWN', {
-          attemptId: activeAttempt.id,
-          draftVersion: String(activeAttempt.draftVersion),
-          deliveryStatus: 'UNKNOWN',
-          errorCode: unknownDeliveryCode,
-          attemptedAt: activeAttempt.attemptedAt.toISOString(),
-          reconciledAt: attemptedAt.toISOString(),
+      const activeAttempts = await this.reconcileExpiredManualAttempts(
+        manager,
+        projectId,
+        attemptedAt,
+      );
+      if (activeAttempts.some((attempt) => attempt.state === 'SENDING')) {
+        throw new ConflictException({
+          code: 'FOLLOW_UP_DELIVERY_IN_PROGRESS',
+          message: 'Az ügyfél-ping küldése már folyamatban van. Várj a kézbesítési eredményre.',
         });
       }
       const latestAttempt = activeAttempts[0] ?? await attemptRepository.findOne({
@@ -305,9 +295,13 @@ export class CustomerFollowUpService implements OnModuleInit, OnModuleDestroy {
         },
         order: { attemptedAt: 'DESC', createdAt: 'DESC', id: 'ASC' },
       });
-      if (latestAttempt?.state === 'UNKNOWN' && !input.acknowledgeDuplicateRisk) {
+      if (
+        latestAttempt?.state === 'UNKNOWN' &&
+        input.acknowledgeDuplicateRiskForAttemptId !== latestAttempt.id
+      ) {
         return { requiresDuplicateRiskAcknowledgement: true };
       }
+      const claimedAt = nextAttemptTimestamp(attemptedAt, latestAttempt);
       clearPreview(state);
       await manager.getRepository(CustomerFollowUpEntity).save(state);
       const attemptId = randomUUID();
@@ -322,8 +316,8 @@ export class CustomerFollowUpService implements OnModuleInit, OnModuleDestroy {
         subjectLength: rendered.subject.length,
         textLength: rendered.text.length,
         failureCode: null,
-        createdAt: attemptedAt,
-        attemptedAt,
+        createdAt: claimedAt,
+        attemptedAt: claimedAt,
         sentAt: null,
       });
       return {
@@ -332,7 +326,7 @@ export class CustomerFollowUpService implements OnModuleInit, OnModuleDestroy {
         rendered,
         referencedFollowUpId: reference?.id ?? null,
         referencedFollowUpVersion: reference?.version ?? null,
-        attemptedAt,
+        attemptedAt: claimedAt,
       };
     });
 
@@ -342,19 +336,85 @@ export class CustomerFollowUpService implements OnModuleInit, OnModuleDestroy {
         message: 'A korábbi küldés eredménye nem bizonyítható. Ellenőrizd a postafiókot, majd csak a duplikáció kockázatának elfogadásával küldd újra.',
       });
     }
-    const claimed = claim;
+    return this.deliverClaimedManualPing(claim);
+  }
 
-    try {
-      await this.mailer.send({
-        to: claimed.rendered.recipientEmail,
-        subject: claimed.rendered.subject,
-        text: claimed.rendered.text,
+  async retryManualPing(
+    projectId: string,
+    input: RetryFollowUpPingDto,
+  ): Promise<CustomerFollowUpPingDelivery> {
+    this.requireMailer();
+    const attemptedAt = new Date();
+    const claimed = await this.dataSource.transaction(async (manager): Promise<ClaimedManualPing> => {
+      const project = await this.findProject(manager, projectId, true);
+      rejectArchivedProject(project);
+      const state = await findOrCreateLockedState(manager, projectId);
+      const attemptRepository = manager.getRepository(CustomerFollowUpDeliveryAttemptEntity);
+      const latestAttempt = await attemptRepository.findOne({
+        where: { projectId },
+        order: { attemptedAt: 'DESC', createdAt: 'DESC', id: 'ASC' },
+        lock: { mode: 'pessimistic_write' },
       });
-    } catch {
-      await this.finalizeManualFailure(claimed);
-      throw new ServiceUnavailableException('Customer follow-up email could not be delivered.');
-    }
-    return this.finalizeManualSuccess(claimed);
+      if (!latestAttempt || latestAttempt.id !== input.attemptId) {
+        throw new ConflictException({
+          code: 'FOLLOW_UP_RETRY_STALE',
+          message: 'A kézbesítési állapot időközben megváltozott. Töltsd újra az aktuális állapotot.',
+        });
+      }
+      if (latestAttempt.state === 'UNKNOWN' && !input.acknowledgeDuplicateRisk) {
+        throw new ConflictException({
+          code: 'FOLLOW_UP_DUPLICATE_RISK_ACKNOWLEDGEMENT_REQUIRED',
+          message: 'A korábbi küldés eredménye bizonytalan. Az újraküldéshez külön el kell fogadni a duplikáció kockázatát.',
+        });
+      }
+      if (latestAttempt.state !== 'FAILED' && latestAttempt.state !== 'UNKNOWN') {
+        throw new ConflictException({
+          code: 'FOLLOW_UP_RETRY_NOT_AVAILABLE',
+          message: 'Ez a kézbesítési kísérlet nem próbálható újra.',
+        });
+      }
+      const { reference, rendered } = await renderCurrentPing(manager, project, state);
+      const currentReferenceId = reference?.id ?? null;
+      const currentReferenceVersion = reference?.version ?? null;
+      if (
+        state.draftVersion !== latestAttempt.draftVersion ||
+        currentReferenceId !== latestAttempt.referencedFollowUpId ||
+        currentReferenceVersion !== latestAttempt.referencedFollowUpVersion ||
+        rendered.recipientEmail !== latestAttempt.recipientEmail
+      ) {
+        throw new ConflictException({
+          code: 'FOLLOW_UP_RETRY_STALE',
+          message: 'A címzett, a piszkozat vagy a hivatkozott kérdés megváltozott. Készíts új előnézetet.',
+        });
+      }
+      const claimedAt = nextAttemptTimestamp(attemptedAt, latestAttempt);
+      const attemptId = randomUUID();
+      await attemptRepository.save({
+        id: attemptId,
+        projectId,
+        draftVersion: state.draftVersion,
+        referencedFollowUpId: currentReferenceId,
+        referencedFollowUpVersion: currentReferenceVersion,
+        state: 'SENDING',
+        recipientEmail: rendered.recipientEmail,
+        subjectLength: rendered.subject.length,
+        textLength: rendered.text.length,
+        failureCode: null,
+        createdAt: claimedAt,
+        attemptedAt: claimedAt,
+        sentAt: null,
+      });
+      return {
+        attemptId,
+        state,
+        rendered,
+        referencedFollowUpId: currentReferenceId,
+        referencedFollowUpVersion: currentReferenceVersion,
+        attemptedAt: claimedAt,
+      };
+    });
+
+    return this.deliverClaimedManualPing(claimed);
   }
 
   async processDuePings(now: Date): Promise<readonly CustomerFollowUpState[]> {
@@ -372,7 +432,10 @@ export class CustomerFollowUpService implements OnModuleInit, OnModuleDestroy {
     for (const candidate of candidates) {
       const result = await this.processDueState(candidate.id, now);
       if (result) {
-        sentStates.push(toState(result.state));
+        sentStates.push(toState(
+          result.state,
+          await findLatestManualAttempt(this.dataSource.manager, result.state.projectId),
+        ));
       }
     }
     return sentStates;
@@ -450,6 +513,92 @@ export class CustomerFollowUpService implements OnModuleInit, OnModuleDestroy {
         errorCode: smtpFailureCode,
         attemptedAt: attempt.attemptedAt.toISOString(),
       });
+    });
+  }
+
+  private async deliverClaimedManualPing(
+    claimed: ClaimedManualPing,
+  ): Promise<CustomerFollowUpPingDelivery> {
+    try {
+      await this.mailer.send({
+        to: claimed.rendered.recipientEmail,
+        subject: claimed.rendered.subject,
+        text: claimed.rendered.text,
+      });
+    } catch (error) {
+      await this.finalizeManualDeliveryError(claimed, error);
+    }
+    return this.finalizeManualSuccess(claimed);
+  }
+
+  private async reconcileExpiredManualAttempts(
+    manager: EntityManager,
+    projectId: string,
+    now: Date,
+  ): Promise<readonly CustomerFollowUpDeliveryAttemptEntity[]> {
+    const attemptRepository = manager.getRepository(CustomerFollowUpDeliveryAttemptEntity);
+    const activeAttempts = await attemptRepository.find({
+      where: { projectId, state: 'SENDING' },
+      order: { attemptedAt: 'DESC', createdAt: 'DESC', id: 'ASC' },
+      lock: { mode: 'pessimistic_write' },
+    });
+    for (const activeAttempt of activeAttempts) {
+      const leaseExpiresAt = new Date(activeAttempt.attemptedAt.getTime() + manualDeliveryLeaseMs);
+      if (leaseExpiresAt > now) continue;
+      activeAttempt.state = 'UNKNOWN';
+      activeAttempt.failureCode = unknownDeliveryCode;
+      await attemptRepository.save(activeAttempt);
+      await saveAuditEvent(manager, projectId, 'CUSTOMER_FOLLOW_UP_PING_UNKNOWN', {
+        attemptId: activeAttempt.id,
+        draftVersion: String(activeAttempt.draftVersion),
+        deliveryStatus: 'UNKNOWN',
+        errorCode: unknownDeliveryCode,
+        attemptedAt: activeAttempt.attemptedAt.toISOString(),
+        reconciledAt: now.toISOString(),
+      });
+    }
+    return activeAttempts;
+  }
+
+  private async finalizeManualUnknown(claimed: ClaimedManualPing): Promise<void> {
+    const reconciledAt = new Date();
+    await this.dataSource.transaction(async (manager) => {
+      const attempt = await manager.getRepository(CustomerFollowUpDeliveryAttemptEntity).findOne({
+        where: { id: claimed.attemptId },
+        lock: { mode: 'pessimistic_write' },
+      });
+      if (!attempt || attempt.state !== 'SENDING') {
+        return;
+      }
+      attempt.state = 'UNKNOWN';
+      attempt.failureCode = unknownDeliveryCode;
+      await manager.getRepository(CustomerFollowUpDeliveryAttemptEntity).save(attempt);
+      await saveAuditEvent(manager, attempt.projectId, 'CUSTOMER_FOLLOW_UP_PING_UNKNOWN', {
+        attemptId: attempt.id,
+        draftVersion: String(attempt.draftVersion),
+        deliveryStatus: 'UNKNOWN',
+        errorCode: unknownDeliveryCode,
+        attemptedAt: attempt.attemptedAt.toISOString(),
+        reconciledAt: reconciledAt.toISOString(),
+      });
+    });
+  }
+
+  private async finalizeManualDeliveryError(
+    claimed: ClaimedManualPing,
+    error: unknown,
+  ): Promise<never> {
+    if (error instanceof SmtpDeliveryError) {
+      await this.finalizeManualFailure(claimed);
+      throw new ServiceUnavailableException({
+        code: 'FOLLOW_UP_DELIVERY_FAILED',
+        message: 'Az ügyfél-ping küldése ismert kézbesítési hiba miatt sikertelen.',
+      });
+    }
+    await this.finalizeManualUnknown(claimed);
+    throw new ServiceUnavailableException({
+      code: 'FOLLOW_UP_DELIVERY_UNKNOWN',
+      message: 'Az ügyfél-ping kézbesítési eredménye bizonytalan. Ellenőrizd a postafiókot az újraküldés előtt.',
     });
   }
 
@@ -751,13 +900,34 @@ function addMinutes(value: Date, minutes: number): Date {
   return new Date(value.getTime() + minutes * 60_000);
 }
 
+function nextAttemptTimestamp(
+  requestedAt: Date,
+  latestAttempt: CustomerFollowUpDeliveryAttemptEntity | null,
+): Date {
+  if (!latestAttempt || latestAttempt.attemptedAt < requestedAt) return requestedAt;
+  return new Date(latestAttempt.attemptedAt.getTime() + 1);
+}
+
 function rejectArchivedProject(project: Project): void {
   if (project.status === 'ARCHIVED') {
     throw new ConflictException('Archived projects cannot send customer emails.');
   }
 }
 
-function toState(value: CustomerFollowUpEntity): CustomerFollowUpState {
+function findLatestManualAttempt(
+  manager: EntityManager,
+  projectId: string,
+): Promise<CustomerFollowUpDeliveryAttemptEntity | null> {
+  return manager.getRepository(CustomerFollowUpDeliveryAttemptEntity).findOne({
+    where: { projectId },
+    order: { attemptedAt: 'DESC', createdAt: 'DESC', id: 'ASC' },
+  });
+}
+
+function toState(
+  value: CustomerFollowUpEntity,
+  latestManualAttempt: CustomerFollowUpDeliveryAttemptEntity | null = null,
+): CustomerFollowUpState {
   return {
     projectId: value.projectId,
     messageDraft: value.messageDraft,
@@ -770,7 +940,26 @@ function toState(value: CustomerFollowUpEntity): CustomerFollowUpState {
     nextPingAt: toIsoOrNull(value.nextPingAt, 'follow-up nextPingAt'),
     lastDeliveryStatus: value.lastDeliveryStatus,
     lastDeliveryError: toSafeDeliveryError(value.lastDeliveryError),
+    latestManualAttempt: latestManualAttempt ? toManualAttempt(latestManualAttempt) : null,
   };
+}
+
+function toManualAttempt(value: CustomerFollowUpDeliveryAttemptEntity): CustomerFollowUpManualAttempt {
+  return {
+    attemptId: value.id,
+    state: value.state,
+    draftVersion: value.draftVersion,
+    referencedFollowUpId: value.referencedFollowUpId,
+    referencedFollowUpVersion: value.referencedFollowUpVersion,
+    failureCode: toSafeManualFailureCode(value.failureCode),
+    attemptedAt: value.attemptedAt.toISOString(),
+    sentAt: value.sentAt?.toISOString() ?? null,
+  };
+}
+
+function toSafeManualFailureCode(value: string | null): string | null {
+  if (value === null || value === smtpFailureCode || value === unknownDeliveryCode) return value;
+  return 'DELIVERY_FAILED';
 }
 
 function toSafeDeliveryError(value: string | null): string | null {

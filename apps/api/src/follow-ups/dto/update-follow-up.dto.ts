@@ -41,6 +41,15 @@ export class SendFollowUpPingDto {
   previewToken!: string;
 
   @IsOptional()
+  @IsUUID()
+  acknowledgeDuplicateRiskForAttemptId?: string;
+}
+
+export class RetryFollowUpPingDto {
+  @IsUUID()
+  attemptId!: string;
+
+  @IsOptional()
   @IsBoolean()
   acknowledgeDuplicateRisk?: boolean;
 }

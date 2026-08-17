@@ -1077,6 +1077,7 @@ describe('ProjectsController (e2e)', () => {
       messageDraft: null,
       referencedFollowUpId: null,
       draftVersion: 1,
+      latestManualAttempt: null,
     });
 
     const beforePatch = await dataSource.query<Array<{ count: string }>>(
