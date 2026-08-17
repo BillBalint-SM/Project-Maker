@@ -7,11 +7,6 @@ export class PreviewHandoffDto {
 
   @ValidateIf((input: PreviewHandoffDto) => input.mode === 'CUSTOM')
   @IsString()
-  @Length(1, 255)
-  name?: string;
-
-  @ValidateIf((input: PreviewHandoffDto) => input.mode === 'CUSTOM')
-  @IsString()
   @Length(1, 320)
   @IsEmail()
   @Matches(exactPteCustomerSenderAddressPattern)
@@ -33,10 +28,6 @@ export class SendHandoffDto {
   @IsString()
   @Matches(/^[a-f0-9]{64}$/)
   previewDigest!: string;
-
-  @IsString()
-  @Length(1, 255)
-  senderName!: string;
 
   @IsString()
   @Length(1, 320)

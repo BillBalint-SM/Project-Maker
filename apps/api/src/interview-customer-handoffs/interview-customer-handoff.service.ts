@@ -34,7 +34,7 @@ export class InterviewCustomerHandoffService {
     return this.dataSource.transaction(async (manager) => {
       const { project } = await requireRound(manager, projectId, roundId, false);
       const dedicated = dedicatedSender(this.config);
-      return { dedicatedName: dedicated.name, dedicatedAddress: dedicated.address, lastUsedName: project.lastCustomerSenderName, lastUsedAddress: project.lastCustomerSenderAddress };
+      return { dedicatedAddress: dedicated.address, lastUsedAddress: project.lastCustomerSenderAddress };
     });
   }
 
@@ -111,7 +111,7 @@ export class InterviewCustomerHandoffService {
       const handoff = await requireHandoff(manager, projectId, roundId, handoffId, true);
       if (handoff.state !== 'DRAFT') throw new ConflictException('Az összefoglaló nem küldhető ebből az állapotból.');
       const sender = handoff.senderAddress && handoff.senderName
-        ? { address: handoff.senderAddress, name: handoff.senderName }
+        ? { address: handoff.senderAddress }
         : null;
       if (sender) throw new ConflictException('Ehhez a verzióhoz már rögzítettük a levelezési azonosságot.');
       const preview = await buildPreview(manager, project, round, handoff, senderFromDigestInput(input));
@@ -123,9 +123,9 @@ export class InterviewCustomerHandoffService {
       const predecessor = handoff.supersedesHandoffId
         ? await manager.getRepository(InterviewCustomerHandoffEntity).findOneBy({ id: handoff.supersedesHandoffId })
         : null;
-      const outbound = await manager.getRepository(CustomerOutboundCommunicationEntity).save({ id: randomUUID(), projectId, sourceType: 'INTERVIEW_HANDOFF', sourceId: handoff.id, senderName: preview.senderName, senderAddress: preview.senderAddress, recipientName: preview.recipientName, recipientAddress: preview.recipientEmail, subject: preview.subject, htmlContent: preview.htmlContent, textContent: preview.textContent, sourceContentVersion: preview.sourceContentVersion, previewDigest: preview.previewDigest, replyToAddress, replyTokenHash: sha256(token) });
+      const outbound = await manager.getRepository(CustomerOutboundCommunicationEntity).save({ id: randomUUID(), projectId, sourceType: 'INTERVIEW_HANDOFF', sourceId: handoff.id, senderName: preview.senderAddress, senderAddress: preview.senderAddress, recipientName: preview.recipientName, recipientAddress: preview.recipientEmail, subject: preview.subject, htmlContent: preview.htmlContent, textContent: preview.textContent, sourceContentVersion: preview.sourceContentVersion, previewDigest: preview.previewDigest, replyToAddress, replyTokenHash: sha256(token) });
       const correspondence = await manager.getRepository(CustomerCorrespondenceEntity).save({ id: randomUUID(), projectId, outboundCommunicationId: outbound.id, predecessorId: predecessor?.correspondenceId ?? null, status: 'Válaszra vár', unreadMessageCount: 0 });
-      Object.assign(handoff, { state: 'SENDING', recipientName: preview.recipientName, recipientEmail: preview.recipientEmail, senderName: preview.senderName, senderAddress: preview.senderAddress, replyToAddress, replyTokenHash: sha256(token), correspondenceId: correspondence.id, outboundCommunicationId: outbound.id, internalOwnerName: project.internalOwnerName, subject: preview.subject, htmlContent: preview.htmlContent, textContent: preview.textContent, previewDigest: preview.previewDigest, sourceContentVersion: preview.sourceContentVersion, attemptedAt: new Date(), failureCode: null, mailSystemAcceptance: null, messageReference: null });
+      Object.assign(handoff, { state: 'SENDING', recipientName: preview.recipientName, recipientEmail: preview.recipientEmail, senderName: preview.senderAddress, senderAddress: preview.senderAddress, replyToAddress, replyTokenHash: sha256(token), correspondenceId: correspondence.id, outboundCommunicationId: outbound.id, internalOwnerName: project.internalOwnerName, subject: preview.subject, htmlContent: preview.htmlContent, textContent: preview.textContent, previewDigest: preview.previewDigest, sourceContentVersion: preview.sourceContentVersion, attemptedAt: new Date(), failureCode: null, mailSystemAcceptance: null, messageReference: null });
       return manager.getRepository(InterviewCustomerHandoffEntity).save(handoff);
     });
     return this.deliver(prepared);
@@ -160,7 +160,7 @@ export class InterviewCustomerHandoffService {
     let state: 'SENT' | 'FAILED' | 'UNKNOWN' = 'SENT';
     let acceptance: 'ACCEPTED' | 'REJECTED' | null = null;
     let messageReference: string | null = null;
-    try { const result = await this.mailer.submit(immutableOutboundCustomerMessage({ senderAddress: prepared.senderAddress!, senderName: prepared.senderName!, recipientAddress: prepared.recipientEmail!, replyToAddress: prepared.replyToAddress!, subject: prepared.subject!, textContent: prepared.textContent!, htmlContent: prepared.htmlContent! })); acceptance = result.acceptance; messageReference = result.messageReference; if (result.acceptance === 'REJECTED') state = 'FAILED'; }
+    try { const result = await this.mailer.submit(immutableOutboundCustomerMessage({ senderAddress: prepared.senderAddress!, recipientAddress: prepared.recipientEmail!, replyToAddress: prepared.replyToAddress!, subject: prepared.subject!, textContent: prepared.textContent!, htmlContent: prepared.htmlContent! })); acceptance = result.acceptance; messageReference = result.messageReference; if (result.acceptance === 'REJECTED') state = 'FAILED'; }
     catch (error) { state = error instanceof CustomerMailBoundaryError && error.code !== 'OUTCOME_UNKNOWN' ? 'FAILED' : 'UNKNOWN'; }
     return this.dataSource.transaction(async (manager) => {
       const handoff = await requireHandoff(manager, prepared.projectId, prepared.roundId, prepared.id, true);
@@ -181,13 +181,13 @@ export class InterviewCustomerHandoffService {
   }
 }
 
-async function buildPreview(manager: EntityManager, project: Project, round: InterviewRoundEntity, handoff: InterviewCustomerHandoffEntity, sender: { name: string; address: string }): Promise<InterviewCustomerHandoffPreview> {
+async function buildPreview(manager: EntityManager, project: Project, round: InterviewRoundEntity, handoff: InterviewCustomerHandoffEntity, sender: { address: string }): Promise<InterviewCustomerHandoffPreview> {
   if (!project.internalOwnerName) throw new ConflictException('A küldéshez meg kell adni a belső PO/PM nevét.');
   if (handoff.version > 1 && !normalize(handoff.modificationSummary)) throw new BadRequestException('A módosítás összefoglalása kötelező.');
   const projection = await loadProjection(manager, project, round, handoff);
   const rendered = renderHandoff(projection);
-  const previewDigest = sha256([rendered.previewDigest, sender.name, sender.address.toLowerCase(), project.customerContactName, project.customerContactEmail.toLowerCase()].join('\n'));
-  return { handoffId: handoff.id, version: handoff.version, recipientName: project.customerContactName, recipientEmail: project.customerContactEmail, senderName: sender.name, senderAddress: sender.address, ...rendered, previewDigest, sourceContentVersion: round.contentVersion };
+  const previewDigest = sha256([rendered.previewDigest, sender.address.toLowerCase(), project.customerContactName, project.customerContactEmail.toLowerCase()].join('\n'));
+  return { handoffId: handoff.id, version: handoff.version, recipientName: project.customerContactName, recipientEmail: project.customerContactEmail, senderAddress: sender.address, ...rendered, previewDigest, sourceContentVersion: round.contentVersion };
 }
 
 async function loadProjection(manager: EntityManager, project: Project, round: InterviewRoundEntity, handoff: InterviewCustomerHandoffEntity): Promise<HandoffProjection> {
@@ -227,10 +227,10 @@ async function reconcileExpiredSending(manager: EntityManager, projectId: string
 function clearPrepared(row: InterviewCustomerHandoffEntity) { Object.assign(row, { recipientName: null, recipientEmail: null, senderName: null, senderAddress: null, replyToAddress: null, replyTokenHash: null, mailSystemAcceptance: null, messageReference: null, correspondenceId: null, outboundCommunicationId: null, internalOwnerName: null, subject: null, htmlContent: null, textContent: null, previewDigest: null, sourceContentVersion: null, attemptedAt: null, sentAt: null }); }
 function normalize(value: string | null) { const trimmed = value?.trim(); return trimmed ? trimmed : null; }
 function requireMutable(project: Project) { if (project.status === 'ARCHIVED') throw new ConflictException('Archived projects are read-only.'); }
-function toSummary(row: InterviewCustomerHandoffEntity): InterviewCustomerHandoffSummary { return { id: row.id, projectId: row.projectId, roundId: row.roundId, version: row.version, state: row.state, modificationSummary: row.modificationSummary, supersedesHandoffId: row.supersedesHandoffId, recipientName: row.recipientName, recipientEmail: row.recipientEmail, senderName: row.senderName, senderAddress: row.senderAddress, createdAt: row.createdAt.toISOString(), attemptedAt: row.attemptedAt?.toISOString() ?? null, sentAt: row.sentAt?.toISOString() ?? null }; }
+function toSummary(row: InterviewCustomerHandoffEntity): InterviewCustomerHandoffSummary { return { id: row.id, projectId: row.projectId, roundId: row.roundId, version: row.version, state: row.state, modificationSummary: row.modificationSummary, supersedesHandoffId: row.supersedesHandoffId, recipientName: row.recipientName, recipientEmail: row.recipientEmail, senderAddress: row.senderAddress, createdAt: row.createdAt.toISOString(), attemptedAt: row.attemptedAt?.toISOString() ?? null, sentAt: row.sentAt?.toISOString() ?? null }; }
 function toDetail(row: InterviewCustomerHandoffEntity): InterviewCustomerHandoffDetail { return { ...toSummary(row), internalOwnerName: row.internalOwnerName, subject: row.subject, htmlContent: row.htmlContent, textContent: row.textContent, sourceContentVersion: row.sourceContentVersion, failureCode: row.failureCode, replyToAddress: row.replyToAddress, mailSystemAcceptance: row.mailSystemAcceptance, messageReference: row.messageReference, correspondenceId: row.correspondenceId }; }
 async function audit(manager: EntityManager, projectId: string, eventType: string, row: InterviewCustomerHandoffEntity) { await manager.getRepository(AuditEvent).save({ id: randomUUID(), projectId, eventType, payload: { roundId: row.roundId, handoffId: row.id, version: String(row.version), state: row.state } }); }
 
-function senderFromDigestInput(input: SendInterviewCustomerHandoffInput): { name: string; address: string } {
-  return requireCustomerSender(input.senderName, input.senderAddress);
+function senderFromDigestInput(input: SendInterviewCustomerHandoffInput): { address: string } {
+  return requireCustomerSender(input.senderAddress);
 }

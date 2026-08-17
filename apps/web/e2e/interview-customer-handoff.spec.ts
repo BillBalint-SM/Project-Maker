@@ -29,7 +29,7 @@ test.describe.serial('interview customer handoff browser journey', () => {
     await expect(page.getByTestId('handoff-preview-button')).toBeVisible();
     await expect(page.getByText('1. verzió előnézete')).toBeVisible();
     await page.getByLabel('Saját PO/PM postafiók').check();
-    await page.getByTestId('handoff-sender-name').fill('Teszt PO');
+    await expect(page.getByTestId('handoff-sender-name')).toHaveCount(0);
     const invalidPreviewResponse = page.waitForResponse((response) => response.request().method() === 'POST' && response.url().endsWith('/preview'));
     await page.getByTestId('handoff-sender-address').fill('x..y@pte.hu');
     await nativeButton(page, 'handoff-preview-button').click();
@@ -39,7 +39,7 @@ test.describe.serial('interview customer handoff browser journey', () => {
     await page.getByTestId('handoff-sender-address').fill('teszt.po@pte.hu');
     await expect(page.locator('.preview')).toBeHidden();
     await nativeButton(page, 'handoff-preview-button').click();
-    await expect(page.locator('.preview')).toContainText('Teszt PO <teszt.po@pte.hu>');
+    await expect(page.locator('.preview')).toContainText('teszt.po@pte.hu');
     await sendCurrentPreview(page, fixture.projectId, fixture.roundId);
     await expect.poll(() => graphMessages(request).then((items) => items.length)).toBe(1);
     await expect(page.getByRole('heading', { name: /Verzióelőzmények/ })).toBeVisible();

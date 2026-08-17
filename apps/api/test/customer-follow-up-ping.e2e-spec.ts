@@ -27,7 +27,6 @@ describe('Customer follow-up ping draft and manual delivery', () => {
 
   before(async () => {
     process.env['CUSTOMER_MAILBOX_ADDRESS'] = 'project-maker@pte.hu';
-    process.env['CUSTOMER_MAILBOX_NAME'] = 'Project Maker';
     const module = await Test.createTestingModule({ imports: [AppModule] })
       .overrideProvider(customerMailerToken)
       .useValue({
@@ -143,9 +142,7 @@ describe('Customer follow-up ping draft and manual delivery', () => {
       .get(`/projects/${projectId}/follow-up/sender-options`)
       .expect(200);
     assert.deepEqual(initialSenderOptions.body, {
-      dedicatedName: 'Project Maker',
       dedicatedAddress: 'project-maker@pte.hu',
-      lastUsedName: null,
       lastUsedAddress: null,
     });
     await request(app.getHttpServer())
@@ -153,7 +150,6 @@ describe('Customer follow-up ping draft and manual delivery', () => {
       .send({
         expectedVersion: 1,
         senderMode: 'CUSTOM',
-        senderName: 'Téves feladó',
         senderAddress: 'po@team.pte.hu',
       })
       .expect(400);
@@ -162,7 +158,6 @@ describe('Customer follow-up ping draft and manual delivery', () => {
       .send({
         expectedVersion: 1,
         senderMode: 'CUSTOM',
-        senderName: 'Téves feladó',
         senderAddress: 'po@pte.hu.example.test',
       })
       .expect(400);
@@ -185,7 +180,6 @@ describe('Customer follow-up ping draft and manual delivery', () => {
       .send({
         expectedVersion: 2,
         senderMode: 'CUSTOM',
-        senderName: 'PO Péter',
         senderAddress: 'po.peter@pte.hu',
       })
       .expect(201);
@@ -194,7 +188,7 @@ describe('Customer follow-up ping draft and manual delivery', () => {
     assert.match(preview.body.subject, /^Pontosítás kérése — Customer ping preview-send/);
     assert.equal(preview.body.draftVersion, 2);
     assert.equal(preview.body.referencedFollowUpVersion, 1);
-    assert.equal(preview.body.senderName, 'PO Péter');
+    assert.equal('senderName' in preview.body, false);
     assert.equal(preview.body.senderAddress, 'po.peter@pte.hu');
     assert.equal(typeof preview.body.previewToken, 'string');
     assert.match(preview.body.text, /Kérlek, küldd el a hiányzó jóváhagyást\./);
@@ -213,7 +207,7 @@ describe('Customer follow-up ping draft and manual delivery', () => {
     assert.equal(sent.body.draftVersion, 2);
     assert.equal(delivered.length, 1);
     assert.equal(submitted.length, 1);
-    assert.equal(submitted[0]?.senderName, 'PO Péter');
+    assert.equal('senderName' in (submitted[0] ?? {}), false);
     assert.equal(submitted[0]?.senderAddress, 'po.peter@pte.hu');
     assert.match(submitted[0]?.replyToAddress ?? '', /^.+\+[A-Za-z0-9_-]+@pte\.hu$/);
     assert.equal(deliveredMessageFrozen.at(-1), true);
@@ -243,7 +237,7 @@ describe('Customer follow-up ping draft and manual delivery', () => {
     );
     assert.equal(outboundRows.length, 1);
     assert.equal(outboundRows[0]?.source_type, 'CUSTOMER_FOLLOW_UP_PING');
-    assert.equal(outboundRows[0]?.sender_name, 'PO Péter');
+    assert.equal(outboundRows[0]?.sender_name, 'po.peter@pte.hu');
     assert.equal(outboundRows[0]?.sender_address, 'po.peter@pte.hu');
     assert.equal(outboundRows[0]?.reply_to_address, submitted[0]?.replyToAddress);
 
@@ -260,7 +254,7 @@ describe('Customer follow-up ping draft and manual delivery', () => {
     const rememberedSenderOptions = await request(app.getHttpServer())
       .get(`/projects/${projectId}/follow-up/sender-options`)
       .expect(200);
-    assert.equal(rememberedSenderOptions.body.lastUsedName, 'PO Péter');
+    assert.equal('lastUsedName' in rememberedSenderOptions.body, false);
     assert.equal(rememberedSenderOptions.body.lastUsedAddress, 'po.peter@pte.hu');
 
     const audits = await dataSource.query<Array<{ event_type: string; payload: Record<string, string> }>>(
@@ -646,7 +640,7 @@ describe('Customer follow-up ping draft and manual delivery', () => {
     releaseDelivery = null;
     assert.equal((await first).status, 201);
     assert.equal(delivered.length, 1);
-    assert.equal(submitted[0]?.senderName, 'Project Maker');
+    assert.equal('senderName' in (submitted[0] ?? {}), false);
     assert.equal(submitted[0]?.senderAddress, 'project-maker@pte.hu');
     assert.match(submitted[0]?.replyToAddress ?? '', /^project-maker\+.+@pte\.hu$/);
 
@@ -1109,7 +1103,7 @@ describe('Customer follow-up ping draft and manual delivery', () => {
     assert.equal(firstResult[0].nextPingAt, '2026-08-17T13:00:00.000Z');
     assert.equal(delivered.length, 1);
     assert.equal(delivered[0].to, 'current-scheduled-recipient@example.test');
-    assert.equal(submitted[0]?.senderName, 'Project Maker');
+    assert.equal('senderName' in (submitted[0] ?? {}), false);
     assert.equal(submitted[0]?.senderAddress, 'project-maker@pte.hu');
     assert.match(submitted[0]?.replyToAddress ?? '', /^project-maker\+.+@pte\.hu$/);
     assert.match(delivered[0].text, /Kérlek, erősítsd meg a döntést\./);
