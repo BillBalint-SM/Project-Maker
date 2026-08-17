@@ -345,10 +345,13 @@ These are intentionally separate flows:
   `UNKNOWN`. Both terminal recovery states survive reload. `FAILED` can be
   retried only by an explicit retry command. `UNKNOWN` requires the exact
   attempt ID and a request-local duplicate-risk acknowledgement after external
-  mailbox verification. Retry revalidates the current recipient, draft version,
-  and referenced follow-up; it never runs automatically. A stale `SENDING`
-  attempt reconciles once to `UNKNOWN`, while a visible pending attempt holds
-  the cockpit mutation lease. Durable attempts and redacted audit metadata are
+  mailbox verification. An unchanged delivery can use the retry command;
+  changed content requires a fresh preview and a fresh-send acknowledgement
+  bound to the latest uncertain attempt. Retry revalidates the current recipient,
+  draft version, and referenced follow-up; it never runs automatically. A stale
+  `SENDING` attempt reconciles once to `UNKNOWN`, while a visible pending attempt
+  holds the cockpit mutation lease and the client polls until a terminal state
+  or lease expiry releases it. Durable attempts and redacted audit metadata are
   retained. The message
   contains no Markdown, Claude instruction, interview package, follow-up owner,
   category, answer, source linkage, identifiers, or audit content. The timer

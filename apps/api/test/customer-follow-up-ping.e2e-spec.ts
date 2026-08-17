@@ -298,6 +298,16 @@ describe('Customer follow-up ping draft and manual delivery', () => {
     assert.equal(reloaded.body.latestManualAttempt.draftVersion, 2);
     assert.equal(delivered.length, 0);
 
+    const settingsSaved = await request(app.getHttpServer())
+      .patch(`/projects/${projectId}/follow-up`)
+      .send({ enabled: true })
+      .expect(200);
+    assert.equal(
+      settingsSaved.body.latestManualAttempt.attemptId,
+      reloaded.body.latestManualAttempt.attemptId,
+    );
+    assert.equal(settingsSaved.body.latestManualAttempt.state, 'FAILED');
+
     deliveryMode = 'SUCCESS';
     const retried = await request(app.getHttpServer())
       .post(`/projects/${projectId}/follow-up/ping/retry`)
@@ -476,7 +486,7 @@ describe('Customer follow-up ping draft and manual delivery', () => {
       .get(`/projects/${projectId}/follow-up`)
       .expect(200);
     assert.equal(reconciledAfterReload.body.latestManualAttempt.state, 'UNKNOWN');
-    await request(app.getHttpServer())
+    const draftSaved = await request(app.getHttpServer())
       .patch(`/projects/${projectId}/follow-up/draft`)
       .send({
         messageDraft: 'Az újabb draft sem kerülheti meg a kézbesítési ellenőrzést',
@@ -484,6 +494,11 @@ describe('Customer follow-up ping draft and manual delivery', () => {
         expectedVersion: 2,
       })
       .expect(200);
+    assert.equal(
+      draftSaved.body.latestManualAttempt.attemptId,
+      reconciledAfterReload.body.latestManualAttempt.attemptId,
+    );
+    assert.equal(draftSaved.body.latestManualAttempt.state, 'UNKNOWN');
     const preview = await request(app.getHttpServer())
       .post(`/projects/${projectId}/follow-up/ping/preview`)
       .send({ expectedVersion: 3 })
@@ -519,6 +534,27 @@ describe('Customer follow-up ping draft and manual delivery', () => {
       .expect(409);
     assert.equal(staleRetry.body.code, 'FOLLOW_UP_RETRY_STALE');
     assert.equal(delivered.length, 0);
+
+    const wrongAcknowledgement = await request(app.getHttpServer())
+      .post(`/projects/${projectId}/follow-up/ping`)
+      .send({
+        previewToken: preview.body.previewToken,
+        acknowledgeDuplicateRiskForAttemptId: randomUUID(),
+      })
+      .expect(409);
+    assert.equal(wrongAcknowledgement.body.code, 'FOLLOW_UP_DELIVERY_UNKNOWN');
+    assert.equal(delivered.length, 0);
+
+    const freshSend = await request(app.getHttpServer())
+      .post(`/projects/${projectId}/follow-up/ping`)
+      .send({
+        previewToken: preview.body.previewToken,
+        acknowledgeDuplicateRiskForAttemptId:
+          reconciled.body.latestManualAttempt.attemptId,
+      })
+      .expect(201);
+    assert.equal(freshSend.body.state, 'SENT');
+    assert.equal(delivered.length, 1);
   });
 
   it('describes draft, successful, and failed ping activity in employee language', async () => {

@@ -88,6 +88,7 @@ export class CustomerFollowUpComponent implements OnInit {
   private previewFocusReturn: HTMLElement | null = null;
   private retryFocusReturn: HTMLElement | null = null;
   private recoveredPendingLease: CockpitOperationLease | null = null;
+  private recoveredPendingRefreshHandle: ReturnType<typeof setTimeout> | null = null;
 
   readonly settingsForm = new FormGroup({
     enabled: new FormControl(false, { nonNullable: true }),
@@ -113,6 +114,7 @@ export class CustomerFollowUpComponent implements OnInit {
 
   constructor() {
     this.destroyRef.onDestroy(() => {
+      this.clearRecoveredPendingRefresh();
       this.recoveredPendingLease?.release();
       this.recoveredPendingLease = null;
     });
@@ -268,11 +270,15 @@ export class CustomerFollowUpComponent implements OnInit {
     }
   }
 
-  sendPing(): void {
+  sendPing(acknowledgeDuplicateRisk = false): void {
     const currentPreview = this.preview();
     if (!currentPreview || this.controlsDisabled()) {
       return;
     }
+    const uncertainAttempt = this.state()?.latestManualAttempt?.state === 'UNKNOWN'
+      ? this.state()?.latestManualAttempt
+      : null;
+    if (uncertainAttempt && !acknowledgeDuplicateRisk) return;
     const lease = this.operationPolicy.tryAcquire('customer-follow-up-ping');
     if (!lease) {
       return;
@@ -282,6 +288,9 @@ export class CustomerFollowUpComponent implements OnInit {
     this.api
       .send(this.projectId(), {
         previewToken: currentPreview.previewToken,
+        ...(uncertainAttempt
+          ? { acknowledgeDuplicateRiskForAttemptId: uncertainAttempt.attemptId }
+          : {}),
       })
       .pipe(
         releaseCockpitOperationOnFinalize(lease),
@@ -443,10 +452,39 @@ export class CustomerFollowUpComponent implements OnInit {
       if (!this.recoveredPendingLease && !this.operationPolicy.busy()) {
         this.recoveredPendingLease = this.operationPolicy.tryAcquire('customer-follow-up-ping');
       }
+      this.scheduleRecoveredPendingRefresh();
       return;
     }
+    this.clearRecoveredPendingRefresh();
     this.recoveredPendingLease?.release();
     this.recoveredPendingLease = null;
+  }
+
+  private scheduleRecoveredPendingRefresh(): void {
+    if (this.recoveredPendingRefreshHandle !== null) return;
+    this.recoveredPendingRefreshHandle = setTimeout(() => {
+      this.recoveredPendingRefreshHandle = null;
+      this.api.load(this.projectId())
+        .pipe(takeUntilDestroyed(this.destroyRef))
+        .subscribe({
+          next: (state) => this.applyState(state, {
+            preserveDraft: true,
+            preserveSettings: true,
+          }),
+          error: (error: Error) => {
+            this.actionError.set(error.message);
+            if (this.state()?.latestManualAttempt?.state === 'SENDING') {
+              this.scheduleRecoveredPendingRefresh();
+            }
+          },
+        });
+    }, 1_000);
+  }
+
+  private clearRecoveredPendingRefresh(): void {
+    if (this.recoveredPendingRefreshHandle === null) return;
+    clearTimeout(this.recoveredPendingRefreshHandle);
+    this.recoveredPendingRefreshHandle = null;
   }
 
   private focusAfterNextRender(selector: string): void {

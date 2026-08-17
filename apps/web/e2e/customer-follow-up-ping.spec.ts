@@ -285,6 +285,45 @@ test('requires a visible request-specific acknowledgement for an uncertain ping'
   expect(retryBody).toEqual({ attemptId, acknowledgeDuplicateRisk: true });
 });
 
+test('keeps uncertain recovery visible after editing and explicitly acknowledges a fresh send', async ({
+  page,
+  request,
+}) => {
+  const project = await createProject(request, 'unknown-fresh-send');
+  await apiJson(request, 'PATCH', `/projects/${project.id}/follow-up/draft`, {
+    messageDraft: 'A bizonytalan küldés eredeti piszkozata',
+    referencedFollowUpId: null,
+    expectedVersion: 1,
+  });
+  const attemptId = await forceCustomerPingAttempt(
+    project.id,
+    project.customerContactEmail,
+    'UNKNOWN',
+  );
+  let sendBody: unknown = null;
+  page.on('request', (outbound) => {
+    if (outbound.url().endsWith('/follow-up/ping')) sendBody = outbound.postDataJSON();
+  });
+
+  await page.goto(`/projects/${project.id}`);
+  const message = page.getByTestId('follow-up-message-draft');
+  await message.fill('A bizonytalan küldés után javított piszkozat');
+  await nativeButton(page, 'save-follow-up-draft-button').click();
+  await expect(page.getByTestId('follow-up-unknown-recovery')).toBeVisible();
+
+  await nativeButton(page, 'preview-follow-up-ping-button').click();
+  const confirmation = page.getByRole('alertdialog', {
+    name: 'Customer follow-up ping előnézete',
+  });
+  await expect(confirmation).toContainText('duplikált levelet');
+  await nativeButton(page, 'acknowledge-fresh-follow-up-ping-button').click();
+  await expect(page.getByTestId('follow-up-send-result')).toContainText('Ping elküldve');
+  expect(sendBody).toEqual({
+    previewToken: expect.any(String),
+    acknowledgeDuplicateRiskForAttemptId: attemptId,
+  });
+});
+
 test('keeps unrelated cockpit mutations disabled while a recovered attempt is pending', async ({
   page,
   request,
@@ -295,7 +334,11 @@ test('keeps unrelated cockpit mutations disabled while a recovered attempt is pe
     referencedFollowUpId: null,
     expectedVersion: 1,
   });
-  await forceCustomerPingAttempt(project.id, project.customerContactEmail, 'SENDING');
+  const attemptId = await forceCustomerPingAttempt(
+    project.id,
+    project.customerContactEmail,
+    'SENDING',
+  );
 
   await page.goto(`/projects/${project.id}`);
   await expect(page.getByTestId('follow-up-sending-recovery')).toContainText('folyamatban');
@@ -305,6 +348,12 @@ test('keeps unrelated cockpit mutations disabled while a recovered attempt is pe
   await expect(nativeButton(page, 'preview-follow-up-ping-button')).toBeDisabled();
   await expect(nativeButton(page, 'save-workspace-button')).toBeDisabled();
   await expect(nativeButton(page, 'archive-project-button')).toBeDisabled();
+
+  await transitionCustomerPingAttempt(attemptId, 'FAILED');
+  await expect(page.getByTestId('follow-up-failed-recovery')).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByTestId('follow-up-message-draft')).toBeEnabled();
+  await expect(nativeButton(page, 'save-workspace-button')).toBeEnabled();
+  await expect(nativeButton(page, 'archive-project-button')).toBeEnabled();
 });
 
 async function createProject(
@@ -394,6 +443,30 @@ async function forceCustomerPingAttempt(
     await client.end();
   }
   return attemptId;
+}
+
+async function transitionCustomerPingAttempt(
+  attemptId: string,
+  state: 'FAILED' | 'UNKNOWN',
+): Promise<void> {
+  const databaseUrl = process.env.DATABASE_URL;
+  if (!databaseUrl) throw new Error('DATABASE_URL is required for the recovery fixture.');
+  const client = new Client({ connectionString: databaseUrl });
+  try {
+    await client.connect();
+    await client.query(
+      `UPDATE customer_follow_up_delivery_attempts
+       SET state = $2, failure_code = $3
+       WHERE id = $1`,
+      [
+        attemptId,
+        state,
+        state === 'FAILED' ? 'SMTP_SEND_FAILED' : 'SMTP_DELIVERY_UNKNOWN',
+      ],
+    );
+  } finally {
+    await client.end();
+  }
 }
 
 function createSmtpCaptureServer(target: string[]): Server {
