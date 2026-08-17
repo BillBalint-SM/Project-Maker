@@ -38,7 +38,39 @@ test('opens the latest Initial Intake customer handoff without a legacy send con
   await page.getByTestId('open-interview-handoff-button').click();
 
   await expect(page).toHaveURL(`/projects/${project.id}/interview#customer-handoff`);
-  await expect(page.getByTestId('interview-handoff')).toBeVisible();
+  const handoff = page.getByTestId('interview-handoff');
+  await expect(handoff).toBeVisible();
+  await expect(handoff).toBeInViewport();
+  await expect(page.locator('#customer-handoff')).toBeFocused();
+});
+
+test('explains that an open Initial Intake must be ended before customer handoff', async ({
+  page,
+  request,
+}) => {
+  const project = await createProject(request, 'open-intake');
+  const bank = await apiJson<{ questions: readonly { stableKey: string }[] }>(
+    request,
+    'GET',
+    '/settings/base-questions',
+  );
+  const stableKey = bank.questions[0]?.stableKey;
+  if (!stableKey) throw new Error('The seeded Question Bank is empty.');
+  await apiJson(request, 'POST', `/projects/${project.id}/question-schema`, {
+    questions: [{ stableKey, required: true, blocking: true }],
+  });
+  await apiJson(request, 'POST', `/projects/${project.id}/rounds`, {
+    type: 'INITIAL_INTAKE',
+  });
+
+  await page.goto(`/projects/${project.id}`);
+  await page.getByTestId('open-interview-handoff-button').click();
+
+  await expect(page).toHaveURL(`/projects/${project.id}/interview#customer-handoff`);
+  await expect(page.getByTestId('interview-handoff-prerequisite')).toContainText(
+    'Előbb zárd le az Initial Intake meetinget',
+  );
+  await expect(page.getByTestId('interview-handoff')).toHaveCount(0);
 });
 
 test('explains the Felmérés prerequisite when no Initial Intake exists', async ({

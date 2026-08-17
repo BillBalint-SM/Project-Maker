@@ -1,4 +1,5 @@
-import { Component, OnDestroy, OnInit, inject, signal } from '@angular/core';
+import { DOCUMENT } from '@angular/common';
+import { afterNextRender, Component, Injector, OnDestroy, OnInit, inject, signal } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { forkJoin } from 'rxjs';
 import { ButtonModule } from 'primeng/button';
@@ -70,6 +71,8 @@ interface QuestionAssessmentState {
   styleUrl: './interview.page.scss',
 })
 export class InterviewPage implements OnInit, OnDestroy {
+  private readonly document = inject(DOCUMENT);
+  private readonly injector = inject(Injector);
   private readonly route = inject(ActivatedRoute);
   private readonly questionBankApi = inject(QuestionBankApiService);
   private readonly interviewApi = inject(InterviewApiService);
@@ -149,6 +152,7 @@ export class InterviewPage implements OnInit, OnDestroy {
         this.assessmentStates.set(buildAssessmentStates(activeRound));
         this.selectedKeys.set(this.buildSelectedKeys(bank, schema, activeRound));
         this.loading.set(false);
+        this.focusRequestedHandoffAfterNextRender(activeRound);
       },
       error: (error: unknown) => {
         this.loadError.set(resolveLoadError(error));
@@ -718,6 +722,24 @@ export class InterviewPage implements OnInit, OnDestroy {
         .map((question) => question.stableKey)
         .filter((stableKey) => activeKeys.has(stableKey)) ??
       bank.questions.filter((question) => question.active).map((question) => question.stableKey)
+    );
+  }
+
+  private focusRequestedHandoffAfterNextRender(activeRound: InterviewRound | null): void {
+    if (!this.handoffRequested || activeRound?.status !== 'ENDED') {
+      return;
+    }
+
+    afterNextRender(
+      () => {
+        const handoff = this.document.getElementById('customer-handoff');
+        if (!handoff) {
+          return;
+        }
+        handoff.focus({ preventScroll: true });
+        handoff.scrollIntoView({ block: 'start' });
+      },
+      { injector: this.injector },
     );
   }
 
