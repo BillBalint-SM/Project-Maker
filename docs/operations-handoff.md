@@ -11,7 +11,7 @@ The runtime is a Docker Compose stack:
 | Service | Role | Network exposure |
 | --- | --- | --- |
 | `web` | Angular 22.1 + licensed PrimeNG 22.0.0 static application served by Nginx; proxies `/api/*` | Publishes `WEB_PORT` (default `8080`) |
-| `api` | NestJS 11 API, TypeORM migrations, SMTP worker/timer | Internal only; port `3000` is exposed to the Compose network |
+| `api` | NestJS 11 API, TypeORM migrations, Microsoft Graph mail boundary and follow-up timer | Internal only; port `3000` is exposed to the Compose network |
 | `postgres` | PostgreSQL 18.4 Alpine data store | Internal only; no host port |
 
 `project-maker-edge` is the browser-facing network and
@@ -59,23 +59,15 @@ do not commit `.env` or real credentials.
 | `WEB_PORT` | yes | Host port mapped to Nginx port `8080`. |
 | `CORS_ORIGIN` | yes | One exact browser origin, for example `http://localhost:8080`; paths, wildcards, credentials, and origin lists are rejected. |
 | `FOLLOW_UP_POLL_INTERVAL_MS` | no | Automatic follow-up poll interval. Valid range is 5,000–86,400,000 ms; default is 60,000. |
-| `SMTP_HOST` | no | SMTP host. Together with `SMTP_FROM`, this enables delivery. Blank means email delivery is unavailable. |
-| `SMTP_PORT` | no | TCP/TLS port; the API default is `587`. `.env.example` uses `1025` for local SMTP-capture setups. |
-| `SMTP_SECURE` | no | `false` uses plain TCP; `true` uses implicit TLS. |
-| `SMTP_USER` / `SMTP_PASSWORD` | no | Optional credentials. They must be supplied together and require `SMTP_SECURE=true`. |
-| `SMTP_FROM` | no | Sender address. Required with `SMTP_HOST` to configure the mailer. |
+| `CUSTOMER_MAILBOX_NAME` / `CUSTOMER_MAILBOX_ADDRESS` | yes | Dedicated Microsoft 365 mailbox. Reply correlation uses high-entropy plus-addresses at this mailbox. |
+| `GRAPH_TENANT_ID` / `GRAPH_CLIENT_ID` / `GRAPH_CLIENT_SECRET` | yes | Microsoft Graph application credentials. The secret is deployment-only and must not be committed or logged. |
+| `GRAPH_BASE_URL` | no | Graph API base URL; defaults to `https://graph.microsoft.com`. |
 
-The current dependency-free mailer supports plain SMTP and implicit TLS only;
-STARTTLS negotiation is not implemented. The default Compose port of `587`
-must not be interpreted as STARTTLS support. Add a Nodemailer/STARTTLS mode as
-a separate hardening slice before connecting to an SMTP provider that requires
-STARTTLS.
-
-When SMTP is not configured, the existing follow-up endpoints return `503` and
-do not allow automatic follow-up to be enabled. An interview customer-handoff
-attempt instead retains the version and records `FAILED`, so an operator can
-configure SMTP and the employee can retry the exact previewed content. This
-prevents both silent timers and lost handoff drafts.
+Customer handoffs use Microsoft Graph with no SMTP fallback. A Graph rejection
+or bounded configuration/authentication failure retains the immutable outbound
+communication, correspondence identity, and append-only attempt result. A retry
+uses the same Reply-To identity; a new logical version creates a successor
+correspondence. `ACCEPTED` means only that the mail system accepted submission.
 
 ## Database migrations and recovery
 
@@ -324,11 +316,14 @@ cockpit load and has its own retry state.
 These are intentionally separate flows:
 
 - **Interview customer handoff:** ending an interview creates version 1 in
-  `DRAFT`. Preview renders and snapshots the recipient, subject, HTML, text, and
-  source content version. Send requires the matching digest and uses a database
-  lease so only one attempt can own the version. `SENT` versions are immutable;
+  `DRAFT`. The employee selects the dedicated mailbox or an exact `@pte.hu`
+  sender before preview. Preview binds sender, recipient, subject, HTML, text,
+  and source content version. Send requires the matching digest and uses a database
+  lease so only one attempt can own the version. Every logical version retains
+  one immutable outbound resource, one plus-addressed Reply-To identity, one
+  correspondence, and append-only submission attempts. `SENT` versions are immutable;
   a customer change request creates the next draft with a required modification
-  summary and re-enables edits for that ended round. Known SMTP failures become
+  summary and re-enables edits for that ended round. Known Graph rejections become
   `FAILED`; expired or interrupted attempts become `UNKNOWN` and require an
   explicitly acknowledged retry after checking external delivery evidence and
   accepting the possible duplicate-delivery risk.

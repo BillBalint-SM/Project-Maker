@@ -575,7 +575,7 @@ Függőben lévő vagy hibás technikai mentésnél a lezáró műveletek letilt
 
 ### Első küldés most vagy később
 
-A lezárás automatikusan létrehozza az 1. verziójú ügyfélcsomag `DRAFT` állapotát. A címzett a projekt megnevezett ügyfél-kapcsolattartója, a belső felelős pedig a projekt létrehozásakor megadott PO/PM munkatárs.
+A lezárás automatikusan létrehozza az 1. verziójú ügyfélcsomag `DRAFT` állapotát. A címzett a projekt megnevezett ügyfél-kapcsolattartója. Előnézet előtt válaszd a dedikált postafiókot, vagy add meg a PO/PM nevét és pontos `@pte.hu` címét; aldomain és hasonló domain nem fogadható el. A legutóbb sikeresen használt feladót a projekt megjegyzi, de minden előnézet előtt szerkeszthető.
 
 - `Mentés, később küldöm`: a meeting lezárul, az ügyfélcsomag piszkozat marad, és később ugyanerről az oldalról folytatható.
 - `Mentés és küldés`: a meeting lezárul, majd megnyílik az előnézet. A küldés csak a megerősítés után indul.
@@ -588,8 +588,8 @@ Küldés előtt mindig olvasd át a tárgyat, a címzett nevét és címét, val
 | --- | --- | --- |
 | `DRAFT` | Szerkeszthető, még nem küldött verzió | Módosítás, előnézet, majd küldés |
 | `SENDING` | A küldési kísérlet folyamatban van | Ne indíts második küldést; várj vagy töltsd újra |
-| `SENT` | A verzió elküldött, változatlan pillanatkép | Ügyfélmódosításhoz indíts új verziót |
-| `FAILED` | Ismert SMTP-hiba miatt nem sikerült | Ellenőrizd az okot, majd válaszd az újrapróbálást |
+| `SENT` | A levelezőrendszer elfogadta az átadást; ez nem kézbesítési vagy olvasási igazolás | Ügyfélmódosításhoz indíts új verziót |
+| `FAILED` | A Microsoft Graph ismerten elutasította az átadást | Ellenőrizd az okot, majd válaszd az újrapróbálást |
 | `UNKNOWN` | Nem bizonyítható, hogy a megszakadt kísérlet kézbesített-e | Előbb ellenőrizd a postafiókot/szolgáltatót; csak ezután válaszd a folytatást |
 
 A `SENT` verzió nem szerkeszthető. A `FAILED` ugyanazt a változatlan előnézeti tartalmat próbálja újra. Az `UNKNOWN` nem automatikus újraküldési engedély: a rendszer azért áll meg, hogy ne küldjön észrevétlenül duplikált levelet.

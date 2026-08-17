@@ -78,7 +78,9 @@ Ending the interview meeting is never gated by these business states: an `OPEN` 
 
 ### Interview customer handoff
 
-Each handoff uses the project's currently configured customer contact as its fixed recipient and identifies the named internal project owner. Preview and delivery use the same ordered question, answer, effective-status, and justified-not-relevant projection. Sent content and recipient are immutable per-version historical snapshots. A later customer modification request creates a new numbered revision draft, requires a customer-visible modification summary, and never rewrites prior sent versions. A failed delivery remains explicitly retryable; the system does not retry automatically.
+Each handoff uses the project's currently configured customer contact as its fixed recipient. Before preview, the employee selects the dedicated Microsoft 365 mailbox or supplies a named sender at the exact `@pte.hu` domain; the last successfully used sender is remembered per project. Preview and submission bind sender, recipient, content, and source version into one digest. Every logical version creates one immutable outbound communication, one high-entropy plus-addressed Reply-To identity, and one Customer correspondence in `Válaszra vár`. Retries append mail-system attempt results without changing that identity. A later numbered version creates a successor correspondence and never rewrites prior history.
+
+`SENT` in the storage state means `Átadva a levelezőrendszernek`: it records Graph acceptance, not delivery, opening, or customer approval. Known rejection remains retryable; uncertain submission requires explicit duplicate-risk acknowledgement.
 
 The handoff is distinct from Customer email follow-up scheduling. It excludes raw IDs, audit payloads, readiness and Decision Score internals, unrelated follow-ups, and credentials.
 

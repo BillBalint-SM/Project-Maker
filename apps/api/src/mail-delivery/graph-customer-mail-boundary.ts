@@ -6,7 +6,8 @@ import type {
   MailSubmissionResult,
   OutboundCustomerMessage,
 } from '@project-maker/contracts';
-import { Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable, Optional } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 
 import {
   CustomerMailBoundaryError,
@@ -17,9 +18,12 @@ import {
 export { CustomerMailBoundaryError } from './customer-mail-boundary';
 
 export interface GraphOutboundMessage {
+  readonly senderAddress: string;
   readonly toRecipients: readonly { readonly emailAddress: { readonly address: string } }[];
+  readonly replyTo: readonly { readonly emailAddress: { readonly address: string } }[];
   readonly subject: string;
   readonly body: { readonly contentType: 'Text' | 'HTML'; readonly content: string };
+  readonly saveToSentItems: true;
 }
 
 export interface GraphMailboxMessage {
@@ -71,14 +75,14 @@ export const graphMailClientToken = 'GRAPH_MAIL_CLIENT';
 
 @Injectable()
 export class GraphCustomerMailBoundary implements CustomerOutboundMail, CustomerMailboxChanges {
-  constructor(@Inject(graphMailClientToken) private readonly client: GraphMailClient) {}
+  constructor(@Inject(graphMailClientToken) private readonly client: GraphMailClient, @Optional() private readonly config?: ConfigService) {}
 
   isConfigured(): boolean {
     return this.client.isConfigured();
   }
 
   async submit(message: OutboundCustomerMessage): Promise<MailSubmissionResult> {
-    const outbound = toGraphMessage(message);
+    const outbound = toGraphMessage(message, this.config?.get<string>('CUSTOMER_MAILBOX_ADDRESS')?.trim());
     try {
       const accepted = await this.client.submit(outbound);
       return accepted.accepted
@@ -107,14 +111,22 @@ function toCheckpoint(value: string | null): CustomerMailboxCheckpoint | null {
   return value === null ? null : Object.freeze({ value });
 }
 
-function toGraphMessage(message: OutboundCustomerMessage): GraphOutboundMessage {
+function toGraphMessage(message: OutboundCustomerMessage, defaultMailbox?: string): GraphOutboundMessage {
+  const senderAddress = message.senderAddress ?? defaultMailbox;
+  const replyToAddress = message.replyToAddress ?? defaultMailbox;
+  if (!senderAddress || !replyToAddress) {
+    throw new CustomerMailBoundaryError('CONFIGURATION_ERROR');
+  }
   return Object.freeze({
+    senderAddress,
     toRecipients: Object.freeze([Object.freeze({ emailAddress: Object.freeze({ address: message.recipientAddress }) })]),
+    replyTo: Object.freeze([Object.freeze({ emailAddress: Object.freeze({ address: replyToAddress }) })]),
     subject: message.subject,
     body: Object.freeze({
       contentType: message.htmlContent ? 'HTML' : 'Text',
       content: message.htmlContent ?? message.textContent,
     }),
+    saveToSentItems: true,
   });
 }
 

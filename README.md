@@ -13,7 +13,7 @@ Only Nginx publishes a host port. It serves the SPA and proxies `/api/*` to the 
 
 The platform-neutral product workflow, vocabulary, domain data intent, general intake playbook, and scoring rules are preserved in [`docs/product-domain.md`](docs/product-domain.md). The current foundation does not yet implement all of that product behavior.
 
-The current runtime, migration, backup/restore, SMTP, VPN boundary, and
+The current runtime, migration, backup/restore, Microsoft 365 mail, VPN boundary, and
 verification handoff is documented in [`docs/operations-handoff.md`](docs/operations-handoff.md).
 
 ## Documentation
@@ -88,9 +88,8 @@ The API requires `CORS_ORIGIN`; `@nestjs/config` reads it from the root `.env` w
 | `WEB_PORT` | Host port published by Nginx |
 | `CORS_ORIGIN` | Exact browser origin allowed by the API |
 | `FOLLOW_UP_POLL_INTERVAL_MS` | Automatic follow-up poll interval (5,000–86,400,000 ms) |
-| `SMTP_HOST` / `SMTP_FROM` | Together enable customer email delivery; blank disables email |
-| `SMTP_PORT` | SMTP TCP/TLS port; `.env.example` uses `1025` for local capture |
-| `SMTP_SECURE` | `false` plain TCP, `true` implicit TLS; STARTTLS is not implemented |
-| `SMTP_USER` / `SMTP_PASSWORD` | Optional credentials; both are required together and require secure mode |
+| `CUSTOMER_MAILBOX_NAME` / `CUSTOMER_MAILBOX_ADDRESS` | Dedicated Microsoft 365 mailbox used for default sender and correlated Reply-To addresses |
+| `GRAPH_TENANT_ID` / `GRAPH_CLIENT_ID` / `GRAPH_CLIENT_SECRET` | Microsoft Graph application credentials; keep the secret outside source control |
+| `GRAPH_BASE_URL` | Graph API base URL; normally `https://graph.microsoft.com` |
 
 The API and database do not publish host ports. PostgreSQL data persists in the named `postgres-data` volume.
