@@ -33,6 +33,7 @@ class HandoffFeatureProbeModule {}
 
 class ControlledGraphMailClient implements GraphMailClient {
   readonly submitted: GraphOutboundMessage[] = [];
+  readonly readCheckpoints: (string | null)[] = [];
   submitFailure: GraphMailClientError | null = null;
   submissionAccepted = true;
   pages = new Map<string, GraphMailboxPage>();
@@ -54,6 +55,7 @@ class ControlledGraphMailClient implements GraphMailClient {
   }
 
   async readMailboxPage(cursor: string | null): Promise<GraphMailboxPage> {
+    this.readCheckpoints.push(cursor);
     const key = cursor ?? 'initial';
     const failure = this.readFailure.get(key);
     if (failure) throw failure;
@@ -152,6 +154,7 @@ describe('Graph customer mail boundary', () => {
       new GraphCustomerMailBoundary(client).readChanges(null),
       (error) => isSafeBoundaryError(error, 'CONFIGURATION_ERROR'),
     );
+    assert.deepEqual(client.readCheckpoints, []);
   });
 
   it('represents provider rejection as mail-system rejection, not delivery state', async () => {
