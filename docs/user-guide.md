@@ -575,7 +575,7 @@ Függőben lévő vagy hibás technikai mentésnél a lezáró műveletek letilt
 
 ### Első küldés most vagy később
 
-A lezárás automatikusan létrehozza az 1. verziójú ügyfélcsomag `DRAFT` állapotát. A címzett a projekt megnevezett ügyfél-kapcsolattartója. Előnézet előtt válaszd a dedikált postafiókot, vagy add meg a PO/PM nevét és pontos `@pte.hu` címét; aldomain és hasonló domain nem fogadható el. A legutóbb sikeresen használt feladót a projekt megjegyzi, de minden előnézet előtt szerkeszthető.
+A lezárás automatikusan létrehozza az 1. verziójú ügyfélcsomag `DRAFT` állapotát. A címzett a projekt megnevezett ügyfél-kapcsolattartója. Előnézet előtt válaszd a dedikált postafiókot, vagy add meg a PO/PM pontos `@pte.hu` címét; aldomain és hasonló domain nem fogadható el. A legutóbb sikeresen használt címet a projekt megjegyzi, de minden előnézet előtt szerkeszthető. Az előnézet a garantálható postafiókcímet mutatja; a címzett által látott feladónév a Microsoft 365 címtárából származik.
 
 - `Mentés, később küldöm`: a meeting lezárul, az ügyfélcsomag piszkozat marad, és később ugyanerről az oldalról folytatható.
 - `Mentés és küldés`: a meeting lezárul, majd megnyílik az előnézet. A küldés csak a megerősítés után indul.
@@ -809,14 +809,14 @@ Lejárat után az automatikus feldolgozás kikapcsolja az ütemezést és törli
 
 ### Egyetlen kézi emlékeztető küldése
 
-> **Külső hatás — küldés előtt ellenőrizd:** a `Küldés az ügyfélnek` valódi Microsoft 365 levelet indít a pontos előnézetben mutatott feladótól a mutatott címzettnek. Ha bármelyik adat hibás, válaszd a `Mégse` gombot.
+> **Külső hatás — küldés előtt ellenőrizd:** a `Küldés az ügyfélnek` valódi Microsoft 365 levelet indít az előnézetben mutatott postafiókból a mutatott címzettnek. A címzett által látott feladónév a Microsoft 365 címtárából származik. Ha bármelyik garantált adat hibás, válaszd a `Mégse` gombot.
 
 A kézi ping akkor is használható, ha az automatikus ütemezés `Disabled`. A piszkozat kötelező, a kapcsolódó nyitott Discovery follow-up opcionális. A levélbe csak a megírt üzenet, valamint választás esetén a kérdés, a következő lépés és a határidő kerül. A felelős, kategória, válasz/döntés, forráshivatkozás, azonosítók, auditadatok, Markdown és Claude-instrukciók kimaradnak. A piszkozat környező szóközeit a szerver levágja; a mentett tartalom nem lehet üres és legfeljebb 10 000 karakteres.
 
 1. Írd meg az `Üzenet az ügyfélnek` mezőt, és szükség esetén válassz egy nyitott Discovery follow-upot.
 2. Válaszd a `Piszkozat mentése` gombot. Ha közben más mentett, a saját szöveged megmarad; csak az `Aktuális piszkozat újratöltése` írja felül. A ping-piszkozat és az automatikus cadence külön űrlap: az egyik mentése nem dobja el a másik még nem mentett módosítását.
-3. Válaszd a dedikált postafiókot, vagy add meg a feladó nevét és pontos `@pte.hu` címét. A projekt a legutóbb sikeresen használt feladót megjegyzi.
-4. Válaszd a `Pontos előnézet` gombot, majd ellenőrizd a feladót, a címzettet, a tárgyat és a teljes levélszöveget.
+3. Válaszd a dedikált postafiókot, vagy add meg a feladó pontos `@pte.hu` címét. A projekt a legutóbb sikeresen használt címet megjegyzi.
+4. Válaszd a `Pontos előnézet` gombot, majd ellenőrizd a feladó postafiókcímét, a címzettet, a tárgyat és a teljes levélszöveget.
 5. A `Mégse` visszavisz az előnézetet megnyitó gombra. A `Küldés az ügyfélnek` egyszer használható előnézeti tokennel indítja a levelet.
 6. Várd meg az `Átadva a levelezőrendszernek.` sikerüzenetet, majd ellenőrizd a `Last ping`, `Last delivery` és az audit history értékét. Ez a Graph-elfogadást bizonyítja, nem a kézbesítést vagy az olvasást.
 

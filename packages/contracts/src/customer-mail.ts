@@ -27,7 +27,6 @@ export type CustomerMailErrorCode = (typeof customerMailErrorCodes)[number];
 
 export interface OutboundCustomerMessage {
   readonly senderAddress?: string;
-  readonly senderName?: string;
   readonly recipientAddress: string;
   readonly replyToAddress?: string;
   readonly subject: string;

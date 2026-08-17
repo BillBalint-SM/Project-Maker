@@ -48,7 +48,7 @@ test('authors, previews, cancels, and explicitly sends one referenced customer p
   await expect(page.getByTestId('follow-up-message-draft')).toHaveValue(message);
   await expect(page.getByTestId('follow-up-reference-select')).toHaveValue(reference.id);
   await page.getByTestId('follow-up-sender-custom').check();
-  await page.getByTestId('follow-up-sender-name').fill('PO Ping');
+  await expect(page.getByTestId('follow-up-sender-name')).toHaveCount(0);
   await page.getByTestId('follow-up-sender-address').fill('po.ping@pte.hu');
 
   const previewTrigger = nativeButton(page, 'preview-follow-up-ping-button');
@@ -56,7 +56,7 @@ test('authors, previews, cancels, and explicitly sends one referenced customer p
   await previewTrigger.click();
   const preview = page.getByRole('alertdialog', { name: 'Customer follow-up ping előnézete' });
   await expect(preview).toContainText(project.customerContactEmail);
-  await expect(preview).toContainText('PO Ping <po.ping@pte.hu>');
+  await expect(preview).toContainText('po.ping@pte.hu');
   await expect(preview).toContainText(message);
   await expect(preview).toContainText('Kérdés: Melyik jóváhagyás hiányzik?');
   await expect(preview).toContainText('Következő lépés: Az ügyfél elküldi a jóváhagyást.');
