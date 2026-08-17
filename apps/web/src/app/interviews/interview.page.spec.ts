@@ -10,6 +10,7 @@ import type {
 } from '@project-maker/contracts';
 
 import { appConfig } from '../app.config';
+import { ProjectApiService } from '../projects/project-api.service';
 import { QuestionBankApiService } from '../settings/question-bank-api.service';
 import { InterviewApiService, interviewApiErrorBrand } from './interview-api.service';
 import { InterviewPage } from './interview.page';
@@ -840,6 +841,12 @@ async function renderInterviewPage(
       },
       { provide: QuestionBankApiService, useValue: questionBankApi },
       { provide: InterviewApiService, useValue: interviewApi },
+      {
+        provide: ProjectApiService,
+        useValue: {
+          loadProjectWorkspace: vi.fn().mockReturnValue(of({ status: 'DRAFT' })),
+        },
+      },
     ],
   }).compileComponents();
 

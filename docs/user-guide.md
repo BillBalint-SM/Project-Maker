@@ -603,6 +603,8 @@ A `SENT` verzió nem szerkeszthető. A `FAILED` ugyanazt a változatlan előnéz
 
 Az előző `SENT` verzió változatlanul megmarad. Egyszerre csak egy aktív, nem elküldött verzió lehet; ezért új verzió csak az előző sikeres küldése után indítható. Az új csomag nem külön interjúkör, hanem ugyanannak a lezárt meetingnek a következő, nyomon követhető átadási verziója.
 
+Archivált projektben a korábbi ügyfélcsomagok és tartalmuk továbbra is megnyithatók, de új verzió, szerkesztés, előnézet, küldés és újrapróbálás nem indítható. Aktív munka folytatásához előbb állítsd vissza a projektet.
+
 Lezárás után újabb kezdő interjúkört is indíthatsz. Az új kör az akkor legfrissebb projektsémáról készít új pillanatképet, és nem másolja automatikusan az előző kör válaszait.
 
 ## Felkészültségi értékelés és hiányok

@@ -246,8 +246,8 @@ with only `followUpId`, category, due date, and status; question, owner, and
 next-step text are not copied into the audit payload.
 
 Creation may optionally attach one snapshot from the project's current Initial
-Intake source: the latest open round, or the latest completed round when none is
-open. Open follow-ups can add, replace, or explicitly remove that relationship;
+Intake source: the most recently created `OPEN` or `ENDED` round. Open follow-ups
+can add, replace, or explicitly remove that relationship;
 resolved follow-ups retain it as historical provenance. The source command uses
 the same lock and version discipline as other follow-up mutations. A real source
 change emits a redacted audit event with only the action and compact order/topic/
@@ -367,8 +367,8 @@ The delivered readiness route is narrow and read-only:
 GET /api/projects/{projectId}/readiness
 ```
 
-It selects the latest open `INITIAL_INTAKE` round; if none is open, it selects
-the latest completed one. The result is available only for the exact current
+It selects the most recently created `OPEN` or `ENDED` `INITIAL_INTAKE` round,
+without giving an older open round precedence over a newer ended round. The result is available only for the exact current
 30-key canonical `general` v1 source. Otherwise it returns a typed unavailable
 state: `NO_INITIAL_INTAKE` or `UNSUPPORTED_SCHEMA`. An unavailable result is not
 a score and does not disable Workspace or discovery-follow-up operations.

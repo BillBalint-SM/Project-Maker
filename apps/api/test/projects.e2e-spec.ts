@@ -1045,6 +1045,18 @@ describe('ProjectsController (e2e)', () => {
       .expect(400);
     assertNoSubmittedValues(invalidWorkspaceResponse.body, 'not-a-utc-date');
     assertNoSubmittedValues(invalidWorkspaceResponse.body, 'NOT_A_STATUS');
+
+    await request(app.getHttpServer())
+      .patch(`/projects/${projectId}/workspace`)
+      .send({ internalOwnerName: null, nextActionOwnerRole: 'INTERNAL_OWNER' })
+      .expect(400);
+    await request(app.getHttpServer())
+      .get(`/projects/${projectId}/cockpit`)
+      .expect(200)
+      .expect(({ body }) => {
+        assert.equal(body.nextActionOwner.complete, true);
+        assert.equal(body.nextActionOwner.role, 'INTERNAL_OWNER');
+      });
   });
 
   it('returns an unsaved default follow-up state and persists only after PATCH', async () => {
