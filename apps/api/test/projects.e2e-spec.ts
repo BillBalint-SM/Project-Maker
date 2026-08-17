@@ -747,7 +747,7 @@ describe('ProjectsController (e2e)', () => {
     };
     await request(app.getHttpServer())
       .patch(`/projects/${projectId}/workspace`)
-      .send({ ballOwner: 'Decision Review owner', status: 'DRAFT' })
+      .send({ internalOwnerName: 'Decision Review owner', nextActionOwnerRole: 'INTERNAL_OWNER', status: 'DRAFT' })
       .expect(200);
     await createCanonicalDecisionReviewRound(projectId);
 
@@ -794,7 +794,7 @@ describe('ProjectsController (e2e)', () => {
 
     await request(app.getHttpServer())
       .patch(`/projects/${projectId}/workspace`)
-      .send({ ballOwner: 'Decision Review owner', status: 'DRAFT' })
+      .send({ internalOwnerName: 'Decision Review owner', nextActionOwnerRole: 'INTERNAL_OWNER', status: 'DRAFT' })
       .expect(200);
     await createCanonicalDecisionReviewRound(projectId, new Set(['general-001']));
 
@@ -867,7 +867,7 @@ describe('ProjectsController (e2e)', () => {
 
     await request(app.getHttpServer())
       .patch(`/projects/${projectId}/workspace`)
-      .send({ ballOwner: 'Decision Review owner', status: 'DRAFT' })
+      .send({ internalOwnerName: 'Decision Review owner', nextActionOwnerRole: 'INTERNAL_OWNER', status: 'DRAFT' })
       .expect(200);
     const firstRoundId = await createCanonicalDecisionReviewRound(projectId);
     await request(app.getHttpServer())
@@ -970,7 +970,8 @@ describe('ProjectsController (e2e)', () => {
         name: `R1 project create-values ${Date.now()}`,
         customerContactName: 'Ada Lovelace',
         customerContactEmail: 'ada@example.test',
-        ballOwner: 'Grace Hopper',
+        internalOwnerName: 'Grace Hopper',
+        nextActionOwnerRole: 'INTERNAL_OWNER',
         nextAction: 'Confirm scope',
         dueAt: '2026-08-20T12:00:00.000Z',
       })
@@ -987,7 +988,8 @@ describe('ProjectsController (e2e)', () => {
     const workspaceResponse = await request(app.getHttpServer())
       .patch(`/projects/${projectId}/workspace`)
       .send({
-        ballOwner: 'Katherine Johnson',
+        internalOwnerName: 'Katherine Johnson',
+        nextActionOwnerRole: 'INTERNAL_OWNER',
         nextAction: null,
         dueAt: null,
         status: 'WAITING_INTERNAL',
@@ -2928,6 +2930,8 @@ describe('ProjectsController (e2e)', () => {
         name: `R1 project ${label} ${Date.now()}-${Math.random()}`,
         customerContactName: 'Test Contact',
         customerContactEmail: 'test@example.test',
+        internalOwnerName: 'Test PO/PM',
+        nextActionOwnerRole: 'INTERNAL_OWNER',
       })
       .expect(201);
 

@@ -54,11 +54,14 @@ export class ProjectsService {
       customerContactName: requireText(input.customerContactName, 'customerContactName'),
       customerContactEmail: requireText(input.customerContactEmail, 'customerContactEmail'),
       status: draftStatus,
-      ballOwner: optionalText(input.ballOwner, 'ballOwner'),
+      internalOwnerName: requireText(input.internalOwnerName, 'internalOwnerName'),
+      nextActionOwnerRole: input.nextActionOwnerRole ?? null,
+      ballOwner: null,
       nextAction: optionalText(input.nextAction, 'nextAction'),
       dueAt: parseDueAt(input.dueAt),
     });
 
+    synchronizeCompatibilityOwner(project);
     return toWorkspace(await this.projectRepository.save(project));
   }
 
@@ -75,7 +78,9 @@ export class ProjectsService {
     return {
       projectId: project.id,
       status: project.status,
-      ballOwner: project.ballOwner,
+      internalOwnerName: project.internalOwnerName,
+      nextActionOwnerRole: project.nextActionOwnerRole,
+      nextActionOwner: toNextActionOwner(project),
       nextAction: project.nextAction,
       dueAt: toIsoOrNull(project.dueAt),
     };
@@ -98,8 +103,11 @@ export class ProjectsService {
         throw new ConflictException('Archived projects must be restored before they can be updated.');
       }
 
-      if (hasField(input, 'ballOwner')) {
-        project.ballOwner = optionalText(input.ballOwner, 'ballOwner');
+      if (hasField(input, 'internalOwnerName')) {
+        project.internalOwnerName = optionalText(input.internalOwnerName, 'internalOwnerName');
+      }
+      if (hasField(input, 'nextActionOwnerRole')) {
+        project.nextActionOwnerRole = input.nextActionOwnerRole ?? null;
       }
       if (hasField(input, 'nextAction')) {
         project.nextAction = optionalText(input.nextAction, 'nextAction');
@@ -116,6 +124,7 @@ export class ProjectsService {
         project.status = input.status;
       }
 
+      synchronizeCompatibilityOwner(project);
       const savedProject = await projectRepository.save(project);
       if (previousStatus !== readyForPlanningStatus && savedProject.status === readyForPlanningStatus) {
         await this.markdownService.createWithinTransaction(
@@ -302,11 +311,36 @@ function toWorkspace(project: Project): ProjectWorkspace {
     customerContactName: project.customerContactName,
     customerContactEmail: project.customerContactEmail,
     status: project.status,
-    ballOwner: project.ballOwner,
+    internalOwnerName: project.internalOwnerName,
+    nextActionOwnerRole: project.nextActionOwnerRole,
+    nextActionOwner: toNextActionOwner(project),
     nextAction: project.nextAction,
     dueAt: toIsoOrNull(project.dueAt),
     createdAt: toIso(project.createdAt, 'createdAt'),
     updatedAt: toIso(project.updatedAt, 'updatedAt'),
+  };
+}
+
+function synchronizeCompatibilityOwner(project: Project): void {
+  if (project.nextActionOwnerRole === 'INTERNAL_OWNER') {
+    project.ballOwner = project.internalOwnerName;
+  } else if (project.nextActionOwnerRole === 'CUSTOMER_CONTACT') {
+    project.ballOwner = project.customerContactName;
+  } else {
+    project.ballOwner = null;
+  }
+}
+
+function toNextActionOwner(project: Project): ProjectWorkspace['nextActionOwner'] {
+  const displayName = project.nextActionOwnerRole === 'INTERNAL_OWNER'
+    ? project.internalOwnerName
+    : project.nextActionOwnerRole === 'CUSTOMER_CONTACT'
+      ? project.customerContactName
+      : null;
+  return {
+    role: project.nextActionOwnerRole,
+    displayName,
+    complete: project.nextActionOwnerRole !== null && displayName !== null,
   };
 }
 

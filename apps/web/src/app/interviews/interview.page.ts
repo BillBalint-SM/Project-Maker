@@ -1,5 +1,5 @@
 import { Component, OnDestroy, OnInit, inject, signal } from '@angular/core';
-import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { forkJoin } from 'rxjs';
 import { ButtonModule } from 'primeng/button';
 import { CardModule } from 'primeng/card';
@@ -18,6 +18,7 @@ import type {
 } from '@project-maker/contracts';
 
 import { InterviewApiService, isInterviewApiError } from './interview-api.service';
+import { InterviewHandoffComponent } from './interview-handoff/interview-handoff.component';
 import { QuestionBankApiService } from '../settings/question-bank-api.service';
 
 const supportedRoundType = 'INITIAL_INTAKE';
@@ -59,6 +60,7 @@ interface QuestionAssessmentState {
     ButtonModule,
     CardModule,
     MessageModule,
+    InterviewHandoffComponent,
     ProgressSpinnerModule,
     RouterLink,
     TagModule,
@@ -68,7 +70,6 @@ interface QuestionAssessmentState {
 })
 export class InterviewPage implements OnInit, OnDestroy {
   private readonly route = inject(ActivatedRoute);
-  private readonly router = inject(Router);
   private readonly questionBankApi = inject(QuestionBankApiService);
   private readonly interviewApi = inject(InterviewApiService);
   private readonly autosaveTimers = new Map<string, ReturnType<typeof setTimeout>>();
@@ -89,6 +90,8 @@ export class InterviewPage implements OnInit, OnDestroy {
   readonly roundSaving = signal(false);
   readonly initialRoundStartFailed = signal(false);
   readonly completing = signal(false);
+  readonly endedEditable = signal(false);
+  readonly previewAfterFinish = signal(false);
 
   ngOnInit(): void {
     this.loadInterviewData();
@@ -508,9 +511,9 @@ export class InterviewPage implements OnInit, OnDestroy {
     this.persistAssessment(question);
   }
 
-  completeRound(): void {
+  finishRound(sendNow: boolean): void {
     const round = this.round();
-    if (!round || round.status === 'COMPLETED' || this.completing()) {
+    if (!round || round.status === 'ENDED' || this.completing()) {
       return;
     }
 
@@ -541,15 +544,16 @@ export class InterviewPage implements OnInit, OnDestroy {
     this.completing.set(true);
     this.actionError.set(null);
     this.feedback.set(null);
-    this.interviewApi.completeRound(this.projectId, round.id).subscribe({
-      next: (completedRound) => {
+    this.interviewApi.finishRound(this.projectId, round.id).subscribe({
+      next: (endedRound) => {
         this.clearAutosaveTimers();
         this.inFlightRequestIds.clear();
-        this.round.set(completedRound);
-        this.answerStates.set(buildAnswerStates(completedRound));
-        this.assessmentStates.set(buildAssessmentStates(completedRound));
+        this.round.set(endedRound);
+        this.answerStates.set(buildAnswerStates(endedRound));
+        this.assessmentStates.set(buildAssessmentStates(endedRound));
+        this.endedEditable.set(true);
+        this.previewAfterFinish.set(sendNow);
         this.completing.set(false);
-        void this.router.navigate(['/projects', this.projectId, 'readiness']);
       },
       error: (error: Error) => {
         this.actionError.set(error.message);
@@ -774,7 +778,7 @@ export class InterviewPage implements OnInit, OnDestroy {
 
   private persistAnswer(question: RoundQuestionSnapshot): void {
     const round = this.round();
-    if (!round || round.status === 'COMPLETED' || this.completing()) {
+    if (!round || (round.status === 'ENDED' && !this.endedEditable()) || this.completing()) {
       return;
     }
 
@@ -1034,13 +1038,13 @@ export class InterviewPage implements OnInit, OnDestroy {
 
   private isAnswerEditingLocked(question: RoundQuestionSnapshot): boolean {
     const round = this.round();
-    return round?.status === 'COMPLETED' || this.completing() || !this.answerStates().has(question.id);
+    return (round?.status === 'ENDED' && !this.endedEditable()) || this.completing() || !this.answerStates().has(question.id);
   }
 
   private isAssessmentEditingLocked(question: RoundQuestionSnapshot): boolean {
     const round = this.round();
     return (
-      round?.status === 'COMPLETED' ||
+      (round?.status === 'ENDED' && !this.endedEditable()) ||
       this.completing() ||
       !this.assessmentStates().has(question.id)
     );

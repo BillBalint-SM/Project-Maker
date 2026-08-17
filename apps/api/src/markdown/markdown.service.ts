@@ -359,8 +359,9 @@ async function loadInterviewRounds(
       schemaVersion,
       type: round.type,
       status: round.status,
+      contentVersion: round.contentVersion,
       createdAt: toIso(round.createdAt, 'round createdAt'),
-      completedAt: round.completedAt ? toIso(round.completedAt, 'round completedAt') : null,
+      endedAt: round.endedAt ? toIso(round.endedAt, 'round endedAt') : null,
       questions: roundSnapshots.map((snapshot) =>
         toEffectiveRoundQuestionSnapshot(
           snapshot,
@@ -380,7 +381,21 @@ function toProjectWorkspace(project: Project): ProjectWorkspace {
     customerContactName: project.customerContactName,
     customerContactEmail: project.customerContactEmail,
     status: project.status,
-    ballOwner: project.ballOwner,
+    internalOwnerName: project.internalOwnerName,
+    nextActionOwnerRole: project.nextActionOwnerRole,
+    nextActionOwner: {
+      role: project.nextActionOwnerRole,
+      displayName: project.nextActionOwnerRole === 'INTERNAL_OWNER'
+        ? project.internalOwnerName
+        : project.nextActionOwnerRole === 'CUSTOMER_CONTACT'
+          ? project.customerContactName
+          : null,
+      complete: project.nextActionOwnerRole === 'INTERNAL_OWNER'
+        ? Boolean(project.internalOwnerName)
+        : project.nextActionOwnerRole === 'CUSTOMER_CONTACT'
+          ? Boolean(project.customerContactName)
+          : false,
+    },
     nextAction: project.nextAction,
     dueAt: project.dueAt ? toIso(project.dueAt, 'project dueAt') : null,
     createdAt: toIso(project.createdAt, 'project createdAt'),
@@ -685,7 +700,7 @@ function renderProjectContext(project: ProjectWorkspace): string {
     `- Ügyfélkapcsolat: ${escapeMarkdownInline(project.customerContactName)}`,
     `- Kapcsolati e-mail: ${escapeMarkdownInline(project.customerContactEmail)}`,
     `- Státusz: ${escapeMarkdownInline(project.status)}`,
-    `- Labda birtokosa: ${project.ballOwner ? escapeMarkdownInline(project.ballOwner) : 'Nincs kijelölve'}`,
+    `- Következő lépés felelőse: ${project.nextActionOwner.displayName ? escapeMarkdownInline(project.nextActionOwner.displayName) : 'Nincs kijelölve'}`,
     `- Következő lépés: ${project.nextAction ? escapeMarkdownInline(project.nextAction) : 'Nincs megadva'}`,
   ].join('\n');
 }
@@ -710,7 +725,7 @@ function renderInitialIntake(rounds: readonly InterviewRound[]): string | null {
   return [
     '## Initial Intake',
     '',
-    `Állapot: ${round.status === 'COMPLETED' ? 'Lezárt' : 'Folyamatban'}.`,
+    `Állapot: ${round.status === 'ENDED' ? 'Lezárt' : 'Folyamatban'}.`,
     '',
     ...round.questions.flatMap((question) => [
       `### ${question.order}. ${escapeMarkdownInline(question.text)}`,

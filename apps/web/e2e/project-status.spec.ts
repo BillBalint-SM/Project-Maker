@@ -7,6 +7,7 @@ test('shows the server-derived next action and opens the project interview', asy
       name: `Projektállapot út ${uniquePart}`,
       customerContactName: 'Projektállapot Kapcsolattartó',
       customerContactEmail: `project-status-${uniquePart}@example.test`,
+      internalOwnerName: 'Projektstátusz PO/PM',
     },
   });
   expect(created.status()).toBe(201);
@@ -41,6 +42,7 @@ test('surfaces project coordination and redacted recent activity', async ({ page
       name: `Projektállapot központ ${uniquePart}`,
       customerContactName: 'Koordinációs Kapcsolattartó',
       customerContactEmail: `status-hub-${uniquePart}@example.test`,
+      internalOwnerName: 'Kovács Anna',
     },
   });
   expect(created.status()).toBe(201);
@@ -48,7 +50,8 @@ test('surfaces project coordination and redacted recent activity', async ({ page
 
   const updatedWorkspace = await page.request.patch(`/api/projects/${project.id}/workspace`, {
     data: {
-      ballOwner: 'Kovács Anna',
+      internalOwnerName: 'Kovács Anna',
+      nextActionOwnerRole: 'INTERNAL_OWNER',
       nextAction: 'Egyeztesd a következő interjú időpontját.',
       dueAt: '2026-08-20T12:00:00.000Z',
       status: 'DRAFT',

@@ -15,7 +15,7 @@ export async function findCurrentInitialIntakeSource(
     return openRound;
   }
   return rounds.findOne({
-    where: { projectId, type: 'INITIAL_INTAKE', status: 'COMPLETED' },
+    where: { projectId, type: 'INITIAL_INTAKE', status: 'ENDED' },
     order: { createdAt: 'DESC', id: 'ASC' },
   });
 }

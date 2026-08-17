@@ -31,7 +31,7 @@ interface ReadinessRoundQuestion {
 
 interface ReadinessRound {
   readonly id: string;
-  readonly status: 'OPEN' | 'COMPLETED';
+  readonly status: 'OPEN' | 'ENDED';
   readonly questions: readonly ReadinessRoundQuestion[];
 }
 
@@ -53,6 +53,7 @@ async function createProject(
       name,
       customerContactName: 'Readiness E2E Contact',
       customerContactEmail: 'readiness-e2e@example.test',
+      internalOwnerName: 'Readiness PO/PM',
     },
   });
   expect(response.status()).toBe(201);
@@ -99,50 +100,15 @@ test.describe.serial('SCORE-01 readiness employee workflow', () => {
       'Részben megvan',
     );
 
-    const blockedCompletionResponse = waitForRoundCompletion(
-      page,
-      fixture.projectId,
-      fixture.round.id,
-    );
-    await nativeButton(page, 'complete-interview-round-button').click();
-    expect((await blockedCompletionResponse).status()).toBe(409);
-
-    const resetResponse = waitForAssessmentMutation(
-      page,
-      fixture.projectId,
-      fixture.round.id,
-      partialQuestion.id,
-      'DELETE',
-    );
-    await nativeButton(page, `reset-round-assessment-${partialQuestion.id}`).click();
-    expect((await resetResponse).status()).toBe(200);
-
-    await nativeButton(page, `set-not-relevant-assessment-${partialQuestion.id}`).click();
-    await page
-      .getByTestId(`round-assessment-rationale-${partialQuestion.id}`)
-      .fill('Synthetic browser evidence is not relevant to this delivery decision.');
-    const notRelevantResponse = waitForAssessmentMutation(
-      page,
-      fixture.projectId,
-      fixture.round.id,
-      partialQuestion.id,
-      'PUT',
-    );
-    await nativeButton(page, `save-not-relevant-assessment-${partialQuestion.id}`).click();
-    expect((await notRelevantResponse).status()).toBe(200);
-    await expect(page.getByTestId(`round-assessment-status-${partialQuestion.id}`)).toHaveText(
-      'Nem releváns',
-    );
-
     const completedResponse = waitForRoundCompletion(
       page,
       fixture.projectId,
       fixture.round.id,
     );
-    await nativeButton(page, 'complete-interview-round-button').click();
+    await nativeButton(page, 'finish-interview-later-button').click();
     const completedRound = (await completedResponse).status();
     expect(completedRound).toBe(201);
-    await expect(page).toHaveURL(new RegExp(`/projects/${fixture.projectId}/readiness$`));
+    await expect(page.getByTestId('interview-handoff')).toBeVisible();
 
     const remediationRound = await createInitialIntakeRound(request, fixture.projectId);
     const checklistGapQuestion = requireOptionalQuestion(remediationRound.questions);
@@ -180,7 +146,9 @@ test.describe.serial('SCORE-01 readiness employee workflow', () => {
         response.url().endsWith(`/api/projects/${fixture.projectId}/workspace`),
     );
     const ownerRefreshResponse = waitForReadiness(page, fixture.projectId);
-    await page.getByTestId('workspace-ball-owner-input').fill('Readiness workflow owner');
+    await page.getByTestId('workspace-internal-owner-input').fill('Readiness workflow owner');
+    await page.getByTestId('workspace-next-action-owner-select').click();
+    await page.getByRole('option', { name: /PO\/PM/ }).click();
     await nativeButton(page, 'save-workspace-button').click();
     expect((await workspaceSaveResponse).status()).toBe(200);
     const ownerRefreshedReadiness = requireAvailableReadiness(
@@ -463,7 +431,7 @@ function waitForRoundCompletion(page: Page, projectId: string, roundId: string) 
   return page.waitForResponse(
     (response) =>
       response.request().method() === 'POST' &&
-      response.url().endsWith(`/api/projects/${projectId}/rounds/${roundId}/complete`),
+      response.url().endsWith(`/api/projects/${projectId}/rounds/${roundId}/finish`),
   );
 }
 

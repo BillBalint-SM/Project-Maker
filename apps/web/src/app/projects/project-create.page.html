@@ -33,6 +33,22 @@
       </div>
 
       <div class="field">
+        <label for="internal-owner-name">Belső PO/PM neve</label>
+        <input
+          pInputText
+          id="internal-owner-name"
+          class="full-width"
+          formControlName="internalOwnerName"
+          autocomplete="name"
+          data-testid="internal-owner-name-input"
+          [attr.aria-invalid]="createForm.controls.internalOwnerName.invalid && createForm.controls.internalOwnerName.touched"
+        />
+        @if (createForm.controls.internalOwnerName.invalid && createForm.controls.internalOwnerName.touched) {
+          <small class="field-error">Add meg a projektet vezető belső PO/PM nevét.</small>
+        }
+      </div>
+
+      <div class="field">
         <label for="contact-name">Ügyfél kapcsolattartó neve</label>
         <input
           pInputText

@@ -3,6 +3,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { AuditEvent } from '../audit/audit-event.entity';
 import { Project } from '../projects/project.entity';
+import { InterviewCustomerHandoffModule } from '../interview-customer-handoffs/interview-customer-handoff.module';
 import { BaseQuestionEntity } from '../question-bank/base-question.entity';
 import { ProjectQuestionSchemaEntity } from '../question-bank/project-question-schema.entity';
 import { ProjectSchemaQuestionEntity } from '../question-bank/project-schema-question.entity';
@@ -15,6 +16,7 @@ import { RoundQuestionSnapshotEntity } from './round-question-snapshot.entity';
 
 @Module({
   imports: [
+    InterviewCustomerHandoffModule,
     TypeOrmModule.forFeature([
       InterviewRoundEntity,
       RoundQuestionSnapshotEntity,

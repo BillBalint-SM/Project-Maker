@@ -2,6 +2,7 @@ import type {
   AuditEventPage,
   AuditEventRecord,
   CustomerFollowUpState,
+  NextActionOwnerRole,
   ProjectCockpit,
   ProjectStatus,
   ProjectWorkspace,
@@ -13,7 +14,8 @@ export type {
 
 export interface UpdateProjectWorkspaceInput {
   readonly status: Exclude<ProjectStatus, 'ARCHIVED'>;
-  readonly ballOwner: string | null;
+  readonly internalOwnerName: string | null;
+  readonly nextActionOwnerRole: NextActionOwnerRole | null;
   readonly nextAction: string | null;
   readonly dueAt: string | null;
 }

@@ -60,10 +60,48 @@ separate from active project preparation work.
 _Avoid_: Day-to-day project coordination, hidden destructive controls
 
 **Operational coordination data**:
-The ball owner, one next action, and due date used to coordinate active
-project preparation. It is visible and quickly editable from employee working
-contexts rather than buried in Project settings.
-_Avoid_: Customer contact, project lifecycle control
+The named Next-action owner, one next action, and due date used to coordinate
+active project preparation. The owner is either the named Internal project
+owner or the named Customer contact. Coordination is visible and quickly
+editable from employee working contexts rather than buried in Project settings.
+_Avoid_: Contact details used as an implicit assignment, project lifecycle control
+
+**Internal project owner**:
+The named internal PO/PM user who operates Project Maker for the project,
+conducts the interview, and may own its next action.
+_Avoid_: Anonymous internal user, unqualified project role
+
+**Next-action owner**:
+The concrete person who currently has the project's next action: either the
+Internal project owner or the Customer contact. Employee-facing language names
+the role and person together.
+_Avoid_: Ball owner, free-form owner label
+
+**Ended interview**:
+An Initial Intake meeting that has ended independently of information
+completeness. Its working record may support a first or later handoff draft.
+_Avoid_: Immutable completed round, readiness approval
+
+**Interview review**:
+An editable interval after an Initial Intake meeting ends, used to prepare its
+first customer handoff or a later correction version. Answer completeness
+affects readiness and gaps, not whether the meeting can end.
+_Avoid_: One-time pre-send state, readiness approval
+
+**Interview customer handoff**:
+One numbered, immutable, human-readable question-and-answer snapshot explicitly
+sent to the project's named Customer contact after review.
+_Avoid_: Customer follow-up ping, arbitrary-recipient email, raw data export
+
+**Interview revision draft**:
+The single editable next handoff version based on the current working interview
+and latest sent version. Starting it never changes an earlier handoff.
+_Avoid_: Rewriting a sent handoff, parallel correction drafts
+
+**Modification summary**:
+The customer-visible explanation of what changed in an Interview customer
+handoff after version one.
+_Avoid_: Raw inbound email, diagnostic audit text
 
 **Question Bank**:
 The organization-maintained, configurable source collection of available
@@ -101,9 +139,9 @@ uses a newly accepted schema and a new Initial Intake round.
 _Avoid_: Rewriting answered questions, mutable historical assessment
 
 **Post-interview readiness transition**:
-The direct transition from a completed Initial Intake interview to that
-project's Felkészültség context, where its current gaps are understood and
-acted on before the next preparation stage.
+The direct transition from an ended Initial Intake meeting to that project's
+Felkészültség context, where its current gaps are understood and acted on while
+the ended interview supports versioned review and customer handoff.
 _Avoid_: Returning blindly to a global list, treating completion as readiness
 
 **Project preparation state**:

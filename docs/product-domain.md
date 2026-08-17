@@ -10,9 +10,9 @@ The canonical workflow is:
 
 1. Create a draft project or open an existing one.
 2. Capture project basics, the business problem, the desired outcome, ownership, and constraints.
-3. Select a versioned playbook and work through its guided interview/checklist questions.
-4. Record answers, open questions, owners, due dates, next steps, and follow-up outcomes.
-5. Review current completion, readiness, factors, and ordered remediation gaps after relevant edits.
+3. Select a versioned playbook and work through its guided interview/checklist questions with the named customer contact.
+4. Record answers and assessments, end the meeting independently of information completeness, then review and send numbered immutable handoff versions while retaining the editable interview working record.
+5. Review current completion, readiness, factors, and ordered remediation gaps after relevant edits; these results do not prevent the meeting from ending.
 6. Resolve the highest-severity gaps through the Cockpit's explicit remediation target.
 7. Review the server-derived Decision Score and recommendation; recording a formal Go, Conditional Go, or No-Go decision remains a later workflow.
 8. Generate the canonical Markdown specification, then derive human-readable exports from it when the future output workflows are delivered.
@@ -25,6 +25,13 @@ The canonical workflow is:
 - **Checklist answer:** the answer and operational state for one playbook item, including owner, due date, open question, and next step.
 - **Discovery follow-up:** a project-owned discovery work item with a responsible owner, due date, status, answer/decision, next step, and an optional immutable source snapshot. The delivered `INTAKE-04` slices create, review, resolve, edit open working fields, and link an open item to its intake origin while retaining canonical terminal states.
 - **Customer email follow-up:** an outbound communication cadence/schedule. It may send pings, but it is not a discovery work item and does not replace discovery follow-ups.
+- **Internal project owner:** the named internal PO/PM user who operates Project Maker for the project and conducts the interview.
+- **Next-action owner:** either the named internal project owner or the named customer contact who currently has the project's next action. `Ball owner` is not product language.
+- **Ended interview:** an Initial Intake meeting that ended independently of information completeness; its working record may support a current handoff draft.
+- **Interview review:** an editable interval after the meeting ends, for the first customer package or a later correction version.
+- **Interview customer handoff:** one numbered, immutable, human-readable snapshot of the interview sent to the project's configured customer contact.
+- **Interview revision draft:** the single editable next handoff version based on the current working interview and latest sent version.
+- **Modification summary:** the customer-visible explanation of what changed in an interview handoff after version one.
 - **Completion:** progress through relevant playbook items. Items marked not relevant are excluded from the denominator.
 - **Effective checklist status:** the current status derived from a valid answer unless a persisted assessment overrides it: `Nincs meg`, `Kész`, `Részben megvan`, or justified `Nem releváns`.
 - **Readiness:** the delivered weighted measure of current base information, business clarification, ownership, relevant checklist status, and discovery-follow-up resolution.
@@ -48,8 +55,8 @@ The model below records semantic intent, not a database schema. Stable IDs and e
 |---|---|
 | Identity | Stable `id`, `name`, selected `playbookId`, `createdAt`, `updatedAt`, optional `archivedAt` |
 | Organization | `customerOrOrganization`, `affectedTeams` |
-| Ownership | `projectManager`, `businessAnalyst`, `productOwner`, `techLead` |
-| Contact | `contactPhone`, `contactEmail`, `contactOther` |
+| Ownership | Named internal project owner and structured next-action owner role (`INTERNAL_OWNER` or `CUSTOMER_CONTACT`); broader delivery roles remain optional context |
+| Contact | Named customer contact and configured customer contact email; optional phone/other contact context |
 | Schedule | `kickoffDate`, `plannedDecisionDate`, `deadline` |
 | Classification | `status`, `priority` |
 | Business framing | `businessProblem`, `expectedBusinessOutcome`, `firstMvpGoal` |
@@ -65,11 +72,19 @@ is no longer a bare Draft and must be archived rather than physically deleted.
 
 Each answer preserves `status`, `owner`, `dueDate`, free-text `answer`, `openQuestion`, `nextStep`, and `updatedAt`.
 
-For the delivered initial-intake assessment, a valid answer is effectively `Kész`; no valid answer is `Nincs meg`. `Részben megvan` may be set only when a valid answer exists and remains a completion blocker. `Nem releváns` requires a nonblank rationale, excludes the item from completion and checklist readiness denominators, and can satisfy a required item's completion condition. The rationale is retained with the assessment but is not exposed in readiness gaps or assessment audit payloads. Completed rounds make answers and assessments immutable.
+For the delivered initial-intake assessment, a valid answer is effectively `Kész`; no valid answer is `Nincs meg`. `Részben megvan` may be set only when a valid answer exists and remains a readiness gap. `Nem releváns` requires a nonblank rationale and excludes the item from completion and checklist readiness denominators. The rationale is retained with the assessment but is not exposed in readiness gaps or assessment audit payloads.
+
+Ending the interview meeting is never gated by these business states: an `OPEN` round becomes `ENDED` after pending writes settle, even when answers are missing, partial, or not relevant. Meeting lifecycle is independent from handoff-version state. The ended working interview is editable while preparing version one or an explicitly started later revision. Readiness and Decision Score continue to report information quality independently.
+
+### Interview customer handoff
+
+Each handoff uses the project's currently configured customer contact as its fixed recipient and identifies the named internal project owner. Preview and delivery use the same ordered question, answer, effective-status, and justified-not-relevant projection. Sent content and recipient are immutable per-version historical snapshots. A later customer modification request creates a new numbered revision draft, requires a customer-visible modification summary, and never rewrites prior sent versions. A failed delivery remains explicitly retryable; the system does not retry automatically.
+
+The handoff is distinct from Customer email follow-up scheduling. It excludes raw IDs, audit payloads, readiness and Decision Score internals, unrelated follow-ups, and credentials.
 
 ### Discovery follow-up
 
-Each discovery follow-up preserves a stable `id`, `category`, `question`, `owner`, `dueDate`, `status`, `decisionOrAnswer`, `nextStep`, and zero or one immutable source snapshot. A new or replacement source must belong to the latest open `INITIAL_INTAKE` round, or to the latest completed one when no initial intake is open. A later intake never rewrites an existing link. Resolved follow-ups retain their source as immutable provenance, while only open follow-ups may add, change, or remove it. Cards and audit records expose a compact human reference (order, topic, control point), not the source ID or full source question. Customer email follow-up state is a separate scheduling concern and is not part of this entity.
+Each discovery follow-up preserves a stable `id`, `category`, `question`, `owner`, `dueDate`, `status`, `decisionOrAnswer`, `nextStep`, and zero or one immutable source snapshot. A new or replacement source must belong to the latest `OPEN` or `ENDED` `INITIAL_INTAKE` round. Handoff-version state does not select the source. A later intake never rewrites an existing link. Resolved follow-ups retain their source as immutable provenance, while only open follow-ups may add, change, or remove it. Cards and audit records expose a compact human reference (order, topic, control point), not the source ID or full source question. Customer email follow-up state is a separate scheduling concern and is not part of this entity.
 
 ### Readiness gap
 
@@ -77,7 +92,7 @@ Each delivered gap preserves `severity`, `category`, explanatory `message`, reco
 
 ### Readiness source and availability
 
-Readiness uses the latest open `INITIAL_INTAKE` round for a project; if none is open, it uses the latest completed one. It is available only when that source contains the exact current 30 stable keys of the canonical `general` v1 playbook. With no initial intake it reports `NO_INITIAL_INTAKE`; a noncanonical source reports `UNSUPPORTED_SCHEMA`. These availability states are not a score and do not prevent normal Workspace or discovery-follow-up work. The delivered Decision Score remains unavailable rather than partially calculated when readiness is unavailable or any Decision input rating is missing.
+Readiness uses the latest `OPEN` or `ENDED` `INITIAL_INTAKE` round for a project. Handoff-version state does not select the source. Readiness is available only when that round contains the exact current 30 stable keys of the canonical `general` v1 playbook. With no initial intake it reports `NO_INITIAL_INTAKE`; a noncanonical source reports `UNSUPPORTED_SCHEMA`. These availability states are not a score and do not prevent normal Workspace or discovery-follow-up work. The delivered Decision Score remains unavailable rather than partially calculated when readiness is unavailable or any Decision input rating is missing.
 
 ## Canonical playbook contract
 

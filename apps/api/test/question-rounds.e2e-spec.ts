@@ -1130,7 +1130,7 @@ describe('Question bank and interview rounds (PostgreSQL e2e)', () => {
     });
   });
 
-  it('keeps answer clearing, completion gates, and completed assessment immutability consistent', async () => {
+  it('keeps answer clearing editable in a handoff draft and locks it after send', async () => {
     const { projectId } = await createProjectWithSingleQuestionSchema(
       app,
       `Assessment lifecycle ${Date.now()}`,
@@ -1156,8 +1156,8 @@ describe('Question bank and interview rounds (PostgreSQL e2e)', () => {
 
     const partialCompletionResponse = await request(app.getHttpServer())
       .post(`/projects/${projectId}/rounds/${roundId}/complete`)
-      .expect(409);
-    assert.deepEqual(partialCompletionResponse.body.missingSnapshotIds, [snapshotId]);
+      .expect(201);
+    assert.equal(partialCompletionResponse.body.status, 'ENDED');
 
     const clearedPartialResponse = await request(app.getHttpServer())
       .patch(answerUrl)
@@ -1195,9 +1195,16 @@ describe('Question bank and interview rounds (PostgreSQL e2e)', () => {
     const completedResponse = await request(app.getHttpServer())
       .post(`/projects/${projectId}/rounds/${roundId}/complete`)
       .expect(201);
-    assert.equal(completedResponse.body.status, 'COMPLETED');
+    assert.equal(completedResponse.body.status, 'ENDED');
     assert.equal(completedResponse.body.questions[0].checklistStatus, 'Nem releváns');
     assert.equal(completedResponse.body.questions[0].assessmentRationale, rationale);
+
+    await dataSource.query(
+      `UPDATE "interview_customer_handoffs"
+       SET "state" = 'SENT', "sent_at" = CURRENT_TIMESTAMP
+       WHERE "round_id" = $1`,
+      [roundId],
+    );
 
     const stateBeforeRejectedCommands = await dataSource.query<
       Array<{ status: string; rationale: string; updatedAt: Date; auditCount: string }>
@@ -1296,7 +1303,7 @@ describe('Question bank and interview rounds (PostgreSQL e2e)', () => {
     );
   });
 
-  it('returns null after initial intake completion and allows a new initial intake round', async () => {
+  it('keeps the ended initial intake current until a newer round is started', async () => {
     const { projectId } = await createProjectWithSingleQuestionSchema(
       app,
       `Completed active ${Date.now()}`,
@@ -1326,7 +1333,8 @@ describe('Question bank and interview rounds (PostgreSQL e2e)', () => {
     const activeRoundResponse = await request(app.getHttpServer())
       .get(`/projects/${projectId}/rounds/active`)
       .expect(200);
-    assert.equal(activeRoundResponse.body, null);
+    assert.equal(activeRoundResponse.body.id, roundId);
+    assert.equal(activeRoundResponse.body.status, 'ENDED');
 
     const restartedRoundResponse = await request(app.getHttpServer())
       .post(`/projects/${projectId}/rounds`)
@@ -1338,7 +1346,7 @@ describe('Question bank and interview rounds (PostgreSQL e2e)', () => {
     assert.equal(restartedRoundResponse.body.type, 'INITIAL_INTAKE');
   });
 
-  it('keeps prior round snapshots immutable and blocks completion until required answers exist', async () => {
+  it('keeps prior round snapshots immutable while allowing an incomplete meeting to end', async () => {
     const bankResponse = await request(app.getHttpServer())
       .get('/settings/base-questions')
       .expect(200);
@@ -1363,6 +1371,7 @@ describe('Question bank and interview rounds (PostgreSQL e2e)', () => {
         name: `R2 proof ${Date.now()}`,
         customerContactName: 'R2 Test Contact',
         customerContactEmail: 'r2@example.test',
+        internalOwnerName: 'R2 Test PO/PM',
       })
       .expect(201);
     const projectId = projectResponse.body.id as string;
@@ -1395,15 +1404,15 @@ describe('Question bank and interview rounds (PostgreSQL e2e)', () => {
     assert.equal(firstRoundResponse.body.questions[0].controlPoint, originalQuestion.controlPoint);
 
     const gateUpdate = dataSource.query(
-      'UPDATE "interview_rounds" SET "status" = \'COMPLETED\', "completed_at" = CURRENT_TIMESTAMP WHERE "id" = $1',
+      'UPDATE "interview_rounds" SET "status" = \'ENDED\', "completed_at" = CURRENT_TIMESTAMP WHERE "id" = $1',
       [firstRoundId],
     );
-    await assert.rejects(gateUpdate, /required answers/);
+    await assert.doesNotReject(gateUpdate);
     await assert.rejects(
       dataSource.query(
         `INSERT INTO "interview_rounds" (
           "id", "project_id", "project_schema_id", "type", "status", "completed_at", "source"
-        ) VALUES ($1, $2, $3, 'INITIAL_INTAKE', 'COMPLETED', CURRENT_TIMESTAMP, 'DIRECT_TEST')`,
+        ) VALUES ($1, $2, $3, 'INITIAL_INTAKE', 'ENDED', CURRENT_TIMESTAMP, 'DIRECT_TEST')`,
         [randomUUID(), projectId, schemaResponse.body.id],
       ),
       /OPEN|transition|completion/,
@@ -1472,10 +1481,10 @@ describe('Question bank and interview rounds (PostgreSQL e2e)', () => {
     );
     assert.deepEqual(noOpClearAudit, [{ count: '0' }]);
 
-    const blockedResponse = await request(app.getHttpServer())
+    const endedWithMissingResponse = await request(app.getHttpServer())
       .post(`/projects/${projectId}/rounds/${secondRoundId}/complete`)
-      .expect(409);
-    assert.deepEqual(blockedResponse.body.missingSnapshotIds, [secondSnapshotId]);
+      .expect(201);
+    assert.equal(endedWithMissingResponse.body.status, 'ENDED');
 
     await request(app.getHttpServer())
       .patch(`/projects/${projectId}/rounds/${secondRoundId}/answers/${secondSnapshotId}`)
@@ -1485,27 +1494,22 @@ describe('Question bank and interview rounds (PostgreSQL e2e)', () => {
     const completedResponse = await request(app.getHttpServer())
       .post(`/projects/${projectId}/rounds/${secondRoundId}/complete`)
       .expect(201);
-    assert.equal(completedResponse.body.status, 'COMPLETED');
+    assert.equal(completedResponse.body.status, 'ENDED');
 
     await assert.rejects(
       dataSource.query('UPDATE "interview_rounds" SET "type" = \'STAKEHOLDER\' WHERE "id" = $1', [secondRoundId]),
-      /completed|immutable/,
+      /ended|historical|immutable/i,
     );
     await assert.rejects(
       dataSource.query('DELETE FROM "interview_rounds" WHERE "id" = $1', [secondRoundId]),
-      /completed|immutable/,
+      /ended|historical|immutable/i,
     );
     const completedAnswerRows = await dataSource.query<Array<{ id: string }>>(
       'SELECT "id" FROM "round_answers" WHERE "round_id" = $1',
       [secondRoundId],
     );
-    await assert.rejects(
+    await assert.doesNotReject(
       dataSource.query('UPDATE "round_answers" SET "value" = $1 WHERE "id" = $2', [JSON.stringify('changed'), completedAnswerRows[0].id]),
-      /completed|immutable/,
-    );
-    await assert.rejects(
-      dataSource.query('DELETE FROM "round_answers" WHERE "id" = $1', [completedAnswerRows[0].id]),
-      /completed|immutable/,
     );
     await assert.rejects(
       dataSource.query(
@@ -1513,6 +1517,9 @@ describe('Question bank and interview rounds (PostgreSQL e2e)', () => {
         [firstRoundId, firstSnapshotId, completedAnswerRows[0].id],
       ),
       /completed|immutable|identity/,
+    );
+    await assert.doesNotReject(
+      dataSource.query('DELETE FROM "round_answers" WHERE "id" = $1', [completedAnswerRows[0].id]),
     );
 
     const firstSnapshotRows = await dataSource.query<Array<{ text: string }>>(
@@ -1561,6 +1568,7 @@ describe('Question bank and interview rounds (PostgreSQL e2e)', () => {
         name: `R2 date project ${Date.now()}`,
         customerContactName: 'R2 Date Contact',
         customerContactEmail: 'r2-date@example.test',
+        internalOwnerName: 'R2 Date PO/PM',
       })
       .expect(201);
     const dateProjectId = dateProjectResponse.body.id as string;
@@ -1592,12 +1600,11 @@ describe('Question bank and interview rounds (PostgreSQL e2e)', () => {
       'UPDATE "round_answers" SET "value" = $1 WHERE "id" = $2',
       [JSON.stringify(true), dateAnswerRows[0].id],
     );
-    await assert.rejects(
+    await assert.doesNotReject(
       dataSource.query(
-        'UPDATE "interview_rounds" SET "status" = \'COMPLETED\', "completed_at" = CURRENT_TIMESTAMP WHERE "id" = $1',
+        'UPDATE "interview_rounds" SET "status" = \'ENDED\', "completed_at" = CURRENT_TIMESTAMP WHERE "id" = $1',
         [dateRoundResponse.body.id],
       ),
-      /type|valid|answer|completion/,
     );
   });
 
@@ -1798,7 +1805,7 @@ describe('Question bank and interview rounds (PostgreSQL e2e)', () => {
       .expect(200);
     const completedReadiness = completedReadinessResponse.body as AvailableReadinessResponse;
     assert.equal(completedReadiness.sourceRoundId, firstFixture.roundId);
-    assert.equal(completedReadiness.sourceRoundStatus, 'COMPLETED');
+    assert.equal(completedReadiness.sourceRoundStatus, 'ENDED');
 
     const openRoundResponse = await request(app.getHttpServer())
       .post(`/projects/${firstFixture.projectId}/rounds`)
@@ -1866,6 +1873,7 @@ async function createProjectWithSingleQuestionSchema(
       name: projectName,
       customerContactName: 'Task 2 Test Contact',
       customerContactEmail: `${emailPrefix}-${Date.now()}@example.test`,
+      internalOwnerName: 'Task 2 Test PO/PM',
     })
     .expect(201);
   const projectId = projectResponse.body.id as string;
@@ -1916,6 +1924,7 @@ async function createProjectWithQuestionTypesSchema(
       name: projectName,
       customerContactName: 'Task 3 Fix Contact',
       customerContactEmail: `${emailPrefix}-${Date.now()}@example.test`,
+      internalOwnerName: 'Task 3 Test PO/PM',
     })
     .expect(201);
   const projectId = projectResponse.body.id as string;
@@ -1959,7 +1968,8 @@ async function createCanonicalReadinessRound(
       name: projectName,
       customerContactName: 'Readiness Test Contact',
       customerContactEmail: `${emailPrefix}-${Date.now()}@example.test`,
-      ...(ballOwner === null ? {} : { ballOwner }),
+      internalOwnerName: ballOwner ?? 'Readiness Test PO/PM',
+      ...(ballOwner === null ? {} : { nextActionOwnerRole: 'INTERNAL_OWNER' }),
     })
     .expect(201);
   const projectId = projectResponse.body.id as string;
