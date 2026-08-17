@@ -29,7 +29,10 @@ export interface GraphMailboxMessage {
   readonly internetMessageHeaders?: readonly { readonly name: string; readonly value: string }[];
   readonly from?: { readonly emailAddress?: { readonly address?: string | null } | null } | null;
   readonly subject?: string | null;
-  readonly body?: { readonly content?: string | null } | null;
+  readonly body?: {
+    readonly contentType?: 'text' | 'html' | null;
+    readonly content?: string | null;
+  } | null;
   readonly receivedDateTime?: string | null;
 }
 
@@ -126,8 +129,54 @@ function normalizeMailboxChange(message: GraphMailboxMessage): CustomerMailboxCh
     inReplyTo,
     senderAddress: message.from?.emailAddress?.address ?? null,
     subject: message.subject ?? null,
-    textContent: message.body?.content ?? null,
+    textContent: normalizeBodyText(message.body),
     receivedAt: message.receivedDateTime ?? null,
+  });
+}
+
+function normalizeBodyText(body: GraphMailboxMessage['body']): string | null {
+  if (!body?.content) return null;
+  if (body.contentType === 'text') return body.content;
+  if (body.contentType !== 'html') return null;
+  return htmlToPlainText(body.content);
+}
+
+function htmlToPlainText(html: string): string {
+  const withoutExecutableBlocks = html.replace(
+    /<(script|style|template|head|svg)\b[^>]*>[\s\S]*?<\/\1\s*>/gi,
+    '',
+  );
+  const withLineBreaks = withoutExecutableBlocks
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/(p|div|li|tr|h[1-6])\s*>/gi, '\n');
+  const withoutTags = withLineBreaks.replace(/<[^>]*>/g, '');
+  return decodeHtmlEntities(withoutTags)
+    .replace(/\r\n?/g, '\n')
+    .split('\n')
+    .map((line) => line.replace(/[\t\f\v ]+/g, ' ').trim())
+    .filter((line) => line.length > 0)
+    .join('\n');
+}
+
+function decodeHtmlEntities(value: string): string {
+  const named: Readonly<Record<string, string>> = {
+    amp: '&',
+    apos: "'",
+    gt: '>',
+    lt: '<',
+    nbsp: ' ',
+    quot: '"',
+  };
+  return value.replace(/&(#(?:x[0-9a-f]+|[0-9]+)|[a-z]+);/gi, (entity, key: string) => {
+    if (!key.startsWith('#')) return named[key.toLowerCase()] ?? entity;
+    const hexadecimal = key[1]?.toLowerCase() === 'x';
+    const codePoint = Number.parseInt(key.slice(hexadecimal ? 2 : 1), hexadecimal ? 16 : 10);
+    if (!Number.isSafeInteger(codePoint) || codePoint < 0 || codePoint > 0x10ffff) return entity;
+    try {
+      return String.fromCodePoint(codePoint);
+    } catch {
+      return entity;
+    }
   });
 }
 
