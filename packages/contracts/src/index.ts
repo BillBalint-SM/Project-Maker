@@ -13,6 +13,7 @@ export * from './readiness.js';
 export * from './decision-review.js';
 export * from './project-preparation-status.js';
 export * from './project-activity.js';
+export * from './customer-mail.js';
 
 export const generalPlaybookV1SourcePath = 'playbooks/general.v1.json' as const;
 

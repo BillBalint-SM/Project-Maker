@@ -3,10 +3,12 @@ import { connect as connectTls, type TLSSocket } from 'node:tls';
 
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import type { MailSubmissionResult, OutboundCustomerMessage } from '@project-maker/contracts';
 
 import { createSmtpConfiguration, type SmtpConfiguration } from '../config/email.config';
+import { CustomerMailBoundaryError, type CustomerOutboundMail } from './customer-mail-boundary';
 
-export const customerMailerToken = 'CUSTOMER_MAILER';
+export { customerOutboundMailToken as customerMailerToken } from './customer-mail-boundary';
 
 export interface CustomerMailerMessage {
   readonly to: string;
@@ -21,7 +23,7 @@ export interface CustomerMailer {
 }
 
 @Injectable()
-export class SmtpMailerService implements CustomerMailer {
+export class SmtpMailerService implements CustomerMailer, CustomerOutboundMail {
   private readonly configuration: SmtpConfiguration | null;
 
   constructor(configService: ConfigService) {
@@ -30,6 +32,16 @@ export class SmtpMailerService implements CustomerMailer {
 
   isConfigured(): boolean {
     return this.configuration !== null;
+  }
+
+  async submit(message: OutboundCustomerMessage): Promise<MailSubmissionResult> {
+    await this.send({
+      to: message.recipientAddress,
+      subject: message.subject,
+      text: message.textContent,
+      html: message.htmlContent,
+    });
+    return Object.freeze({ acceptance: 'ACCEPTED', messageReference: null });
   }
 
   async send(message: CustomerMailerMessage): Promise<void> {
@@ -66,16 +78,16 @@ export class SmtpMailerService implements CustomerMailer {
   }
 }
 
-export class SmtpDeliveryError extends Error {
+export class SmtpDeliveryError extends CustomerMailBoundaryError {
   constructor() {
-    super('SMTP delivery failed.');
+    super('SUBMISSION_REJECTED');
     this.name = 'SmtpDeliveryError';
   }
 }
 
-export class SmtpDeliveryUnknownError extends Error {
+export class SmtpDeliveryUnknownError extends CustomerMailBoundaryError {
   constructor() {
-    super('SMTP delivery result is unknown.');
+    super('OUTCOME_UNKNOWN');
     this.name = 'SmtpDeliveryUnknownError';
   }
 }

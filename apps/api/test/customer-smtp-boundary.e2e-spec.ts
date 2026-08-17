@@ -5,6 +5,7 @@ import { randomUUID } from 'node:crypto';
 import { after, before, beforeEach, describe, it } from 'node:test';
 import request from 'supertest';
 import { DataSource } from 'typeorm';
+import type { OutboundCustomerMessage } from '@project-maker/contracts';
 
 import { AppModule } from '../src/app.module';
 import { CustomerFollowUpService } from '../src/follow-ups/follow-up.service';
@@ -24,8 +25,9 @@ describe('Customer SMTP boundary', () => {
       .overrideProvider(customerMailerToken)
       .useValue({
         isConfigured: () => true,
-        send: async (message: CustomerMailerMessage) => {
-          delivered.push(message);
+        submit: async (message: OutboundCustomerMessage) => {
+          delivered.push({ to: message.recipientAddress, subject: message.subject, text: message.textContent, html: message.htmlContent });
+          return { acceptance: 'ACCEPTED', messageReference: null } as const;
         },
       })
       .compile();
