@@ -60,8 +60,10 @@ do not commit `.env` or real credentials.
 | `CORS_ORIGIN` | yes | One exact browser origin, for example `http://localhost:8080`; paths, wildcards, credentials, and origin lists are rejected. |
 | `FOLLOW_UP_POLL_INTERVAL_MS` | no | Automatic follow-up poll interval. Valid range is 5,000–86,400,000 ms; default is 60,000. |
 | `CUSTOMER_MAILBOX_NAME` / `CUSTOMER_MAILBOX_ADDRESS` | yes | Dedicated Microsoft 365 mailbox. Reply correlation uses high-entropy plus-addresses at this mailbox. |
-| `GRAPH_TENANT_ID` / `GRAPH_CLIENT_ID` / `GRAPH_CLIENT_SECRET` | yes | Microsoft Graph application credentials. The secret is deployment-only and must not be committed or logged. |
+| `GRAPH_TENANT_ID` / `GRAPH_CLIENT_ID` | yes | Microsoft Graph application identity. |
+| `GRAPH_CLIENT_CERTIFICATE_THUMBPRINT` / `GRAPH_CLIENT_PRIVATE_KEY_BASE64` | yes | Certificate credential registered for the application. Supply the SHA-1 thumbprint as exactly 40 hexadecimal characters without separators. Inject the base64-encoded PEM private key only through deployment secrets; never commit or log it. |
 | `GRAPH_BASE_URL` | no | Graph API base URL; defaults to `https://graph.microsoft.com`. |
+| `GRAPH_LOGIN_BASE_URL` | no | Microsoft identity platform base URL; defaults to `https://login.microsoftonline.com`. |
 
 Customer handoffs use Microsoft Graph with no SMTP fallback. A Graph rejection
 or bounded configuration/authentication failure retains the immutable outbound

@@ -1,6 +1,7 @@
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { BadRequestException, ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { isEmail } from 'class-validator';
 import type { InterviewCustomerHandoffDetail, InterviewCustomerHandoffPreview, InterviewCustomerHandoffSummary, InterviewHandoffSenderOptions, InterviewHandoffSenderSelection, SendInterviewCustomerHandoffInput } from '@project-maker/contracts';
 import { DataSource, EntityManager, In, Repository } from 'typeorm';
 
@@ -9,7 +10,7 @@ import { InterviewRoundEntity } from '../interviews/interview-round.entity';
 import { RoundAnswerEntity } from '../interviews/round-answer.entity';
 import { RoundQuestionAssessmentOverrideEntity } from '../interviews/round-question-assessment-override.entity';
 import { RoundQuestionSnapshotEntity } from '../interviews/round-question-snapshot.entity';
-import { CustomerMailBoundaryError, type CustomerOutboundMail, customerOutboundMailToken } from '../mail-delivery/customer-mail-boundary';
+import { CustomerMailBoundaryError, type CustomerOutboundMail, customerOutboundMailToken, immutableOutboundCustomerMessage } from '../mail-delivery/customer-mail-boundary';
 import { Project } from '../projects/project.entity';
 import { InterviewCustomerHandoffEntity } from './interview-customer-handoff.entity';
 import { renderHandoff, type HandoffProjection } from './interview-customer-handoff.renderer';
@@ -153,7 +154,7 @@ export class InterviewCustomerHandoffService {
     let state: 'SENT' | 'FAILED' | 'UNKNOWN' = 'SENT';
     let acceptance: 'ACCEPTED' | 'REJECTED' | null = null;
     let messageReference: string | null = null;
-    try { const result = await this.mailer.submit({ senderAddress: prepared.senderAddress!, senderName: prepared.senderName!, recipientAddress: prepared.recipientEmail!, replyToAddress: prepared.replyToAddress!, subject: prepared.subject!, textContent: prepared.textContent!, htmlContent: prepared.htmlContent! }); acceptance = result.acceptance; messageReference = result.messageReference; if (result.acceptance === 'REJECTED') state = 'FAILED'; }
+    try { const result = await this.mailer.submit(immutableOutboundCustomerMessage({ senderAddress: prepared.senderAddress!, senderName: prepared.senderName!, recipientAddress: prepared.recipientEmail!, replyToAddress: prepared.replyToAddress!, subject: prepared.subject!, textContent: prepared.textContent!, htmlContent: prepared.htmlContent! })); acceptance = result.acceptance; messageReference = result.messageReference; if (result.acceptance === 'REJECTED') state = 'FAILED'; }
     catch (error) { state = error instanceof CustomerMailBoundaryError && error.code !== 'OUTCOME_UNKNOWN' ? 'FAILED' : 'UNKNOWN'; }
     return this.dataSource.transaction(async (manager) => {
       const handoff = await requireHandoff(manager, prepared.projectId, prepared.roundId, prepared.id, true);
@@ -246,6 +247,6 @@ function senderFromDigestInput(input: SendInterviewCustomerHandoffInput): { name
   return { name, address };
 }
 
-function isPteAddress(value: string): boolean { return /^[^@\s]+@pte\.hu$/i.test(value); }
+function isPteAddress(value: string): boolean { return isEmail(value) && /^[^@\s]+@pte\.hu$/i.test(value); }
 function sha256(value: string): string { return createHash('sha256').update(value, 'utf8').digest('hex'); }
 function plusAddress(mailbox: string, token: string): string { const at = mailbox.lastIndexOf('@'); return `${mailbox.slice(0, at)}+${token}${mailbox.slice(at)}`; }

@@ -1,36 +1,55 @@
 import { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import assert from 'node:assert/strict';
+import { randomUUID } from 'node:crypto';
 import { after, before, describe, it } from 'node:test';
 import request from 'supertest';
-import type { OutboundCustomerMessage } from '@project-maker/contracts';
 import { DataSource } from 'typeorm';
 
 import { AppModule } from '../src/app.module';
-import { customerMailerToken } from '../src/mail-delivery/smtp-mailer.service';
+import {
+  GraphMailClientError,
+  graphMailClientToken,
+  type GraphMailClient,
+  type GraphMailboxPage,
+  type GraphOutboundMessage,
+} from '../src/mail-delivery/graph-customer-mail-boundary';
+
+class ControlledGraphMailClient implements GraphMailClient {
+  readonly delivered: GraphOutboundMessage[] = [];
+  readonly deliveredMessageFrozen: boolean[] = [];
+  mode: 'SUCCESS' | 'REJECTED' | 'UNKNOWN_FAILURE' | 'HOLD' = 'SUCCESS';
+  releaseHeldDelivery: (() => void) | null = null;
+
+  isConfigured(): boolean { return true; }
+
+  async submit(message: GraphOutboundMessage) {
+    this.deliveredMessageFrozen.push(Object.isFrozen(message));
+    if (this.mode === 'REJECTED') return { accepted: false } as const;
+    if (this.mode === 'UNKNOWN_FAILURE') throw new GraphMailClientError('UNKNOWN_OUTCOME');
+    if (this.mode === 'HOLD') {
+      await new Promise<void>((resolve) => { this.releaseHeldDelivery = resolve; });
+    }
+    this.delivered.push(message);
+    return { accepted: true, id: null } as const;
+  }
+
+  async readMailboxPage(_checkpoint: string | null): Promise<GraphMailboxPage> {
+    return { value: [], nextCheckpoint: null, completedCheckpoint: null };
+  }
+}
 
 describe('Interview customer handoff HTTP boundary', () => {
   const sender = { mode: 'CUSTOM', name: 'PO Péter', address: 'po.peter@pte.hu' } as const;
   let app: INestApplication;
-  const delivered: OutboundCustomerMessage[] = [];
-  let deliveryMode: 'SUCCESS' | 'SMTP_FAILURE' | 'UNKNOWN_FAILURE' | 'HOLD' = 'SUCCESS';
-  let releaseHeldDelivery: (() => void) | null = null;
+  const graphClient = new ControlledGraphMailClient();
 
   before(async () => {
     process.env['CUSTOMER_MAILBOX_ADDRESS'] = 'project-maker@pte.hu';
     process.env['CUSTOMER_MAILBOX_NAME'] = 'Project Maker';
     const module = await Test.createTestingModule({ imports: [AppModule] })
-      .overrideProvider(customerMailerToken)
-      .useValue({
-        isConfigured: () => true,
-        submit: async (message: OutboundCustomerMessage) => {
-          if (deliveryMode === 'SMTP_FAILURE') return { acceptance: 'REJECTED', messageReference: null } as const;
-          if (deliveryMode === 'UNKNOWN_FAILURE') throw new Error('Connection outcome unknown.');
-          if (deliveryMode === 'HOLD') await new Promise<void>((resolve) => { releaseHeldDelivery = resolve; });
-          delivered.push(message);
-          return { acceptance: 'ACCEPTED', messageReference: null } as const;
-        },
-      })
+      .overrideProvider(graphMailClientToken)
+      .useValue(graphClient)
       .compile();
     app = module.createNestApplication({ logger: false });
     await app.init();
@@ -62,6 +81,9 @@ describe('Interview customer handoff HTTP boundary', () => {
     assert.equal(history.body.length, 1);
     assert.equal(history.body[0].state, 'DRAFT');
     const firstId = history.body[0].id as string;
+    await request(app.getHttpServer()).post(`/projects/${project.body.id}/rounds/${roundId}/customer-handoffs/${firstId}/preview`).send({ mode: 'CUSTOM', name: 'Téves', address: 'a,b@pte.hu' }).expect(400);
+    await request(app.getHttpServer()).post(`/projects/${project.body.id}/rounds/${roundId}/customer-handoffs/${firstId}/preview`).send({ mode: 'CUSTOM', name: 'Téves', address: 'foo<bar>@pte.hu' }).expect(400);
+    await request(app.getHttpServer()).post(`/projects/${project.body.id}/rounds/${roundId}/customer-handoffs/${firstId}/preview`).send({ mode: 'CUSTOM', name: 'Téves', address: 'x..y@pte.hu' }).expect(400);
     await request(app.getHttpServer()).post(`/projects/${project.body.id}/rounds/${roundId}/customer-handoffs/${firstId}/preview`).send({ mode: 'CUSTOM', name: 'Téves', address: 'po@sub.pte.hu' }).expect(400);
     await request(app.getHttpServer()).post(`/projects/${project.body.id}/rounds/${roundId}/customer-handoffs/${firstId}/preview`).send({ mode: 'CUSTOM', name: 'Téves', address: 'po@pte.hu.example' }).expect(400);
     const firstPreview = await request(app.getHttpServer()).post(`/projects/${project.body.id}/rounds/${roundId}/customer-handoffs/${firstId}/preview`).send(sender).expect(201);
@@ -69,11 +91,12 @@ describe('Interview customer handoff HTTP boundary', () => {
     await request(app.getHttpServer()).post(`/projects/${project.body.id}/rounds/${roundId}/customer-handoffs/${firstId}/send`).send({ ...sendInput(firstPreview.body), senderAddress: 'masik@pte.hu' }).expect(409);
     const sent = await request(app.getHttpServer()).post(`/projects/${project.body.id}/rounds/${roundId}/customer-handoffs/${firstId}/send`).send(sendInput(firstPreview.body)).expect(201);
     assert.equal(sent.body.state, 'SENT');
-    assert.equal(delivered.length, 1);
-    assert.equal(delivered[0].textContent, firstPreview.body.textContent);
-    assert.equal(delivered[0].htmlContent, firstPreview.body.htmlContent);
-    assert.equal(delivered[0].senderAddress, 'po.peter@pte.hu');
-    assert.match(delivered[0].replyToAddress ?? '', /^project-maker\+[A-Za-z0-9_-]{43}@pte\.hu$/);
+    assert.equal(graphClient.delivered.length, 1);
+    assert.equal(graphClient.deliveredMessageFrozen.at(-1), true);
+    assert.equal(graphClient.delivered[0].body.content, firstPreview.body.htmlContent);
+    assert.equal(graphClient.delivered[0].senderAddress, 'po.peter@pte.hu');
+    assert.match(graphClient.delivered[0].replyTo[0]?.emailAddress.address ?? '', /^project-maker\+[A-Za-z0-9_-]{43}@pte\.hu$/);
+    assert.equal(graphClient.delivered[0].saveToSentItems, true);
     assert.equal(sent.body.mailSystemAcceptance, 'ACCEPTED');
     assert.equal(sent.body.correspondenceId.length, 36);
     const senderOptions = await request(app.getHttpServer()).get(`/projects/${project.body.id}/rounds/${roundId}/customer-handoffs/sender-options`).expect(200);
@@ -98,26 +121,29 @@ describe('Interview customer handoff HTTP boundary', () => {
     const preview = await request(app.getHttpServer()).post(`/projects/${projectId}/rounds/${roundId}/customer-handoffs/${handoffId}/preview`).send(sender).expect(201);
     const sendBody = sendInput(preview.body);
 
-    deliveryMode = 'SMTP_FAILURE';
+    graphClient.mode = 'REJECTED';
     const failed = await request(app.getHttpServer()).post(`/projects/${projectId}/rounds/${roundId}/customer-handoffs/${handoffId}/send`).send(sendBody).expect(201);
     assert.equal(failed.body.state, 'FAILED');
     assert.equal(failed.body.textContent, preview.body.textContent);
-    deliveryMode = 'SUCCESS';
+    graphClient.mode = 'SUCCESS';
     const acceptedRetry = await request(app.getHttpServer()).post(`/projects/${projectId}/rounds/${roundId}/customer-handoffs/${handoffId}/retry`).send({ acknowledgeDuplicateRisk: false }).expect(201);
     assert.equal(acceptedRetry.body.replyToAddress, failed.body.replyToAddress);
     assert.equal(acceptedRetry.body.correspondenceId, failed.body.correspondenceId);
     const retainedAttempts = await app.get(DataSource).query(`SELECT attempt."result" FROM "customer_outbound_attempts" attempt JOIN "customer_outbound_communications" outbound ON outbound."id" = attempt."outbound_communication_id" WHERE outbound."source_id" = $1 ORDER BY attempt."attempted_at"`, [handoffId]) as Array<{ result: string }>;
     assert.deepEqual(retainedAttempts.map(({ result }) => result), ['REJECTED', 'ACCEPTED']);
+    await request(app.getHttpServer()).delete(`/projects/${projectId}`).expect(409);
+    const retainedProject = await app.get(DataSource).query('SELECT "id" FROM "projects" WHERE "id" = $1', [projectId]) as Array<{ id: string }>;
+    assert.deepEqual(retainedProject, [{ id: projectId }]);
 
     const second = await request(app.getHttpServer()).post(`/projects/${projectId}/rounds/${roundId}/customer-handoffs`).send({}).expect(201);
     await request(app.getHttpServer()).put(`/projects/${projectId}/rounds/${roundId}/customer-handoffs/${second.body.id}/draft`).send({ modificationSummary: 'Új ügyfélpontosítás.' }).expect(200);
     const refreshedPreview = await request(app.getHttpServer()).post(`/projects/${projectId}/rounds/${roundId}/customer-handoffs/${second.body.id}/preview`).send(sender).expect(201);
-    deliveryMode = 'UNKNOWN_FAILURE';
+    graphClient.mode = 'UNKNOWN_FAILURE';
     const unknown = await request(app.getHttpServer()).post(`/projects/${projectId}/rounds/${roundId}/customer-handoffs/${second.body.id}/send`).send(sendInput(refreshedPreview.body)).expect(201);
     assert.equal(unknown.body.state, 'UNKNOWN');
     await request(app.getHttpServer()).post(`/projects/${projectId}/rounds/${roundId}/customer-handoffs/${second.body.id}/retry`).send({ acknowledgeDuplicateRisk: false }).expect(400);
 
-    deliveryMode = 'SUCCESS';
+    graphClient.mode = 'SUCCESS';
     const recovered = await request(app.getHttpServer()).post(`/projects/${projectId}/rounds/${roundId}/customer-handoffs/${second.body.id}/retry`).send({ acknowledgeDuplicateRisk: true }).expect(201);
     assert.equal(recovered.body.state, 'SENT');
     assert.equal(recovered.body.textContent, refreshedPreview.body.textContent);
@@ -125,18 +151,27 @@ describe('Interview customer handoff HTTP boundary', () => {
     assert.notEqual(recovered.body.correspondenceId, acceptedRetry.body.correspondenceId);
     const correspondence = await app.get(DataSource).query('SELECT "predecessor_id" FROM "customer_correspondences" WHERE "id" = $1', [recovered.body.correspondenceId]) as Array<{ predecessor_id: string | null }>;
     assert.equal(correspondence[0]?.predecessor_id, acceptedRetry.body.correspondenceId);
+    await app.get(DataSource).query('UPDATE "customer_correspondences" SET "status" = $1, "unread_message_count" = 1 WHERE "id" = $2', ['Új válasz', recovered.body.correspondenceId]);
+    await assert.rejects(
+      app.get(DataSource).query('UPDATE "customer_correspondences" SET "project_id" = $1 WHERE "id" = $2', [randomUUID(), recovered.body.correspondenceId]),
+      /correspondence anchors are immutable/i,
+    );
+    await assert.rejects(
+      app.get(DataSource).query('DELETE FROM "customer_correspondences" WHERE "id" = $1', [recovered.body.correspondenceId]),
+      /correspondence anchors are immutable/i,
+    );
 
     const third = await request(app.getHttpServer()).post(`/projects/${projectId}/rounds/${roundId}/customer-handoffs`).send({}).expect(201);
     await request(app.getHttpServer()).put(`/projects/${projectId}/rounds/${roundId}/customer-handoffs/${third.body.id}/draft`).send({ modificationSummary: 'Harmadik verzió.' }).expect(200);
     const secondPreview = await request(app.getHttpServer()).post(`/projects/${projectId}/rounds/${roundId}/customer-handoffs/${third.body.id}/preview`).send(sender).expect(201);
-    deliveryMode = 'HOLD';
+    graphClient.mode = 'HOLD';
     const firstAttempt = request(app.getHttpServer()).post(`/projects/${projectId}/rounds/${roundId}/customer-handoffs/${third.body.id}/send`).send(sendInput(secondPreview.body)).then((response) => response);
-    while (!releaseHeldDelivery) await new Promise((resolve) => setTimeout(resolve, 10));
+    while (!graphClient.releaseHeldDelivery) await new Promise((resolve) => setTimeout(resolve, 10));
     await request(app.getHttpServer()).post(`/projects/${projectId}/rounds/${roundId}/customer-handoffs/${third.body.id}/send`).send(sendInput(secondPreview.body)).expect(409);
-    releaseHeldDelivery();
-    releaseHeldDelivery = null;
+    graphClient.releaseHeldDelivery();
+    graphClient.releaseHeldDelivery = null;
     assert.equal((await firstAttempt).status, 201);
-    deliveryMode = 'SUCCESS';
+    graphClient.mode = 'SUCCESS';
   });
 });
 

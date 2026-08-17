@@ -1,4 +1,5 @@
 import { spawn } from 'node:child_process';
+import { generateKeyPairSync, verify as verifySignature } from 'node:crypto';
 import { createServer } from 'node:http';
 import { createRequire } from 'node:module';
 import { dirname, resolve } from 'node:path';
@@ -20,6 +21,10 @@ if (!process.env.DATABASE_URL) {
 
 await resetLocalE2eDatabase(process.env.DATABASE_URL);
 const graphPort = Number(process.env.GRAPH_FAKE_PORT ?? '25260');
+const { privateKey: graphClientPrivateKey, publicKey: graphClientPublicKey } = generateKeyPairSync('rsa', { modulusLength: 2048 });
+const graphClientPrivateKeyBase64 = Buffer.from(
+  graphClientPrivateKey.export({ format: 'pem', type: 'pkcs8' }),
+).toString('base64');
 const graphMessages = [];
 let rejectNextGraphMessage = false;
 const graphServer = createServer((request, response) => {
@@ -37,6 +42,46 @@ const graphServer = createServer((request, response) => {
   if (request.method === 'POST' && request.url === '/__test/reject-next') {
     rejectNextGraphMessage = true;
     response.writeHead(204).end();
+    return;
+  }
+  if (request.method === 'POST' && request.url === '/playwright-tenant/oauth2/v2.0/token') {
+    let body = '';
+    request.setEncoding('utf8');
+    request.on('data', (chunk) => { body += chunk; });
+    request.on('end', () => {
+      const form = new URLSearchParams(body);
+      const assertion = form.get('client_assertion') ?? '';
+      const assertionParts = assertion.split('.');
+      let assertionIsValid = false;
+      try {
+        const header = JSON.parse(Buffer.from(assertionParts[0] ?? '', 'base64url').toString('utf8'));
+        const payload = JSON.parse(Buffer.from(assertionParts[1] ?? '', 'base64url').toString('utf8'));
+        assertionIsValid = assertionParts.length === 3
+          && header.alg === 'RS256'
+          && header.x5t === Buffer.from('0123456789abcdef0123456789abcdef01234567', 'hex').toString('base64url')
+          && payload.aud === `http://127.0.0.1:${graphPort}/playwright-tenant/oauth2/v2.0/token`
+          && payload.iss === 'playwright-client'
+          && payload.sub === 'playwright-client'
+          && verifySignature(
+            'RSA-SHA256',
+            Buffer.from(`${assertionParts[0]}.${assertionParts[1]}`),
+            graphClientPublicKey,
+            Buffer.from(assertionParts[2] ?? '', 'base64url'),
+          );
+      } catch {
+        assertionIsValid = false;
+      }
+      if (
+        form.has('client_secret')
+        || form.get('client_assertion_type') !== 'urn:ietf:params:oauth:client-assertion-type:jwt-bearer'
+        || !assertionIsValid
+      ) {
+        response.writeHead(401, { 'content-type': 'application/json' }).end('{}');
+        return;
+      }
+      response.writeHead(200, { 'content-type': 'application/json' });
+      response.end(JSON.stringify({ access_token: 'controlled-playwright-token' }));
+    });
     return;
   }
   if (request.method === 'POST' && request.url?.endsWith('/sendMail')) {
@@ -77,7 +122,11 @@ const apiProcess = spawnPnpm(
       CUSTOMER_MAILBOX_ADDRESS: process.env.CUSTOMER_MAILBOX_ADDRESS ?? 'project-maker@pte.hu',
       CUSTOMER_MAILBOX_NAME: process.env.CUSTOMER_MAILBOX_NAME ?? 'Project Maker',
       GRAPH_BASE_URL: `http://127.0.0.1:${graphPort}`,
-      GRAPH_ACCESS_TOKEN: 'controlled-playwright-token',
+      GRAPH_LOGIN_BASE_URL: `http://127.0.0.1:${graphPort}`,
+      GRAPH_TENANT_ID: 'playwright-tenant',
+      GRAPH_CLIENT_ID: 'playwright-client',
+      GRAPH_CLIENT_CERTIFICATE_THUMBPRINT: '0123456789abcdef0123456789abcdef01234567',
+      GRAPH_CLIENT_PRIVATE_KEY_BASE64: graphClientPrivateKeyBase64,
     },
     stdio: 'inherit',
     windowsHide: true,

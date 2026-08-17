@@ -38,6 +38,7 @@ import {
   CustomerMailBoundaryError,
   type CustomerOutboundMail,
   customerOutboundMailToken,
+  immutableOutboundCustomerMessage,
 } from '../mail-delivery/customer-mail-boundary';
 import { CustomerFollowUpEntity } from './follow-up.entity';
 import { CustomerFollowUpDeliveryAttemptEntity } from './follow-up-delivery-attempt.entity';
@@ -661,11 +662,11 @@ export class CustomerFollowUpService implements OnModuleInit, OnModuleDestroy {
   }
 
   private async submitPing(rendered: RenderedCustomerFollowUpPing): Promise<void> {
-    const result = await this.mailer.submit({
+    const result = await this.mailer.submit(immutableOutboundCustomerMessage({
       recipientAddress: rendered.recipientEmail,
       subject: rendered.subject,
       textContent: rendered.text,
-    });
+    }));
     if (result.acceptance === 'REJECTED') {
       throw new CustomerMailBoundaryError('SUBMISSION_REJECTED');
     }

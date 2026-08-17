@@ -77,6 +77,23 @@ export class M365InterviewHandoff0017M365InterviewHandoff1787299200000 implement
     `);
     await queryRunner.query('CREATE TRIGGER "trg_customer_outbound_immutable" BEFORE UPDATE OR DELETE ON "customer_outbound_communications" FOR EACH ROW EXECUTE FUNCTION "protect_customer_mail_history"()');
     await queryRunner.query('CREATE TRIGGER "trg_customer_outbound_attempt_immutable" BEFORE UPDATE OR DELETE ON "customer_outbound_attempts" FOR EACH ROW EXECUTE FUNCTION "protect_customer_mail_history"()');
+    await queryRunner.query(`
+      CREATE FUNCTION "protect_customer_correspondence_anchors"() RETURNS trigger LANGUAGE plpgsql AS $$
+      BEGIN
+        IF TG_OP = 'DELETE'
+          OR NEW."id" IS DISTINCT FROM OLD."id"
+          OR NEW."project_id" IS DISTINCT FROM OLD."project_id"
+          OR NEW."outbound_communication_id" IS DISTINCT FROM OLD."outbound_communication_id"
+          OR NEW."predecessor_id" IS DISTINCT FROM OLD."predecessor_id"
+          OR NEW."created_at" IS DISTINCT FROM OLD."created_at"
+        THEN
+          RAISE EXCEPTION 'Customer correspondence anchors are immutable' USING ERRCODE = '55000';
+        END IF;
+        RETURN NEW;
+      END;
+      $$
+    `);
+    await queryRunner.query('CREATE TRIGGER "trg_customer_correspondence_anchors_immutable" BEFORE UPDATE OR DELETE ON "customer_correspondences" FOR EACH ROW EXECUTE FUNCTION "protect_customer_correspondence_anchors"()');
   }
 
   async down(queryRunner: QueryRunner): Promise<void> {
@@ -87,6 +104,7 @@ export class M365InterviewHandoff0017M365InterviewHandoff1787299200000 implement
     await queryRunner.query('DROP TABLE "customer_outbound_attempts"');
     await queryRunner.query('DROP TABLE "customer_correspondences"');
     await queryRunner.query('DROP TABLE "customer_outbound_communications"');
+    await queryRunner.query('DROP FUNCTION "protect_customer_correspondence_anchors"()');
     await queryRunner.query('DROP FUNCTION "protect_customer_mail_history"()');
     await queryRunner.query('ALTER TABLE "projects" DROP COLUMN "last_customer_sender_address", DROP COLUMN "last_customer_sender_name"');
   }
