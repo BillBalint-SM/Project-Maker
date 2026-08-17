@@ -336,18 +336,7 @@ export class CustomerFollowUpService implements OnModuleInit, OnModuleDestroy {
         message: 'A korábbi küldés eredménye nem bizonyítható. Ellenőrizd a postafiókot, majd csak a duplikáció kockázatának elfogadásával küldd újra.',
       });
     }
-    const claimed = claim;
-
-    try {
-      await this.mailer.send({
-        to: claimed.rendered.recipientEmail,
-        subject: claimed.rendered.subject,
-        text: claimed.rendered.text,
-      });
-    } catch (error) {
-      await this.finalizeManualDeliveryError(claimed, error);
-    }
-    return this.finalizeManualSuccess(claimed);
+    return this.deliverClaimedManualPing(claim);
   }
 
   async retryManualPing(
@@ -425,16 +414,7 @@ export class CustomerFollowUpService implements OnModuleInit, OnModuleDestroy {
       };
     });
 
-    try {
-      await this.mailer.send({
-        to: claimed.rendered.recipientEmail,
-        subject: claimed.rendered.subject,
-        text: claimed.rendered.text,
-      });
-    } catch (error) {
-      await this.finalizeManualDeliveryError(claimed, error);
-    }
-    return this.finalizeManualSuccess(claimed);
+    return this.deliverClaimedManualPing(claimed);
   }
 
   async processDuePings(now: Date): Promise<readonly CustomerFollowUpState[]> {
@@ -531,6 +511,21 @@ export class CustomerFollowUpService implements OnModuleInit, OnModuleDestroy {
         attemptedAt: attempt.attemptedAt.toISOString(),
       });
     });
+  }
+
+  private async deliverClaimedManualPing(
+    claimed: ClaimedManualPing,
+  ): Promise<CustomerFollowUpPingDelivery> {
+    try {
+      await this.mailer.send({
+        to: claimed.rendered.recipientEmail,
+        subject: claimed.rendered.subject,
+        text: claimed.rendered.text,
+      });
+    } catch (error) {
+      await this.finalizeManualDeliveryError(claimed, error);
+    }
+    return this.finalizeManualSuccess(claimed);
   }
 
   private async reconcileExpiredManualAttempts(

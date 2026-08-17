@@ -302,10 +302,7 @@ export class CustomerFollowUpComponent implements OnInit {
           ) {
             this.preview.set(null);
             this.actionError.set(error.message);
-            this.reloadState(
-              '[data-testid="retry-unknown-follow-up-ping-button"] button',
-              true,
-            );
+            this.reloadState(undefined, true);
             this.committedChange.emit();
             return;
           }
@@ -315,10 +312,7 @@ export class CustomerFollowUpComponent implements OnInit {
           ) {
             this.preview.set(null);
             this.actionError.set(error.message);
-            this.reloadState(
-              '[data-testid="retry-failed-follow-up-ping-button"] button',
-              true,
-            );
+            this.reloadState(undefined, true);
             this.committedChange.emit();
             return;
           }
@@ -357,9 +351,6 @@ export class CustomerFollowUpComponent implements OnInit {
   retryPing(): void {
     const attempt = this.retryConfirmation();
     if (!attempt || this.controlsDisabled()) return;
-    const retrySelector = attempt.state === 'UNKNOWN'
-      ? '[data-testid="retry-unknown-follow-up-ping-button"] button'
-      : '[data-testid="retry-failed-follow-up-ping-button"] button';
     const lease = this.operationPolicy.tryAcquire('customer-follow-up-ping');
     if (!lease) return;
     this.actionError.set(null);
@@ -383,7 +374,7 @@ export class CustomerFollowUpComponent implements OnInit {
         this.retryConfirmation.set(null);
         this.retryFocusReturn = null;
         this.actionError.set(error.message);
-        this.reloadState(retrySelector, true);
+        this.reloadState(undefined, true);
         this.committedChange.emit();
       },
     });
