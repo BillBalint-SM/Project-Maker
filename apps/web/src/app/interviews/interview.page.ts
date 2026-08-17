@@ -78,6 +78,7 @@ export class InterviewPage implements OnInit, OnDestroy {
   private readonly inFlightRequestIds = new Map<string, Set<number>>();
 
   readonly projectId = this.route.snapshot.paramMap.get('projectId') ?? '';
+  readonly handoffRequested = this.route.snapshot.fragment === 'customer-handoff';
   readonly bank = signal<BaseQuestionBank | null>(null);
   readonly schema = signal<ProjectQuestionSchema | null>(null);
   readonly selectedKeys = signal<readonly string[]>([]);
