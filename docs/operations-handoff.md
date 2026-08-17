@@ -354,8 +354,20 @@ These are intentionally separate flows:
   or lease expiry releases it. Durable attempts and redacted audit metadata are
   retained. The message
   contains no Markdown, Claude instruction, interview package, follow-up owner,
-  category, answer, source linkage, identifiers, or audit content. The timer
-  uses the same saved projection; invalid or empty drafts are not sent.
+  category, answer, source linkage, identifiers, or audit content. The due-state
+  worker re-reads the current recipient, draft, and optional reference. It claims
+  one due item in a short PostgreSQL transaction by persisting `SENDING` and
+  clearing `nextPingAt`, then performs SMTP outside the transaction and finalizes
+  in a separate transaction. This provides one durable owner across workers
+  without holding a database lock during network I/O. A successful scheduled
+  attempt advances cadence from the worker's controlled clock. A known SMTP
+  rejection becomes `FAILED` and retains the next cadence; `UNKNOWN` clears the
+  next due time and requires the same explicit, request-specific duplicate-risk
+  recovery as a manual attempt. A due draft/reference validation conflict pauses
+  the enabled schedule with no SMTP attempt; saving a valid draft schedules the
+  next cadence unless an `UNKNOWN` attempt still requires recovery. Expiry and
+  archive disable and unschedule the state before transport. Audit metadata
+  remains redacted.
 
 The follow-up state in this section is an email-delivery schedule. It is not the
 delivered `INTAKE-04` discovery-follow-up work-item management slice, including

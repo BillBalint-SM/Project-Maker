@@ -64,12 +64,7 @@ const unknownDeliveryCode = 'SMTP_DELIVERY_UNKNOWN';
 const previewLifetimeMs = 15 * 60_000;
 const manualDeliveryLeaseMs = 15 * 60_000;
 
-interface DuePingResult {
-  readonly state: CustomerFollowUpEntity;
-  readonly sentAt: Date;
-}
-
-interface ClaimedManualPing {
+interface ClaimedCustomerFollowUpPing {
   readonly attemptId: string;
   readonly state: CustomerFollowUpEntity;
   readonly rendered: RenderedCustomerFollowUpPing;
@@ -191,6 +186,7 @@ export class CustomerFollowUpService implements OnModuleInit, OnModuleDestroy {
       throw new BadRequestException('A Customer follow-up ping üzenete nem lehet üres.');
     }
 
+    const now = new Date();
     return this.dataSource.transaction(async (manager) => {
       const project = await this.findProject(manager, projectId, true);
       rejectArchivedProject(project);
@@ -209,6 +205,15 @@ export class CustomerFollowUpService implements OnModuleInit, OnModuleDestroy {
       state.referencedFollowUpId = referencedFollowUp?.id ?? null;
       state.draftVersion += 1;
       clearPreview(state);
+      const latestAttempt = await findLatestManualAttempt(manager, projectId);
+      if (
+        state.enabled
+        && state.nextPingAt === null
+        && latestAttempt?.state !== 'SENDING'
+        && latestAttempt?.state !== 'UNKNOWN'
+      ) {
+        state.nextPingAt = addMinutes(now, state.intervalMinutes);
+      }
       const saved = await manager.getRepository(CustomerFollowUpEntity).save(state);
       await saveAuditEvent(manager, projectId, 'CUSTOMER_FOLLOW_UP_DRAFT_UPDATED', {
         draftVersion: String(saved.draftVersion),
@@ -253,7 +258,7 @@ export class CustomerFollowUpService implements OnModuleInit, OnModuleDestroy {
     const attemptedAt = new Date();
     const claim = await this.dataSource.transaction(async (
       manager,
-    ): Promise<ClaimedManualPing | DuplicateRiskAcknowledgementRequired> => {
+    ): Promise<ClaimedCustomerFollowUpPing | DuplicateRiskAcknowledgementRequired> => {
       const project = await this.findProject(manager, projectId, true);
       rejectArchivedProject(project);
       const state = await findOrCreateLockedState(manager, projectId);
@@ -346,7 +351,7 @@ export class CustomerFollowUpService implements OnModuleInit, OnModuleDestroy {
   ): Promise<CustomerFollowUpPingDelivery> {
     this.requireMailer();
     const attemptedAt = new Date();
-    const claimed = await this.dataSource.transaction(async (manager): Promise<ClaimedManualPing> => {
+    const claimed = await this.dataSource.transaction(async (manager): Promise<ClaimedCustomerFollowUpPing> => {
       const project = await this.findProject(manager, projectId, true);
       rejectArchivedProject(project);
       const state = await findOrCreateLockedState(manager, projectId);
@@ -429,37 +434,37 @@ export class CustomerFollowUpService implements OnModuleInit, OnModuleDestroy {
       },
       order: { nextPingAt: 'ASC', id: 'ASC' },
     });
-    const sentStates: CustomerFollowUpState[] = [];
+    const processedStates: CustomerFollowUpState[] = [];
     for (const candidate of candidates) {
-      const result = await this.processDueState(candidate.id, now);
-      if (result) {
-        sentStates.push(toState(
-          result.state,
-          await findLatestManualAttempt(this.dataSource.manager, result.state.projectId),
-        ));
-      }
+      const claimed = await this.claimDueState(candidate.id, candidate.projectId, now);
+      if (!claimed) continue;
+      const state = await this.deliverClaimedScheduledPing(claimed, now);
+      processedStates.push(toState(
+        state,
+        await findLatestManualAttempt(this.dataSource.manager, state.projectId),
+      ));
     }
-    return sentStates;
+    return processedStates;
   }
 
   private async finalizeManualSuccess(
-    claimed: ClaimedManualPing,
+    claimed: ClaimedCustomerFollowUpPing,
   ): Promise<CustomerFollowUpPingDelivery> {
     const sentAt = new Date();
     return this.dataSource.transaction(async (manager) => {
-      const attempt = await manager.getRepository(CustomerFollowUpDeliveryAttemptEntity).findOne({
-        where: { id: claimed.attemptId },
-        lock: { mode: 'pessimistic_write' },
-      });
-      if (!attempt || attempt.state !== 'SENDING') {
-        throw new ConflictException('A Customer follow-up ping kézbesítési állapota megváltozott.');
-      }
       const state = await manager.getRepository(CustomerFollowUpEntity).findOne({
         where: { id: claimed.state.id },
         lock: { mode: 'pessimistic_write' },
       });
       if (!state) {
         throw new NotFoundException('Customer follow-up state not found.');
+      }
+      const attempt = await manager.getRepository(CustomerFollowUpDeliveryAttemptEntity).findOne({
+        where: { id: claimed.attemptId },
+        lock: { mode: 'pessimistic_write' },
+      });
+      if (!attempt || attempt.state !== 'SENDING') {
+        throw new ConflictException('A Customer follow-up ping kézbesítési állapota megváltozott.');
       }
       attempt.state = 'SENT';
       attempt.sentAt = sentAt;
@@ -489,15 +494,15 @@ export class CustomerFollowUpService implements OnModuleInit, OnModuleDestroy {
     });
   }
 
-  private async finalizeManualFailure(claimed: ClaimedManualPing): Promise<void> {
+  private async finalizeManualFailure(claimed: ClaimedCustomerFollowUpPing): Promise<void> {
     const failedAt = new Date();
     await this.dataSource.transaction(async (manager) => {
-      const attempt = await manager.getRepository(CustomerFollowUpDeliveryAttemptEntity).findOne({
-        where: { id: claimed.attemptId },
-        lock: { mode: 'pessimistic_write' },
-      });
       const state = await manager.getRepository(CustomerFollowUpEntity).findOne({
         where: { id: claimed.state.id },
+        lock: { mode: 'pessimistic_write' },
+      });
+      const attempt = await manager.getRepository(CustomerFollowUpDeliveryAttemptEntity).findOne({
+        where: { id: claimed.attemptId },
         lock: { mode: 'pessimistic_write' },
       });
       if (!attempt || !state || attempt.state !== 'SENDING') {
@@ -518,7 +523,7 @@ export class CustomerFollowUpService implements OnModuleInit, OnModuleDestroy {
   }
 
   private async deliverClaimedManualPing(
-    claimed: ClaimedManualPing,
+    claimed: ClaimedCustomerFollowUpPing,
   ): Promise<CustomerFollowUpPingDelivery> {
     try {
       await this.submitPing(claimed.rendered);
@@ -557,9 +562,16 @@ export class CustomerFollowUpService implements OnModuleInit, OnModuleDestroy {
     return activeAttempts;
   }
 
-  private async finalizeManualUnknown(claimed: ClaimedManualPing): Promise<void> {
+  private async finalizeManualUnknown(claimed: ClaimedCustomerFollowUpPing): Promise<void> {
     const reconciledAt = new Date();
     await this.dataSource.transaction(async (manager) => {
+      const state = await manager.getRepository(CustomerFollowUpEntity).findOne({
+        where: { id: claimed.state.id },
+        lock: { mode: 'pessimistic_write' },
+      });
+      if (!state) {
+        return;
+      }
       const attempt = await manager.getRepository(CustomerFollowUpDeliveryAttemptEntity).findOne({
         where: { id: claimed.attemptId },
         lock: { mode: 'pessimistic_write' },
@@ -570,6 +582,8 @@ export class CustomerFollowUpService implements OnModuleInit, OnModuleDestroy {
       attempt.state = 'UNKNOWN';
       attempt.failureCode = unknownDeliveryCode;
       await manager.getRepository(CustomerFollowUpDeliveryAttemptEntity).save(attempt);
+      state.nextPingAt = null;
+      await manager.getRepository(CustomerFollowUpEntity).save(state);
       await saveAuditEvent(manager, attempt.projectId, 'CUSTOMER_FOLLOW_UP_PING_UNKNOWN', {
         attemptId: attempt.id,
         draftVersion: String(attempt.draftVersion),
@@ -582,7 +596,7 @@ export class CustomerFollowUpService implements OnModuleInit, OnModuleDestroy {
   }
 
   private async finalizeManualDeliveryError(
-    claimed: ClaimedManualPing,
+    claimed: ClaimedCustomerFollowUpPing,
     error: unknown,
   ): Promise<never> {
     if (error instanceof CustomerMailBoundaryError && error.code !== 'OUTCOME_UNKNOWN') {
@@ -599,10 +613,15 @@ export class CustomerFollowUpService implements OnModuleInit, OnModuleDestroy {
     });
   }
 
-  private async processDueState(id: string, now: Date): Promise<DuePingResult | null> {
+  private async claimDueState(
+    id: string,
+    projectId: string,
+    now: Date,
+  ): Promise<ClaimedCustomerFollowUpPing | null> {
     return this.dataSource.transaction(async (manager) => {
+      const project = await this.findProject(manager, projectId, true);
       const state = await manager.getRepository(CustomerFollowUpEntity).findOne({
-        where: { id },
+        where: { id, projectId },
         lock: { mode: 'pessimistic_write' },
       });
       if (!state || !state.enabled || !state.nextPingAt || state.nextPingAt > now) {
@@ -615,7 +634,6 @@ export class CustomerFollowUpService implements OnModuleInit, OnModuleDestroy {
         return null;
       }
 
-      const project = await this.findProject(manager, state.projectId, false);
       if (project.status === 'ARCHIVED') {
         state.enabled = false;
         state.nextPingAt = null;
@@ -623,33 +641,135 @@ export class CustomerFollowUpService implements OnModuleInit, OnModuleDestroy {
         return null;
       }
       let rendered: RenderedCustomerFollowUpPing;
+      let reference: DiscoveryFollowUpEntity | null;
       try {
-        rendered = (await renderCurrentPing(manager, project, state)).rendered;
+        ({ reference, rendered } = await renderCurrentPing(manager, project, state, true));
       } catch (error) {
         if (!(error instanceof ConflictException)) {
           throw error;
         }
-        state.enabled = false;
         state.nextPingAt = null;
         await manager.getRepository(CustomerFollowUpEntity).save(state);
         return null;
       }
-      try {
-        await this.submitPing(rendered);
-      } catch {
-        await markDeliveryFailure(manager, state, now, true);
-        await saveAuditEvent(manager, project.id, 'FOLLOW_UP_PING_FAILED', {
-          deliveryStatus: failedDeliveryStatus,
-          errorCode: smtpFailureCode,
-        });
-        return { state, sentAt: now };
-      }
 
-      await markDeliverySuccess(manager, state, now, true);
-      await saveAuditEvent(manager, project.id, 'FOLLOW_UP_PING_SENT', {
-        deliveryStatus: sentDeliveryStatus,
+      const attemptRepository = manager.getRepository(CustomerFollowUpDeliveryAttemptEntity);
+      const activeAttempt = await attemptRepository.findOne({
+        where: { projectId: state.projectId, state: 'SENDING' },
+        lock: { mode: 'pessimistic_write' },
       });
-      return { state, sentAt: now };
+      if (activeAttempt) {
+        return null;
+      }
+      const latestAttempt = await findLatestManualAttempt(manager, state.projectId);
+      if (latestAttempt?.state === 'UNKNOWN') {
+        state.nextPingAt = null;
+        await manager.getRepository(CustomerFollowUpEntity).save(state);
+        return null;
+      }
+      const claimedAt = nextAttemptTimestamp(now, latestAttempt);
+      const attemptId = randomUUID();
+      state.nextPingAt = null;
+      await manager.getRepository(CustomerFollowUpEntity).save(state);
+      await attemptRepository.save({
+        id: attemptId,
+        projectId: state.projectId,
+        draftVersion: state.draftVersion,
+        referencedFollowUpId: reference?.id ?? null,
+        referencedFollowUpVersion: reference?.version ?? null,
+        state: 'SENDING',
+        recipientEmail: rendered.recipientEmail,
+        subjectLength: rendered.subject.length,
+        textLength: rendered.text.length,
+        failureCode: null,
+        createdAt: claimedAt,
+        attemptedAt: claimedAt,
+        sentAt: null,
+      });
+      return {
+        attemptId,
+        state,
+        rendered,
+        referencedFollowUpId: reference?.id ?? null,
+        referencedFollowUpVersion: reference?.version ?? null,
+        attemptedAt: claimedAt,
+      };
+    });
+  }
+
+  private async deliverClaimedScheduledPing(
+    claimed: ClaimedCustomerFollowUpPing,
+    completedAt: Date,
+  ): Promise<CustomerFollowUpEntity> {
+    try {
+      await this.submitPing(claimed.rendered);
+    } catch (error) {
+      return this.finalizeScheduledDeliveryError(claimed, completedAt, error);
+    }
+    return this.finalizeScheduledSuccess(claimed, completedAt);
+  }
+
+  private async finalizeScheduledSuccess(
+    claimed: ClaimedCustomerFollowUpPing,
+    sentAt: Date,
+  ): Promise<CustomerFollowUpEntity> {
+    return this.dataSource.transaction(async (manager) => {
+      const { attempt, state } = await requireClaimedScheduledState(manager, claimed);
+      attempt.state = 'SENT';
+      attempt.sentAt = sentAt;
+      await manager.getRepository(CustomerFollowUpDeliveryAttemptEntity).save(attempt);
+      await markDeliverySuccess(manager, state, sentAt, state.enabled);
+      await saveAuditEvent(manager, state.projectId, 'CUSTOMER_FOLLOW_UP_PING_SENT', {
+        attemptId: attempt.id,
+        deliveryKind: 'SCHEDULED',
+        draftVersion: String(attempt.draftVersion),
+        referencedFollowUpId: attempt.referencedFollowUpId ?? 'NONE',
+        referencedFollowUpVersion: attempt.referencedFollowUpVersion === null
+          ? 'NONE'
+          : String(attempt.referencedFollowUpVersion),
+        deliveryStatus: sentDeliveryStatus,
+        subjectLength: String(attempt.subjectLength),
+        textLength: String(attempt.textLength),
+        attemptedAt: attempt.attemptedAt.toISOString(),
+        sentAt: sentAt.toISOString(),
+      });
+      return state;
+    });
+  }
+
+  private async finalizeScheduledDeliveryError(
+    claimed: ClaimedCustomerFollowUpPing,
+    failedAt: Date,
+    error: unknown,
+  ): Promise<CustomerFollowUpEntity> {
+    const unknown = !(error instanceof CustomerMailBoundaryError)
+      || error.code === 'OUTCOME_UNKNOWN';
+    return this.dataSource.transaction(async (manager) => {
+      const { attempt, state } = await requireClaimedScheduledState(manager, claimed);
+      attempt.state = unknown ? 'UNKNOWN' : 'FAILED';
+      attempt.failureCode = unknown ? unknownDeliveryCode : smtpFailureCode;
+      await manager.getRepository(CustomerFollowUpDeliveryAttemptEntity).save(attempt);
+      state.lastPingAt = failedAt;
+      if (unknown) {
+        state.nextPingAt = null;
+        await manager.getRepository(CustomerFollowUpEntity).save(state);
+      } else {
+        await markDeliveryFailure(manager, state, failedAt, state.enabled);
+      }
+      await saveAuditEvent(
+        manager,
+        state.projectId,
+        unknown ? 'CUSTOMER_FOLLOW_UP_PING_UNKNOWN' : 'CUSTOMER_FOLLOW_UP_PING_FAILED',
+        {
+          attemptId: attempt.id,
+          deliveryKind: 'SCHEDULED',
+          draftVersion: String(attempt.draftVersion),
+          deliveryStatus: unknown ? 'UNKNOWN' : failedDeliveryStatus,
+          errorCode: attempt.failureCode,
+          attemptedAt: attempt.attemptedAt.toISOString(),
+        },
+      );
+      return state;
     });
   }
 
@@ -688,6 +808,27 @@ export class CustomerFollowUpService implements OnModuleInit, OnModuleDestroy {
   }
 }
 
+async function requireClaimedScheduledState(
+  manager: EntityManager,
+  claimed: ClaimedCustomerFollowUpPing,
+): Promise<{
+  readonly attempt: CustomerFollowUpDeliveryAttemptEntity;
+  readonly state: CustomerFollowUpEntity;
+}> {
+  const attempt = await manager.getRepository(CustomerFollowUpDeliveryAttemptEntity).findOne({
+    where: { id: claimed.attemptId },
+    lock: { mode: 'pessimistic_write' },
+  });
+  const state = await manager.getRepository(CustomerFollowUpEntity).findOne({
+    where: { id: claimed.state.id },
+    lock: { mode: 'pessimistic_write' },
+  });
+  if (!attempt || !state || attempt.state !== 'SENDING') {
+    throw new ConflictException('A Customer follow-up ping kézbesítési állapota megváltozott.');
+  }
+  return { attempt, state };
+}
+
 async function initialDiscoveryFollowUpStatus(): Promise<string> {
   const playbook = await loadGeneralPlaybookV1();
   const status = playbook.statuses.followUp[0];
@@ -701,10 +842,11 @@ async function requireOpenReference(
   manager: EntityManager,
   projectId: string,
   followUpId: string,
+  lock = false,
 ): Promise<DiscoveryFollowUpEntity> {
-  const followUp = await manager.getRepository(DiscoveryFollowUpEntity).findOneBy({
-    id: followUpId,
-    projectId,
+  const followUp = await manager.getRepository(DiscoveryFollowUpEntity).findOne({
+    where: { id: followUpId, projectId },
+    lock: lock ? { mode: 'pessimistic_write' } : undefined,
   });
   if (!followUp || followUp.status !== (await initialDiscoveryFollowUpStatus())) {
     throw new ConflictException({
@@ -719,6 +861,7 @@ async function renderCurrentPing(
   manager: EntityManager,
   project: Project,
   state: CustomerFollowUpEntity,
+  lockReference = false,
 ): Promise<{
   readonly reference: DiscoveryFollowUpEntity | null;
   readonly rendered: RenderedCustomerFollowUpPing;
@@ -730,7 +873,12 @@ async function renderCurrentPing(
     });
   }
   const reference = state.referencedFollowUpId
-    ? await requireOpenReference(manager, project.id, state.referencedFollowUpId)
+    ? await requireOpenReference(
+        manager,
+        project.id,
+        state.referencedFollowUpId,
+        lockReference,
+      )
     : null;
   return {
     reference,
