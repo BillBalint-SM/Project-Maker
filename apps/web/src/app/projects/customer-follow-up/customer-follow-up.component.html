@@ -1,0 +1,253 @@
+@if (loading()) {
+  <div class="state-panel" aria-live="polite" data-testid="follow-up-loading">
+    <p-progress-spinner ariaLabel="Ügyfél-ping betöltése" />
+  </div>
+} @else if (loadError()) {
+  <div class="state-panel" role="alert" data-testid="follow-up-load-error">
+    <p>{{ loadError() }}</p>
+    <p-button label="Újrapróbálás" (onClick)="reload()" />
+  </div>
+} @else if (state(); as current) {
+<p-card id="customer-communication" data-testid="follow-up-card">
+  <ng-template #title>Customer follow-up</ng-template>
+  <ng-template #subtitle>
+    PO/PM cadence and delivery controls for a short customer reminder.
+  </ng-template>
+
+  @if (actionError()) {
+    <p-message severity="error" role="alert" data-testid="follow-up-action-error">
+      {{ actionError() }}
+    </p-message>
+    <p-button
+      type="button"
+      label="Aktuális piszkozat újratöltése"
+      [outlined]="true"
+      data-testid="reload-follow-up-draft-button"
+      (onClick)="reloadState()"
+    />
+  }
+  @if (draftFeedback()) {
+    <p-message severity="success" data-testid="follow-up-draft-feedback">
+      {{ draftFeedback() }}
+    </p-message>
+  }
+  @if (sendResult()) {
+    <p
+      class="follow-up-result"
+      tabindex="-1"
+      role="status"
+      data-testid="follow-up-send-result"
+    >
+      {{ sendResult() }}
+    </p>
+  }
+
+  <form
+    class="follow-up-form"
+    [formGroup]="draftForm"
+    (ngSubmit)="saveDraft()"
+    data-testid="follow-up-draft-form"
+  >
+    <fieldset class="follow-up-fields" [disabled]="controlsDisabled()">
+      <legend>Ügyfél-ping piszkozat</legend>
+      <div class="field">
+        <label for="follow-up-message-draft">Üzenet az ügyfélnek</label>
+        <textarea
+          pTextarea
+          id="follow-up-message-draft"
+          rows="5"
+          maxlength="10000"
+          formControlName="messageDraft"
+          data-testid="follow-up-message-draft"
+        ></textarea>
+        <small>A szöveg egyszerű szövegként kerül az e-mailbe, legfeljebb 10 000 karakterben.</small>
+      </div>
+      <div class="field">
+        <label for="follow-up-reference-select">Kapcsolódó nyitott Discovery follow-up (opcionális)</label>
+        <select
+          id="follow-up-reference-select"
+          formControlName="referencedFollowUpId"
+          data-testid="follow-up-reference-select"
+        >
+          <option value="">Nincs kapcsolódó kérdés</option>
+          @for (option of referenceOptions(); track option.id) {
+            <option [value]="option.id">{{ option.question }} · {{ option.dueDate }}</option>
+          }
+        </select>
+      </div>
+    </fieldset>
+    <div class="follow-up-actions">
+      <p-button
+        type="submit"
+        label="Piszkozat mentése"
+        [loading]="saving()"
+        [disabled]="controlsDisabled() || draftForm.invalid"
+        data-testid="save-follow-up-draft-button"
+      />
+      <p-button
+        type="button"
+        label="Pontos előnézet"
+        [outlined]="true"
+        [disabled]="controlsDisabled() || draftForm.dirty || !current.messageDraft"
+        data-testid="preview-follow-up-ping-button"
+        (onClick)="previewPing()"
+      />
+    </div>
+  </form>
+
+  @if (preview(); as preview) {
+    <section
+      class="follow-up-preview"
+      role="alertdialog"
+      aria-labelledby="follow-up-preview-title"
+      aria-describedby="follow-up-preview-description"
+    >
+      <h3 id="follow-up-preview-title">Customer follow-up ping előnézete</h3>
+      <p id="follow-up-preview-description">Ezt a pontos címzettet és tartalmat küldi el a rendszer.</p>
+      <dl>
+        <div><dt>Címzett</dt><dd>{{ preview.recipientName }} &lt;{{ preview.recipientEmail }}&gt;</dd></div>
+        <div><dt>Tárgy</dt><dd>{{ preview.subject }}</dd></div>
+      </dl>
+      <pre>{{ preview.text }}</pre>
+      <div class="follow-up-actions">
+        <p-button
+          type="button"
+          label="Mégse"
+          [autofocus]="true"
+          data-testid="cancel-follow-up-preview-button"
+          (onClick)="cancelPreview()"
+        />
+        <p-button
+          type="button"
+          label="Küldés az ügyfélnek"
+          severity="success"
+          [loading]="pinging()"
+          [disabled]="controlsDisabled()"
+          data-testid="send-follow-up-ping-button"
+          (onClick)="sendPing()"
+        />
+      </div>
+    </section>
+  }
+
+  <form
+    class="follow-up-form"
+    [formGroup]="settingsForm"
+    (ngSubmit)="saveSettings()"
+    data-testid="follow-up-settings-form"
+  >
+    <fieldset
+      class="follow-up-fields"
+      [disabled]="controlsDisabled()"
+      aria-describedby="follow-up-settings-help"
+    >
+      <legend class="sr-only">Customer follow-up settings</legend>
+
+      <div class="follow-up-toggle">
+        <input
+          id="follow-up-enabled"
+          type="checkbox"
+          formControlName="enabled"
+          data-testid="follow-up-enabled-input"
+        />
+        <label for="follow-up-enabled">Enable automatic follow-up pings</label>
+      </div>
+
+      <div class="field">
+        <label for="follow-up-interval">Cadence (minutes)</label>
+        <input
+          pInputText
+          id="follow-up-interval"
+          class="full-width"
+          type="number"
+          min="1"
+          max="525600"
+          step="1"
+          formControlName="intervalMinutes"
+          data-testid="follow-up-interval-input"
+          [attr.aria-invalid]="settingsForm.controls.intervalMinutes.invalid && settingsForm.controls.intervalMinutes.touched"
+          [attr.aria-describedby]="settingsForm.controls.intervalMinutes.invalid && settingsForm.controls.intervalMinutes.touched ? 'follow-up-interval-help follow-up-interval-error' : 'follow-up-interval-help'"
+        />
+        <small id="follow-up-interval-help">Use a whole number from 1 to 525,600 minutes.</small>
+        @if (settingsForm.controls.intervalMinutes.invalid && settingsForm.controls.intervalMinutes.touched) {
+          <small class="field-error" id="follow-up-interval-error">Cadence must be a whole number from 1 to 525,600 minutes.</small>
+        }
+      </div>
+
+      <div class="field">
+        <label for="follow-up-expires-at">Stop after</label>
+        <p-datepicker
+          inputId="follow-up-expires-at"
+          styleClass="full-width"
+          formControlName="expiresAt"
+          [showTime]="true"
+          [showIcon]="true"
+          [showButtonBar]="true"
+          [hourFormat]="'24'"
+          [appendTo]="'body'"
+          data-testid="follow-up-expires-at-input"
+        />
+        <small id="follow-up-settings-help">Leave blank for no expiry. The selected local time is saved as UTC.</small>
+      </div>
+    </fieldset>
+
+    <p-button
+      type="submit"
+      label="Save follow-up settings"
+      [loading]="saving()"
+      [disabled]="controlsDisabled()"
+      data-testid="save-follow-up-settings-button"
+    />
+  </form>
+
+  <dl class="follow-up-status" aria-label="Customer follow-up status">
+    <div>
+      <dt>Automatic pings</dt>
+      <dd data-testid="follow-up-enabled-value">{{ current.enabled ? 'Enabled' : 'Disabled' }}</dd>
+    </div>
+    <div>
+      <dt>Cadence</dt>
+      <dd data-testid="follow-up-interval-value">{{ current.intervalMinutes }} minutes</dd>
+    </div>
+    <div>
+      <dt>Expires</dt>
+      <dd data-testid="follow-up-expires-at-value">
+        {{ current.expiresAt ? (current.expiresAt | date: 'medium') : 'No expiry' }}
+      </dd>
+    </div>
+    <div>
+      <dt>Last ping</dt>
+      <dd data-testid="follow-up-last-ping-at-value">
+        {{ current.lastPingAt ? (current.lastPingAt | date: 'medium') : 'Never' }}
+      </dd>
+    </div>
+    <div>
+      <dt>Next ping</dt>
+      <dd data-testid="follow-up-next-ping-at-value">
+        {{ current.nextPingAt ? (current.nextPingAt | date: 'medium') : 'Not scheduled' }}
+      </dd>
+    </div>
+    <div>
+      <dt>Last delivery</dt>
+      <dd data-testid="follow-up-last-delivery-status-value">{{ current.lastDeliveryStatus }}</dd>
+    </div>
+    <div>
+      <dt>Delivery error</dt>
+      <dd data-testid="follow-up-last-delivery-error-value">{{ current.lastDeliveryError || 'None reported' }}</dd>
+    </div>
+  </dl>
+
+  <div class="follow-up-actions" aria-label="Customer email actions">
+    <a
+      pButton
+      [routerLink]="['/projects', projectId(), 'interview']"
+      fragment="customer-handoff"
+      class="p-button-outlined"
+      data-testid="open-interview-handoff-button"
+    >
+      <i class="pi pi-file" aria-hidden="true"></i>
+      <span>Interjúösszegzés megnyitása</span>
+    </a>
+  </div>
+</p-card>
+}

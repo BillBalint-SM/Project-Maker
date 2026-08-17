@@ -4,14 +4,11 @@ import { forkJoin, map, Observable, throwError } from 'rxjs';
 import { catchError } from 'rxjs/operators';
 import type {
   AuditEventPage,
-  CustomerFollowUpState,
   CreateProjectInput,
   ProjectCockpit,
   ProjectActivityFeed,
   ProjectPreparationStatus,
   ProjectWorkspace,
-  SendFollowUpPingInput,
-  UpdateCustomerFollowUpInput,
 } from '@project-maker/contracts';
 
 import {
@@ -54,24 +51,15 @@ export class ProjectApiService {
         `/api/projects/${encodedProjectId}/cockpit`,
       ),
       projects: this.http.get<readonly ProjectWorkspace[]>('/api/projects'),
-      followUp: this.http
-        .get<CustomerFollowUpState>(
-          `/api/projects/${encodedProjectId}/follow-up`,
-        )
-        .pipe(
-          catchError((error: unknown) =>
-            this.fail(error, 'load project follow-up settings'),
-          ),
-        ),
     }).pipe(
-      map(({ cockpit, projects, followUp }) => {
+      map(({ cockpit, projects }) => {
         const project = projects.find((candidate) => candidate.id === projectId);
         if (!project) {
           throw new Error(
             'The cockpit loaded, but its project is missing from the project list. Refresh the page; if the problem continues, check the API data.',
           );
         }
-        return { cockpit, project, followUp };
+        return { cockpit, project };
       }),
       catchError((error: unknown) => this.fail(error, 'load the project cockpit')),
     );
@@ -106,38 +94,6 @@ export class ProjectApiService {
       }),
       catchError((error: unknown) => this.fail(error, 'load the project coordination details')),
     );
-  }
-
-  updateFollowUp(
-    projectId: string,
-    input: UpdateCustomerFollowUpInput,
-  ): Observable<CustomerFollowUpState> {
-    return this.http
-      .patch<CustomerFollowUpState>(
-        `/api/projects/${encodeURIComponent(projectId)}/follow-up`,
-        input,
-      )
-      .pipe(
-        catchError((error: unknown) =>
-          this.fail(error, 'save follow-up settings'),
-        ),
-      );
-  }
-
-  sendFollowUpPing(
-    projectId: string,
-    input?: SendFollowUpPingInput,
-  ): Observable<CustomerFollowUpState> {
-    return this.http
-      .post<CustomerFollowUpState>(
-        `/api/projects/${encodeURIComponent(projectId)}/follow-up/ping`,
-        input ?? {},
-      )
-      .pipe(
-        catchError((error: unknown) =>
-          this.fail(error, 'send a follow-up ping'),
-        ),
-      );
   }
 
   updateWorkspace(
@@ -208,31 +164,22 @@ function toActionableError(error: unknown, action: string): ActionableError {
     };
   }
 
-  const nextStep = followUpErrorNextStep(error.status, action);
+  const nextStep = projectErrorNextStep(error.status, action);
   return {
     userMessage: `Could not ${action} (HTTP ${error.status}). ${nextStep}`,
     diagnostics: { action, status: error.status, statusText: error.statusText },
   };
 }
 
-function followUpErrorNextStep(status: number, action: string): string {
+function projectErrorNextStep(status: number, action: string): string {
   if (status === 409) {
     if (action === 'delete the project') {
       return 'The project now has persisted activity and cannot be deleted. Archive it instead.';
-    }
-    if (action === 'save follow-up settings') {
-      return 'The project may be archived or changed. Refresh the cockpit and try again.';
-    }
-    if (action === 'send a follow-up ping') {
-      return 'The project may be archived or changed. Refresh the cockpit, then try again.';
     }
     return 'Refresh the project to see its latest lifecycle state.';
   }
 
   if (status === 503) {
-    if (action === 'send a follow-up ping') {
-      return 'Customer email delivery is unavailable. Check the API email configuration, then try again.';
-    }
     return 'Review the entered values and try again.';
   }
 
@@ -240,8 +187,5 @@ function followUpErrorNextStep(status: number, action: string): string {
     return 'Return to the project list and confirm that the project still exists.';
   }
 
-  if (action === 'save follow-up settings') {
-    return 'Use a whole-number cadence from 1 to 525,600 minutes and a future expiry, then try again.';
-  }
   return 'Review the entered values and try again.';
 }
