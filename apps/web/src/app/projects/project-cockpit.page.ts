@@ -34,19 +34,12 @@ import {
 } from './cockpit-operation-policy';
 import { DiscoveryFollowUpsComponent } from './discovery-follow-ups/discovery-follow-ups.component';
 import { DecisionReviewComponent } from './decision-review/decision-review.component';
-import type { AuditEventPage, CockpitView, StatusOption } from './project-api.models';
+import type { AuditEventPage, CockpitView } from './project-api.models';
 import { ProjectApiService } from './project-api.service';
+import { activeProjectStatusOptions, projectStatusLabel } from './project-status-label';
 import { ReadinessReviewComponent } from './readiness-review/readiness-review.component';
 
 type ActiveProjectStatus = Exclude<ProjectStatus, 'ARCHIVED'>;
-
-const statusOptions: StatusOption[] = [
-  { label: 'Előkészítés alatt', value: 'DRAFT' },
-  { label: 'Interjú folyamatban', value: 'INTAKE_IN_PROGRESS' },
-  { label: 'Belső feladatra vár', value: 'WAITING_INTERNAL' },
-  { label: 'Ügyfélre vár', value: 'WAITING_CUSTOMER' },
-  { label: 'Becslésre kész', value: 'READY_FOR_PLANNING' },
-];
 
 @Component({
   selector: 'app-project-cockpit-page',
@@ -82,7 +75,7 @@ export class ProjectCockpitPage implements OnInit {
   private readonly destroyRef = inject(DestroyRef);
 
   readonly projectId = this.route.snapshot.paramMap.get('projectId') ?? '';
-  readonly statusOptions = statusOptions;
+  readonly statusOptions = activeProjectStatusOptions;
   readonly ownerRoleOptions = computed(() => {
     const project = this.view()?.project;
     return [
@@ -252,8 +245,7 @@ export class ProjectCockpitPage implements OnInit {
   }
 
   statusLabel(status: ProjectStatus): string {
-    if (status === 'ARCHIVED') return 'Archivált';
-    return statusOptions.find((option) => option.value === status)?.label ?? status;
+    return projectStatusLabel(status);
   }
 
   handleDiscoveryCommittedChange(): void {

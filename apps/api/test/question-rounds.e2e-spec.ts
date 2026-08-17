@@ -104,6 +104,49 @@ describe('Question bank and interview rounds (PostgreSQL e2e)', () => {
     assert.equal(activeRoundResponse.body, null);
   });
 
+  it('rejects every interview mutation while the project is archived', async () => {
+    const { projectId } = await createProjectWithSingleQuestionSchema(
+      app,
+      `Archived interview ${Date.now()}`,
+      'archived-interview',
+    );
+    const round = await request(app.getHttpServer())
+      .post(`/projects/${projectId}/rounds`)
+      .send({ type: 'INITIAL_INTAKE' })
+      .expect(201);
+    const roundId = round.body.id as string;
+    const snapshotId = round.body.questions[0].id as string;
+    const assessmentUrl =
+      `/projects/${projectId}/rounds/${roundId}/answers/${snapshotId}/assessment`;
+
+    await request(app.getHttpServer()).post(`/projects/${projectId}/archive`).expect(201);
+    await request(app.getHttpServer())
+      .patch(`/projects/${projectId}/rounds/${roundId}/answers/${snapshotId}`)
+      .send({ value: 'Archived write must fail' })
+      .expect(409);
+    await request(app.getHttpServer())
+      .put(assessmentUrl)
+      .send({ status: 'Nem releváns', rationale: 'Archivált projekt nem módosítható.' })
+      .expect(409);
+    await request(app.getHttpServer()).delete(assessmentUrl).expect(409);
+    await request(app.getHttpServer())
+      .post(`/projects/${projectId}/rounds/${roundId}/complete`)
+      .expect(409);
+
+    const archivedBeforeStart = await createProjectWithSingleQuestionSchema(
+      app,
+      `Archived round start ${Date.now()}`,
+      'archived-round-start',
+    );
+    await request(app.getHttpServer())
+      .post(`/projects/${archivedBeforeStart.projectId}/archive`)
+      .expect(201);
+    await request(app.getHttpServer())
+      .post(`/projects/${archivedBeforeStart.projectId}/rounds`)
+      .send({ type: 'INITIAL_INTAKE' })
+      .expect(409);
+  });
+
   it('projects canonical missing and complete assessment states from answer validity', async () => {
     const { projectId } = await createProjectWithSingleQuestionSchema(
       app,

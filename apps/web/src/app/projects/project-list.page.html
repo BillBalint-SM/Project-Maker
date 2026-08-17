@@ -40,7 +40,7 @@
         >
           <div class="project-card-header">
             <h2>{{ project.name }}</h2>
-            <p-tag [value]="project.status" />
+            <p-tag [value]="statusLabel(project.status)" />
           </div>
           <dl>
             <div>

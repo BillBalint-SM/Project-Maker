@@ -9,7 +9,7 @@
       <h3>{{ active.version }}. verzió – {{ stateLabel(active.state) }}</h3>
       @if (active.version > 1 && active.state === 'DRAFT') {
         <label for="handoff-summary">Módosítás összefoglalása</label>
-        <textarea pTextarea id="handoff-summary" [(ngModel)]="summary" rows="3" data-testid="handoff-modification-summary" [disabled]="readOnly()"></textarea>
+        <textarea pTextarea id="handoff-summary" [ngModel]="summary" (ngModelChange)="changeSummary($event)" rows="3" data-testid="handoff-modification-summary" [disabled]="readOnly()"></textarea>
         <p-button label="Összefoglalás mentése" [disabled]="busy() || readOnly()" (onClick)="saveSummary()" />
       }
       @if (active.state === 'DRAFT') { <p-button label="Előnézet és küldés" [disabled]="busy() || readOnly()" data-testid="handoff-preview-button" (onClick)="preview()" /> }

@@ -68,10 +68,20 @@ test.describe.serial('interview customer handoff browser journey', () => {
     await expect(page.getByText('2. verzió előnézete')).toBeVisible();
     await expect(page.locator('.preview pre')).toContainText(answer);
 
+    const locallyEditedAnswer = 'Az előnézet után a felületen pontosított üzleti eredmény.';
+    const localEditResponse = page.waitForResponse((response) => response.request().method() === 'PATCH' && response.url().includes(`/answers/${fixture.snapshotId}`));
+    await page.getByTestId(`round-answer-textarea-${fixture.snapshotId}`).fill(locallyEditedAnswer);
+    await expect(page.locator('.preview')).toBeHidden();
+    expect((await localEditResponse).status()).toBe(200);
+    await nativeButton(page, 'handoff-preview-button').click();
+    await expect(page.locator('.preview pre')).toContainText(locallyEditedAnswer);
+
     const answerAfterPreview = 'Az előnézet után szerveren pontosított üzleti eredmény.';
     await apiJson(request, 'PATCH', `/projects/${fixture.projectId}/rounds/${fixture.roundId}/answers/${fixture.snapshotId}`, { value: answerAfterPreview });
     await sendCurrentPreview(page, fixture.projectId, fixture.roundId, 409);
     await expect(page.getByRole('alert')).toBeVisible();
+    await expect(page.locator('.preview')).toBeHidden();
+    await expect(await nativeButton(page, 'handoff-preview-button')).toBeFocused();
     await nativeButton(page, 'handoff-preview-button').click();
     await expect(page.locator('.preview pre')).toContainText(answerAfterPreview);
     await sendCurrentPreview(page, fixture.projectId, fixture.roundId);
@@ -145,6 +155,22 @@ test.describe.serial('interview customer handoff browser journey', () => {
     await expect(page.getByTestId('handoff-version-heading-1')).toContainText('Elküldve');
     await expect(page.getByTestId('handoff-version-heading-1')).toBeFocused();
   });
+
+  test('renders Hungarian project status and makes an archived open interview read-only', async ({ page, request }, testInfo) => {
+    const fixture = await createOpenInterview(request, testInfo);
+    await page.goto('/');
+    const projectCard = page.getByTestId(`project-card-${fixture.projectId}`);
+    await expect(projectCard).toContainText('Előkészítés alatt');
+    await expect(projectCard).not.toContainText('DRAFT');
+
+    await apiJson(request, 'POST', `/projects/${fixture.projectId}/archive`);
+    await page.goto(`/projects/${fixture.projectId}/interview`);
+    await expect(page.getByTestId('archived-interview-read-only')).toBeVisible();
+    await expect(page.getByTestId(`schema-question-${fixture.stableKey}`).locator('input')).toBeDisabled();
+    await expect(page.locator(`[data-testid="round-answer-input-${fixture.snapshotId}"], [data-testid="round-answer-textarea-${fixture.snapshotId}"]`)).toBeDisabled();
+    await expect(await nativeButton(page, 'finish-interview-later-button')).toBeDisabled();
+    await expect(await nativeButton(page, 'finish-interview-and-send-button')).toBeDisabled();
+  });
 });
 
 async function sendCurrentPreview(page: Page, projectId: string, roundId: string, expectedStatus = 201): Promise<void> {
@@ -155,7 +181,7 @@ async function sendCurrentPreview(page: Page, projectId: string, roundId: string
   expect((await responsePromise).status()).toBe(expectedStatus);
 }
 
-async function createOpenInterview(request: APIRequestContext, testInfo: { readonly workerIndex: number }): Promise<{ projectId: string; roundId: string; snapshotId: string }> {
+async function createOpenInterview(request: APIRequestContext, testInfo: { readonly workerIndex: number }): Promise<{ projectId: string; roundId: string; snapshotId: string; stableKey: string }> {
   const suffix = `${Date.now()}-${testInfo.workerIndex}-${Math.random().toString(36).slice(2, 8)}`;
   const project = await apiJson<{ id: string }>(request, 'POST', '/projects', {
     name: `Ügyfélcsomag E2E ${suffix}`,
@@ -167,7 +193,7 @@ async function createOpenInterview(request: APIRequestContext, testInfo: { reado
   const bank = await apiJson<{ questions: readonly { stableKey: string }[] }>(request, 'GET', '/settings/base-questions');
   await apiJson(request, 'POST', `/projects/${project.id}/question-schema`, { questions: [{ stableKey: bank.questions[0].stableKey, required: true, blocking: true }] });
   const round = await apiJson<{ id: string; questions: readonly { id: string }[] }>(request, 'POST', `/projects/${project.id}/rounds`, { type: 'INITIAL_INTAKE' });
-  return { projectId: project.id, roundId: round.id, snapshotId: round.questions[0].id };
+  return { projectId: project.id, roundId: round.id, snapshotId: round.questions[0].id, stableKey: bank.questions[0].stableKey };
 }
 
 async function apiJson<T>(request: APIRequestContext, method: 'GET' | 'POST' | 'PATCH', path: string, data?: unknown): Promise<T> {

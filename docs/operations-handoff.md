@@ -325,7 +325,8 @@ These are intentionally separate flows:
   a customer change request creates the next draft with a required modification
   summary and re-enables edits for that ended round. Known SMTP failures become
   `FAILED`; expired or interrupted attempts become `UNKNOWN` and require an
-  explicit resume after checking external delivery evidence.
+  explicitly acknowledged retry after checking external delivery evidence and
+  accepting the possible duplicate-delivery risk.
 
 - **Customer review:** always manually initiated by the PO/PM. It requires a
   Markdown revision (the latest one is selected when no revision ID is sent),

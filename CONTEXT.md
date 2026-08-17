@@ -242,8 +242,8 @@ slice.
 _Avoid_: Inferred link, general edit field
 
 **Current Initial Intake source**:
-The most recently created open Initial Intake round for a project; when none
-is open, the most recently created completed Initial Intake round. It defines
+The most recently created `OPEN` or `ENDED` Initial Intake round for a project,
+regardless of which of those two lifecycle states it has. It defines
 the eligible checklist snapshots for a new or changed discovery follow-up
 source linkage.
 _Avoid_: Any historical checklist, automatically repointed source

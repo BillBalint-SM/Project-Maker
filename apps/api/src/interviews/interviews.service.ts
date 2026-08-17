@@ -61,7 +61,7 @@ export class InterviewsService {
   async createRound(projectId: string, input: CreateInterviewRoundDto): Promise<InterviewRound> {
     return this.dataSource.transaction(async (manager) => {
       const assessmentPolicy = await loadRoundQuestionAssessmentPolicy();
-      await requireProject(manager, projectId, true);
+      await requireMutableProject(manager, projectId);
       const schema = await manager.getRepository(ProjectQuestionSchemaEntity).findOne({
         where: { projectId },
         order: { schemaVersion: 'DESC' },
@@ -151,6 +151,7 @@ export class InterviewsService {
     input: UpdateRoundAnswerDto,
   ): Promise<RoundQuestionSnapshot> {
     return this.dataSource.transaction(async (manager) => {
+      await requireMutableProject(manager, projectId, 'pessimistic_read');
       const assessmentPolicy = await loadRoundQuestionAssessmentPolicy();
       let existingOverride = await findLockedRoundQuestionAssessmentOverride(
         manager,
@@ -241,6 +242,7 @@ export class InterviewsService {
     input: SetRoundQuestionAssessmentDto,
   ): Promise<RoundQuestionSnapshot> {
     return this.dataSource.transaction(async (manager) => {
+      await requireMutableProject(manager, projectId, 'pessimistic_read');
       const assessmentPolicy = await loadRoundQuestionAssessmentPolicy();
       let existingOverride = await findLockedRoundQuestionAssessmentOverride(
         manager,
@@ -334,6 +336,7 @@ export class InterviewsService {
     snapshotId: string,
   ): Promise<RoundQuestionSnapshot> {
     return this.dataSource.transaction(async (manager) => {
+      await requireMutableProject(manager, projectId, 'pessimistic_read');
       const assessmentPolicy = await loadRoundQuestionAssessmentPolicy();
       let existingOverride = await findLockedRoundQuestionAssessmentOverride(
         manager,
@@ -366,10 +369,7 @@ export class InterviewsService {
 
   async finishRound(projectId: string, roundId: string): Promise<InterviewRound> {
     return this.dataSource.transaction(async (manager) => {
-      const project = await requireProject(manager, projectId, true);
-      if (project.status === 'ARCHIVED') {
-        throw new ConflictException('Archived projects cannot finish interviews.');
-      }
+      await requireMutableProject(manager, projectId);
       const round = await findLockedRound(manager, projectId, roundId);
       if (round.status === 'ENDED') {
         await this.handoffService.establishFirstDraft(manager, projectId, roundId);
@@ -401,6 +401,24 @@ async function requireProject(
   });
   if (!project) {
     throw new NotFoundException('Project not found.');
+  }
+  return project;
+}
+
+async function requireMutableProject(
+  manager: EntityManager,
+  projectId: string,
+  lockMode: 'pessimistic_read' | 'pessimistic_write' = 'pessimistic_write',
+): Promise<Project> {
+  const project = await manager.getRepository(Project).findOne({
+    where: { id: projectId },
+    lock: { mode: lockMode },
+  });
+  if (!project) {
+    throw new NotFoundException('Project not found.');
+  }
+  if (project.status === 'ARCHIVED') {
+    throw new ConflictException('Archived projects cannot change interviews.');
   }
   return project;
 }

@@ -431,12 +431,12 @@ Típusváltáskor mindig ellenőrizd, hogy a kérdés jelentése és a korábbi 
 
 | Jelölő | Jelenlegi tényleges hatás |
 | --- | --- |
-| `Required` | Válasz nélkül a szerver nem engedi lezárni az interjúkört |
+| `Required` | A readinessben és a későbbi tisztázásban hiányként látszik; a meeting lezárását önmagában nem akadályozza |
 | `Required for estimate` | Metaadatként megmarad; önmagában nem módosítja a kör lezárását vagy a projektstátuszt |
 | `Blocking` | A nyitott körben kiemelt tisztázási útmutatást mutat; önmagában nem akadályozza a lezárást |
 | `Active` | Bekapcsolva megjelenik az új projektséma-választásban; kikapcsolva új sémába nem választható |
 
-Ha egy blokkoló kérdésnek ténylegesen meg kell akadályoznia a kör lezárását, a `Required` jelölőt is kapcsold be. A `Required for estimate` nem külön pontszámkapu, és nem helyettesít Decision Score-t, ajánlott döntést vagy automatikus projektstátusz-váltást. A felkészültségi értékeléshez a [forráskörnek](#ha-az-értékelés-nem-elérhető-vagy-nem-töltődik-be) a jelenlegi kanonikus sémának kell megfelelnie.
+A `Required` és `Blocking` jelölő sem tartalmi lezárási kapu: kész, részben kész, nem releváns vagy hiányos eredménnyel is lezárható a meeting. Csak függőben lévő vagy hibás technikai mentés blokkolja a lezáró gombokat. A `Required for estimate` nem külön pontszámkapu, és nem helyettesít Decision Score-t, ajánlott döntést vagy automatikus projektstátusz-váltást. A felkészültségi értékeléshez a [forráskörnek](#ha-az-értékelés-nem-elérhető-vagy-nem-töltődik-be) a jelenlegi kanonikus sémának kell megfelelnie.
 
 ### Tipikus mentési hibák és helyreállítás
 
@@ -562,7 +562,7 @@ Ha egy sikertelen szöveges mentés után tovább gépelsz, a képernyőn lévő
 
 1. Görgess végig a kérdéseken, és ellenőrizd a mentési állapotokat.
 2. Válaszd a `Mentés, később küldöm` műveletet, ha még szerkesztenéd az ügyfélcsomagot, vagy a `Mentés és küldés` műveletet, ha rögtön előnézetet és küldést szeretnél.
-3. Várd meg a `Lezárt` állapotot és az 1. ügyfélcsomag-piszkozat megjelenését.
+3. Várd meg a `Meeting lezárva` állapotot és az 1. ügyfélcsomag-piszkozat megjelenését.
 
 Függőben lévő vagy hibás technikai mentésnél a lezáró műveletek letiltva maradnak, hogy a képernyőn látható piszkozat ne vesszen el. A válasz tartalmi hiányossága azonban nem akadályozza meg a meeting lezárását.
 
@@ -596,7 +596,7 @@ A `SENT` verzió nem szerkeszthető. A `FAILED` ugyanazt a változatlan előnéz
 ### Ügyfél-visszajelzés és módosított újraküldés
 
 1. Nyisd meg a korábban elküldött interjú ügyfélcsomagját.
-2. Válaszd az `Új verzió indítása` műveletet.
+2. Válaszd az `Új verzió készítése` műveletet.
 3. Írd le röviden, mit kért az ügyfél; a módosítási összefoglaló a 2. és későbbi verzióknál kötelező.
 4. Az új `DRAFT` feloldja az interjú válaszait és értékeléseit szerkesztésre. Módosítsd és várd meg minden mezőnél a mentést.
 5. Készíts új előnézetet, ellenőrizd a teljes tartalmat, majd küldd el.
@@ -1122,7 +1122,7 @@ Ezekben az esetekben előbb töltsd vissza a szerver által ismert állapotot va
 | Terület | Állapot | Jelentés |
 | --- | --- | --- |
 | Interjúkör | `Nyitott` / `OPEN` | Válaszolható és később folytatható |
-| Interjúkör | `Lezárt` / `ENDED` | A meeting véget ért; csak aktív ügyfélcsomag-piszkozat mellett szerkeszthető |
+| Interjúkör | `Meeting lezárva` / `ENDED` | A meeting véget ért; csak aktív ügyfélcsomag-piszkozat mellett szerkeszthető |
 | Ügyfélcsomag | `DRAFT` | Aktív, szerkeszthető verzió |
 | Ügyfélcsomag | `SENDING` | Küldési kísérlet folyamatban |
 | Ügyfélcsomag | `SENT` | Elküldött, változatlan verzió |

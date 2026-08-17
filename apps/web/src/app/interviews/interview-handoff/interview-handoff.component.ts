@@ -27,6 +27,7 @@ export class InterviewHandoffComponent {
   readonly roundId = input.required<string>();
   readonly openPreview = input(false);
   readonly readOnly = input(false);
+  readonly contentRevision = input(0);
   readonly openPreviewConsumed = output<void>();
   readonly editableChange = output<boolean>();
   readonly history = signal<readonly InterviewCustomerHandoffSummary[]>([]);
@@ -38,6 +39,7 @@ export class InterviewHandoffComponent {
 
   constructor() {
     effect(() => { this.projectId(); this.roundId(); this.readOnly(); this.load(); });
+    effect(() => { this.contentRevision(); this.previewData.set(null); });
     effect(() => {
       if (this.openPreview() && !this.readOnly() && this.activeDraft()?.state === 'DRAFT') {
         this.openPreviewConsumed.emit();
@@ -51,9 +53,10 @@ export class InterviewHandoffComponent {
     this.api.list(this.projectId(), this.roundId()).subscribe({ next: (items) => { this.history.set(items); const active = this.activeDraft(); this.summary = active?.modificationSummary ?? ''; this.editableChange.emit(active?.state === 'DRAFT' && !this.readOnly()); if (focusVersion !== undefined) this.focusVersionAfterNextRender(focusVersion); }, error: (error: Error) => this.error.set(error.message) });
   }
   startVersion(): void { if (this.readOnly()) return; this.run(this.api.start(this.projectId(), this.roundId()), () => this.load()); }
-  saveSummary(): void { const active = this.activeDraft(); if (!active || this.readOnly()) return; this.run(this.api.update(this.projectId(), this.roundId(), active.id, this.summary), () => this.load()); }
+  changeSummary(value: string): void { this.summary = value; this.previewData.set(null); }
+  saveSummary(): void { const active = this.activeDraft(); if (!active || this.readOnly()) return; this.run(this.api.update(this.projectId(), this.roundId(), active.id, this.summary), () => { this.previewData.set(null); this.load(); }); }
   preview(): void { const active = this.activeDraft(); if (!active || active.state !== 'DRAFT' || this.readOnly()) return; this.busy.set(true); this.error.set(null); this.api.preview(this.projectId(), this.roundId(), active.id).subscribe({ next: (value) => { this.previewData.set(value); this.busy.set(false); }, error: (error: Error) => { this.error.set(error.message); this.busy.set(false); } }); }
-  confirmSend(trigger: HTMLElement): void { const preview = this.previewData(); if (!preview || this.readOnly()) return; this.confirmation.confirm({ key: 'interview-handoff-send', target: trigger, message: `${preview.recipientName} (${preview.recipientEmail}) részére küldöd a ${preview.version}. verziót.`, header: 'Interjú-összefoglaló küldése', acceptLabel: 'Küldés az ügyfélnek', rejectLabel: 'Mégse', reject: () => this.focusElementAfterNextRender(trigger), accept: () => this.run(this.api.send(this.projectId(), this.roundId(), preview), (detail) => { this.previewData.set(null); this.load(detail.version); }) }); }
+  confirmSend(trigger: HTMLElement): void { const preview = this.previewData(); if (!preview || this.readOnly()) return; this.confirmation.confirm({ key: 'interview-handoff-send', target: trigger, message: `${preview.recipientName} (${preview.recipientEmail}) részére küldöd a ${preview.version}. verziót.`, header: 'Interjú-összefoglaló küldése', acceptLabel: 'Küldés az ügyfélnek', rejectLabel: 'Mégse', reject: () => this.focusElementAfterNextRender(trigger), accept: () => this.run(this.api.send(this.projectId(), this.roundId(), preview), (detail) => { this.previewData.set(null); this.load(detail.version); }, () => { this.previewData.set(null); this.focusPreviewButtonAfterNextRender(); }) }); }
   inspect(id: string): void { this.run(this.api.get(this.projectId(), this.roundId(), id), (detail) => this.selectedContent.set(detail.textContent)); }
   retry(active: InterviewCustomerHandoffSummary): void { if (this.readOnly() || active.state !== 'FAILED') return; this.run(this.api.retry(this.projectId(), this.roundId(), active.id, false), (detail) => this.load(detail.version)); }
   confirmUnknownRetry(active: InterviewCustomerHandoffSummary, trigger: HTMLElement): void {
@@ -64,5 +67,6 @@ export class InterviewHandoffComponent {
   stateLabel(state: HandoffVersionStatus): string { return ({ DRAFT: 'Piszkozat', SENDING: 'Küldés folyamatban', SENT: 'Elküldve', FAILED: 'Sikertelen', UNKNOWN: 'Ellenőrzést igényel' })[state]; }
   private focusVersionAfterNextRender(version: number): void { afterNextRender(() => this.document.querySelector<HTMLElement>(`[data-testid="handoff-version-heading-${version}"]`)?.focus(), { injector: this.injector }); }
   private focusElementAfterNextRender(element: HTMLElement): void { afterNextRender(() => element.isConnected && element.focus(), { injector: this.injector }); }
-  private run<T>(request: import('rxjs').Observable<T>, next: (value: T) => void): void { if (this.busy()) return; this.busy.set(true); this.error.set(null); request.subscribe({ next: (value) => { this.busy.set(false); next(value); }, error: (error: Error) => { this.busy.set(false); this.error.set(error.message); } }); }
+  private focusPreviewButtonAfterNextRender(): void { afterNextRender(() => this.document.querySelector<HTMLElement>('[data-testid="handoff-preview-button"] button')?.focus(), { injector: this.injector }); }
+  private run<T>(request: import('rxjs').Observable<T>, next: (value: T) => void, onError?: () => void): void { if (this.busy()) return; this.busy.set(true); this.error.set(null); request.subscribe({ next: (value) => { this.busy.set(false); next(value); }, error: (error: Error) => { this.busy.set(false); this.error.set(error.message); onError?.(); } }); }
 }
