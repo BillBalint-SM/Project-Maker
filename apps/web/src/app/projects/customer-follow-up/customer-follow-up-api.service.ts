@@ -6,6 +6,7 @@ import type {
   CustomerFollowUpReferenceOption,
   CustomerFollowUpState,
   PreviewCustomerFollowUpPingInput,
+  RetryFollowUpPingInput,
   SendFollowUpPingInput,
   UpdateCustomerFollowUpDraftInput,
   UpdateCustomerFollowUpInput,
@@ -87,6 +88,19 @@ export class CustomerFollowUpApiService {
     );
   }
 
+  retry(
+    projectId: string,
+    input: RetryFollowUpPingInput,
+  ): Observable<CustomerFollowUpPingDelivery> {
+    return this.request(
+      this.http.post<CustomerFollowUpPingDelivery>(
+        `${this.route(projectId)}/ping/retry`,
+        input,
+      ),
+      'újrapróbálni az ügyfél-pinget',
+    );
+  }
+
   private route(projectId: string): string {
     return `/api/projects/${encodeURIComponent(projectId)}/follow-up`;
   }
@@ -119,6 +133,18 @@ export class CustomerFollowUpApiService {
       );
     }
     if (error.status === 503) {
+      if (code === 'FOLLOW_UP_DELIVERY_UNKNOWN') {
+        return throwError(() => new CustomerFollowUpApiError(
+          'A kézbesítési eredmény bizonytalan. Ellenőrizd a kimenő postafiókot az újraküldés előtt.',
+          code,
+        ));
+      }
+      if (code === 'FOLLOW_UP_DELIVERY_FAILED') {
+        return throwError(() => new CustomerFollowUpApiError(
+          'Az ügyfél-ping küldése sikertelen. Kézzel újrapróbálható.',
+          code,
+        ));
+      }
       return throwError(() =>
         new CustomerFollowUpApiError(
           `Nem sikerült ${action}, mert az e-mail-küldés nem érhető el. Ellenőrizd az SMTP-beállítást.`,

@@ -38,6 +38,7 @@ export class SmtpMailerService implements CustomerMailer {
     validateMessage(message);
     const socket = await openSocket(configuration);
     const session = new SmtpSession(socket, configuration.timeoutMs);
+    let deliveryMayHaveBeenAccepted = false;
     try {
       await session.expect([220]);
       await session.command('EHLO project-maker', [250]);
@@ -51,9 +52,13 @@ export class SmtpMailerService implements CustomerMailer {
       await session.command(`MAIL FROM:<${safeAddress(configuration.from)}>`, [250]);
       await session.command(`RCPT TO:<${safeAddress(message.to)}>`, [250, 251]);
       await session.command('DATA', [354]);
+      deliveryMayHaveBeenAccepted = true;
       await session.writeData(createMessage(configuration.from, message));
       await session.expect([250]);
-    } catch {
+    } catch (error) {
+      if (deliveryMayHaveBeenAccepted && !(error instanceof SmtpDeliveryRejectedError)) {
+        throw new SmtpDeliveryUnknownError();
+      }
       throw new SmtpDeliveryError();
     } finally {
       session.close();
@@ -65,6 +70,20 @@ export class SmtpDeliveryError extends Error {
   constructor() {
     super('SMTP delivery failed.');
     this.name = 'SmtpDeliveryError';
+  }
+}
+
+export class SmtpDeliveryUnknownError extends Error {
+  constructor() {
+    super('SMTP delivery result is unknown.');
+    this.name = 'SmtpDeliveryUnknownError';
+  }
+}
+
+class SmtpDeliveryRejectedError extends SmtpDeliveryError {
+  constructor() {
+    super();
+    this.name = 'SmtpDeliveryRejectedError';
   }
 }
 
@@ -153,7 +172,7 @@ class SmtpSession {
 
   async expect(codes: readonly number[]): Promise<void> {
     const response = await this.read();
-    if (!codes.includes(Number(response.slice(0, 3)))) throw new SmtpDeliveryError();
+    if (!codes.includes(Number(response.slice(0, 3)))) throw new SmtpDeliveryRejectedError();
   }
 
   async command(command: string, codes: readonly number[]): Promise<void> {

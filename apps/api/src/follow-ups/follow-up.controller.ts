@@ -8,6 +8,7 @@ import type {
 
 import {
   SendFollowUpPingDto,
+  RetryFollowUpPingDto,
   PreviewFollowUpPingDto,
   UpdateFollowUpDraftDto,
   UpdateFollowUpDto,
@@ -62,5 +63,13 @@ export class CustomerFollowUpController {
     @Body() input: PreviewFollowUpPingDto,
   ): Promise<CustomerFollowUpPingPreview> {
     return this.customerFollowUpService.previewManualPing(projectId, input);
+  }
+
+  @Post('follow-up/ping/retry')
+  retryFollowUpPing(
+    @Param('projectId', new ParseUUIDPipe()) projectId: string,
+    @Body() input: RetryFollowUpPingDto,
+  ): Promise<CustomerFollowUpPingDelivery> {
+    return this.customerFollowUpService.retryManualPing(projectId, input);
   }
 }
