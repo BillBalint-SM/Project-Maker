@@ -733,6 +733,64 @@ describe('Customer follow-up ping draft and manual delivery', () => {
     assert.notEqual(resumed.body.nextPingAt, null);
   });
 
+  it('prevents a due schedule from bypassing an unresolved manual UNKNOWN attempt', async () => {
+    const projectId = await createProject(app, 'manual-unknown-schedule');
+    await request(app.getHttpServer())
+      .patch(`/projects/${projectId}/follow-up/draft`)
+      .send({
+        messageDraft: 'Kérlek, erősítsd meg a még nyitott kérdést.',
+        referencedFollowUpId: null,
+        expectedVersion: 1,
+      })
+      .expect(200);
+    await request(app.getHttpServer())
+      .patch(`/projects/${projectId}/follow-up`)
+      .send({ enabled: true, intervalMinutes: 60 })
+      .expect(200);
+    const preview = await request(app.getHttpServer())
+      .post(`/projects/${projectId}/follow-up/ping/preview`)
+      .send({ expectedVersion: 2 })
+      .expect(201);
+
+    deliveryMode = 'UNKNOWN';
+    await request(app.getHttpServer())
+      .post(`/projects/${projectId}/follow-up/ping`)
+      .send({ previewToken: preview.body.previewToken })
+      .expect(503);
+
+    const paused = await request(app.getHttpServer())
+      .get(`/projects/${projectId}/follow-up`)
+      .expect(200);
+    assert.equal(paused.body.enabled, true);
+    assert.equal(paused.body.nextPingAt, null);
+    assert.equal(paused.body.latestManualAttempt.state, 'UNKNOWN');
+    const unknownAttemptId = paused.body.latestManualAttempt.attemptId as string;
+
+    const dueAt = new Date('2026-08-17T10:00:00.000Z');
+    await dataSource.query(
+      'UPDATE customer_follow_ups SET next_ping_at = $2 WHERE project_id = $1',
+      [projectId, dueAt],
+    );
+    const processed = await followUpService.processDuePings(dueAt);
+    assert.deepEqual(processed, []);
+    const stillPaused = await request(app.getHttpServer())
+      .get(`/projects/${projectId}/follow-up`)
+      .expect(200);
+    assert.equal(stillPaused.body.nextPingAt, null);
+    assert.equal(stillPaused.body.latestManualAttempt.attemptId, unknownAttemptId);
+
+    deliveryMode = 'SUCCESS';
+    await request(app.getHttpServer())
+      .post(`/projects/${projectId}/follow-up/ping/retry`)
+      .send({ attemptId: unknownAttemptId, acknowledgeDuplicateRisk: true })
+      .expect(201);
+    const resumed = await request(app.getHttpServer())
+      .get(`/projects/${projectId}/follow-up`)
+      .expect(200);
+    assert.equal(resumed.body.enabled, true);
+    assert.notEqual(resumed.body.nextPingAt, null);
+  });
+
   it('pauses a stale scheduled reference before submission and resumes after a valid draft save', async () => {
     const projectId = await createProject(app, 'scheduled-reference-pause');
     const reference = await createDiscoveryFollowUp(
