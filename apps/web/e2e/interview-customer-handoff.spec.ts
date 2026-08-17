@@ -93,8 +93,12 @@ test.describe.serial('interview customer handoff browser journey', () => {
     expect(messages[1]).toContain('Az ügyfél pontosította az elvárt eredményt.');
 
     await page.getByTestId('inspect-handoff-version-1').click();
+    await expect(page.getByTestId('selected-handoff-recipient')).toContainText(`handoff-${fixture.suffix}@example.test`);
+    await expect(page.getByTestId('selected-handoff-sent-at')).not.toContainText('null');
     await expect(page.locator('.history-content')).toContainText('Nincs rögzített válasz');
     await page.getByTestId('inspect-handoff-version-2').click();
+    await expect(page.getByTestId('selected-handoff-recipient')).toContainText(`handoff-${fixture.suffix}@example.test`);
+    await expect(page.getByTestId('selected-handoff-sent-at')).not.toContainText('null');
     await expect(page.locator('.history-content')).toContainText(answerAfterPreview);
   });
 
@@ -181,7 +185,7 @@ async function sendCurrentPreview(page: Page, projectId: string, roundId: string
   expect((await responsePromise).status()).toBe(expectedStatus);
 }
 
-async function createOpenInterview(request: APIRequestContext, testInfo: { readonly workerIndex: number }): Promise<{ projectId: string; roundId: string; snapshotId: string; stableKey: string }> {
+async function createOpenInterview(request: APIRequestContext, testInfo: { readonly workerIndex: number }): Promise<{ projectId: string; roundId: string; snapshotId: string; stableKey: string; suffix: string }> {
   const suffix = `${Date.now()}-${testInfo.workerIndex}-${Math.random().toString(36).slice(2, 8)}`;
   const project = await apiJson<{ id: string }>(request, 'POST', '/projects', {
     name: `Ügyfélcsomag E2E ${suffix}`,
@@ -193,7 +197,7 @@ async function createOpenInterview(request: APIRequestContext, testInfo: { reado
   const bank = await apiJson<{ questions: readonly { stableKey: string }[] }>(request, 'GET', '/settings/base-questions');
   await apiJson(request, 'POST', `/projects/${project.id}/question-schema`, { questions: [{ stableKey: bank.questions[0].stableKey, required: true, blocking: true }] });
   const round = await apiJson<{ id: string; questions: readonly { id: string }[] }>(request, 'POST', `/projects/${project.id}/rounds`, { type: 'INITIAL_INTAKE' });
-  return { projectId: project.id, roundId: round.id, snapshotId: round.questions[0].id, stableKey: bank.questions[0].stableKey };
+  return { projectId: project.id, roundId: round.id, snapshotId: round.questions[0].id, stableKey: bank.questions[0].stableKey, suffix };
 }
 
 async function apiJson<T>(request: APIRequestContext, method: 'GET' | 'POST' | 'PATCH', path: string, data?: unknown): Promise<T> {

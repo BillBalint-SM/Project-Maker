@@ -41,6 +41,12 @@
       <h4 tabindex="-1" [attr.data-testid]="'handoff-version-heading-' + item.version">{{ item.version }}. verzió – {{ stateLabel(item.state) }}</h4>
       <button type="button" class="history-item" [attr.data-testid]="'inspect-handoff-version-' + item.version" (click)="inspect(item.id)">Tartalom megnyitása @if (item.sentAt) { – {{ item.sentAt }} }</button>
     }
-    @if (selectedContent()) { <pre class="history-content">{{ selectedContent() }}</pre> }
+    @if (selectedDetail(); as selected) {
+      <section class="history-detail" aria-label="Megnyitott ügyfélcsomag-verzió">
+        <p data-testid="selected-handoff-recipient"><strong>Címzett:</strong> {{ selected.recipientName }} &lt;{{ selected.recipientEmail }}&gt;</p>
+        <p data-testid="selected-handoff-sent-at"><strong>Küldés ideje:</strong> {{ selected.sentAt }}</p>
+        <pre class="history-content">{{ selected.textContent }}</pre>
+      </section>
+    }
   </section>
 </p-card>
