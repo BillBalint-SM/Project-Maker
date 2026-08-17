@@ -4,6 +4,7 @@ import type {
   CustomerFollowUpPingDelivery,
   CustomerFollowUpPingPreview,
   CustomerFollowUpState,
+  InterviewHandoffSenderOptions,
 } from '@project-maker/contracts';
 
 import {
@@ -39,6 +40,13 @@ export class CustomerFollowUpController {
     @Param('projectId', new ParseUUIDPipe()) projectId: string,
   ): Promise<readonly CustomerFollowUpReferenceOption[]> {
     return this.customerFollowUpService.listReferenceOptions(projectId);
+  }
+
+  @Get('follow-up/sender-options')
+  senderOptions(
+    @Param('projectId', new ParseUUIDPipe()) projectId: string,
+  ): Promise<InterviewHandoffSenderOptions> {
+    return this.customerFollowUpService.senderOptions(projectId);
   }
 
   @Patch('follow-up/draft')

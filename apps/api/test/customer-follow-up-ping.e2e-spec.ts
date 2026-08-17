@@ -19,17 +19,21 @@ describe('Customer follow-up ping draft and manual delivery', () => {
   let dataSource: DataSource;
   let followUpService: CustomerFollowUpService;
   const delivered: CustomerMailerMessage[] = [];
+  const submitted: OutboundCustomerMessage[] = [];
   const deliveredMessageFrozen: boolean[] = [];
   let deliveryMode: 'SUCCESS' | 'FAILED' | 'UNKNOWN' = 'SUCCESS';
   let deliveryStarted: (() => void) | null = null;
   let releaseDelivery: (() => void) | null = null;
 
   before(async () => {
+    process.env['CUSTOMER_MAILBOX_ADDRESS'] = 'project-maker@pte.hu';
+    process.env['CUSTOMER_MAILBOX_NAME'] = 'Project Maker';
     const module = await Test.createTestingModule({ imports: [AppModule] })
       .overrideProvider(customerMailerToken)
       .useValue({
         isConfigured: () => true,
         submit: async (message: OutboundCustomerMessage) => {
+          submitted.push(message);
           deliveredMessageFrozen.push(Object.isFrozen(message));
           if (deliveryMode === 'FAILED') return { acceptance: 'REJECTED', messageReference: null } as const;
           if (deliveryMode === 'UNKNOWN') throw new Error('Delivery result is uncertain.');
@@ -65,6 +69,7 @@ describe('Customer follow-up ping draft and manual delivery', () => {
       'UPDATE customer_follow_ups SET enabled = false, next_ping_at = NULL WHERE enabled = true',
     );
     delivered.length = 0;
+    submitted.length = 0;
     deliveryMode = 'SUCCESS';
     deliveryStarted = null;
     releaseDelivery = null;
@@ -134,6 +139,33 @@ describe('Customer follow-up ping draft and manual delivery', () => {
 
   it('previews the exact bounded projection and consumes it for one successful send', async () => {
     const projectId = await createProject(app, 'preview-send');
+    const initialSenderOptions = await request(app.getHttpServer())
+      .get(`/projects/${projectId}/follow-up/sender-options`)
+      .expect(200);
+    assert.deepEqual(initialSenderOptions.body, {
+      dedicatedName: 'Project Maker',
+      dedicatedAddress: 'project-maker@pte.hu',
+      lastUsedName: null,
+      lastUsedAddress: null,
+    });
+    await request(app.getHttpServer())
+      .post(`/projects/${projectId}/follow-up/ping/preview`)
+      .send({
+        expectedVersion: 1,
+        senderMode: 'CUSTOM',
+        senderName: 'Téves feladó',
+        senderAddress: 'po@team.pte.hu',
+      })
+      .expect(400);
+    await request(app.getHttpServer())
+      .post(`/projects/${projectId}/follow-up/ping/preview`)
+      .send({
+        expectedVersion: 1,
+        senderMode: 'CUSTOM',
+        senderName: 'Téves feladó',
+        senderAddress: 'po@pte.hu.example.test',
+      })
+      .expect(400);
     const reference = await createDiscoveryFollowUp(
       app,
       projectId,
@@ -150,13 +182,20 @@ describe('Customer follow-up ping draft and manual delivery', () => {
 
     const preview = await request(app.getHttpServer())
       .post(`/projects/${projectId}/follow-up/ping/preview`)
-      .send({ expectedVersion: 2 })
+      .send({
+        expectedVersion: 2,
+        senderMode: 'CUSTOM',
+        senderName: 'PO Péter',
+        senderAddress: 'po.peter@pte.hu',
+      })
       .expect(201);
     assert.match(preview.body.recipientName, /Ügyfél Anna/);
     assert.match(preview.body.recipientEmail, /@example\.test$/);
     assert.match(preview.body.subject, /^Pontosítás kérése — Customer ping preview-send/);
     assert.equal(preview.body.draftVersion, 2);
     assert.equal(preview.body.referencedFollowUpVersion, 1);
+    assert.equal(preview.body.senderName, 'PO Péter');
+    assert.equal(preview.body.senderAddress, 'po.peter@pte.hu');
     assert.equal(typeof preview.body.previewToken, 'string');
     assert.match(preview.body.text, /Kérlek, küldd el a hiányzó jóváhagyást\./);
     assert.match(preview.body.text, /Kérdés: Melyik jóváhagyás hiányzik\?/);
@@ -168,11 +207,15 @@ describe('Customer follow-up ping draft and manual delivery', () => {
 
     const sent = await request(app.getHttpServer())
       .post(`/projects/${projectId}/follow-up/ping`)
-      .send({ previewToken: preview.body.previewToken })
-      .expect(201);
+      .send({ previewToken: preview.body.previewToken });
+    assert.equal(sent.status, 201, JSON.stringify(sent.body));
     assert.equal(sent.body.state, 'SENT');
     assert.equal(sent.body.draftVersion, 2);
     assert.equal(delivered.length, 1);
+    assert.equal(submitted.length, 1);
+    assert.equal(submitted[0]?.senderName, 'PO Péter');
+    assert.equal(submitted[0]?.senderAddress, 'po.peter@pte.hu');
+    assert.match(submitted[0]?.replyToAddress ?? '', /^.+\+[A-Za-z0-9_-]+@pte\.hu$/);
     assert.equal(deliveredMessageFrozen.at(-1), true);
     assert.deepEqual(delivered[0], {
       to: preview.body.recipientEmail,
@@ -185,6 +228,40 @@ describe('Customer follow-up ping draft and manual delivery', () => {
       .send({ previewToken: preview.body.previewToken })
       .expect(409);
     assert.equal(delivered.length, 1);
+
+    const outboundRows = await dataSource.query<Array<{
+      source_type: string;
+      source_id: string;
+      sender_name: string;
+      sender_address: string;
+      reply_to_address: string;
+    }>>(
+      `SELECT source_type, source_id, sender_name, sender_address, reply_to_address
+       FROM customer_outbound_communications
+       WHERE project_id = $1`,
+      [projectId],
+    );
+    assert.equal(outboundRows.length, 1);
+    assert.equal(outboundRows[0]?.source_type, 'CUSTOMER_FOLLOW_UP_PING');
+    assert.equal(outboundRows[0]?.sender_name, 'PO Péter');
+    assert.equal(outboundRows[0]?.sender_address, 'po.peter@pte.hu');
+    assert.equal(outboundRows[0]?.reply_to_address, submitted[0]?.replyToAddress);
+
+    const correspondenceRows = await dataSource.query<Array<{
+      outbound_communication_id: string;
+    }>>(
+      `SELECT outbound_communication_id
+       FROM customer_correspondences
+       WHERE project_id = $1`,
+      [projectId],
+    );
+    assert.equal(correspondenceRows.length, 1);
+
+    const rememberedSenderOptions = await request(app.getHttpServer())
+      .get(`/projects/${projectId}/follow-up/sender-options`)
+      .expect(200);
+    assert.equal(rememberedSenderOptions.body.lastUsedName, 'PO Péter');
+    assert.equal(rememberedSenderOptions.body.lastUsedAddress, 'po.peter@pte.hu');
 
     const audits = await dataSource.query<Array<{ event_type: string; payload: Record<string, string> }>>(
       'SELECT event_type, payload FROM audit_events WHERE project_id = $1 AND event_type = $2',
@@ -312,6 +389,16 @@ describe('Customer follow-up ping draft and manual delivery', () => {
     assert.equal(reloaded.body.latestManualAttempt.failureCode, 'SMTP_SEND_FAILED');
     assert.equal(reloaded.body.latestManualAttempt.draftVersion, 2);
     assert.equal(delivered.length, 0);
+    assert.equal(submitted.length, 1);
+    const firstReplyTo = submitted[0]?.replyToAddress;
+    const identityBeforeRetry = await dataSource.query<Array<{
+      outbound_communication_id: string;
+      correspondence_id: string;
+    }>>(
+      `SELECT outbound_communication_id, correspondence_id
+       FROM customer_follow_up_delivery_attempts WHERE id = $1`,
+      [reloaded.body.latestManualAttempt.attemptId],
+    );
 
     const settingsSaved = await request(app.getHttpServer())
       .patch(`/projects/${projectId}/follow-up`)
@@ -332,7 +419,65 @@ describe('Customer follow-up ping draft and manual delivery', () => {
       })
       .expect(201);
     assert.equal(retried.body.state, 'SENT');
+    assert.equal(retried.body.attemptId, reloaded.body.latestManualAttempt.attemptId);
     assert.equal(delivered.length, 1);
+    assert.equal(submitted.length, 2);
+    assert.equal(submitted[1]?.replyToAddress, firstReplyTo);
+    const identityAfterRetry = await dataSource.query<Array<{
+      outbound_communication_id: string;
+      correspondence_id: string;
+    }>>(
+      `SELECT outbound_communication_id, correspondence_id
+       FROM customer_follow_up_delivery_attempts WHERE id = $1`,
+      [reloaded.body.latestManualAttempt.attemptId],
+    );
+    assert.deepEqual(identityAfterRetry, identityBeforeRetry);
+    const history = await dataSource.query<Array<{ outbound_count: string; correspondence_count: string; attempt_count: string }>>(
+      `SELECT
+        (SELECT COUNT(*)::text FROM customer_outbound_communications WHERE project_id = $1) AS outbound_count,
+        (SELECT COUNT(*)::text FROM customer_correspondences WHERE project_id = $1) AS correspondence_count,
+        (SELECT COUNT(*)::text FROM customer_outbound_attempts WHERE outbound_communication_id = $2) AS attempt_count`,
+      [projectId, identityBeforeRetry[0]?.outbound_communication_id],
+    );
+    assert.deepEqual(history[0], {
+      outbound_count: '1',
+      correspondence_count: '1',
+      attempt_count: '2',
+    });
+  });
+
+  it('creates durable Microsoft 365 identity when retrying a pre-0018 failed attempt', async () => {
+    const projectId = await createProject(app, 'legacy-failed-retry');
+    await request(app.getHttpServer())
+      .patch(`/projects/${projectId}/follow-up/draft`)
+      .send({ messageDraft: 'Migráció előtti sikertelen ping', referencedFollowUpId: null, expectedVersion: 1 })
+      .expect(200);
+    const projectRows = await dataSource.query<Array<{ customer_contact_email: string }>>(
+      'SELECT customer_contact_email FROM projects WHERE id = $1',
+      [projectId],
+    );
+    const attemptId = randomUUID();
+    await dataSource.query(
+      `INSERT INTO customer_follow_up_delivery_attempts (
+         id, project_id, draft_version, referenced_follow_up_id,
+         referenced_follow_up_version, state, recipient_email, subject_length,
+         text_length, failure_code, attempted_at, sent_at
+       ) VALUES ($1, $2, 2, NULL, NULL, 'FAILED', $3, 1, 1,
+         'SMTP_SEND_FAILED', CURRENT_TIMESTAMP, NULL)`,
+      [attemptId, projectId, projectRows[0]!.customer_contact_email],
+    );
+
+    const retried = await request(app.getHttpServer())
+      .post(`/projects/${projectId}/follow-up/ping/retry`)
+      .send({ attemptId, acknowledgeDuplicateRisk: false })
+      .expect(201);
+
+    assert.equal(retried.body.state, 'SENT');
+    assert.equal(retried.body.attemptId, attemptId);
+    const identity = await loadPingIdentity(dataSource, projectId);
+    assert.ok(identity.outbound_communication_id);
+    assert.ok(identity.correspondence_id);
+    assert.match(identity.reply_to_address, /^project-maker\+[A-Za-z0-9_-]+@pte\.hu$/);
   });
 
   it('persists an uncertain result and requires acknowledgement on that exact retry request', async () => {
@@ -358,6 +503,7 @@ describe('Customer follow-up ping draft and manual delivery', () => {
       .expect(200);
     assert.equal(reloaded.body.latestManualAttempt.state, 'UNKNOWN');
     assert.equal(reloaded.body.latestManualAttempt.failureCode, 'SMTP_DELIVERY_UNKNOWN');
+    const unknownIdentity = await loadPingIdentity(dataSource, projectId);
 
     deliveryMode = 'SUCCESS';
     const blocked = await request(app.getHttpServer())
@@ -376,6 +522,63 @@ describe('Customer follow-up ping draft and manual delivery', () => {
       .expect(201);
     assert.equal(retried.body.state, 'SENT');
     assert.equal(delivered.length, 1);
+    const retriedIdentity = await loadPingIdentity(dataSource, projectId);
+    assert.deepEqual(retriedIdentity, unknownIdentity);
+    assert.equal(submitted[0]?.replyToAddress, unknownIdentity.reply_to_address);
+    const outboundAttempts = await dataSource.query<Array<{ result: string }>>(
+      `SELECT result FROM customer_outbound_attempts
+       WHERE outbound_communication_id = $1 ORDER BY attempted_at ASC, id ASC`,
+      [unknownIdentity.outbound_communication_id],
+    );
+    assert.deepEqual(outboundAttempts, [{ result: 'UNKNOWN' }, { result: 'ACCEPTED' }]);
+  });
+
+  it('creates new outbound and correspondence identities for a later logical ping delivery', async () => {
+    const projectId = await createProject(app, 'later-delivery');
+    await request(app.getHttpServer())
+      .patch(`/projects/${projectId}/follow-up/draft`)
+      .send({ messageDraft: 'Első logikai ping', referencedFollowUpId: null, expectedVersion: 1 })
+      .expect(200);
+    const firstPreview = await request(app.getHttpServer())
+      .post(`/projects/${projectId}/follow-up/ping/preview`)
+      .send({ expectedVersion: 2, senderMode: 'DEDICATED' })
+      .expect(201);
+    await request(app.getHttpServer())
+      .post(`/projects/${projectId}/follow-up/ping`)
+      .send({ previewToken: firstPreview.body.previewToken })
+      .expect(201);
+
+    await request(app.getHttpServer())
+      .patch(`/projects/${projectId}/follow-up/draft`)
+      .send({ messageDraft: 'Második logikai ping', referencedFollowUpId: null, expectedVersion: 2 })
+      .expect(200);
+    const secondPreview = await request(app.getHttpServer())
+      .post(`/projects/${projectId}/follow-up/ping/preview`)
+      .send({ expectedVersion: 3, senderMode: 'DEDICATED' })
+      .expect(201);
+    await request(app.getHttpServer())
+      .post(`/projects/${projectId}/follow-up/ping`)
+      .send({ previewToken: secondPreview.body.previewToken })
+      .expect(201);
+
+    const identities = await dataSource.query<Array<{
+      outbound_id: string;
+      correspondence_id: string;
+      reply_to_address: string;
+    }>>(
+      `SELECT outbound.id AS outbound_id, correspondence.id AS correspondence_id,
+              outbound.reply_to_address
+       FROM customer_outbound_communications outbound
+       JOIN customer_correspondences correspondence
+         ON correspondence.outbound_communication_id = outbound.id
+       WHERE outbound.project_id = $1
+       ORDER BY outbound.created_at ASC, outbound.id ASC`,
+      [projectId],
+    );
+    assert.equal(identities.length, 2);
+    assert.notEqual(identities[0]?.outbound_id, identities[1]?.outbound_id);
+    assert.notEqual(identities[0]?.correspondence_id, identities[1]?.correspondence_id);
+    assert.notEqual(identities[0]?.reply_to_address, identities[1]?.reply_to_address);
   });
 
   it('revalidates retry provenance and preserves project-level single flight', async () => {
@@ -443,6 +646,9 @@ describe('Customer follow-up ping draft and manual delivery', () => {
     releaseDelivery = null;
     assert.equal((await first).status, 201);
     assert.equal(delivered.length, 1);
+    assert.equal(submitted[0]?.senderName, 'Project Maker');
+    assert.equal(submitted[0]?.senderAddress, 'project-maker@pte.hu');
+    assert.match(submitted[0]?.replyToAddress ?? '', /^project-maker\+.+@pte\.hu$/);
 
     const archivedProjectId = await createProject(app, 'archived-retry');
     await request(app.getHttpServer())
@@ -903,6 +1109,9 @@ describe('Customer follow-up ping draft and manual delivery', () => {
     assert.equal(firstResult[0].nextPingAt, '2026-08-17T13:00:00.000Z');
     assert.equal(delivered.length, 1);
     assert.equal(delivered[0].to, 'current-scheduled-recipient@example.test');
+    assert.equal(submitted[0]?.senderName, 'Project Maker');
+    assert.equal(submitted[0]?.senderAddress, 'project-maker@pte.hu');
+    assert.match(submitted[0]?.replyToAddress ?? '', /^project-maker\+.+@pte\.hu$/);
     assert.match(delivered[0].text, /Kérlek, erősítsd meg a döntést\./);
     assert.match(delivered[0].text, /Kérdés: Melyik döntést kell megerősíteni\?/);
     const attempts = await dataSource.query<Array<{ state: string }>>(
@@ -1002,6 +1211,33 @@ async function createProject(app: INestApplication, label: string): Promise<stri
     })
     .expect(201);
   return response.body.id as string;
+}
+
+async function loadPingIdentity(
+  dataSource: DataSource,
+  projectId: string,
+): Promise<{
+  readonly outbound_communication_id: string;
+  readonly correspondence_id: string;
+  readonly reply_to_address: string;
+}> {
+  const rows = await dataSource.query<Array<{
+    outbound_communication_id: string;
+    correspondence_id: string;
+    reply_to_address: string;
+  }>>(
+    `SELECT attempt.outbound_communication_id, attempt.correspondence_id,
+            outbound.reply_to_address
+     FROM customer_follow_up_delivery_attempts attempt
+     JOIN customer_outbound_communications outbound
+       ON outbound.id = attempt.outbound_communication_id
+     WHERE attempt.project_id = $1
+     ORDER BY attempt.attempted_at DESC, attempt.id ASC
+     LIMIT 1`,
+    [projectId],
+  );
+  assert.equal(rows.length, 1);
+  return rows[0]!;
 }
 
 async function createDiscoveryFollowUp(

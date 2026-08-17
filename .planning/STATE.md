@@ -78,10 +78,10 @@ delivery change; no future merge identity is predicted here.
 - Customer communication: versioned interview handoffs and configurable,
   authored, previewed customer follow-up ping delivery exist. Manual and
   PostgreSQL-coordinated scheduled ping attempts are durable across reload;
-  scheduled claims commit before SMTP and revalidate current delivery inputs.
+  scheduled claims commit before Microsoft Graph submission and revalidate current delivery inputs.
   Recovery occurs only by explicit `FAILED` retry or request-specific
   acknowledged `UNKNOWN` retry, and uncertain delivery pauses the cadence.
-  Customer SMTP is separate from Claude Markdown and from `INTAKE-04`
+  Customer mail is separate from Claude Markdown and from `INTAKE-04`
   operational follow-up management.
 - Web intake UX: the interview page resumes the server active round, autosaves
   text answers after 750 ms, saves discrete values immediately, keeps failed
@@ -119,7 +119,7 @@ define `DOC-01` scope and evidence; the
 The verified guided-intake scope is intentionally limited to `INITIAL_INTAKE`.
 `INTAKE-04` delivers discovery-follow-up creation, review, resolution,
 conflict-safe editing of open items, and optional source linkage. The canonical
-migration sequence now runs through `0015`; current aggregate
+migration sequence now runs through `0018`; current aggregate
 closeout counts are recorded only after the complete INTAKE-06 verification
 receipt is available. SCORE-01.2
 Decision Review has API coverage for
