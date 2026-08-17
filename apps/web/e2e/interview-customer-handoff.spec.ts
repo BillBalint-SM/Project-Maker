@@ -30,6 +30,12 @@ test.describe.serial('interview customer handoff browser journey', () => {
     await expect(page.getByText('1. verzió előnézete')).toBeVisible();
     await page.getByLabel('Saját PO/PM postafiók').check();
     await page.getByTestId('handoff-sender-name').fill('Teszt PO');
+    const invalidPreviewResponse = page.waitForResponse((response) => response.request().method() === 'POST' && response.url().endsWith('/preview'));
+    await page.getByTestId('handoff-sender-address').fill('x..y@pte.hu');
+    await nativeButton(page, 'handoff-preview-button').click();
+    expect((await invalidPreviewResponse).status()).toBe(400);
+    await expect(page.getByRole('alert')).toBeVisible();
+    await expect(page.locator('.preview')).toBeHidden();
     await page.getByTestId('handoff-sender-address').fill('teszt.po@pte.hu');
     await expect(page.locator('.preview')).toBeHidden();
     await nativeButton(page, 'handoff-preview-button').click();

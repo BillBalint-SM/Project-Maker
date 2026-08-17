@@ -89,7 +89,9 @@ The API requires `CORS_ORIGIN`; `@nestjs/config` reads it from the root `.env` w
 | `CORS_ORIGIN` | Exact browser origin allowed by the API |
 | `FOLLOW_UP_POLL_INTERVAL_MS` | Automatic follow-up poll interval (5,000–86,400,000 ms) |
 | `CUSTOMER_MAILBOX_NAME` / `CUSTOMER_MAILBOX_ADDRESS` | Dedicated Microsoft 365 mailbox used for default sender and correlated Reply-To addresses |
-| `GRAPH_TENANT_ID` / `GRAPH_CLIENT_ID` / `GRAPH_CLIENT_SECRET` | Microsoft Graph application credentials; keep the secret outside source control |
+| `GRAPH_TENANT_ID` / `GRAPH_CLIENT_ID` | Microsoft Graph application identity |
+| `GRAPH_CLIENT_CERTIFICATE_THUMBPRINT` / `GRAPH_CLIENT_PRIVATE_KEY_BASE64` | Certificate credential; use the SHA-1 thumbprint as exactly 40 hexadecimal characters without separators, and inject the base64-encoded PEM private key as a deployment secret that is never committed or logged |
 | `GRAPH_BASE_URL` | Graph API base URL; normally `https://graph.microsoft.com` |
+| `GRAPH_LOGIN_BASE_URL` | Microsoft identity platform base URL; normally `https://login.microsoftonline.com` |
 
 The API and database do not publish host ports. PostgreSQL data persists in the named `postgres-data` volume.

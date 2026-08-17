@@ -1,28 +1,35 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { createSign, randomUUID } from 'node:crypto';
 
 import { GraphMailClientError, type GraphMailClient, type GraphMailboxPage, type GraphOutboundMessage } from './graph-customer-mail-boundary';
 
 @Injectable()
 export class MicrosoftGraphMailClient implements GraphMailClient {
   private readonly baseUrl: string;
+  private readonly loginBaseUrl: string;
   private readonly tenantId: string;
   private readonly clientId: string;
-  private readonly clientSecret: string;
-  private readonly staticAccessToken: string;
+  private readonly certificateThumbprint: string;
+  private readonly privateKeyBase64: string;
   private readonly mailboxAddress: string;
 
   constructor(config: ConfigService) {
     this.baseUrl = normalizeUrl(config.get<string>('GRAPH_BASE_URL') ?? 'https://graph.microsoft.com');
+    this.loginBaseUrl = normalizeUrl(config.get<string>('GRAPH_LOGIN_BASE_URL') ?? 'https://login.microsoftonline.com');
     this.tenantId = config.get<string>('GRAPH_TENANT_ID')?.trim() ?? '';
     this.clientId = config.get<string>('GRAPH_CLIENT_ID')?.trim() ?? '';
-    this.clientSecret = config.get<string>('GRAPH_CLIENT_SECRET') ?? '';
-    this.staticAccessToken = config.get<string>('GRAPH_ACCESS_TOKEN') ?? '';
+    this.certificateThumbprint = config.get<string>('GRAPH_CLIENT_CERTIFICATE_THUMBPRINT')?.trim() ?? '';
+    this.privateKeyBase64 = config.get<string>('GRAPH_CLIENT_PRIVATE_KEY_BASE64')?.trim() ?? '';
     this.mailboxAddress = config.get<string>('CUSTOMER_MAILBOX_ADDRESS')?.trim() ?? '';
   }
 
   isConfigured(): boolean {
-    return this.mailboxAddress.length > 0 && (this.staticAccessToken.length > 0 || (this.tenantId.length > 0 && this.clientId.length > 0 && this.clientSecret.length > 0));
+    return this.mailboxAddress.length > 0
+      && this.tenantId.length > 0
+      && this.clientId.length > 0
+      && /^[0-9a-f]{40}$/i.test(this.certificateThumbprint)
+      && this.privateKeyBase64.length > 0;
   }
 
   async submit(outbound: GraphOutboundMessage) {
@@ -83,11 +90,23 @@ export class MicrosoftGraphMailClient implements GraphMailClient {
   }
 
   private async accessToken(): Promise<string> {
-    if (this.staticAccessToken) return this.staticAccessToken;
-    const body = new URLSearchParams({ client_id: this.clientId, client_secret: this.clientSecret, scope: 'https://graph.microsoft.com/.default', grant_type: 'client_credentials' });
+    const tokenUrl = `${this.loginBaseUrl}/${encodeURIComponent(this.tenantId)}/oauth2/v2.0/token`;
+    let clientAssertion: string;
+    try {
+      clientAssertion = this.createClientAssertion(tokenUrl);
+    } catch {
+      throw new GraphMailClientError('AUTHENTICATION');
+    }
+    const body = new URLSearchParams({
+      client_id: this.clientId,
+      client_assertion: clientAssertion,
+      client_assertion_type: 'urn:ietf:params:oauth:client-assertion-type:jwt-bearer',
+      scope: 'https://graph.microsoft.com/.default',
+      grant_type: 'client_credentials',
+    });
     let response: Response;
     try {
-      response = await fetch(`https://login.microsoftonline.com/${encodeURIComponent(this.tenantId)}/oauth2/v2.0/token`, { method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded' }, body });
+      response = await fetch(tokenUrl, { method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded' }, body });
     } catch {
       throw new GraphMailClientError('AUTHENTICATION');
     }
@@ -96,6 +115,31 @@ export class MicrosoftGraphMailClient implements GraphMailClient {
     if (typeof payload.access_token !== 'string' || payload.access_token.length === 0) throw new GraphMailClientError('AUTHENTICATION');
     return payload.access_token;
   }
+
+  private createClientAssertion(audience: string): string {
+    const now = Math.floor(Date.now() / 1000);
+    const header = encodeJwtPart({
+      alg: 'RS256',
+      typ: 'JWT',
+      x5t: Buffer.from(this.certificateThumbprint, 'hex').toString('base64url'),
+    });
+    const payload = encodeJwtPart({
+      aud: audience,
+      exp: now + 600,
+      iss: this.clientId,
+      jti: randomUUID(),
+      nbf: now - 60,
+      sub: this.clientId,
+    });
+    const unsignedAssertion = `${header}.${payload}`;
+    const privateKey = Buffer.from(this.privateKeyBase64, 'base64').toString('utf8');
+    const signature = createSign('RSA-SHA256').update(unsignedAssertion).end().sign(privateKey).toString('base64url');
+    return `${unsignedAssertion}.${signature}`;
+  }
 }
 
 function normalizeUrl(value: string): string { return value.trim().replace(/\/+$/, ''); }
+
+function encodeJwtPart(value: Readonly<Record<string, string | number>>): string {
+  return Buffer.from(JSON.stringify(value), 'utf8').toString('base64url');
+}
