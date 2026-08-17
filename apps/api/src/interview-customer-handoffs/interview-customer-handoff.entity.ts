@@ -43,6 +43,30 @@ export class InterviewCustomerHandoffEntity {
   @Column({ name: 'recipient_email', type: 'varchar', length: 320, nullable: true })
   recipientEmail!: string | null;
 
+  @Column({ name: 'sender_name', type: 'varchar', length: 255, nullable: true })
+  senderName!: string | null;
+
+  @Column({ name: 'sender_address', type: 'varchar', length: 320, nullable: true })
+  senderAddress!: string | null;
+
+  @Column({ name: 'reply_to_address', type: 'varchar', length: 320, nullable: true })
+  replyToAddress!: string | null;
+
+  @Column({ name: 'reply_token_hash', type: 'varchar', length: 64, nullable: true })
+  replyTokenHash!: string | null;
+
+  @Column({ name: 'mail_system_acceptance', type: 'varchar', length: 20, nullable: true })
+  mailSystemAcceptance!: 'ACCEPTED' | 'REJECTED' | null;
+
+  @Column({ name: 'message_reference', type: 'varchar', length: 500, nullable: true })
+  messageReference!: string | null;
+
+  @Column({ name: 'correspondence_id', type: 'uuid', nullable: true })
+  correspondenceId!: string | null;
+
+  @Column({ name: 'outbound_communication_id', type: 'uuid', nullable: true })
+  outboundCommunicationId!: string | null;
+
   @Column({ name: 'internal_owner_name', type: 'varchar', length: 255, nullable: true })
   internalOwnerName!: string | null;
 

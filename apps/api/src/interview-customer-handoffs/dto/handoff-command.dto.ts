@@ -1,4 +1,21 @@
-import { IsBoolean, IsInt, IsOptional, IsString, Length, Matches, Min } from 'class-validator';
+import { IsBoolean, IsEmail, IsIn, IsInt, IsOptional, IsString, Length, Matches, Min, ValidateIf } from 'class-validator';
+
+export class PreviewHandoffDto {
+  @IsIn(['DEDICATED', 'CUSTOM'])
+  mode!: 'DEDICATED' | 'CUSTOM';
+
+  @ValidateIf((input: PreviewHandoffDto) => input.mode === 'CUSTOM')
+  @IsString()
+  @Length(1, 255)
+  name?: string;
+
+  @ValidateIf((input: PreviewHandoffDto) => input.mode === 'CUSTOM')
+  @IsString()
+  @Length(1, 320)
+  @IsEmail()
+  @Matches(/^[^@\s]+@pte\.hu$/i)
+  address?: string;
+}
 
 export class UpdateHandoffDraftDto {
   @IsOptional()
@@ -15,6 +32,16 @@ export class SendHandoffDto {
   @IsString()
   @Matches(/^[a-f0-9]{64}$/)
   previewDigest!: string;
+
+  @IsString()
+  @Length(1, 255)
+  senderName!: string;
+
+  @IsString()
+  @Length(1, 320)
+  @IsEmail()
+  @Matches(/^[^@\s]+@pte\.hu$/i)
+  senderAddress!: string;
 }
 
 export class RetryHandoffDto {

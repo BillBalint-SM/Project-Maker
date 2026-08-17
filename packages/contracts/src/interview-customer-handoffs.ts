@@ -8,6 +8,22 @@ export const handoffVersionStatuses = [
 
 export type HandoffVersionStatus = (typeof handoffVersionStatuses)[number];
 
+export const outboundSenderModes = ['DEDICATED', 'CUSTOM'] as const;
+export type OutboundSenderMode = (typeof outboundSenderModes)[number];
+
+export interface InterviewHandoffSenderSelection {
+  readonly mode: OutboundSenderMode;
+  readonly name?: string;
+  readonly address?: string;
+}
+
+export interface InterviewHandoffSenderOptions {
+  readonly dedicatedName: string;
+  readonly dedicatedAddress: string;
+  readonly lastUsedName: string | null;
+  readonly lastUsedAddress: string | null;
+}
+
 export interface InterviewCustomerHandoffSummary {
   readonly id: string;
   readonly projectId: string;
@@ -18,6 +34,8 @@ export interface InterviewCustomerHandoffSummary {
   readonly supersedesHandoffId: string | null;
   readonly recipientName: string | null;
   readonly recipientEmail: string | null;
+  readonly senderName: string | null;
+  readonly senderAddress: string | null;
   readonly createdAt: string;
   readonly attemptedAt: string | null;
   readonly sentAt: string | null;
@@ -30,6 +48,10 @@ export interface InterviewCustomerHandoffDetail extends InterviewCustomerHandoff
   readonly textContent: string | null;
   readonly sourceContentVersion: number | null;
   readonly failureCode: string | null;
+  readonly replyToAddress: string | null;
+  readonly mailSystemAcceptance: 'ACCEPTED' | 'REJECTED' | null;
+  readonly messageReference: string | null;
+  readonly correspondenceId: string | null;
 }
 
 export interface InterviewCustomerHandoffPreview {
@@ -37,6 +59,8 @@ export interface InterviewCustomerHandoffPreview {
   readonly version: number;
   readonly recipientName: string;
   readonly recipientEmail: string;
+  readonly senderName: string;
+  readonly senderAddress: string;
   readonly subject: string;
   readonly htmlContent: string;
   readonly textContent: string;
@@ -51,6 +75,8 @@ export interface UpdateInterviewCustomerHandoffDraftInput {
 export interface SendInterviewCustomerHandoffInput {
   readonly sourceContentVersion: number;
   readonly previewDigest: string;
+  readonly senderName: string;
+  readonly senderAddress: string;
 }
 
 export interface RetryInterviewCustomerHandoffInput {

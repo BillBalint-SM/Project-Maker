@@ -76,7 +76,7 @@ archived instead. This is not a project-list bulk-delete capability.
 | ID | Outcome | Boundary | Source/dependency |
 | --- | --- | --- | --- |
 | `SEC-01` | Protect multi-user data access | Authentication, authorization, and rate limiting are required before exposure beyond an internal/VPN boundary | [requirements](../.planning/REQUIREMENTS.md), [operations handoff](operations-handoff.md) |
-| `MAIL-01` | Make email delivery operationally robust | Outbox/idempotency and STARTTLS/provider compatibility remain separate hardening work | [operations handoff](operations-handoff.md) |
+| `MAIL-01` | Make email delivery operationally robust | Durable outbox/idempotency and production tenant validation remain separate hardening work | [operations handoff](operations-handoff.md) |
 | `OPS-01` | Harden recovery operations | Retention, rotation, and a restore drill operationalize `DATA-03`; they do not replace the backup implementation | [operations handoff](operations-handoff.md), `DATA-03` |
 | `CONC-01` | Define multi-client conflict handling | Current single-user persistence does not imply collaboration safety | [guided-intake plan](superpowers/plans/2026-08-06-guided-intake-persistence.md) |
 | `DOC-02` | Keep product and operational documentation current | Link health and delivery-state reconciliation are part of every documentation change | [roadmap/documentation design](superpowers/specs/2026-08-08-roadmap-documentation-sync-design.md) |

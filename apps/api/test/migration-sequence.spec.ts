@@ -24,6 +24,7 @@ const expectedMigrationNames = [
   'InterviewCustomerHandoff0014InterviewCustomerHandoff1787039999000',
   'CustomerFollowUpPingDraft0015CustomerFollowUpPingDraft1787126400000',
   'ProjectStartCreationRequest0016ProjectStartCreationRequest1787212800000',
+  'M365InterviewHandoff0017M365InterviewHandoff1787299200000',
 ] as const;
 
 type MigrationConstructor = new () => { readonly name?: string };

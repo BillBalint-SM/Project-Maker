@@ -12,14 +12,26 @@
         <textarea pTextarea id="handoff-summary" [ngModel]="summary" (ngModelChange)="changeSummary($event)" rows="3" data-testid="handoff-modification-summary" [disabled]="readOnly()"></textarea>
         <p-button label="Összefoglalás mentése" [disabled]="busy() || readOnly()" (onClick)="saveSummary()" />
       }
+      @if (active.state === 'DRAFT' && senderOptions(); as options) {
+        <fieldset class="sender-selection" data-testid="handoff-sender-selection">
+          <legend>Feladó</legend>
+          <label><input type="radio" name="handoff-sender-mode" value="DEDICATED" [ngModel]="senderMode" (ngModelChange)="changeSenderMode($event)" /> Dedikált postafiók – {{ options.dedicatedName }} &lt;{{ options.dedicatedAddress }}&gt;</label>
+          <label><input type="radio" name="handoff-sender-mode" value="CUSTOM" [ngModel]="senderMode" (ngModelChange)="changeSenderMode($event)" /> Saját PO/PM postafiók</label>
+          @if (senderMode === 'CUSTOM') {
+            <label for="handoff-sender-name">Feladó neve</label>
+            <input id="handoff-sender-name" data-testid="handoff-sender-name" [ngModel]="senderName" (ngModelChange)="senderName = $event; changeSender()" />
+            <label for="handoff-sender-address">Feladó @pte.hu címe</label>
+            <input id="handoff-sender-address" type="email" data-testid="handoff-sender-address" [ngModel]="senderAddress" (ngModelChange)="senderAddress = $event; changeSender()" />
+          }
+        </fieldset>
+      }
       @if (active.state === 'DRAFT') { <p-button label="Előnézet és küldés" [disabled]="busy() || readOnly()" data-testid="handoff-preview-button" (onClick)="preview()" /> }
       @if (active.state === 'FAILED') {
-        <p-message severity="error" data-testid="handoff-state-message">A küldés ismert hibával meghiúsult. Ugyanaz a tartalom újrapróbálható, vagy visszatérhetsz a szerkesztéshez.</p-message>
+        <p-message severity="error" data-testid="handoff-state-message">A levelezőrendszer elutasította az átadást. Ugyanaz a tartalom és Reply-To azonosság újrapróbálható.</p-message>
         <p-button label="Újrapróbálás" [disabled]="busy() || readOnly()" data-testid="retry-failed-handoff" (onClick)="retry(active)" />
-        <p-button label="Vissza a szerkesztéshez" severity="secondary" [disabled]="busy() || readOnly()" data-testid="resume-handoff-editing" (onClick)="resume(active)" />
       }
       @if (active.state === 'UNKNOWN') {
-        <p-message severity="warn" data-testid="handoff-state-message">A kézbesítés eredménye nem ismert. Újrapróbálás előtt ellenőrizd a kimenő postafiókot vagy az SMTP-szolgáltatót.</p-message>
+        <p-message severity="warn" data-testid="handoff-state-message">A levelezőrendszer átvételi eredménye nem ismert. Újrapróbálás előtt ellenőrizd a kimenő postafiókot.</p-message>
         <p-button label="Ellenőrzés után újrapróbálás" [disabled]="busy() || readOnly()" data-testid="retry-unknown-handoff" (onClick)="confirmUnknownRetry(active, $any($event.currentTarget))" />
       }
     </section>
@@ -30,6 +42,7 @@
     <section class="preview" aria-labelledby="handoff-preview-title">
       <h3 id="handoff-preview-title">{{ preview.version }}. verzió előnézete</h3>
       <p><strong>Címzett:</strong> {{ preview.recipientName }} &lt;{{ preview.recipientEmail }}&gt;</p>
+      <p><strong>Feladó:</strong> {{ preview.senderName }} &lt;{{ preview.senderAddress }}&gt;</p>
       <p><strong>Tárgy:</strong> {{ preview.subject }}</p>
       <pre>{{ preview.textContent }}</pre>
       <p-button label="Küldés az ügyfélnek" [disabled]="busy() || readOnly()" data-testid="send-handoff-button" (onClick)="confirmSend($any($event.currentTarget))" />
