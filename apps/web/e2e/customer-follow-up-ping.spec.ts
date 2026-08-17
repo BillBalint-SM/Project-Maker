@@ -356,6 +356,32 @@ test('keeps unrelated cockpit mutations disabled while a recovered attempt is pe
   await expect(nativeButton(page, 'archive-project-button')).toBeEnabled();
 });
 
+test('reconciles a recovered pending lease expiry without reloading the page', async ({
+  page,
+  request,
+}) => {
+  const project = await createProject(request, 'pending-expiry');
+  await apiJson(request, 'PATCH', `/projects/${project.id}/follow-up/draft`, {
+    messageDraft: 'Lejáró kézbesítési lease',
+    referencedFollowUpId: null,
+    expectedVersion: 1,
+  });
+  const attemptId = await forceCustomerPingAttempt(
+    project.id,
+    project.customerContactEmail,
+    'SENDING',
+  );
+
+  await page.goto(`/projects/${project.id}`);
+  await expect(page.getByTestId('follow-up-sending-recovery')).toBeVisible();
+  await expireCustomerPingAttempt(attemptId);
+
+  await expect(page.getByTestId('follow-up-unknown-recovery')).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByTestId('follow-up-message-draft')).toBeEnabled();
+  await expect(nativeButton(page, 'save-workspace-button')).toBeEnabled();
+  await expect(nativeButton(page, 'archive-project-button')).toBeEnabled();
+});
+
 async function createProject(
   request: APIRequestContext,
   label: string,
@@ -463,6 +489,23 @@ async function transitionCustomerPingAttempt(
         state,
         state === 'FAILED' ? 'SMTP_SEND_FAILED' : 'SMTP_DELIVERY_UNKNOWN',
       ],
+    );
+  } finally {
+    await client.end();
+  }
+}
+
+async function expireCustomerPingAttempt(attemptId: string): Promise<void> {
+  const databaseUrl = process.env.DATABASE_URL;
+  if (!databaseUrl) throw new Error('DATABASE_URL is required for the recovery fixture.');
+  const client = new Client({ connectionString: databaseUrl });
+  try {
+    await client.connect();
+    await client.query(
+      `UPDATE customer_follow_up_delivery_attempts
+       SET attempted_at = $2
+       WHERE id = $1`,
+      [attemptId, new Date(Date.now() - 16 * 60_000)],
     );
   } finally {
     await client.end();
