@@ -131,8 +131,18 @@ async function insertAssessmentOverride(
 
 async function completeRound(dataSource: DataSource, roundId: string): Promise<void> {
   await dataSource.query(
-    'UPDATE "interview_rounds" SET "status" = \'COMPLETED\', "completed_at" = CURRENT_TIMESTAMP WHERE "id" = $1',
+    'UPDATE "interview_rounds" SET "status" = \'ENDED\', "completed_at" = CURRENT_TIMESTAMP WHERE "id" = $1',
     [roundId],
+  );
+}
+
+async function markRoundHandoffSent(dataSource: DataSource, roundId: string): Promise<void> {
+  await dataSource.query(
+    `INSERT INTO "interview_customer_handoffs" (
+      "id", "project_id", "round_id", "version", "state", "sent_at"
+    ) SELECT $1, "project_id", "id", 1, 'SENT', CURRENT_TIMESTAMP
+      FROM "interview_rounds" WHERE "id" = $2`,
+    [randomUUID(), roundId],
   );
 }
 
@@ -217,9 +227,10 @@ async function insertMoveFixture(dataSource: DataSource): Promise<RoundFixture> 
     [randomUUID(), source.roundId, source.snapshotId, JSON.stringify('Completed answer')],
   );
   await dataSource.query(
-    'UPDATE "interview_rounds" SET "status" = \'COMPLETED\', "completed_at" = CURRENT_TIMESTAMP WHERE "id" = $1',
+    'UPDATE "interview_rounds" SET "status" = \'ENDED\', "completed_at" = CURRENT_TIMESTAMP WHERE "id" = $1',
     [source.roundId],
   );
+  await markRoundHandoffSent(dataSource, source.roundId);
 
   return {
     openRoundId: destination.roundId,
@@ -377,7 +388,7 @@ describe('Round integrity database boundary (PostgreSQL)', () => {
     );
     await assert.rejects(
       dataSource.query('DELETE FROM "round_answers" WHERE "id" = $1', [answerRows[0].id]),
-      /completed|immutable/i,
+      /open meeting|revision draft|completed|immutable/i,
     );
 
     const preservedRows = await dataSource.query<Array<{ roundId: string; snapshotId: string }>>(
@@ -389,7 +400,7 @@ describe('Round integrity database boundary (PostgreSQL)', () => {
     ]);
   });
 
-  it('rejects direct completion when a required answer has the wrong JSON type', async () => {
+  it('allows meeting end when a required answer has the wrong JSON type', async () => {
     const { projectId, schemaId, baseQuestionId } = await insertProjectSchema(
       dataSource,
       `R2 completion type ${Date.now()}`,
@@ -400,19 +411,19 @@ describe('Round integrity database boundary (PostgreSQL)', () => {
       [randomUUID(), round.roundId, round.snapshotId, JSON.stringify(true)],
     );
 
-    await assert.rejects(
+    await assert.doesNotReject(
       dataSource.query(
-        'UPDATE "interview_rounds" SET "status" = \'COMPLETED\', "completed_at" = CURRENT_TIMESTAMP WHERE "id" = $1',
+        'UPDATE "interview_rounds" SET "status" = \'ENDED\', "completed_at" = CURRENT_TIMESTAMP WHERE "id" = $1',
         [round.roundId],
       ),
-      /required answers|valid|type|completion/i,
     );
 
     const roundRows = await dataSource.query<Array<{ completedAt: Date | null; status: string }>>(
       'SELECT "status", "completed_at" AS "completedAt" FROM "interview_rounds" WHERE "id" = $1',
       [round.roundId],
     );
-    assert.deepEqual(roundRows, [{ completedAt: null, status: 'OPEN' }]);
+    assert.equal(roundRows[0].status, 'ENDED');
+    assert.notEqual(roundRows[0].completedAt, null);
   });
 
   it('rejects a second open INITIAL_INTAKE round for the same project', async () => {
@@ -445,7 +456,7 @@ describe('Round integrity database boundary (PostgreSQL)', () => {
     const completedRoundId = await insertOpenInitialIntakeRound(dataSource, projectId, schemaId);
 
     await dataSource.query(
-      'UPDATE "interview_rounds" SET "status" = \'COMPLETED\', "completed_at" = CURRENT_TIMESTAMP WHERE "id" = $1',
+      'UPDATE "interview_rounds" SET "status" = \'ENDED\', "completed_at" = CURRENT_TIMESTAMP WHERE "id" = $1',
       [completedRoundId],
     );
 
@@ -459,7 +470,7 @@ describe('Round integrity database boundary (PostgreSQL)', () => {
     );
 
     assert.deepEqual(roundRows, [
-      { id: completedRoundId, status: 'COMPLETED', type: 'INITIAL_INTAKE' },
+      { id: completedRoundId, status: 'ENDED', type: 'INITIAL_INTAKE' },
       { id: laterOpenRoundId, status: 'OPEN', type: 'INITIAL_INTAKE' },
     ]);
   });
@@ -701,7 +712,7 @@ describe('Round integrity database boundary (PostgreSQL)', () => {
     assert.deepEqual(overrideRows, [{ status: 'Részben megvan' }]);
   });
 
-  it('rejects completion when a valid answer is assessed as partial', async () => {
+  it('allows meeting end when a valid answer is assessed as partial', async () => {
     const fixture = await insertAssessmentFixture(
       dataSource,
       `SCORE-01 partial completion ${Date.now()}`,
@@ -715,20 +726,14 @@ describe('Round integrity database boundary (PostgreSQL)', () => {
       null,
     );
 
-    await assert.rejects(
-      completeRound(dataSource, fixture.roundId),
-      (error: { code?: string; message?: string }) => {
-        assert.equal(error.code, '23514');
-        assert.match(error.message ?? '', /required answers|partial|completion/i);
-        return true;
-      },
-    );
+    await assert.doesNotReject(completeRound(dataSource, fixture.roundId));
 
     const roundRows = await dataSource.query<Array<{ completedAt: Date | null; status: string }>>(
       'SELECT "status", "completed_at" AS "completedAt" FROM "interview_rounds" WHERE "id" = $1',
       [fixture.roundId],
     );
-    assert.deepEqual(roundRows, [{ completedAt: null, status: 'OPEN' }]);
+    assert.equal(roundRows[0].status, 'ENDED');
+    assert.notEqual(roundRows[0].completedAt, null);
   });
 
   it('rejects explicit whitespace-only TEXT and LONG_TEXT answers for partial assessment', async () => {
@@ -770,7 +775,7 @@ describe('Round integrity database boundary (PostgreSQL)', () => {
     assert.deepEqual(outcomes, ['23514', '23514']);
   });
 
-  it('blocks direct completion for explicit whitespace-only TEXT and LONG_TEXT answers', async () => {
+  it('allows meeting end for explicit whitespace-only TEXT and LONG_TEXT answers', async () => {
     const textQuestionTypes = ['TEXT', 'LONG_TEXT'] as const;
     const outcomes = await Promise.all(
       textQuestionTypes.map(async (questionType) => {
@@ -800,7 +805,7 @@ describe('Round integrity database boundary (PostgreSQL)', () => {
       }),
     );
 
-    assert.deepEqual(outcomes, ['23514', '23514']);
+    assert.deepEqual(outcomes, ['completed', 'completed']);
   });
 
   it('accepts year 0001 at the PostgreSQL answer-validation boundary', async () => {
@@ -821,7 +826,7 @@ describe('Round integrity database boundary (PostgreSQL)', () => {
       'SELECT "status" FROM "interview_rounds" WHERE "id" = $1',
       [round.roundId],
     );
-    assert.deepEqual(roundRows, [{ status: 'COMPLETED' }]);
+    assert.deepEqual(roundRows, [{ status: 'ENDED' }]);
   });
 
   it('uses PostgreSQL character counts for assessment rationale boundaries', async () => {
@@ -870,7 +875,7 @@ describe('Round integrity database boundary (PostgreSQL)', () => {
     const migrationDatabaseUrl = createDatabaseUrlWithName(databaseUrl, migrationDatabaseName);
     let baselineDataSource: DataSource | undefined;
     let migrationDataSource: DataSource | undefined;
-    const explicitWhitespace = JSON.stringify(' \t\n\r\f\v');
+    const explicitWhitespace = JSON.stringify(' \t\n\r\f');
 
     try {
       await dataSource.query(`CREATE DATABASE "${migrationDatabaseName}"`);
@@ -945,6 +950,18 @@ describe('Round integrity database boundary (PostgreSQL)', () => {
       );
       assert.deepEqual(revertedResults, [{ valid: true }]);
 
+      await migrationDataSource.destroy();
+      migrationDataSource = new DataSource({
+        type: 'postgres',
+        url: migrationDatabaseUrl,
+        synchronize: false,
+        migrations: [
+          ...migrationsForHistoricalDatabase(
+            'RoundAnswerValidationParity0010RoundAnswerValidationParity1786694400000',
+          ),
+        ],
+      });
+      await migrationDataSource.initialize();
       await migrationDataSource.runMigrations();
       const reappliedResults = await migrationDataSource.query<Array<{ valid: boolean }>>(
         `SELECT "is_valid_round_answer"(
@@ -997,12 +1014,12 @@ describe('Round integrity database boundary (PostgreSQL)', () => {
       [fixture.roundId],
     );
     assert.equal(roundRows.length, 1);
-    assert.equal(roundRows[0].status, 'COMPLETED');
+    assert.equal(roundRows[0].status, 'ENDED');
     assert.notEqual(roundRows[0].completedAt, null);
     assert.deepEqual(answerRows, [{ count: '0' }]);
   });
 
-  it('serializes a partial assessment with concurrent round completion', async () => {
+  it('serializes a partial assessment with concurrent meeting end', async () => {
     const fixture = await insertAssessmentFixture(
       dataSource,
       `SCORE-01 concurrent completion ${Date.now()}`,
@@ -1028,7 +1045,7 @@ describe('Round integrity database boundary (PostgreSQL)', () => {
       )) as Array<{ pid: number }>;
       let completionOutcome: 'completed' | 'pending' | 'rejected' = 'pending';
       const completionPromise = completionRunner.query(
-        'UPDATE "interview_rounds" SET "status" = \'COMPLETED\', "completed_at" = CURRENT_TIMESTAMP WHERE "id" = $1',
+        'UPDATE "interview_rounds" SET "status" = \'ENDED\', "completed_at" = CURRENT_TIMESTAMP WHERE "id" = $1',
         [fixture.roundId],
       );
       void completionPromise.then(
@@ -1048,15 +1065,8 @@ describe('Round integrity database boundary (PostgreSQL)', () => {
       assert.equal(observedOutcome, 'blocked');
 
       await assessmentRunner.commitTransaction();
-      await assert.rejects(
-        completionPromise,
-        (error: { code?: string; message?: string }) => {
-          assert.equal(error.code, '23514');
-          assert.match(error.message ?? '', /required answers|partial|completion/i);
-          return true;
-        },
-      );
-      await completionRunner.rollbackTransaction();
+      await assert.doesNotReject(completionPromise);
+      await completionRunner.commitTransaction();
     } finally {
       if (completionRunner.isTransactionActive) {
         await completionRunner.rollbackTransaction();
@@ -1072,7 +1082,8 @@ describe('Round integrity database boundary (PostgreSQL)', () => {
       'SELECT "status", "completed_at" AS "completedAt" FROM "interview_rounds" WHERE "id" = $1',
       [fixture.roundId],
     );
-    assert.deepEqual(roundRows, [{ completedAt: null, status: 'OPEN' }]);
+    assert.equal(roundRows[0].status, 'ENDED');
+    assert.notEqual(roundRows[0].completedAt, null);
   });
 
   it('serializes partial assessment creation with concurrent answer deletion', async () => {
@@ -1269,13 +1280,14 @@ describe('Round integrity database boundary (PostgreSQL)', () => {
     assert.deepEqual(overrideRows, []);
   });
 
-  it('rejects every assessment override mutation after round completion', async () => {
+  it('rejects every assessment override mutation after a handoff is sent', async () => {
     const insertFixture = await insertAssessmentFixture(
       dataSource,
       `SCORE-01 completed insert ${Date.now()}`,
     );
     await insertValidTextAnswer(dataSource, insertFixture.roundId, insertFixture.snapshotId);
     await completeRound(dataSource, insertFixture.roundId);
+    await markRoundHandoffSent(dataSource, insertFixture.roundId);
 
     await assert.rejects(
       insertAssessmentOverride(
@@ -1287,7 +1299,7 @@ describe('Round integrity database boundary (PostgreSQL)', () => {
       ),
       (error: { code?: string; message?: string }) => {
         assert.equal(error.code, '55000');
-        assert.match(error.message ?? '', /completed interview rounds are immutable/i);
+        assert.match(error.message ?? '', /active interview revision draft|open meeting/i);
         return true;
       },
     );
@@ -1304,6 +1316,7 @@ describe('Round integrity database boundary (PostgreSQL)', () => {
       'A kérdés igazoltan nem releváns.',
     );
     await completeRound(dataSource, persistedFixture.roundId);
+    await markRoundHandoffSent(dataSource, persistedFixture.roundId);
 
     await assert.rejects(
       dataSource.query(
@@ -1312,7 +1325,7 @@ describe('Round integrity database boundary (PostgreSQL)', () => {
       ),
       (error: { code?: string; message?: string }) => {
         assert.equal(error.code, '55000');
-        assert.match(error.message ?? '', /completed interview rounds are immutable/i);
+        assert.match(error.message ?? '', /active interview revision draft|open meeting/i);
         return true;
       },
     );
@@ -1322,7 +1335,7 @@ describe('Round integrity database boundary (PostgreSQL)', () => {
       ]),
       (error: { code?: string; message?: string }) => {
         assert.equal(error.code, '55000');
-        assert.match(error.message ?? '', /completed interview rounds are immutable/i);
+        assert.match(error.message ?? '', /active interview revision draft|open meeting/i);
         return true;
       },
     );
@@ -1677,7 +1690,11 @@ describe('Round integrity database boundary (PostgreSQL)', () => {
         type: 'postgres',
         url: migrationDatabaseUrl,
         synchronize: false,
-        migrations: [...migrationsForFreshDatabase()],
+        migrations: [
+          ...migrationsForHistoricalDatabase(
+            'MarkdownTemplateLibrary0013MarkdownTemplateLibrary1786953600000',
+          ),
+        ],
       });
       await migrationDataSource.initialize();
       await migrationDataSource.runMigrations();

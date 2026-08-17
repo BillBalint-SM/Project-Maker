@@ -89,6 +89,7 @@ async function createProjectAndOpenSchema(page: Page) {
 
   await expect(page.getByRole('heading', { name: 'Új projekt' })).toBeVisible();
   await page.getByTestId('project-name-input').fill(`Új projekt út ${uniquePart}`);
+  await page.getByTestId('internal-owner-name-input').fill('Projektindító PO/PM');
   await page.getByTestId('customer-contact-name-input').fill('Projektindító Kapcsolattartó');
   await page
     .getByTestId('customer-contact-email-input')

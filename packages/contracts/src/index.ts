@@ -3,6 +3,7 @@ import generalPlaybookData from '../playbooks/general.v1.json' with { type: 'jso
 export * from './projects.js';
 export * from './question-bank.js';
 export * from './interviews.js';
+export * from './interview-customer-handoffs.js';
 export * from './markdown-revisions.js';
 export * from './markdown-templates.js';
 export * from './follow-ups.js';

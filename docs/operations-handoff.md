@@ -71,9 +71,11 @@ must not be interpreted as STARTTLS support. Add a Nodemailer/STARTTLS mode as
 a separate hardening slice before connecting to an SMTP provider that requires
 STARTTLS.
 
-When SMTP is not configured, the API returns `503` for an email send and does
-not allow automatic follow-up to be enabled. This is intentional: it prevents
-an apparently enabled timer from silently doing nothing.
+When SMTP is not configured, the existing follow-up endpoints return `503` and
+do not allow automatic follow-up to be enabled. An interview customer-handoff
+attempt instead retains the version and records `FAILED`, so an operator can
+configure SMTP and the employee can retry the exact previewed content. This
+prevents both silent timers and lost handoff drafts.
 
 ## Database migrations and recovery
 
@@ -94,6 +96,7 @@ ordered TypeORM migrations registered in
 11. `0011-discovery-follow-up-source-linkage.ts` — nullable discovery-follow-up source snapshot, restrictive foreign key, and source lookup index.
 12. `0012-decision-review-inputs.ts` — validated nullable Decision input ratings with guarded rollback when project input exists.
 13. `0013-markdown-template-library.ts` — named Markdown template drafts and immutable published versions, Default template seed, remembered project choice, and immutable revision provenance; rollback refuses retained template activity.
+14. `0014-interview-customer-handoff.ts` — named internal ownership, concrete next-action owner role, `OPEN`/`ENDED` interview meeting semantics, content versions, immutable sent customer-handoff versions, editable draft gating, and guarded rollback while handoff history exists.
 
 The deployed API image contains the compiled migration classes, but not the
 TypeScript migration source tree used by the development-only
@@ -221,9 +224,14 @@ perform the health/smoke gates before allowing normal users back in.
 - `/` lists projects; `/projects/:projectId` is the project cockpit.
 - `/settings/questions` maintains the editable base question bank.
 - `/projects/:projectId/interview` publishes a project question-schema snapshot,
-  creates immutable interview rounds, records answers, and completes rounds.
-- A completed round keeps the question text/order/schema version that existed
-  when the round started; later question-bank edits do not rewrite that round.
+  creates an interview meeting, records answers, ends the meeting, and manages
+  the versioned customer-handoff history.
+- An ended round keeps the question text/order/schema version that existed when
+  it started; later question-bank edits do not rewrite that snapshot. Business
+  completeness does not block meeting end.
+- Project creation requires a named internal owner. The next-action owner is a
+  role selecting either that concrete internal owner or the concrete customer
+  contact; the legacy free-form `ball_owner` value is compatibility storage only.
 - The cockpit can archive and restore a project. It exposes permanent deletion
   only for an eligible bare `DRAFT`; a project with persisted activity is
   retained and must be archived.
@@ -238,8 +246,8 @@ with only `followUpId`, category, due date, and status; question, owner, and
 next-step text are not copied into the audit payload.
 
 Creation may optionally attach one snapshot from the project's current Initial
-Intake source: the latest open round, or the latest completed round when none is
-open. Open follow-ups can add, replace, or explicitly remove that relationship;
+Intake source: the most recently created `OPEN` or `ENDED` round. Open follow-ups
+can add, replace, or explicitly remove that relationship;
 resolved follow-ups retain it as historical provenance. The source command uses
 the same lock and version discipline as other follow-up mutations. A real source
 change emits a redacted audit event with only the action and compact order/topic/
@@ -310,6 +318,16 @@ cockpit load and has its own retry state.
 
 These are intentionally separate flows:
 
+- **Interview customer handoff:** ending an interview creates version 1 in
+  `DRAFT`. Preview renders and snapshots the recipient, subject, HTML, text, and
+  source content version. Send requires the matching digest and uses a database
+  lease so only one attempt can own the version. `SENT` versions are immutable;
+  a customer change request creates the next draft with a required modification
+  summary and re-enables edits for that ended round. Known SMTP failures become
+  `FAILED`; expired or interrupted attempts become `UNKNOWN` and require an
+  explicitly acknowledged retry after checking external delivery evidence and
+  accepting the possible duplicate-delivery risk.
+
 - **Customer review:** always manually initiated by the PO/PM. It requires a
   Markdown revision (the latest one is selected when no revision ID is sent),
   sends the full canonical Markdown specification to the project contact email, and records a
@@ -330,6 +348,13 @@ GET   /api/projects/{projectId}/follow-up
 PATCH /api/projects/{projectId}/follow-up
 POST  /api/projects/{projectId}/follow-up/ping
 POST  /api/projects/{projectId}/customer-review-email
+GET   /api/projects/{projectId}/rounds/{roundId}/customer-handoffs
+POST  /api/projects/{projectId}/rounds/{roundId}/customer-handoffs
+PUT   /api/projects/{projectId}/rounds/{roundId}/customer-handoffs/{handoffId}/draft
+GET   /api/projects/{projectId}/rounds/{roundId}/customer-handoffs/{handoffId}/preview
+POST  /api/projects/{projectId}/rounds/{roundId}/customer-handoffs/{handoffId}/send
+POST  /api/projects/{projectId}/rounds/{roundId}/customer-handoffs/{handoffId}/retry
+POST  /api/projects/{projectId}/rounds/{roundId}/customer-handoffs/{handoffId}/resume-editing
 ```
 
 Archived projects cannot send customer email. Expired or archived follow-up
@@ -343,8 +368,8 @@ The delivered readiness route is narrow and read-only:
 GET /api/projects/{projectId}/readiness
 ```
 
-It selects the latest open `INITIAL_INTAKE` round; if none is open, it selects
-the latest completed one. The result is available only for the exact current
+It selects the most recently created `OPEN` or `ENDED` `INITIAL_INTAKE` round,
+without giving an older open round precedence over a newer ended round. The result is available only for the exact current
 30-key canonical `general` v1 source. Otherwise it returns a typed unavailable
 state: `NO_INITIAL_INTAKE` or `UNSUPPORTED_SCHEMA`. An unavailable result is not
 a score and does not disable Workspace or discovery-follow-up operations.
@@ -422,8 +447,8 @@ invokes the canonical discovery/readiness consumers. OUTPUT-01 closeout also
 proves in the built image that the published Default template can generate a
 canonical revision with immutable template provenance. Markdown download and
 SMTP failure/delivery behavior remain endpoint/integration checks; a local
-SMTP-capture container can verify manual review, manual ping, and due-timer
-delivery without using production credentials.
+  SMTP-capture container can verify interview handoff, manual review, manual
+  ping, and due-timer delivery without using production credentials.
 
 The declared SCORE-01.1 browser evidence is:
 
@@ -464,6 +489,8 @@ The following are deliberately not hidden in this handoff:
   beyond the internal/VPN boundary;
 - an outbox/idempotency model so SMTP I/O is not coupled to a database
   transaction;
+- provider message identifiers or delivery receipts for resolving an `UNKNOWN`
+  interview-handoff attempt without operator evidence;
 - STARTTLS support and provider-specific SMTP compatibility;
 - OUTPUT-02 and OUTPUT-03 acceptance-criteria/user-story derivation and PDF/spreadsheet exports;
 - backup retention/rotation and a restore drill owned by the deployment team.

@@ -29,7 +29,7 @@ interface ProjectWorkspace {
 
 interface InterviewRound {
   readonly id: string;
-  readonly status: 'OPEN' | 'COMPLETED';
+  readonly status: 'OPEN' | 'ENDED';
   readonly questions: readonly RoundQuestionSnapshot[];
 }
 
@@ -59,7 +59,7 @@ test.describe.serial('guided intake real Hungarian browser flow', () => {
     await clearE2eAnswerSaveFailures();
   });
 
-  test('persists, recovers, validates, completes, locks, and starts a later initial intake round', async ({
+  test('persists, recovers, and ends an incomplete interview into an editable handoff draft', async ({
     context,
     page,
     request,
@@ -86,7 +86,7 @@ test.describe.serial('guided intake real Hungarian browser flow', () => {
     const startedRound = (await createRoundResponse.json()) as InterviewRound;
     const textQuestion = requireQuestion(startedRound, fixture.textStableKey);
     const booleanQuestion = requireQuestion(startedRound, fixture.booleanStableKey);
-    const missingRequiredQuestion = requireQuestion(startedRound, fixture.missingRequiredStableKey);
+    requireQuestion(startedRound, fixture.missingRequiredStableKey);
 
     await expect(page.getByTestId('active-round-resume-state')).toBeVisible();
     await expect(page.getByTestId(`round-question-guidance-${textQuestion.id}`)).toContainText(
@@ -148,85 +148,16 @@ test.describe.serial('guided intake real Hungarian browser flow', () => {
     await expect(duplicatePage.getByTestId('create-interview-round-button')).toHaveCount(0);
     await duplicatePage.close();
 
-    const blockedCompletionResponsePromise = waitForRoundCompletion(
-      page,
-      fixture.projectId,
-      startedRound.id,
-    );
-    await (await nativeButton(page, 'complete-interview-round-button')).click();
-    const blockedCompletionResponse = await blockedCompletionResponsePromise;
-    expect(blockedCompletionResponse.status()).toBe(409);
-    await expect(page.getByTestId('interview-action-error-text')).toContainText(
-      hungarianTextPattern,
-    );
-    await expect(page.getByTestId('interview-action-error-text')).not.toContainText(
-      /All required round questions|missingSnapshotIds|PostgreSQL/i,
-    );
-    await expectActiveRoundStatus(request, fixture.projectId, 'OPEN');
-
-    const retryAnswer = 'Újrapróbált válasz stabil API-kapcsolattal.';
-    const cleanupSaveFailure = await installOneAnswerSaveFailure(missingRequiredQuestion.id);
-    try {
-      const failedSaveResponsePromise = waitForAnswerPatch(
-        page,
-        fixture.projectId,
-        missingRequiredQuestion.id,
-      );
-      await page.getByTestId(`round-answer-textarea-${missingRequiredQuestion.id}`).fill(retryAnswer);
-      const failedSaveResponse = await failedSaveResponsePromise;
-      expect(failedSaveResponse.status()).toBeGreaterThanOrEqual(500);
-      await expect(page.getByTestId(`retry-round-answer-${missingRequiredQuestion.id}`)).toBeVisible();
-      await expect(
-        page.getByTestId(`round-answer-textarea-${missingRequiredQuestion.id}`),
-      ).toHaveValue(retryAnswer);
-      await expect(
-        page.getByTestId(`round-answer-save-state-${missingRequiredQuestion.id}`),
-      ).toContainText(hungarianTextPattern);
-    } finally {
-      await cleanupSaveFailure();
-    }
-
-    const retryResponsePromise = waitForAnswerPatch(
-      page,
-      fixture.projectId,
-      missingRequiredQuestion.id,
-    );
-    await (await nativeButton(page, `retry-round-answer-${missingRequiredQuestion.id}`)).click();
-    const retryResponse = await retryResponsePromise;
-    expect(retryResponse.status()).toBe(200);
-    await expectSavedAnswer(request, fixture.projectId, missingRequiredQuestion.id, retryAnswer);
-
-    const completedResponsePromise = waitForRoundCompletion(page, fixture.projectId, startedRound.id);
-    await (await nativeButton(page, 'complete-interview-round-button')).click();
-    const completedResponse = await completedResponsePromise;
-    expect(completedResponse.status()).toBe(201);
-    const completedRound = (await completedResponse.json()) as InterviewRound;
-    expect(completedRound.status).toBe('COMPLETED');
-
-    await expect(page).toHaveURL(new RegExp(`/projects/${fixture.projectId}/readiness$`));
-    await expect(page.getByTestId('readiness-review-card')).toBeVisible();
-
-    await page.goto(`/projects/${fixture.projectId}`);
-    await (await nativeButton(page, 'open-project-interview-button')).click();
-    await expect(page).toHaveURL(new RegExp(`/projects/${fixture.projectId}/interview$`));
-    const restartButton = await nativeButton(page, 'create-interview-round-button');
-    await expect(restartButton).toBeEnabled();
-    const restartRoundResponsePromise = page.waitForResponse(
-      (response) =>
-        response.request().method() === 'POST' &&
-        new URL(response.url()).pathname === `/api/projects/${fixture.projectId}/rounds`,
-    );
-    await restartButton.click();
-    const restartRoundResponse = await restartRoundResponsePromise;
-    expect(restartRoundResponse.status()).toBe(201);
-    const restartedRound = (await restartRoundResponse.json()) as InterviewRound;
-    expect(restartedRound.id).not.toBe(startedRound.id);
-    await expect
-      .poll(async () => {
-        const activeRound = await getActiveRound(request, fixture.projectId);
-        return activeRound?.id;
-      })
-      .toBe(restartedRound.id);
+    const finishResponsePromise = waitForRoundFinish(page, fixture.projectId, startedRound.id);
+    await (await nativeButton(page, 'finish-interview-later-button')).click();
+    const finishResponse = await finishResponsePromise;
+    expect(finishResponse.status()).toBe(201);
+    const endedRound = (await finishResponse.json()) as InterviewRound;
+    expect(endedRound.status).toBe('ENDED');
+    expect(requireQuestion(endedRound, fixture.missingRequiredStableKey).answer).toBeNull();
+    await expectActiveRoundStatus(request, fixture.projectId, 'ENDED');
+    await expect(page.getByTestId('interview-handoff')).toBeVisible();
+    await expect(page.getByTestId('handoff-preview-button')).toBeVisible();
   });
 
   test('blocks the initial intake start when the project has no published schema', async ({
@@ -283,6 +214,7 @@ async function createProject(
     name,
     customerContactName: 'Task 5 E2E Kapcsolattartó',
     customerContactEmail: `task5-${suffix}@example.test`,
+    internalOwnerName: 'Guided Intake PO/PM',
   });
 }
 
@@ -408,11 +340,11 @@ function countAnswerPatchRequests(page: Page, projectId: string, snapshotId: str
   };
 }
 
-function waitForRoundCompletion(page: Page, projectId: string, roundId: string) {
+function waitForRoundFinish(page: Page, projectId: string, roundId: string) {
   return page.waitForResponse(
     (response) =>
       response.request().method() === 'POST' &&
-      response.url().includes(`/api/projects/${projectId}/rounds/${roundId}/complete`),
+      response.url().includes(`/api/projects/${projectId}/rounds/${roundId}/finish`),
   );
 }
 

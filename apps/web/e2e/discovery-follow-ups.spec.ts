@@ -48,6 +48,7 @@ async function createProject(
       name,
       customerContactName: 'Discovery E2E Contact',
       customerContactEmail: 'discovery-e2e@example.test',
+      internalOwnerName: 'Discovery PO/PM',
     },
   });
   expect(response.status()).toBe(201);

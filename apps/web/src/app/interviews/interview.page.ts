@@ -1,5 +1,5 @@
 import { Component, OnDestroy, OnInit, inject, signal } from '@angular/core';
-import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { forkJoin } from 'rxjs';
 import { ButtonModule } from 'primeng/button';
 import { CardModule } from 'primeng/card';
@@ -18,6 +18,8 @@ import type {
 } from '@project-maker/contracts';
 
 import { InterviewApiService, isInterviewApiError } from './interview-api.service';
+import { InterviewHandoffComponent } from './interview-handoff/interview-handoff.component';
+import { ProjectApiService } from '../projects/project-api.service';
 import { QuestionBankApiService } from '../settings/question-bank-api.service';
 
 const supportedRoundType = 'INITIAL_INTAKE';
@@ -59,6 +61,7 @@ interface QuestionAssessmentState {
     ButtonModule,
     CardModule,
     MessageModule,
+    InterviewHandoffComponent,
     ProgressSpinnerModule,
     RouterLink,
     TagModule,
@@ -68,9 +71,9 @@ interface QuestionAssessmentState {
 })
 export class InterviewPage implements OnInit, OnDestroy {
   private readonly route = inject(ActivatedRoute);
-  private readonly router = inject(Router);
   private readonly questionBankApi = inject(QuestionBankApiService);
   private readonly interviewApi = inject(InterviewApiService);
+  private readonly projectApi = inject(ProjectApiService);
   private readonly autosaveTimers = new Map<string, ReturnType<typeof setTimeout>>();
   private readonly inFlightRequestIds = new Map<string, Set<number>>();
 
@@ -89,6 +92,10 @@ export class InterviewPage implements OnInit, OnDestroy {
   readonly roundSaving = signal(false);
   readonly initialRoundStartFailed = signal(false);
   readonly completing = signal(false);
+  readonly endedEditable = signal(false);
+  readonly previewAfterFinish = signal(false);
+  readonly projectArchived = signal(false);
+  readonly handoffContentRevision = signal(0);
 
   ngOnInit(): void {
     this.loadInterviewData();
@@ -122,8 +129,9 @@ export class InterviewPage implements OnInit, OnDestroy {
       bank: this.questionBankApi.loadBaseQuestionBank(),
       schema: this.questionBankApi.loadProjectSchema(this.projectId),
       activeRound: this.interviewApi.getActiveInitialIntake(this.projectId),
+      project: this.projectApi.loadProjectWorkspace(this.projectId),
     }).subscribe({
-      next: ({ bank, schema, activeRound }) => {
+      next: ({ bank, schema, activeRound, project }) => {
         if (activeRound && activeRound.type !== supportedRoundType) {
           this.loadError.set(
             'Nem támogatott aktív interjúkör érkezett a szervertől. Frissítsd az oldalt, és ha a hiba megmarad, ellenőrizd a projekt interjúállapotát.',
@@ -135,6 +143,7 @@ export class InterviewPage implements OnInit, OnDestroy {
         this.bank.set(bank);
         this.schema.set(schema);
         this.round.set(activeRound);
+        this.projectArchived.set(project.status === 'ARCHIVED');
         this.answerStates.set(buildAnswerStates(activeRound));
         this.assessmentStates.set(buildAssessmentStates(activeRound));
         this.selectedKeys.set(this.buildSelectedKeys(bank, schema, activeRound));
@@ -156,7 +165,7 @@ export class InterviewPage implements OnInit, OnDestroy {
   }
 
   setSelected(stableKey: string, checked: boolean): void {
-    if (this.hasOpenRound()) {
+    if (this.hasOpenRound() || this.projectArchived()) {
       return;
     }
     const next = new Set(this.selectedKeys());
@@ -174,7 +183,7 @@ export class InterviewPage implements OnInit, OnDestroy {
   }
 
   publishSchema(): void {
-    if (this.schemaSaving()) {
+    if (this.schemaSaving() || this.projectArchived()) {
       return;
     }
     if (this.hasOpenRound()) {
@@ -244,7 +253,7 @@ export class InterviewPage implements OnInit, OnDestroy {
   }
 
   private startInitialRound(mode: InitialRoundStartMode): void {
-    if (this.roundSaving() || this.schema() === null) {
+    if (this.roundSaving() || this.schema() === null || this.projectArchived()) {
       if (this.schema() === null) {
         this.actionError.set('Az interjúkör indítása előtt fogadd el a projekt kérdéssémáját.');
       }
@@ -286,6 +295,7 @@ export class InterviewPage implements OnInit, OnDestroy {
       return;
     }
 
+    this.invalidateHandoffPreview();
     if (value.trim().length === 0) {
       this.setAnswerDraft(question.id, null);
       this.persistAnswer(question);
@@ -301,6 +311,7 @@ export class InterviewPage implements OnInit, OnDestroy {
       return;
     }
 
+    this.invalidateHandoffPreview();
     this.setAnswerDraft(question.id, value);
     this.persistAnswer(question);
   }
@@ -399,6 +410,7 @@ export class InterviewPage implements OnInit, OnDestroy {
       return;
     }
 
+    this.invalidateHandoffPreview();
     this.setAssessmentState(question.id, {
       ...this.assessmentState(question),
       mode: 'partial',
@@ -413,6 +425,7 @@ export class InterviewPage implements OnInit, OnDestroy {
       return;
     }
 
+    this.invalidateHandoffPreview();
     const state = this.assessmentState(question);
     this.setAssessmentState(question.id, {
       ...state,
@@ -428,6 +441,7 @@ export class InterviewPage implements OnInit, OnDestroy {
       return;
     }
 
+    this.invalidateHandoffPreview();
     this.setAssessmentState(question.id, {
       ...state,
       rationale,
@@ -456,6 +470,7 @@ export class InterviewPage implements OnInit, OnDestroy {
       return;
     }
 
+    this.invalidateHandoffPreview();
     this.setAssessmentState(question.id, {
       ...this.assessmentState(question),
       mode: 'automatic',
@@ -508,9 +523,9 @@ export class InterviewPage implements OnInit, OnDestroy {
     this.persistAssessment(question);
   }
 
-  completeRound(): void {
+  finishRound(sendNow: boolean): void {
     const round = this.round();
-    if (!round || round.status === 'COMPLETED' || this.completing()) {
+    if (!round || round.status === 'ENDED' || this.completing() || this.projectArchived()) {
       return;
     }
 
@@ -541,15 +556,16 @@ export class InterviewPage implements OnInit, OnDestroy {
     this.completing.set(true);
     this.actionError.set(null);
     this.feedback.set(null);
-    this.interviewApi.completeRound(this.projectId, round.id).subscribe({
-      next: (completedRound) => {
+    this.interviewApi.finishRound(this.projectId, round.id).subscribe({
+      next: (endedRound) => {
         this.clearAutosaveTimers();
         this.inFlightRequestIds.clear();
-        this.round.set(completedRound);
-        this.answerStates.set(buildAnswerStates(completedRound));
-        this.assessmentStates.set(buildAssessmentStates(completedRound));
+        this.round.set(endedRound);
+        this.answerStates.set(buildAnswerStates(endedRound));
+        this.assessmentStates.set(buildAssessmentStates(endedRound));
+        this.endedEditable.set(true);
+        this.previewAfterFinish.set(sendNow);
         this.completing.set(false);
-        void this.router.navigate(['/projects', this.projectId, 'readiness']);
       },
       error: (error: Error) => {
         this.actionError.set(error.message);
@@ -569,6 +585,7 @@ export class InterviewPage implements OnInit, OnDestroy {
   isCompleteDisabled(): boolean {
     return (
       this.completing() ||
+      this.projectArchived() ||
       this.hasPendingAnswerWork() ||
       this.hasAnswerSaveErrors() ||
       this.hasPendingAssessmentWork() ||
@@ -710,6 +727,12 @@ export class InterviewPage implements OnInit, OnDestroy {
     );
   }
 
+  private invalidateHandoffPreview(): void {
+    if (this.round()?.status === 'ENDED') {
+      this.handoffContentRevision.update((revision) => revision + 1);
+    }
+  }
+
   private assessmentState(question: RoundQuestionSnapshot): QuestionAssessmentState {
     return this.assessmentStates().get(question.id) ?? createQuestionAssessmentState(question);
   }
@@ -774,7 +797,7 @@ export class InterviewPage implements OnInit, OnDestroy {
 
   private persistAnswer(question: RoundQuestionSnapshot): void {
     const round = this.round();
-    if (!round || round.status === 'COMPLETED' || this.completing()) {
+    if (!round || (round.status === 'ENDED' && !this.endedEditable()) || this.completing()) {
       return;
     }
 
@@ -1034,13 +1057,14 @@ export class InterviewPage implements OnInit, OnDestroy {
 
   private isAnswerEditingLocked(question: RoundQuestionSnapshot): boolean {
     const round = this.round();
-    return round?.status === 'COMPLETED' || this.completing() || !this.answerStates().has(question.id);
+    return this.projectArchived() || (round?.status === 'ENDED' && !this.endedEditable()) || this.completing() || !this.answerStates().has(question.id);
   }
 
   private isAssessmentEditingLocked(question: RoundQuestionSnapshot): boolean {
     const round = this.round();
     return (
-      round?.status === 'COMPLETED' ||
+      (round?.status === 'ENDED' && !this.endedEditable()) ||
+      this.projectArchived() ||
       this.completing() ||
       !this.assessmentStates().has(question.id)
     );

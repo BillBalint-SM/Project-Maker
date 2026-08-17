@@ -38,7 +38,7 @@ const factorCopy: Readonly<Record<FactorId, { readonly label: string; readonly h
   },
   ownership: {
     label: 'Felelősség',
-    helpText: 'A kijelölt Ball owner és a felelősségi ellenőrzőlista állapota.',
+    helpText: 'A következő lépés kijelölt felelőse és a felelősségi ellenőrzőlista állapota.',
   },
   checklist: {
     label: 'Ellenőrzőlista',
@@ -319,7 +319,7 @@ function createGaps(input: ReadinessCalculatorInput): readonly ReadinessGap[] {
         id: 'overview-ball-owner',
         severity: importantSeverity,
         category: 'Felelősség',
-        message: 'A Ball owner nincs megadva.',
+        message: 'A következő lépés felelőse nincs megadva.',
         nextStep: 'Jelölj ki felelőst a Workspace területen.',
         target: 'overview',
         snapshotId: null,
