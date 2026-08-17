@@ -679,7 +679,7 @@ describe('InterviewPage', () => {
     questionBankApi.updateProjectSchema.mockReturnValue(
       throwError(() => new Error(rawServiceMessage)),
     );
-    const interviewApi = createInterviewApi(null, null);
+    const interviewApi = createInterviewApi(buildCompletedRound(buildTextQuestion({})), null);
 
     const page = await renderInterviewPage('project-123', questionBankApi, interviewApi);
     const publishButtonHost = page.nativeElement.querySelector(
@@ -729,15 +729,20 @@ describe('InterviewPage', () => {
     );
   });
 
-  it('shows the start action without a round-type selector when no active round exists', async () => {
+  it('keeps first Project start focused on schema selection when no schema or round exists', async () => {
     const questionBankApi = createQuestionBankApi(null, null);
+    questionBankApi.loadProjectSchema.mockReturnValue(of(null));
     const interviewApi = createInterviewApi(null, null);
 
     const page = await renderInterviewPage('project-456', questionBankApi, interviewApi);
 
     expect(
       page.nativeElement.querySelector('[data-testid="create-interview-round-button"]'),
+    ).toBeNull();
+    expect(
+      page.nativeElement.querySelector('[data-testid="interview-question-selection"]'),
     ).not.toBeNull();
+    expect(page.nativeElement.textContent).not.toContain('Kezdő interjúkör');
     expect(
       page.nativeElement.querySelector('[data-testid="round-type-select"]'),
     ).toBeNull();
