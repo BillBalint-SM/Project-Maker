@@ -119,7 +119,7 @@ Egy projekten belül az oldalak közötti visszalépő linkek őrzik a munkafoly
 | --- | --- | --- |
 | `Projects` | Aktív és archivált projektek áttekintése | Új projekt, cockpit megnyitása |
 | `Project cockpit` | Operatív állapot és projektközpont | Workspace mentése, follow-upok, e-mail, audit, lifecycle |
-| `Projektinterjú` | Projektséma, kezdő interjú és ügyfélcsomag | Séma közzététele, kör indítása, válaszadás, meeting lezárása, előnézet és küldés |
+| `Projektinterjú` | Projektséma, kezdő interjú és ügyfélcsomag | Séma elfogadása és első kör indítása, válaszadás, meeting lezárása, előnézet és küldés |
 | `Markdown specifikáció` | Változatlan kanonikus specifikációk | Revízió generálása, összehasonlítás, előnézet, letöltés |
 | `Base question bank` | Minden projekt közös kérdéskészlete | Kérdés létrehozása, új verziót létrehozó szerkesztés |
 
@@ -191,8 +191,8 @@ Ez a gyorsindítás egy teljes, biztonságos első kört mutat. A részletes sza
 4. A cockpit `Workspace` részében állítsd a státuszt `INTAKE_IN_PROGRESS` értékre.
 5. Ellenőrizd a belső felelős nevét, válaszd ki a következő feladat gazdáját (`Belső felelős` vagy `Ügyfél kapcsolattartó`), add meg a `Next action` és szükség szerint a `Due date and time` mezőt, majd válaszd a `Save workspace` gombot.
 6. Nyisd meg az `Open project interview` oldalt.
-7. Ellenőrizd a kijelölt kérdéseket, majd válaszd a `Séma közzététele` gombot.
-8. Indítsd el a kört a `Kezdő interjú indítása` gombbal.
+7. Ellenőrizd a kijelölt kérdéseket, majd válaszd a `Séma elfogadása és interjú indítása` gombot. Ez egy műveletként menti a kérdéssémát és indítja el az első interjúkört.
+8. Ha a séma mentése sikerült, de az interjú nem indult el, válaszd az `Interjú indításának újrapróbálása` gombot; a sémát ne hozd létre újra.
 9. Rögzítsd a válaszokat. Szöveges mezőknél várd meg a `Mentve` visszajelzést.
 10. A meeting végén válaszd a `Mentés, később küldöm` vagy a `Mentés és küldés` műveletet. A lezáráshoz nem kell minden üzleti hiányt kitölteni, de függőben lévő vagy hibás mentés nem maradhat.
 11. Küldés előtt olvasd át az ügyfélcsomag előnézetét és ellenőrizd a címzettet. A sikeres küldés változatlan verziót hoz létre.
@@ -472,7 +472,7 @@ A discovery follow-upok és customer follow-up beállítások jelenleg nem rész
 
 *Bal oldalon a projekthez kiválasztott kérdések, jobb oldalon a változatlan körpillanatkép és a szerveren mentett válaszok láthatók.*
 
-### Projektséma közzététele
+### Projektséma elfogadása és az első interjú indítása
 
 **Előfeltétel:** van legalább egy aktív alapkérdés, és nincs nyitott kezdő interjúkör.
 
@@ -482,12 +482,14 @@ Első megnyitáskor a felület minden aktuálisan aktív alapkérdést kijelöl.
 2. Olvasd el az `Aktív alapkérdések kiválasztása` listát.
 3. Hagyd kijelölve az adott projekthez szükséges kérdéseket, a nem relevánsakat vedd ki.
 4. Legalább egy kérdésnek kijelölve kell maradnia.
-5. Első alkalommal válaszd a `Séma közzététele` gombot.
-6. Ellenőrizd a `Közzétett séma v… (bank v…)` visszajelzést.
+5. Első alkalommal válaszd a `Séma elfogadása és interjú indítása` gombot.
+6. Várd meg az `Elfogadott kérdésséma v… (bank v…)` visszajelzést és a folyamatban lévő interjú kérdéskártyáit.
 
 A séma saját verziószáma azt mutatja, hányadik közzétett projektsémát látod. A bankverzió azt jelzi, melyik közös kérdésbankból készült. A két számnak nem kell azonosnak lennie.
 
-Ha nincs aktív alapkérdés, a felület `Nincs aktív alapkérdés` állapotot mutat. Ne indíts interjút. Kérd meg a kijelölt kérdésbank-gazdát, hogy legalább egy megfelelő kérdést aktiváljon, majd töltsd újra az oldalt.
+Az első elfogadás előtt nincs külön kezdőinterjú-kártya vagy kézi körindító gomb. Az elfogadás változatlan projektsémát ment, majd pontosan egy kezdő interjúkört indít. Ha a séma már megmaradt, de a kör indítása megszakadt, a felület csak az `Interjú indításának újrapróbálása` műveletet kínálja; frissítés után is innen folytathatsz.
+
+Ha nincs aktív alapkérdés, a felület `Nincs aktív alapkérdés` állapotot mutat. A projektindítási draft megmarad és később folytatható. Kérd meg a kijelölt kérdésbank-gazdát, hogy legalább egy megfelelő kérdést aktiváljon, majd töltsd újra az oldalt.
 
 ### Projektséma frissítése
 
@@ -501,15 +503,14 @@ A frissítés utódsémát hoz létre. Egy korábbi nyitott vagy lezárt kör k�
 
 Nyitott kör alatt a jelölőnégyzetek és a publikálási gomb le vannak tiltva, és megjelenik: `A séma zárolva van, amíg a nyitott kezdő interjúkör fut.` Előbb fejezd be a mentéseket és zárd le a kört; a kör közben ne próbáld a kérdéslistát megváltoztatni.
 
-### Kezdő interjúkör indítása és folytatása
+### Kezdő interjúkör folytatása
 
 A jelenlegi felület egyetlen körtípust szállít: `INITIAL_INTAKE`, magyarul kezdő interjú. Stakeholder- vagy clarification-kör jelenleg nincs.
 
-**Előfeltétel:** van közzétett projektséma, és nincs másik nyitott kezdő interjúkör.
+Az első kezdő interjúkört a kérdésséma elfogadása automatikusan elindítja.
 
-1. Válaszd a `Kezdő interjú indítása` gombot.
-2. Várd meg a `Nyitott` állapotot és a kérdéskártyákat.
-3. Haladj a kérdéseken a workshop természetes sorrendjében.
+1. Várd meg a `Folyamatban` állapotot és a kérdéskártyákat.
+2. Haladj a kérdéseken a workshop természetes sorrendjében.
 
 Az indítás a projektséma teljes, változatlan pillanatképét másolja a körbe: kérdésszöveg, téma, ellenőrzési pont, típus, opciók, `Required`, `Blocking` és hint. Ezért egy későbbi bank- vagy sémamódosítás a futó körön nem látszik.
 
@@ -1047,7 +1048,7 @@ A Project Maker gyorsan jelez, ha egy kérés nem hajtható végre. A hibaüzene
 | A meeting lezárása nem indítható | A kör nyitott, a mentett válaszok változatlanok | Várd meg a függő mentést vagy próbáld újra a hibás mentést; tartalmi hiány önmagában nem akadály |
 | Az ügyfélcsomag előnézete elavult | Semmi nem ment ki | Töltsd újra az előnézetet a legutóbbi mentett válaszokból, majd erősítsd meg újra a küldést |
 | A küldés állapota `UNKNOWN` | A kézbesítés és a duplikáció kockázata nem ismert | Ellenőrizd a kimenő postafiókot vagy az SMTP-szolgáltatót; csak ezután folytasd a felületen |
-| Nincs közzétett projektséma | Interjúkör nem jön létre | Jelölj ki legalább egy aktív kérdést, válaszd a `Séma közzététele` gombot, majd indítsd a kört |
+| Nincs elfogadott projektséma | Interjúkör nem jön létre | Jelölj ki legalább egy aktív kérdést, majd válaszd a `Séma elfogadása és interjú indítása` gombot |
 | Nincs aktív alapkérdés | A korábbi bankverziók és projektek nem sérülnek | A kijelölt kérdésbank-gazda aktiváljon megfelelő kérdést, majd töltsd újra az interjúoldalt |
 | A séma zárolt | A nyitott kör pillanatképe változatlan marad | Fejezd be és zárd le a nyitott kört; az utódsémát csak utána publikáld |
 | Már van nyitott kezdő kör | A meglévő kör és válaszai megmaradnak | Ne indíts újat. Töltsd újra az interjúoldalt, és folytasd a visszatöltött aktív kört |
