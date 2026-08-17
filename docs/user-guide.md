@@ -575,7 +575,7 @@ Függőben lévő vagy hibás technikai mentésnél a lezáró műveletek letilt
 
 ### Első küldés most vagy később
 
-A lezárás automatikusan létrehozza az 1. verziójú ügyfélcsomag `DRAFT` állapotát. A címzett a projekt megnevezett ügyfél-kapcsolattartója. Előnézet előtt válaszd a dedikált postafiókot, vagy add meg a PO/PM nevét és pontos `@pte.hu` címét; aldomain és hasonló domain nem fogadható el. A legutóbb sikeresen használt feladót a projekt megjegyzi, de minden előnézet előtt szerkeszthető.
+A lezárás automatikusan létrehozza az 1. verziójú ügyfélcsomag `DRAFT` állapotát. A címzett a projekt megnevezett ügyfél-kapcsolattartója. Előnézet előtt válaszd a dedikált postafiókot, vagy add meg a PO/PM pontos `@pte.hu` címét; aldomain és hasonló domain nem fogadható el. A legutóbb sikeresen használt címet a projekt megjegyzi, de minden előnézet előtt szerkeszthető. Az előnézet a garantálható postafiókcímet mutatja; a címzett által látott feladónév a Microsoft 365 címtárából származik.
 
 - `Mentés, később küldöm`: a meeting lezárul, az ügyfélcsomag piszkozat marad, és később ugyanerről az oldalról folytatható.
 - `Mentés és küldés`: a meeting lezárul, majd megnyílik az előnézet. A küldés csak a megerősítés után indul.
@@ -787,7 +787,7 @@ Engedélyezéskor a rendszer ellenőrzi, hogy a levélküldés szervezetileg be 
 
 Az automatikus küldés ugyanazt a mentett piszkozatot és opcionális Discovery follow-up hivatkozást használja, mint a kézi ping. Minden esedékességkor újraolvassa az aktuális ügyfélkapcsolatot, piszkozatot és hivatkozást. Üres piszkozat vagy időközben lezárt hivatkozás mellett nem küld levelet.
 
-Ha az esedékességkor a piszkozat vagy a hivatkozás már nem érvényes, az automatikus ütemezés bekapcsolva marad, de a `Next ping` átmenetileg `Not scheduled` lesz, és megjelenik az `Az automatikus ügyfél-ping szünetel` figyelmeztetés. Javítsd vagy távolítsd el a hivatkozást, majd mentsd újra az érvényes piszkozatot; ezzel a rendszer új időpontot ütemez. Ilyenkor nem történt SMTP-kísérlet.
+Ha az esedékességkor a piszkozat vagy a hivatkozás már nem érvényes, az automatikus ütemezés bekapcsolva marad, de a `Next ping` átmenetileg `Not scheduled` lesz, és megjelenik az `Az automatikus ügyfél-ping szünetel` figyelmeztetés. Javítsd vagy távolítsd el a hivatkozást, majd mentsd újra az érvényes piszkozatot; ezzel a rendszer új időpontot ütemez. Ilyenkor nem történt levélküldési kísérlet.
 
 ### A follow-up állapot értelmezése
 
@@ -803,26 +803,26 @@ Ha az esedékességkor a piszkozat vagy a hivatkozás már nem érvényes, az au
 
 A `SENT` azt igazolja, hogy a levelezési szolgáltatás elfogadta a küldést. Nem bizonyítja, hogy a címzett elolvasta, jóváhagyta vagy válaszolt rá.
 
-Ismert SMTP-elutasításkor a próbálkozás `FAILED`, a következő automatikus időpont pedig a beállított cadence szerint megmarad. A hibás próbálkozás külön kézzel is újrapróbálható. Bizonytalan SMTP-kimenetnél az attempt `UNKNOWN`, és az automatikus ütemezés szünetel: előbb ellenőrizd a kimenő postafiókot, majd csak az explicit kockázatelfogadással indított újrapróbálás sikeres befejezése ütemezi a következő pinget.
+Ismert Microsoft Graph-elutasításkor a próbálkozás `FAILED`, a következő automatikus időpont pedig a beállított cadence szerint megmarad. A hibás próbálkozás külön kézzel is újrapróbálható. Bizonytalan kimenetnél az attempt `UNKNOWN`, és az automatikus ütemezés szünetel: előbb ellenőrizd a kimenő postafiókot, majd csak az explicit kockázatelfogadással indított újrapróbálás sikeres befejezése ütemezi a következő pinget.
 
 Lejárat után az automatikus feldolgozás kikapcsolja az ütemezést és törli a következő ping időpontját. Archivált projekthez nem küld automatikus levelet; amikor az ütemező a következő esedékes tételt feldolgozza, az archivált projekt ütemezését is kikapcsolja.
 
 ### Egyetlen kézi emlékeztető küldése
 
-> **Külső hatás — küldés előtt ellenőrizd:** a `Küldés az ügyfélnek` valódi SMTP-levelet indít a pontos előnézetben mutatott címzettnek. Ha a címzett vagy a tartalom hibás, válaszd a `Mégse` gombot.
+> **Külső hatás — küldés előtt ellenőrizd:** a `Küldés az ügyfélnek` valódi Microsoft 365 levelet indít az előnézetben mutatott postafiókból a mutatott címzettnek. A címzett által látott feladónév a Microsoft 365 címtárából származik. Ha bármelyik garantált adat hibás, válaszd a `Mégse` gombot.
 
 A kézi ping akkor is használható, ha az automatikus ütemezés `Disabled`. A piszkozat kötelező, a kapcsolódó nyitott Discovery follow-up opcionális. A levélbe csak a megírt üzenet, valamint választás esetén a kérdés, a következő lépés és a határidő kerül. A felelős, kategória, válasz/döntés, forráshivatkozás, azonosítók, auditadatok, Markdown és Claude-instrukciók kimaradnak. A piszkozat környező szóközeit a szerver levágja; a mentett tartalom nem lehet üres és legfeljebb 10 000 karakteres.
 
 1. Írd meg az `Üzenet az ügyfélnek` mezőt, és szükség esetén válassz egy nyitott Discovery follow-upot.
 2. Válaszd a `Piszkozat mentése` gombot. Ha közben más mentett, a saját szöveged megmarad; csak az `Aktuális piszkozat újratöltése` írja felül. A ping-piszkozat és az automatikus cadence külön űrlap: az egyik mentése nem dobja el a másik még nem mentett módosítását.
-3. Válaszd a `Pontos előnézet` gombot.
-4. Ellenőrizd a címzettet, a tárgyat és a teljes levélszöveget.
+3. Válaszd a dedikált postafiókot, vagy add meg a feladó pontos `@pte.hu` címét. A projekt a legutóbb sikeresen használt címet megjegyzi.
+4. Válaszd a `Pontos előnézet` gombot, majd ellenőrizd a feladó postafiókcímét, a címzettet, a tárgyat és a teljes levélszöveget.
 5. A `Mégse` visszavisz az előnézetet megnyitó gombra. A `Küldés az ügyfélnek` egyszer használható előnézeti tokennel indítja a levelet.
-6. Várd meg a `Ping elküldve az ügyfélnek.` sikerüzenetet, majd ellenőrizd a `Last ping`, `Last delivery` és az audit history értékét.
+6. Várd meg az `Átadva a levelezőrendszernek.` sikerüzenetet, majd ellenőrizd a `Last ping`, `Last delivery` és az audit history értékét. Ez a Graph-elfogadást bizonyítja, nem a kézbesítést vagy az olvasást.
 
-Ha az előnézet óta megváltozik a címzett, a piszkozat vagy a hivatkozott follow-up, a küldés konfliktussal leáll. Töltsd újra az aktuális állapotot, mentsd újra a szándékos módosítást, és készíts új előnézetet. Sikertelen SMTP-küldéskor `FAILED` állapot, biztonságos hibakód és redaktált audit-esemény marad; az audit nem tartalmazza a címzettet vagy a levél szövegét. A hibás attempt oldalfrissítés után is látható. A `Küldés újrapróbálása` külön megerősítést kér, majd az aktuális címzettet, draftverziót és hivatkozást újra ellenőrzi; módosult forrásból nem küld automatikusan.
+Ha az előnézet óta megváltozik a feladó, a címzett, a piszkozat vagy a hivatkozott follow-up, a küldés konfliktussal leáll. Töltsd újra az aktuális állapotot, mentsd újra a szándékos módosítást, és készíts új előnézetet. Sikertelen Graph-küldéskor `FAILED` állapot, biztonságos hibakód és redaktált audit-esemény marad; az audit nem tartalmazza a címzettet vagy a levél szövegét. Ugyanazon logikai ping újrapróbálása megtartja az immutable outbound kommunikációt, a correspondence-et és a Reply-To azonosságát; egy későbbi új ping új azonosságokat kap.
 
-Amíg egy kézi attempt `SENDING`, a cockpit más módosításai letiltva maradnak. A felület rövid időközönként újraolvassa ezt az állapotot, ezért a bizonyított siker, hiba vagy a 15 perces lease lejárata oldalfrissítés nélkül feloldja a zárolást. Ha az SMTP-kapcsolat a levél átadása után úgy szakad meg, hogy az elfogadás nem bizonyítható, vagy a lease lejár, a rendszer `UNKNOWN` állapotot őriz meg. Ellenőrizd a kimenő postafiókot. Változatlan piszkozatnál csak ezután válaszd az `Ellenőriztem, újraküldöm`, majd a `Kockázat elfogadása és újraküldés` műveletet. Ha közben szándékosan módosítottad a piszkozatot, mentsd el, készíts friss előnézetet, majd azon válaszd a `Kockázat elfogadása és friss küldés` műveletet. Mindkét elfogadás a felületen látható, és az adott bizonytalan attempt azonosítójához kötődik; a rendszer nem tölti ki csendben.
+Amíg egy kézi attempt `SENDING`, a cockpit más módosításai letiltva maradnak. A felület rövid időközönként újraolvassa ezt az állapotot, ezért a bizonyított siker, hiba vagy a 15 perces lease lejárata oldalfrissítés nélkül feloldja a zárolást. Ha a Graph-kérés eredménye a levél átadása után nem bizonyítható, vagy a lease lejár, a rendszer `UNKNOWN` állapotot őriz meg. Ellenőrizd a kimenő postafiókot. Változatlan piszkozatnál csak ezután válaszd az `Ellenőriztem, újraküldöm`, majd a `Kockázat elfogadása és újraküldés` műveletet. Ha közben szándékosan módosítottad a piszkozatot, mentsd el, készíts friss előnézetet, majd azon válaszd a `Kockázat elfogadása és friss küldés` műveletet. Mindkét elfogadás a felületen látható, és az adott bizonytalan attempt azonosítójához kötődik; a rendszer nem tölti ki csendben.
 
 Archivált projektben a mentett ping olvasható marad, de a szerkesztés, előnézet és küldés letiltott. Ha a munka valóban újraindult, előbb állítsd vissza a projektet, ellenőrizd a címzettet és a hivatkozott follow-up nyitott állapotát, majd készíts friss előnézetet.
 
@@ -1051,7 +1051,7 @@ A Project Maker gyorsan jelez, ha egy kérés nem hajtható végre. A hibaüzene
 | `Nem sikerült menteni…` egy interjúválasznál | A sikertelen helyi piszkozat látható marad, a korábbi mentett válasz nem sérül | Ellenőrizd a piszkozatot, majd válaszd a `Mentés újrapróbálása` gombot |
 | A meeting lezárása nem indítható | A kör nyitott, a mentett válaszok változatlanok | Várd meg a függő mentést vagy próbáld újra a hibás mentést; tartalmi hiány önmagában nem akadály |
 | Az ügyfélcsomag előnézete elavult | Semmi nem ment ki | Töltsd újra az előnézetet a legutóbbi mentett válaszokból, majd erősítsd meg újra a küldést |
-| A küldés állapota `UNKNOWN` | A kézbesítés és a duplikáció kockázata nem ismert | Ellenőrizd a kimenő postafiókot vagy az SMTP-szolgáltatót; csak ezután folytasd a felületen |
+| A küldés állapota `UNKNOWN` | A kézbesítés és a duplikáció kockázata nem ismert | Ellenőrizd a Microsoft 365 kimenő postafiókot; csak ezután folytasd a felületen |
 | Nincs elfogadott projektséma | Interjúkör nem jön létre | Jelölj ki legalább egy aktív kérdést, majd válaszd a `Séma elfogadása és interjú indítása` gombot |
 | Nincs aktív alapkérdés | A korábbi bankverziók és projektek nem sérülnek | A kijelölt kérdésbank-gazda aktiváljon megfelelő kérdést, majd töltsd újra az interjúoldalt |
 | A séma zárolt | A nyitott kör pillanatképe változatlan marad | Fejezd be és zárd le a nyitott kört; az utódsémát csak utána publikáld |

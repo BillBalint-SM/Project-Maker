@@ -99,7 +99,6 @@ describe('Graph customer mail boundary', () => {
 
     const result = await boundary.submit({
       senderAddress: 'po.peter@pte.hu',
-      senderName: 'PO Péter',
       recipientAddress: 'customer@example.test',
       replyToAddress: 'project-maker+opaque-token@pte.hu',
       subject: 'Kérdésséma',

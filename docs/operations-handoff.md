@@ -59,7 +59,7 @@ do not commit `.env` or real credentials.
 | `WEB_PORT` | yes | Host port mapped to Nginx port `8080`. |
 | `CORS_ORIGIN` | yes | One exact browser origin, for example `http://localhost:8080`; paths, wildcards, credentials, and origin lists are rejected. |
 | `FOLLOW_UP_POLL_INTERVAL_MS` | no | Automatic follow-up poll interval. Valid range is 5,000–86,400,000 ms; default is 60,000. |
-| `CUSTOMER_MAILBOX_NAME` / `CUSTOMER_MAILBOX_ADDRESS` | yes | Dedicated Microsoft 365 mailbox. Reply correlation uses high-entropy plus-addresses at this mailbox. |
+| `CUSTOMER_MAILBOX_ADDRESS` | yes | Dedicated Microsoft 365 mailbox. Reply correlation uses high-entropy plus-addresses at this mailbox; the recipient-visible display name comes from the Microsoft 365 directory. |
 | `GRAPH_TENANT_ID` / `GRAPH_CLIENT_ID` | yes | Microsoft Graph application identity. |
 | `GRAPH_CLIENT_CERTIFICATE_THUMBPRINT` / `GRAPH_CLIENT_PRIVATE_KEY_BASE64` | yes | Certificate credential registered for the application. Supply the SHA-1 thumbprint as exactly 40 hexadecimal characters without separators. Inject the base64-encoded PEM private key only through deployment secrets; never commit or log it. |
 | `GRAPH_BASE_URL` | no | Graph API base URL; defaults to `https://graph.microsoft.com`. |
@@ -336,9 +336,14 @@ These are intentionally separate flows:
   open Discovery follow-up from the same project. Manual send requires a
   15-minute, single-use preview token whose fingerprint binds the recipient,
   normalized draft, draft version, and referenced follow-up version/status.
-  The manual delivery claim also has a 15-minute lease. Each claim is committed
-  before SMTP I/O and finalized in a separate transaction. Explicit SMTP
-  rejection becomes `FAILED`; a transport loss after the DATA boundary becomes
+  Before preview the employee selects the dedicated mailbox or another mailbox
+  at the exact `@pte.hu` domain. The preview fingerprints and displays the
+  mailbox address; Microsoft 365 supplies the recipient-visible display name.
+  The manual delivery claim also has a 15-minute lease. Each new logical ping
+  creates one immutable outbound communication, tokenized central Reply-To and
+  Customer correspondence before Microsoft Graph I/O, then finalizes in a
+  separate transaction. Explicit Graph rejection becomes `FAILED`; an
+  indeterminate provider result becomes
   `UNKNOWN`. Both terminal recovery states survive reload. `FAILED` can be
   retried only by an explicit retry command. `UNKNOWN` requires the exact
   attempt ID and a request-local duplicate-risk acknowledgement after external
@@ -354,14 +359,14 @@ These are intentionally separate flows:
   category, answer, source linkage, identifiers, or audit content. The due-state
   worker re-reads the current recipient, draft, and optional reference. It claims
   one due item in a short PostgreSQL transaction by persisting `SENDING` and
-  clearing `nextPingAt`, then performs SMTP outside the transaction and finalizes
+  clearing `nextPingAt`, then performs Graph submission outside the transaction and finalizes
   in a separate transaction. This provides one durable owner across workers
   without holding a database lock during network I/O. A successful scheduled
-  attempt advances cadence from the worker's controlled clock. A known SMTP
+  attempt advances cadence from the worker's controlled clock. A known Graph
   rejection becomes `FAILED` and retains the next cadence; `UNKNOWN` clears the
   next due time and requires the same explicit, request-specific duplicate-risk
   recovery as a manual attempt. A due draft/reference validation conflict pauses
-  the enabled schedule with no SMTP attempt; saving a valid draft schedules the
+  the enabled schedule with no mail attempt; saving a valid draft schedules the
   next cadence unless an `UNKNOWN` attempt still requires recovery. Expiry and
   archive disable and unschedule the state before transport. Audit metadata
   remains redacted.
@@ -374,11 +379,13 @@ Relevant API routes:
 
 ```text
 GET   /api/projects/{projectId}/follow-up
+GET   /api/projects/{projectId}/follow-up/sender-options
 PATCH /api/projects/{projectId}/follow-up
 PATCH /api/projects/{projectId}/follow-up/draft
 GET   /api/projects/{projectId}/follow-up/reference-options
 POST  /api/projects/{projectId}/follow-up/ping/preview
 POST  /api/projects/{projectId}/follow-up/ping
+POST  /api/projects/{projectId}/follow-up/ping/retry
 GET   /api/projects/{projectId}/rounds/{roundId}/customer-handoffs
 POST  /api/projects/{projectId}/rounds/{roundId}/customer-handoffs
 PUT   /api/projects/{projectId}/rounds/{roundId}/customer-handoffs/{handoffId}/draft
@@ -477,9 +484,9 @@ contracts runtime import, starts PostgreSQL and the migration-gated API, and
 invokes the canonical discovery/readiness consumers. OUTPUT-01 closeout also
 proves in the built image that the published Default template can generate a
 canonical revision with immutable template provenance. Markdown download and
-SMTP failure/delivery behavior remain endpoint/integration checks; a local
-  SMTP-capture container can verify interview handoff, manual review, manual
-  ping, and due-timer delivery without using production credentials.
+Microsoft Graph failure/acceptance behavior remains an endpoint/integration
+check; the controlled local Graph fake verifies handoff and ping submission
+without production credentials.
 
 The declared SCORE-01.1 browser evidence is:
 
@@ -518,10 +525,7 @@ The following are deliberately not hidden in this handoff:
 
 - authentication, authorization, and request rate limiting before exposure
   beyond the internal/VPN boundary;
-- an outbox/idempotency model so SMTP I/O is not coupled to a database
-  transaction;
 - provider message identifiers or delivery receipts for resolving an `UNKNOWN`
   interview-handoff attempt without operator evidence;
-- STARTTLS support and provider-specific SMTP compatibility;
 - OUTPUT-02 and OUTPUT-03 acceptance-criteria/user-story derivation and PDF/spreadsheet exports;
 - backup retention/rotation and a restore drill owned by the deployment team.

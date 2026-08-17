@@ -94,7 +94,12 @@ const graphServer = createServer((request, response) => {
         response.writeHead(400, { 'content-type': 'application/json' }).end('{}');
         return;
       }
-      graphMessages.push(JSON.parse(body));
+      const graphMessage = JSON.parse(body);
+      const senderSegment = request.url?.match(/\/users\/([^/]+)\/sendMail$/)?.[1];
+      graphMessages.push({
+        ...graphMessage,
+        __senderAddress: senderSegment ? decodeURIComponent(senderSegment) : null,
+      });
       response.writeHead(202).end();
     });
     return;
@@ -120,7 +125,6 @@ const apiProcess = spawnPnpm(
       ...process.env,
       CORS_ORIGIN: process.env.CORS_ORIGIN ?? 'http://127.0.0.1:4200',
       CUSTOMER_MAILBOX_ADDRESS: process.env.CUSTOMER_MAILBOX_ADDRESS ?? 'project-maker@pte.hu',
-      CUSTOMER_MAILBOX_NAME: process.env.CUSTOMER_MAILBOX_NAME ?? 'Project Maker',
       GRAPH_BASE_URL: `http://127.0.0.1:${graphPort}`,
       GRAPH_LOGIN_BASE_URL: `http://127.0.0.1:${graphPort}`,
       GRAPH_TENANT_ID: 'playwright-tenant',

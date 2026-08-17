@@ -13,14 +13,11 @@ export type OutboundSenderMode = (typeof outboundSenderModes)[number];
 
 export interface InterviewHandoffSenderSelection {
   readonly mode: OutboundSenderMode;
-  readonly name?: string;
   readonly address?: string;
 }
 
 export interface InterviewHandoffSenderOptions {
-  readonly dedicatedName: string;
   readonly dedicatedAddress: string;
-  readonly lastUsedName: string | null;
   readonly lastUsedAddress: string | null;
 }
 
@@ -34,7 +31,6 @@ export interface InterviewCustomerHandoffSummary {
   readonly supersedesHandoffId: string | null;
   readonly recipientName: string | null;
   readonly recipientEmail: string | null;
-  readonly senderName: string | null;
   readonly senderAddress: string | null;
   readonly createdAt: string;
   readonly attemptedAt: string | null;
@@ -59,7 +55,6 @@ export interface InterviewCustomerHandoffPreview {
   readonly version: number;
   readonly recipientName: string;
   readonly recipientEmail: string;
-  readonly senderName: string;
   readonly senderAddress: string;
   readonly subject: string;
   readonly htmlContent: string;
@@ -75,7 +70,6 @@ export interface UpdateInterviewCustomerHandoffDraftInput {
 export interface SendInterviewCustomerHandoffInput {
   readonly sourceContentVersion: number;
   readonly previewDigest: string;
-  readonly senderName: string;
   readonly senderAddress: string;
 }
 
