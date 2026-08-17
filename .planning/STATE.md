@@ -76,9 +76,11 @@ delivery change; no future merge identity is predicted here.
   action is assigned by role to that concrete person or to the named customer
   contact; free-form `Ball owner` is no longer product language.
 - Customer communication: versioned interview handoffs and configurable,
-  authored, previewed customer follow-up ping delivery exist. Manual ping
-  attempts are durable across reload, globally single-flight, and recover only
-  by explicit `FAILED` retry or request-specific acknowledged `UNKNOWN` retry.
+  authored, previewed customer follow-up ping delivery exist. Manual and
+  PostgreSQL-coordinated scheduled ping attempts are durable across reload;
+  scheduled claims commit before SMTP and revalidate current delivery inputs.
+  Recovery occurs only by explicit `FAILED` retry or request-specific
+  acknowledged `UNKNOWN` retry, and uncertain delivery pauses the cadence.
   Customer SMTP is separate from Claude Markdown and from `INTAKE-04`
   operational follow-up management.
 - Web intake UX: the interview page resumes the server active round, autosaves

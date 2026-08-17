@@ -785,7 +785,9 @@ Ha bekapcsolod az automatikát, a következő ping a mentés időpontjától sz�
 
 Engedélyezéskor a rendszer ellenőrzi, hogy a levélküldés szervezetileg be van-e állítva. Ha nincs, a mentés hibával leáll, és az előző beállítás marad érvényes. Ilyenkor ne próbálkozz másik címzettel vagy ismételt kattintással; kérd az üzemeltetőt a levélküldés beállításának ellenőrzésére.
 
-Az automatikus küldés ugyanazt a mentett piszkozatot és opcionális Discovery follow-up hivatkozást használja, mint a kézi ping. Üres vagy időközben lezárt hivatkozás mellett az ütemezés nem küld levelet.
+Az automatikus küldés ugyanazt a mentett piszkozatot és opcionális Discovery follow-up hivatkozást használja, mint a kézi ping. Minden esedékességkor újraolvassa az aktuális ügyfélkapcsolatot, piszkozatot és hivatkozást. Üres piszkozat vagy időközben lezárt hivatkozás mellett nem küld levelet.
+
+Ha az esedékességkor a piszkozat vagy a hivatkozás már nem érvényes, az automatikus ütemezés bekapcsolva marad, de a `Next ping` átmenetileg `Not scheduled` lesz, és megjelenik az `Az automatikus ügyfél-ping szünetel` figyelmeztetés. Javítsd vagy távolítsd el a hivatkozást, majd mentsd újra az érvényes piszkozatot; ezzel a rendszer új időpontot ütemez. Ilyenkor nem történt SMTP-kísérlet.
 
 ### A follow-up állapot értelmezése
 
@@ -800,6 +802,8 @@ Az automatikus küldés ugyanazt a mentett piszkozatot és opcionális Discovery
 | `Delivery error` | Biztonságos hibakód, például `SMTP_SEND_FAILED`; nem tartalmaz levél- vagy hitelesítési titkot |
 
 A `SENT` azt igazolja, hogy a levelezési szolgáltatás elfogadta a küldést. Nem bizonyítja, hogy a címzett elolvasta, jóváhagyta vagy válaszolt rá.
+
+Ismert SMTP-elutasításkor a próbálkozás `FAILED`, a következő automatikus időpont pedig a beállított cadence szerint megmarad. A hibás próbálkozás külön kézzel is újrapróbálható. Bizonytalan SMTP-kimenetnél az attempt `UNKNOWN`, és az automatikus ütemezés szünetel: előbb ellenőrizd a kimenő postafiókot, majd csak az explicit kockázatelfogadással indított újrapróbálás sikeres befejezése ütemezi a következő pinget.
 
 Lejárat után az automatikus feldolgozás kikapcsolja az ütemezést és törli a következő ping időpontját. Archivált projekthez nem küld automatikus levelet; amikor az ütemező a következő esedékes tételt feldolgozza, az archivált projekt ütemezését is kikapcsolja.
 

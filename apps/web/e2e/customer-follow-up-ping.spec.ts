@@ -158,6 +158,67 @@ test('preserves unsaved ping and cadence edits when the other form is saved', as
   await expect(intervalInput).toHaveValue('2880');
 });
 
+test('requires a saved valid draft before automatic scheduling can be enabled', async ({
+  page,
+  request,
+}) => {
+  const project = await createProject(request, 'schedule-prerequisite');
+  await page.goto(`/projects/${project.id}`);
+
+  await page.getByTestId('follow-up-enabled-input').check();
+  await nativeButton(page, 'save-follow-up-settings-button').click();
+
+  await expect(page.getByTestId('follow-up-action-error')).toContainText(
+    'Előbb ments egy nem üres Customer follow-up ping üzenetet.',
+  );
+  await expect(page.getByTestId('follow-up-enabled-value')).toContainText('Disabled');
+});
+
+test('shows a validation-paused schedule and resumes it after a valid draft save', async ({
+  page,
+  request,
+}) => {
+  const project = await createProject(request, 'schedule-validation-pause');
+  const reference = await apiJson<{ id: string }>(
+    request,
+    'POST',
+    `/projects/${project.id}/discovery-follow-ups`,
+    {
+      category: 'BUSINESS',
+      question: 'Melyik döntésre várunk?',
+      owner: 'Belső Tulajdonos',
+      dueDate: '2026-09-15',
+      nextStep: 'Az ügyfél megerősíti a döntést.',
+    },
+  );
+  await apiJson(request, 'PATCH', `/projects/${project.id}/follow-up/draft`, {
+    messageDraft: 'Kérlek, jelezd a döntés állapotát.',
+    referencedFollowUpId: reference.id,
+    expectedVersion: 1,
+  });
+  await apiJson(request, 'PATCH', `/projects/${project.id}/follow-up`, {
+    enabled: true,
+    intervalMinutes: 60,
+  });
+  await apiJson(
+    request,
+    'POST',
+    `/projects/${project.id}/discovery-follow-ups/${reference.id}/resolve`,
+    { status: 'Megválaszolva', decisionOrAnswer: 'A döntés megérkezett.' },
+  );
+  await pauseCustomerSchedule(project.id);
+
+  await page.goto(`/projects/${project.id}`);
+  await expect(page.getByTestId('follow-up-schedule-validation-pause')).toContainText(
+    'Az automatikus ügyfél-ping szünetel',
+  );
+  await page.getByTestId('follow-up-reference-select').selectOption('');
+  await nativeButton(page, 'save-follow-up-draft-button').click();
+
+  await expect(page.getByTestId('follow-up-schedule-validation-pause')).toBeHidden();
+  await expect(page.getByTestId('follow-up-next-ping-at-value')).not.toContainText('Not scheduled');
+});
+
 test('requires an explicit duplicate-risk acknowledgement after an expired delivery lease', async ({
   page,
   request,
@@ -500,4 +561,19 @@ async function expireCustomerPingAttempt(attemptId: string): Promise<void> {
 async function graphMessageCount(request: APIRequestContext): Promise<number> {
   const response = await request.get(`${graphFakeUrl}/__test/messages`);
   return ((await response.json()) as unknown[]).length;
+}
+
+async function pauseCustomerSchedule(projectId: string): Promise<void> {
+  const databaseUrl = process.env.DATABASE_URL;
+  if (!databaseUrl) throw new Error('DATABASE_URL is required for the schedule pause fixture.');
+  const client = new Client({ connectionString: databaseUrl });
+  try {
+    await client.connect();
+    await client.query(
+      'UPDATE customer_follow_ups SET next_ping_at = NULL WHERE project_id = $1 AND enabled = true',
+      [projectId],
+    );
+  } finally {
+    await client.end();
+  }
 }

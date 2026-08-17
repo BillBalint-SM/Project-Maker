@@ -74,6 +74,13 @@
     </section>
   }
 
+  @if (scheduleValidationPaused()) {
+    <section class="follow-up-recovery follow-up-recovery--warning" data-testid="follow-up-schedule-validation-pause">
+      <h3>Az automatikus ügyfél-ping szünetel</h3>
+      <p>A mentett piszkozat vagy a kapcsolódó Discovery follow-up már nem érvényes. Frissítsd és mentsd a piszkozatot az újraütemezéshez.</p>
+    </section>
+  }
+
   @if (retryConfirmation(); as attempt) {
     <section
       class="follow-up-preview"
