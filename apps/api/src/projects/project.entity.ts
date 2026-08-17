@@ -33,6 +33,12 @@ export class Project {
   @Column({ name: 'internal_owner_name', type: 'varchar', length: 255, nullable: true })
   internalOwnerName!: string | null;
 
+  @Column({ name: 'last_customer_sender_name', type: 'varchar', length: 255, nullable: true })
+  lastCustomerSenderName!: string | null;
+
+  @Column({ name: 'last_customer_sender_address', type: 'varchar', length: 320, nullable: true })
+  lastCustomerSenderAddress!: string | null;
+
   @Column({
     name: 'next_action_owner_role',
     type: 'varchar',

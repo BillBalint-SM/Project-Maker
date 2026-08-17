@@ -98,16 +98,22 @@ describe('Graph customer mail boundary', () => {
     const boundary = new GraphCustomerMailBoundary(client);
 
     const result = await boundary.submit({
+      senderAddress: 'po.peter@pte.hu',
+      senderName: 'PO Péter',
       recipientAddress: 'customer@example.test',
+      replyToAddress: 'project-maker+opaque-token@pte.hu',
       subject: 'Kérdésséma',
       textContent: 'Tartalom',
     });
 
     assert.deepEqual(result, { acceptance: 'ACCEPTED', messageReference: 'graph-message-1' });
     assert.deepEqual(client.submitted, [{
+      senderAddress: 'po.peter@pte.hu',
       toRecipients: [{ emailAddress: { address: 'customer@example.test' } }],
+      replyTo: [{ emailAddress: { address: 'project-maker+opaque-token@pte.hu' } }],
       subject: 'Kérdésséma',
       body: { contentType: 'Text', content: 'Tartalom' },
+      saveToSentItems: true,
     }]);
   });
 
@@ -124,7 +130,9 @@ describe('Graph customer mail boundary', () => {
     const boundary = new GraphCustomerMailBoundary(client);
 
     const result = await boundary.submit({
+      senderAddress: 'project-maker@pte.hu',
       recipientAddress: 'customer@example.test',
+      replyToAddress: 'project-maker+token@pte.hu',
       subject: 'Kérdésséma',
       textContent: 'Tartalom',
     });
@@ -210,7 +218,7 @@ describe('Graph customer mail boundary', () => {
     for (const [providerCode, expectedCode] of cases) {
       client.submitFailure = new GraphMailClientError(providerCode, 'secret-token customer@example.test raw-response');
       await assert.rejects(
-        boundary.submit({ recipientAddress: 'customer@example.test', subject: 'S', textContent: 'secret body' }),
+        boundary.submit({ senderAddress: 'project-maker@pte.hu', recipientAddress: 'customer@example.test', replyToAddress: 'project-maker+token@pte.hu', subject: 'S', textContent: 'secret body' }),
         (error: unknown) => isSafeBoundaryError(error, expectedCode),
       );
     }
