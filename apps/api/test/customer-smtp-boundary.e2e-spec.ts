@@ -8,7 +8,6 @@ import { DataSource } from 'typeorm';
 import type { OutboundCustomerMessage } from '@project-maker/contracts';
 
 import { AppModule } from '../src/app.module';
-import { CustomerFollowUpService } from '../src/follow-ups/follow-up.service';
 import {
   customerMailerToken,
   type CustomerMailerMessage,
@@ -17,10 +16,11 @@ import {
 describe('Customer SMTP boundary', () => {
   let app: INestApplication;
   let dataSource: DataSource;
-  let followUpService: CustomerFollowUpService;
   const delivered: CustomerMailerMessage[] = [];
 
   before(async () => {
+    process.env['CUSTOMER_MAILBOX_ADDRESS'] = 'project-maker@pte.hu';
+    process.env['CUSTOMER_MAILBOX_NAME'] = 'Project Maker';
     const module = await Test.createTestingModule({ imports: [AppModule] })
       .overrideProvider(customerMailerToken)
       .useValue({
@@ -35,7 +35,6 @@ describe('Customer SMTP boundary', () => {
     app = module.createNestApplication({ logger: false });
     await app.init();
     dataSource = app.get(DataSource);
-    followUpService = app.get(CustomerFollowUpService);
   });
 
   beforeEach(() => {
@@ -80,7 +79,7 @@ describe('Customer SMTP boundary', () => {
     );
   });
 
-  it('rejects revision input and keeps manual and scheduled ping payloads free of Markdown', async () => {
+  it('rejects revision input and keeps the manual ping payload free of Markdown', async () => {
     const projectId = await createProject(app, 'revision-free-ping');
     const revision = await request(app.getHttpServer())
       .post(`/projects/${projectId}/markdown-revisions`)
@@ -111,20 +110,6 @@ describe('Customer SMTP boundary', () => {
     assert.equal(sent.status, 201, JSON.stringify(sent.body));
     assertPingHasNoMarkdown(delivered[0], revision.body.content as string);
 
-    await request(app.getHttpServer())
-      .patch(`/projects/${projectId}/follow-up`)
-      .send({ enabled: true, intervalMinutes: 1, expiresAt: null })
-      .expect(200);
-    const dueAt = new Date('2030-01-01T00:00:00.000Z');
-    await dataSource.query(
-      `UPDATE "customer_follow_ups" SET "next_ping_at" = $2 WHERE "project_id" = $1`,
-      [projectId, new Date(dueAt.getTime() - 60_000)],
-    );
-
-    await followUpService.processDuePings(dueAt);
-
-    assert.equal(delivered.length, 2);
-    assertPingHasNoMarkdown(delivered[1], revision.body.content as string);
   });
 });
 

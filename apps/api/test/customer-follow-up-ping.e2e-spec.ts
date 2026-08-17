@@ -1114,6 +1114,8 @@ describe('Customer follow-up ping draft and manual delivery', () => {
     assert.match(submitted[0]?.replyToAddress ?? '', /^project-maker\+.+@pte\.hu$/);
     assert.match(delivered[0].text, /Kérlek, erősítsd meg a döntést\./);
     assert.match(delivered[0].text, /Kérdés: Melyik döntést kell megerősíteni\?/);
+    assert.doesNotMatch(delivered[0].text, /\.md\b|Markdown|Claude Code|execution-plan revision/i);
+    assert.equal(submitted[0]?.htmlContent, undefined);
     const attempts = await dataSource.query<Array<{ state: string }>>(
       'SELECT state FROM customer_follow_up_delivery_attempts WHERE project_id = $1',
       [projectId],

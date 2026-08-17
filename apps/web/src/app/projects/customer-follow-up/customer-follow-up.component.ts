@@ -15,6 +15,7 @@ import {
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormControl, FormGroup, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 import { RouterLink } from '@angular/router';
+import { exactPteCustomerSenderAddressPattern } from '@project-maker/contracts/customer-mail';
 import type {
   CustomerFollowUpPingPreview,
   CustomerFollowUpManualAttempt,
@@ -305,7 +306,7 @@ export class CustomerFollowUpComponent implements OnInit {
   senderIsValid(): boolean {
     return this.senderMode === 'DEDICATED'
       || (this.senderName.trim().length > 0
-        && /^[^@\s]+@pte\.hu$/i.test(this.senderAddress.trim()));
+        && exactPteCustomerSenderAddressPattern.test(this.senderAddress.trim()));
   }
 
   sendPing(acknowledgeDuplicateRisk = false): void {

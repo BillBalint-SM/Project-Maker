@@ -25,6 +25,11 @@
       "import": "./dist/markdown-templates.js",
       "require": "./dist/runtime-cjs/markdown-templates.js"
     },
+    "./customer-mail": {
+      "types": "./dist/customer-mail.d.ts",
+      "import": "./dist/customer-mail.js",
+      "require": "./dist/runtime-cjs/customer-mail.js"
+    },
     "./general-playbook-runtime": {
       "types": "./dist/general-playbook-runtime.d.ts",
       "import": "./dist/general-playbook-runtime.js",

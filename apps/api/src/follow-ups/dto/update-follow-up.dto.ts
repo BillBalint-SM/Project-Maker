@@ -14,6 +14,7 @@ import {
   Min,
   ValidateIf,
 } from 'class-validator';
+import { exactPteCustomerSenderAddressPattern } from '@project-maker/contracts/customer-mail';
 
 const utcIsoDatePattern = /Z$/;
 
@@ -75,7 +76,7 @@ export class PreviewFollowUpPingDto {
   @IsString()
   @Length(1, 320)
   @IsEmail()
-  @Matches(/^[^@\s]+@pte\.hu$/i)
+  @Matches(exactPteCustomerSenderAddressPattern)
   senderAddress?: string;
 }
 
