@@ -125,6 +125,12 @@ export class CustomerFollowUpApiService {
       statusText: error.statusText,
     });
     if (error.status === 409) {
+      if (code === 'FOLLOW_UP_DRAFT_REQUIRED') {
+        return throwError(() => new CustomerFollowUpApiError(
+          'Előbb ments egy nem üres Customer follow-up ping üzenetet.',
+          code,
+        ));
+      }
       return throwError(() =>
         new CustomerFollowUpApiError(
           `Nem sikerült ${action}, mert az állapot időközben megváltozott. Töltsd újra az aktuális piszkozatot.`,
