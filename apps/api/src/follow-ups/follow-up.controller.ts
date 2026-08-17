@@ -1,8 +1,15 @@
 import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post } from '@nestjs/common';
-import type { CustomerFollowUpState } from '@project-maker/contracts';
+import type {
+  CustomerFollowUpReferenceOption,
+  CustomerFollowUpPingDelivery,
+  CustomerFollowUpPingPreview,
+  CustomerFollowUpState,
+} from '@project-maker/contracts';
 
 import {
   SendFollowUpPingDto,
+  PreviewFollowUpPingDto,
+  UpdateFollowUpDraftDto,
   UpdateFollowUpDto,
 } from './dto/update-follow-up.dto';
 import { CustomerFollowUpService } from './follow-up.service';
@@ -26,11 +33,34 @@ export class CustomerFollowUpController {
     return this.customerFollowUpService.update(projectId, input);
   }
 
+  @Get('follow-up/reference-options')
+  listReferenceOptions(
+    @Param('projectId', new ParseUUIDPipe()) projectId: string,
+  ): Promise<readonly CustomerFollowUpReferenceOption[]> {
+    return this.customerFollowUpService.listReferenceOptions(projectId);
+  }
+
+  @Patch('follow-up/draft')
+  updateFollowUpDraft(
+    @Param('projectId', new ParseUUIDPipe()) projectId: string,
+    @Body() input: UpdateFollowUpDraftDto,
+  ): Promise<CustomerFollowUpState> {
+    return this.customerFollowUpService.updateDraft(projectId, input);
+  }
+
   @Post('follow-up/ping')
   sendFollowUpPing(
     @Param('projectId', new ParseUUIDPipe()) projectId: string,
     @Body() input: SendFollowUpPingDto,
-  ): Promise<CustomerFollowUpState> {
+  ): Promise<CustomerFollowUpPingDelivery> {
     return this.customerFollowUpService.sendManualPing(projectId, input);
+  }
+
+  @Post('follow-up/ping/preview')
+  previewFollowUpPing(
+    @Param('projectId', new ParseUUIDPipe()) projectId: string,
+    @Body() input: PreviewFollowUpPingDto,
+  ): Promise<CustomerFollowUpPingPreview> {
+    return this.customerFollowUpService.previewManualPing(projectId, input);
   }
 }

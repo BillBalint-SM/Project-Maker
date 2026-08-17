@@ -91,9 +91,21 @@ describe('Customer SMTP boundary', () => {
       .expect(400);
     assert.equal(delivered.length, 0);
 
+    const draft = await request(app.getHttpServer())
+      .patch(`/projects/${projectId}/follow-up/draft`)
+      .send({
+        messageDraft: 'Rövid, revision-free ügyfél-ping.',
+        referencedFollowUpId: null,
+        expectedVersion: 1,
+      })
+      .expect(200);
+    const preview = await request(app.getHttpServer())
+      .post(`/projects/${projectId}/follow-up/ping/preview`)
+      .send({ expectedVersion: draft.body.draftVersion })
+      .expect(201);
     await request(app.getHttpServer())
       .post(`/projects/${projectId}/follow-up/ping`)
-      .send({})
+      .send({ previewToken: preview.body.previewToken })
       .expect(201);
     assertPingHasNoMarkdown(delivered[0], revision.body.content as string);
 
