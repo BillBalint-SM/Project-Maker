@@ -85,6 +85,14 @@ export class CustomerFollowUpComponent implements OnInit {
   readonly pinging = computed(
     () => this.operationPolicy.activeOperation() === 'customer-follow-up-ping',
   );
+  readonly scheduleValidationPaused = computed(() => {
+    const current = this.state();
+    const attemptState = current?.latestManualAttempt?.state;
+    return current?.enabled === true
+      && current.nextPingAt === null
+      && attemptState !== 'SENDING'
+      && attemptState !== 'UNKNOWN';
+  });
   private previewFocusReturn: HTMLElement | null = null;
   private retryFocusReturn: HTMLElement | null = null;
   private recoveredPendingLease: CockpitOperationLease | null = null;
