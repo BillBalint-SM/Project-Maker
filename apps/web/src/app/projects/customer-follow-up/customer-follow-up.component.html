@@ -88,6 +88,7 @@
         type="button"
         label="Pontos előnézet"
         [outlined]="true"
+        [loading]="previewing()"
         [disabled]="controlsDisabled() || draftForm.dirty || !current.messageDraft"
         data-testid="preview-follow-up-ping-button"
         (onClick)="previewPing()"
