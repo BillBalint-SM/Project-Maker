@@ -1,14 +1,58 @@
-import { createRequire } from 'node:module';
-import { resolve } from 'node:path';
-
 import { expect, test, type Locator, type Page } from '@playwright/test';
 
-const requireFromApi = createRequire(resolve(process.cwd(), '..', 'api', 'package.json'));
-const { Client } = requireFromApi('pg') as {
-  readonly Client: new (configuration: { readonly connectionString: string }) => DatabaseClient;
-};
-
 test.describe('project start journey', () => {
+  test('rejects invalid basics through both Project-start actions without creating a Project', async ({ page }) => {
+    let createRequests = 0;
+    page.on('request', (request) => {
+      if (
+        request.method() === 'POST' &&
+        new URL(request.url()).pathname === '/api/projects'
+      ) {
+        createRequests += 1;
+      }
+    });
+
+    await page.goto('/projects/new');
+    await (await nativeButton(page, 'save-project-draft')).click();
+    await page.getByTestId('project-name-input').fill('Részlegesen kitöltött projekt');
+    await page.getByTestId('internal-owner-name-input').fill('Teszt PO/PM');
+    await page.getByTestId('customer-contact-name-input').fill('Teszt ügyfél');
+    await page.getByTestId('customer-contact-email-input').fill('hibás-email');
+    await (await nativeButton(page, 'create-project-submit')).click();
+
+    await expect(page.getByTestId('customer-contact-email-input')).toHaveAttribute('aria-invalid', 'true');
+    await expect(page).toHaveURL(/\/projects\/new$/);
+    expect(createRequests).toBe(0);
+  });
+
+  test('saves a valid Project-start draft, returns to the Portfolio, and resumes at schema selection', async ({ page }) => {
+    const uniquePart = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const projectName = `Mentett projektindítás ${uniquePart}`;
+
+    await page.goto('/projects/new');
+    await page.getByTestId('project-name-input').fill(projectName);
+    await page.getByTestId('internal-owner-name-input').fill('Projektindító PO/PM');
+    await page.getByTestId('customer-contact-name-input').fill('Projektindító Kapcsolattartó');
+    await page
+      .getByTestId('customer-contact-email-input')
+      .fill(`saved-project-start-${uniquePart}@example.test`);
+
+    const createResponse = page.waitForResponse(
+      (response) =>
+        response.request().method() === 'POST' &&
+        new URL(response.url()).pathname === '/api/projects',
+    );
+    await (await nativeButton(page, 'save-project-draft')).click();
+    expect((await createResponse).status()).toBe(201);
+
+    await expect(page).toHaveURL(/\/$/);
+    const projectCard = page.getByRole('link', { name: new RegExp(projectName) });
+    await expect(projectCard).toContainText('Kérdésséma szükséges');
+    await projectCard.click();
+    await expect(page).toHaveURL(/\/projects\/[^/]+\/interview$/);
+    await expect(page.getByTestId('project-schema-status')).toBeVisible();
+  });
+
   test('creates a project from its own page and opens the project schema', async ({ page }) => {
     await createProjectAndOpenSchema(page);
 
@@ -16,69 +60,100 @@ test.describe('project start journey', () => {
     await expect(page.getByTestId('project-schema-status')).toBeVisible();
   });
 
-  test('starts exactly one initial interview when the first project schema is accepted', async ({ page }) => {
-    await createProjectAndOpenSchema(page);
-
-    const roundRequests: string[] = [];
-    page.on('request', (request) => {
-      if (
-        request.method() === 'POST' &&
-        /\/api\/projects\/[^/]+\/rounds$/.test(new URL(request.url()).pathname)
-      ) {
-        roundRequests.push(request.url());
-      }
-    });
-
-    const schemaResponse = page.waitForResponse(
-      (response) =>
-        response.request().method() === 'POST' &&
-        /\/api\/projects\/[^/]+\/question-schema$/.test(new URL(response.url()).pathname),
-    );
-    await (await nativeButton(page, 'publish-project-schema-button')).click();
-    expect((await schemaResponse).status()).toBe(201);
-
-    await expect(page.getByTestId('active-round-resume-state')).toBeVisible();
-    await expect(page.getByTestId('round-questions')).toBeVisible();
-    expect(roundRequests).toHaveLength(1);
-    await expect(page.getByTestId('create-interview-round-button')).toHaveCount(0);
-  });
-
-  test('offers a dedicated retry when the first automatic interview start fails', async ({ page }) => {
+  test('edits and reloads valid Project basics before schema acceptance', async ({ page }) => {
     await createProjectAndOpenSchema(page);
     const projectId = projectIdFromInterviewUrl(page);
-    const clearStartFailure = await installInitialIntakeStartFailure(projectId);
+    const updatedName = `Módosított projektindítás ${Date.now()}`;
+    const updatedEmail = `updated-project-start-${Date.now()}@example.test`;
 
-    try {
-      const schemaResponse = page.waitForResponse(
-        (response) =>
-          response.request().method() === 'POST' &&
-          /\/api\/projects\/[^/]+\/question-schema$/.test(new URL(response.url()).pathname),
-      );
-      const failedStartResponse = page.waitForResponse(
-        (response) =>
-          response.request().method() === 'POST' &&
-          new URL(response.url()).pathname === `/api/projects/${projectId}/rounds`,
-      );
-      await (await nativeButton(page, 'publish-project-schema-button')).click();
-      expect((await schemaResponse).status()).toBe(201);
-      expect((await failedStartResponse).status()).toBeGreaterThanOrEqual(500);
-
-      await expect(page.getByTestId('interview-action-error-text')).toContainText(
-        'A kérdésséma elfogadva van, de a kezdő interjúkör nem indult el.',
-      );
-      await expect(page.getByTestId('retry-initial-intake-button')).toBeVisible();
-    } finally {
-      await clearStartFailure();
-    }
-
-    const retriedStartResponse = page.waitForResponse(
-      (response) =>
-        response.request().method() === 'POST' &&
-        new URL(response.url()).pathname === `/api/projects/${projectId}/rounds`,
+    const coordinationUpdate = await page.request.patch(
+      `/api/projects/${projectId}/workspace`,
+      {
+        data: {
+          status: 'WAITING_CUSTOMER',
+          internalOwnerName: 'Projektindító PO/PM',
+          nextActionOwnerRole: null,
+          nextAction: null,
+          dueAt: null,
+        },
+      },
     );
-    await (await nativeButton(page, 'retry-initial-intake-button')).click();
-    expect((await retriedStartResponse).status()).toBe(201);
-    await expect(page.getByTestId('active-round-resume-state')).toBeVisible();
+    expect(coordinationUpdate.status()).toBe(200);
+
+    await page.getByTestId('edit-project-basics-link').click();
+    await expect(page).toHaveURL(new RegExp(`/projects/${projectId}(?:#project-basics)?$`));
+    await expect(page.getByTestId('project-basics-editor')).toBeVisible();
+    await page.getByTestId('draft-project-name-input').fill(updatedName);
+    await page.getByTestId('draft-customer-contact-email-input').fill(updatedEmail);
+
+    const updateResponse = page.waitForResponse(
+      (response) =>
+        response.request().method() === 'PATCH' &&
+        new URL(response.url()).pathname === `/api/projects/${projectId}/basics`,
+    );
+    await (await nativeButton(page, 'save-project-basics')).click();
+    expect((await updateResponse).status()).toBe(200);
+    await expect(page.getByTestId('project-basics-feedback')).toContainText('Alapadatok mentve');
+
+    await page.reload();
+    await expect(page.getByTestId('draft-project-name-input')).toHaveValue(updatedName);
+    await expect(page.getByTestId('draft-customer-contact-email-input')).toHaveValue(updatedEmail);
+  });
+
+  test('keeps Project settings mutations single-flight while basics are saving', async ({ page }) => {
+    await createProjectAndOpenSchema(page);
+    const projectId = projectIdFromInterviewUrl(page);
+    await page.getByTestId('edit-project-basics-link').click();
+
+    let releaseBasicsRequest: (() => void) | undefined;
+    const basicsRequestIntercepted = new Promise<void>((resolveIntercepted) => {
+      void page.route(`**/api/projects/${projectId}/basics`, async (route) => {
+        resolveIntercepted();
+        await new Promise<void>((resolveRelease) => {
+          releaseBasicsRequest = resolveRelease;
+        });
+        await route.continue();
+      });
+    });
+
+    await page.getByTestId('draft-project-name-input').fill(`Zárolt mentés ${Date.now()}`);
+    await (await nativeButton(page, 'save-project-basics')).click();
+    await basicsRequestIntercepted;
+
+    await expect(await nativeButton(page, 'save-workspace-button')).toBeDisabled();
+    releaseBasicsRequest?.();
+    await expect(page.getByTestId('project-basics-feedback')).toContainText('Alapadatok mentve');
+  });
+
+  test('retries a lost create response without persisting a duplicate Project', async ({ page }) => {
+    const uniquePart = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const projectName = `Idempotens projektindítás ${uniquePart}`;
+    let intercepted = false;
+    await page.route('**/api/projects', async (route) => {
+      if (route.request().method() !== 'POST' || intercepted) {
+        await route.continue();
+        return;
+      }
+      intercepted = true;
+      await route.fetch();
+      await route.abort('connectionreset');
+    });
+
+    await page.goto('/projects/new');
+    await page.getByTestId('project-name-input').fill(projectName);
+    await page.getByTestId('internal-owner-name-input').fill('Projektindító PO/PM');
+    await page.getByTestId('customer-contact-name-input').fill('Projektindító Kapcsolattartó');
+    await page.getByTestId('customer-contact-email-input').fill(`retry-${uniquePart}@example.test`);
+    await (await nativeButton(page, 'save-project-draft')).click();
+    await expect(page.getByTestId('create-project-error')).toBeVisible();
+
+    const retryResponse = page.waitForResponse(
+      (response) => response.request().method() === 'POST' && new URL(response.url()).pathname === '/api/projects',
+    );
+    await (await nativeButton(page, 'save-project-draft')).click();
+    expect((await retryResponse).status()).toBe(201);
+    await expect(page).toHaveURL(/\/$/);
+    await expect(page.getByRole('link', { name: new RegExp(projectName) })).toHaveCount(1);
   });
 });
 
@@ -117,73 +192,4 @@ function projectIdFromInterviewUrl(page: Page): string {
     throw new Error(`The project interview URL did not contain a project ID: ${page.url()}`);
   }
   return projectId;
-}
-
-async function installInitialIntakeStartFailure(projectId: string): Promise<() => Promise<void>> {
-  const objectSuffix = requireUuidSuffix(projectId);
-  const triggerName = `e2e_initial_start_${objectSuffix}`;
-  const functionName = `e2e_initial_start_${objectSuffix}`;
-  const client = new Client({ connectionString: requireE2eDatabaseUrl() });
-  await client.connect();
-  try {
-    await client.query(`
-      CREATE FUNCTION ${functionName}()
-      RETURNS trigger
-      LANGUAGE plpgsql
-      AS $$
-      BEGIN
-        IF NEW.project_id = '${projectId}'::uuid THEN
-          RAISE EXCEPTION 'E2E configured initial intake start failure';
-        END IF;
-        RETURN NEW;
-      END;
-      $$;
-    `);
-    await client.query(`
-      CREATE TRIGGER ${triggerName}
-      BEFORE INSERT ON interview_rounds
-      FOR EACH ROW
-      EXECUTE FUNCTION ${functionName}();
-    `);
-  } catch (error) {
-    await client.end();
-    throw error;
-  }
-
-  return async () => {
-    try {
-      await client.query(`DROP TRIGGER IF EXISTS ${triggerName} ON interview_rounds`);
-      await client.query(`DROP FUNCTION IF EXISTS ${functionName}()`);
-    } finally {
-      await client.end();
-    }
-  };
-}
-
-function requireUuidSuffix(projectId: string): string {
-  const uuidSuffix = /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i
-    .exec(projectId)?.[0]
-    ?.replaceAll('-', '');
-  if (!uuidSuffix) {
-    throw new Error(`The project-start browser test expected a UUID project ID: ${projectId}`);
-  }
-  return uuidSuffix;
-}
-
-function requireE2eDatabaseUrl(): string {
-  const databaseUrl = process.env.DATABASE_URL;
-  if (!databaseUrl) {
-    throw new Error('DATABASE_URL is required for the project-start browser tests.');
-  }
-  const databaseName = new URL(databaseUrl).pathname.slice(1).toLowerCase();
-  if (!databaseName.includes('e2e') && !databaseName.includes('test')) {
-    throw new Error('The project-start browser tests require an isolated E2E/test database.');
-  }
-  return databaseUrl;
-}
-
-interface DatabaseClient {
-  connect(): Promise<void>;
-  end(): Promise<void>;
-  query(sql: string, parameters?: readonly unknown[]): Promise<unknown>;
 }

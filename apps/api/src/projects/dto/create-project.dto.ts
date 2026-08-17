@@ -1,4 +1,4 @@
-import { IsEmail, IsISO8601, IsIn, IsNotEmpty, IsOptional, IsString, Matches, MaxLength } from 'class-validator';
+import { IsEmail, IsISO8601, IsIn, IsNotEmpty, IsOptional, IsString, IsUUID, Matches, MaxLength } from 'class-validator';
 
 import { nextActionOwnerRoles, type NextActionOwnerRole } from '@project-maker/contracts/runtime';
 
@@ -6,6 +6,10 @@ const utcIsoDatePattern = /Z$/;
 const nonBlankPattern = /\S/;
 
 export class CreateProjectDto {
+  @IsOptional()
+  @IsUUID('4')
+  creationRequestId?: string;
+
   @IsString()
   @IsNotEmpty()
   @Matches(nonBlankPattern)

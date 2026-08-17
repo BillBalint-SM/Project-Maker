@@ -3,6 +3,7 @@ import type {
   AuditEventRecord,
   NextActionOwnerRole,
   ProjectCockpit,
+  ProjectPreparationStatus,
   ProjectStatus,
   ProjectWorkspace,
 } from '@project-maker/contracts';
@@ -22,6 +23,7 @@ export interface UpdateProjectWorkspaceInput {
 export interface CockpitView {
   readonly project: ProjectWorkspace;
   readonly cockpit: ProjectCockpit;
+  readonly preparationStatus: ProjectPreparationStatus;
 }
 
 export interface StatusOption {

@@ -60,6 +60,17 @@
       />
     </div>
   } @else if (bank(); as currentBank) {
+    @if (!schema() && !round() && !projectArchived()) {
+      <a
+        class="back-link"
+        [routerLink]="['/projects', projectId]"
+        fragment="project-basics"
+        data-testid="edit-project-basics-link"
+      >
+        Projekt alapadatainak szerkesztése
+      </a>
+    }
+
     <div class="interview-grid">
       <p-card>
         <ng-template #title>Projekt kérdésséma</ng-template>

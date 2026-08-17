@@ -2,6 +2,7 @@ import { DatePipe, JsonPipe } from '@angular/common';
 import { Component, computed, DestroyRef, inject, OnInit, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import {
+  AbstractControl,
   FormControl,
   FormGroup,
   ReactiveFormsModule,
@@ -122,6 +123,29 @@ export class ProjectCockpitPage implements OnInit {
     }),
     dueAt: new FormControl<Date | null>(null),
   });
+  readonly basicsForm = new FormGroup({
+    name: new FormControl('', {
+      nonNullable: true,
+      validators: [nonBlankValidator, Validators.maxLength(255)],
+    }),
+    internalOwnerName: new FormControl('', {
+      nonNullable: true,
+      validators: [nonBlankValidator, Validators.maxLength(255)],
+    }),
+    customerContactName: new FormControl('', {
+      nonNullable: true,
+      validators: [nonBlankValidator, Validators.maxLength(255)],
+    }),
+    customerContactEmail: new FormControl('', {
+      nonNullable: true,
+      validators: [Validators.required, Validators.email, Validators.maxLength(320)],
+    }),
+  });
+  readonly basicsSaving = computed(
+    () => this.operationPolicy.activeOperation() === 'project-basics-save',
+  );
+  readonly basicsError = signal<string | null>(null);
+  readonly basicsFeedback = signal<string | null>(null);
 
   ngOnInit(): void {
     this.loadCockpit();
@@ -271,6 +295,50 @@ export class ProjectCockpitPage implements OnInit {
       });
   }
 
+  canEditBasics(): boolean {
+    const view = this.view();
+    return view?.project.status !== 'ARCHIVED' && view?.preparationStatus.state === 'SCHEMA_REQUIRED';
+  }
+
+  saveProjectBasics(): void {
+    this.basicsForm.markAllAsTouched();
+    if (
+      this.basicsForm.invalid ||
+      this.cockpitMutationInProgress() ||
+      !this.canEditBasics()
+    ) {
+      return;
+    }
+
+    const value = this.basicsForm.getRawValue();
+    const lease = this.operationPolicy.tryAcquire('project-basics-save');
+    if (!lease) {
+      return;
+    }
+    this.basicsError.set(null);
+    this.basicsFeedback.set(null);
+    this.api
+      .updateProjectBasics(this.projectId, {
+        name: value.name.trim(),
+        internalOwnerName: value.internalOwnerName.trim(),
+        customerContactName: value.customerContactName.trim(),
+        customerContactEmail: value.customerContactEmail.trim(),
+      })
+      .pipe(
+        releaseCockpitOperationOnFinalize(lease),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe({
+        next: (project) => {
+          this.applyWorkspaceResponse(project);
+          this.basicsFeedback.set('Alapadatok mentve.');
+        },
+        error: (error: Error) => {
+          this.basicsError.set(error.message);
+        },
+      });
+  }
+
   archiveProject(): void {
     if (
       this.cockpitMutationInProgress() ||
@@ -400,6 +468,7 @@ export class ProjectCockpitPage implements OnInit {
     }
     this.view.set({
       project,
+      preparationStatus: current.preparationStatus,
       cockpit: {
         projectId: project.id,
         status: project.status,
@@ -414,6 +483,12 @@ export class ProjectCockpitPage implements OnInit {
   }
 
   private resetForm(project: ProjectWorkspace): void {
+    this.basicsForm.reset({
+      name: project.name,
+      internalOwnerName: project.internalOwnerName ?? '',
+      customerContactName: project.customerContactName,
+      customerContactEmail: project.customerContactEmail,
+    });
     this.workspaceForm.reset({
       status: project.status as ActiveProjectStatus,
       internalOwnerName: project.internalOwnerName ?? '',
@@ -435,4 +510,10 @@ export class ProjectCockpitPage implements OnInit {
 function emptyToNull(value: string): string | null {
   const trimmed = value.trim();
   return trimmed ? trimmed : null;
+}
+
+function nonBlankValidator(control: AbstractControl): { nonBlank: true } | null {
+  return typeof control.value === 'string' && control.value.trim().length > 0
+    ? null
+    : { nonBlank: true };
 }
