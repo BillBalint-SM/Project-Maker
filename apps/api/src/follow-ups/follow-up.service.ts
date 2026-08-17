@@ -56,7 +56,9 @@ const neverDeliveryStatus: FollowUpDeliveryStatus = 'NEVER';
 const sentDeliveryStatus: FollowUpDeliveryStatus = 'SENT';
 const failedDeliveryStatus: FollowUpDeliveryStatus = 'FAILED';
 const smtpFailureCode = 'SMTP_SEND_FAILED';
+const unknownDeliveryCode = 'SMTP_DELIVERY_UNKNOWN';
 const previewLifetimeMs = 15 * 60_000;
+const manualDeliveryLeaseMs = 15 * 60_000;
 
 interface DuePingResult {
   readonly state: CustomerFollowUpEntity;
@@ -70,6 +72,10 @@ interface ClaimedManualPing {
   readonly referencedFollowUpId: string | null;
   readonly referencedFollowUpVersion: number | null;
   readonly attemptedAt: Date;
+}
+
+interface DuplicateRiskAcknowledgementRequired {
+  readonly requiresDuplicateRiskAcknowledgement: true;
 }
 
 @Injectable()
@@ -237,7 +243,9 @@ export class CustomerFollowUpService implements OnModuleInit, OnModuleDestroy {
   ): Promise<CustomerFollowUpPingDelivery> {
     this.requireMailer();
     const attemptedAt = new Date();
-    const claimed = await this.dataSource.transaction(async (manager): Promise<ClaimedManualPing> => {
+    const claim = await this.dataSource.transaction(async (
+      manager,
+    ): Promise<ClaimedManualPing | DuplicateRiskAcknowledgementRequired> => {
       const project = await this.findProject(manager, projectId, true);
       rejectArchivedProject(project);
       const state = await findOrCreateLockedState(manager, projectId);
@@ -262,10 +270,49 @@ export class CustomerFollowUpService implements OnModuleInit, OnModuleDestroy {
           message: 'A címzett, a piszkozat vagy a hivatkozott kérdés megváltozott. Ellenőrizd az új előnézetet.',
         });
       }
+      const attemptRepository = manager.getRepository(CustomerFollowUpDeliveryAttemptEntity);
+      const activeAttempt = await attemptRepository.findOne({
+        where: {
+          projectId,
+          draftVersion: state.draftVersion,
+          state: 'SENDING',
+        },
+        lock: { mode: 'pessimistic_write' },
+      });
+      if (activeAttempt) {
+        const leaseExpiresAt = new Date(activeAttempt.attemptedAt.getTime() + manualDeliveryLeaseMs);
+        if (leaseExpiresAt > attemptedAt) {
+          throw new ConflictException({
+            code: 'FOLLOW_UP_DELIVERY_IN_PROGRESS',
+            message: 'Az ügyfél-ping küldése már folyamatban van. Várj a kézbesítési eredményre.',
+          });
+        }
+        activeAttempt.state = 'UNKNOWN';
+        activeAttempt.failureCode = unknownDeliveryCode;
+        await attemptRepository.save(activeAttempt);
+        await saveAuditEvent(manager, projectId, 'CUSTOMER_FOLLOW_UP_PING_UNKNOWN', {
+          attemptId: activeAttempt.id,
+          draftVersion: String(activeAttempt.draftVersion),
+          deliveryStatus: 'UNKNOWN',
+          errorCode: unknownDeliveryCode,
+          attemptedAt: activeAttempt.attemptedAt.toISOString(),
+          reconciledAt: attemptedAt.toISOString(),
+        });
+      }
+      const latestAttempt = activeAttempt ?? await attemptRepository.findOne({
+        where: {
+          projectId,
+          draftVersion: state.draftVersion,
+        },
+        order: { attemptedAt: 'DESC', createdAt: 'DESC', id: 'ASC' },
+      });
+      if (latestAttempt?.state === 'UNKNOWN' && !input.acknowledgeDuplicateRisk) {
+        return { requiresDuplicateRiskAcknowledgement: true };
+      }
       clearPreview(state);
       await manager.getRepository(CustomerFollowUpEntity).save(state);
       const attemptId = randomUUID();
-      await manager.getRepository(CustomerFollowUpDeliveryAttemptEntity).save({
+      await attemptRepository.save({
         id: attemptId,
         projectId,
         draftVersion: state.draftVersion,
@@ -289,6 +336,14 @@ export class CustomerFollowUpService implements OnModuleInit, OnModuleDestroy {
         attemptedAt,
       };
     });
+
+    if ('requiresDuplicateRiskAcknowledgement' in claim) {
+      throw new ConflictException({
+        code: 'FOLLOW_UP_DELIVERY_UNKNOWN',
+        message: 'A korábbi küldés eredménye nem bizonyítható. Ellenőrizd a postafiókot, majd csak a duplikáció kockázatának elfogadásával küldd újra.',
+      });
+    }
+    const claimed = claim;
 
     try {
       await this.mailer.send({

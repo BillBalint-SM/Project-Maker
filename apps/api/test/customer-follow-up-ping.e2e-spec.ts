@@ -1,6 +1,7 @@
 import { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import assert from 'node:assert/strict';
+import { randomUUID } from 'node:crypto';
 import { after, before, beforeEach, describe, it } from 'node:test';
 import request from 'supertest';
 import { DataSource } from 'typeorm';
@@ -15,6 +16,7 @@ describe('Customer follow-up ping draft and manual delivery', () => {
   let app: INestApplication;
   let dataSource: DataSource;
   const delivered: CustomerMailerMessage[] = [];
+  let deliveryShouldFail = false;
   let deliveryStarted: (() => void) | null = null;
   let releaseDelivery: (() => void) | null = null;
 
@@ -24,6 +26,9 @@ describe('Customer follow-up ping draft and manual delivery', () => {
       .useValue({
         isConfigured: () => true,
         send: async (message: CustomerMailerMessage) => {
+          if (deliveryShouldFail) {
+            throw new Error('Deliberate SMTP boundary failure.');
+          }
           delivered.push(message);
           deliveryStarted?.();
           if (releaseDelivery) {
@@ -46,6 +51,7 @@ describe('Customer follow-up ping draft and manual delivery', () => {
 
   beforeEach(() => {
     delivered.length = 0;
+    deliveryShouldFail = false;
     deliveryStarted = null;
     releaseDelivery = null;
   });
@@ -265,6 +271,124 @@ describe('Customer follow-up ping draft and manual delivery', () => {
     releaseDelivery = null;
     assert.equal((await first).status, 201);
     assert.equal(delivered.length, 1);
+  });
+
+  it('reconciles an expired delivery lease and requires explicit duplicate-risk acknowledgement', async () => {
+    const projectId = await createProject(app, 'expired-delivery');
+    await request(app.getHttpServer())
+      .patch(`/projects/${projectId}/follow-up/draft`)
+      .send({
+        messageDraft: 'Ellenőrzött újraküldést igénylő üzenet',
+        referencedFollowUpId: null,
+        expectedVersion: 1,
+      })
+      .expect(200);
+    const preview = await request(app.getHttpServer())
+      .post(`/projects/${projectId}/follow-up/ping/preview`)
+      .send({ expectedVersion: 2 })
+      .expect(201);
+
+    const expiredAt = new Date(Date.now() - 16 * 60_000);
+    await dataSource.query(
+      `INSERT INTO customer_follow_up_delivery_attempts (
+        id, project_id, draft_version, state, recipient_email,
+        subject_length, text_length, failure_code, attempted_at
+      ) VALUES ($1, $2, 2, 'SENDING', $3, $4, $5, NULL, $6)`,
+      [
+        randomUUID(),
+        projectId,
+        preview.body.recipientEmail,
+        preview.body.subject.length,
+        preview.body.text.length,
+        expiredAt,
+      ],
+    );
+
+    const blocked = await request(app.getHttpServer())
+      .post(`/projects/${projectId}/follow-up/ping`)
+      .send({ previewToken: preview.body.previewToken })
+      .expect(409);
+    assert.equal(blocked.body.code, 'FOLLOW_UP_DELIVERY_UNKNOWN');
+    assert.equal(delivered.length, 0);
+    const unknownActivity = await request(app.getHttpServer())
+      .get(`/projects/${projectId}/activity`)
+      .expect(200);
+    assert.equal(
+      unknownActivity.body.events[0]?.summary,
+      'Az ügyfél-ping küldési eredménye bizonytalan; kézi ellenőrzés szükséges.',
+    );
+
+    const sent = await request(app.getHttpServer())
+      .post(`/projects/${projectId}/follow-up/ping`)
+      .send({
+        previewToken: preview.body.previewToken,
+        acknowledgeDuplicateRisk: true,
+      })
+      .expect(201);
+    assert.equal(sent.body.state, 'SENT');
+    assert.equal(delivered.length, 1);
+
+    const nextPreview = await request(app.getHttpServer())
+      .post(`/projects/${projectId}/follow-up/ping/preview`)
+      .send({ expectedVersion: 2 })
+      .expect(201);
+    await request(app.getHttpServer())
+      .post(`/projects/${projectId}/follow-up/ping`)
+      .send({ previewToken: nextPreview.body.previewToken })
+      .expect(201);
+    assert.equal(delivered.length, 2);
+  });
+
+  it('describes draft, successful, and failed ping activity in employee language', async () => {
+    const projectId = await createProject(app, 'activity');
+    await request(app.getHttpServer())
+      .patch(`/projects/${projectId}/follow-up/draft`)
+      .send({
+        messageDraft: 'Első ügyfél-ping',
+        referencedFollowUpId: null,
+        expectedVersion: 1,
+      })
+      .expect(200);
+    const firstPreview = await request(app.getHttpServer())
+      .post(`/projects/${projectId}/follow-up/ping/preview`)
+      .send({ expectedVersion: 2 })
+      .expect(201);
+    await request(app.getHttpServer())
+      .post(`/projects/${projectId}/follow-up/ping`)
+      .send({ previewToken: firstPreview.body.previewToken })
+      .expect(201);
+
+    await request(app.getHttpServer())
+      .patch(`/projects/${projectId}/follow-up/draft`)
+      .send({
+        messageDraft: 'Második ügyfél-ping',
+        referencedFollowUpId: null,
+        expectedVersion: 2,
+      })
+      .expect(200);
+    const failedPreview = await request(app.getHttpServer())
+      .post(`/projects/${projectId}/follow-up/ping/preview`)
+      .send({ expectedVersion: 3 })
+      .expect(201);
+    deliveryShouldFail = true;
+    await request(app.getHttpServer())
+      .post(`/projects/${projectId}/follow-up/ping`)
+      .send({ previewToken: failedPreview.body.previewToken })
+      .expect(503);
+    deliveryShouldFail = false;
+
+    const activity = await request(app.getHttpServer())
+      .get(`/projects/${projectId}/activity`)
+      .expect(200);
+    assert.deepEqual(
+      activity.body.events.map((event: { summary: string }) => event.summary),
+      [
+        'Az ügyfél-ping küldése sikertelen; újrapróbálható.',
+        'Az ügyfél-ping piszkozata frissítve lett.',
+        'Az ügyfél-ping elküldve az ügyfélnek.',
+        'Az ügyfél-ping piszkozata frissítve lett.',
+      ],
+    );
   });
 
   it('rejects a preview after its recipient or referenced follow-up changes', async () => {

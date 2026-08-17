@@ -110,6 +110,16 @@
         <div><dt>Tárgy</dt><dd>{{ preview.subject }}</dd></div>
       </dl>
       <pre>{{ preview.text }}</pre>
+      @if (duplicateRiskPending()) {
+        <p-message
+          severity="warn"
+          role="alert"
+          data-testid="follow-up-duplicate-risk-warning"
+        >
+          A korábbi küldés eredménye nem bizonyítható. Ellenőrizd a kimenő
+          postafiókot; az újraküldés duplikált levelet eredményezhet.
+        </p-message>
+      }
       <div class="follow-up-actions">
         <p-button
           type="button"
@@ -118,15 +128,27 @@
           data-testid="cancel-follow-up-preview-button"
           (onClick)="cancelPreview()"
         />
-        <p-button
-          type="button"
-          label="Küldés az ügyfélnek"
-          severity="success"
-          [loading]="pinging()"
-          [disabled]="controlsDisabled()"
-          data-testid="send-follow-up-ping-button"
-          (onClick)="sendPing()"
-        />
+        @if (duplicateRiskPending()) {
+          <p-button
+            type="button"
+            label="Kockázat elfogadása és újraküldés"
+            severity="warn"
+            [loading]="pinging()"
+            [disabled]="controlsDisabled()"
+            data-testid="acknowledge-follow-up-duplicate-risk-button"
+            (onClick)="sendPing(true)"
+          />
+        } @else {
+          <p-button
+            type="button"
+            label="Küldés az ügyfélnek"
+            severity="success"
+            [loading]="pinging()"
+            [disabled]="controlsDisabled()"
+            data-testid="send-follow-up-ping-button"
+            (onClick)="sendPing()"
+          />
+        }
       </div>
     </section>
   }

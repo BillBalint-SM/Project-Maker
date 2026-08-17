@@ -1,10 +1,23 @@
+import { randomUUID } from 'node:crypto';
+import { createRequire } from 'node:module';
 import { createServer, type Server, type Socket } from 'node:net';
+import { resolve } from 'node:path';
 
 import { expect, test, type APIRequestContext, type Page } from '@playwright/test';
 
 const smtpPort = Number(process.env.SMTP_PORT ?? '25261');
 const smtpMessages: string[] = [];
+const requireFromApi = createRequire(resolve(process.cwd(), '..', 'api', 'package.json'));
+const { Client } = requireFromApi('pg') as {
+  readonly Client: new (configuration: { readonly connectionString: string }) => DatabaseClient;
+};
 let smtpServer: Server;
+
+interface DatabaseClient {
+  connect(): Promise<void>;
+  end(): Promise<void>;
+  query(sql: string, parameters?: readonly unknown[]): Promise<unknown>;
+}
 
 test.beforeAll(async () => {
   smtpServer = createSmtpCaptureServer(smtpMessages);
@@ -131,6 +144,64 @@ test('keeps the saved ping readable and mutation controls disabled after archive
   await expect(nativeButton(page, 'preview-follow-up-ping-button')).toBeDisabled();
 });
 
+test('preserves unsaved ping and cadence edits when the other form is saved', async ({
+  page,
+  request,
+}) => {
+  const project = await createProject(request, 'independent-forms');
+  await apiJson(request, 'PATCH', `/projects/${project.id}/follow-up/draft`, {
+    messageDraft: 'Szerveren mentett kiinduló üzenet',
+    referencedFollowUpId: null,
+    expectedVersion: 1,
+  });
+  await page.goto(`/projects/${project.id}`);
+
+  const messageInput = page.getByTestId('follow-up-message-draft');
+  const intervalInput = page.getByTestId('follow-up-interval-input');
+  await messageInput.fill('Még nem mentett helyi üzenet');
+  await intervalInput.fill('1440');
+  await nativeButton(page, 'save-follow-up-settings-button').click();
+  await expect(page.getByTestId('follow-up-interval-value')).toContainText('1440 minutes');
+  await expect(messageInput).toHaveValue('Még nem mentett helyi üzenet');
+
+  await nativeButton(page, 'save-follow-up-draft-button').click();
+  await expect(page.getByTestId('follow-up-draft-feedback')).toContainText('Piszkozat mentve');
+  await intervalInput.fill('2880');
+  await messageInput.fill('Második mentendő üzenet');
+  await nativeButton(page, 'save-follow-up-draft-button').click();
+  await expect(messageInput).toHaveValue('Második mentendő üzenet');
+  await expect(intervalInput).toHaveValue('2880');
+});
+
+test('requires an explicit duplicate-risk acknowledgement after an expired delivery lease', async ({
+  page,
+  request,
+}) => {
+  const project = await createProject(request, 'unknown-delivery');
+  await apiJson(request, 'PATCH', `/projects/${project.id}/follow-up/draft`, {
+    messageDraft: 'Csak ellenőrzés után küldhető újra',
+    referencedFollowUpId: null,
+    expectedVersion: 1,
+  });
+  await page.goto(`/projects/${project.id}`);
+  await nativeButton(page, 'preview-follow-up-ping-button').click();
+  const preview = page.getByRole('alertdialog', { name: 'Customer follow-up ping előnézete' });
+  await expect(preview).toBeVisible();
+  await forceExpiredCustomerPingAttempt(project.id, project.customerContactEmail);
+
+  const messagesBefore = smtpMessages.length;
+  await page.getByRole('button', { name: 'Küldés az ügyfélnek' }).click();
+  const warning = page.getByTestId('follow-up-duplicate-risk-warning');
+  await expect(warning).toContainText('nem bizonyítható');
+  await expect(warning).toContainText('duplikált');
+  await expect(preview).toBeVisible();
+  expect(smtpMessages).toHaveLength(messagesBefore);
+
+  await nativeButton(page, 'acknowledge-follow-up-duplicate-risk-button').click();
+  await expect(page.getByTestId('follow-up-send-result')).toContainText('Ping elküldve');
+  expect(smtpMessages).toHaveLength(messagesBefore + 1);
+});
+
 async function createProject(
   request: APIRequestContext,
   label: string,
@@ -161,6 +232,29 @@ async function apiJson<T>(
 
 function nativeButton(page: Page, testId: string) {
   return page.getByTestId(testId).locator('button');
+}
+
+async function forceExpiredCustomerPingAttempt(
+  projectId: string,
+  recipientEmail: string,
+): Promise<void> {
+  const databaseUrl = process.env.DATABASE_URL;
+  if (!databaseUrl) {
+    throw new Error('DATABASE_URL is required for the UNKNOWN customer ping fixture.');
+  }
+  const client = new Client({ connectionString: databaseUrl });
+  try {
+    await client.connect();
+    await client.query(
+      `INSERT INTO customer_follow_up_delivery_attempts (
+        id, project_id, draft_version, state, recipient_email,
+        subject_length, text_length, failure_code, attempted_at
+      ) VALUES ($1, $2, 2, 'SENDING', $3, 1, 1, NULL, $4)`,
+      [randomUUID(), projectId, recipientEmail, new Date(Date.now() - 16 * 60_000)],
+    );
+  } finally {
+    await client.end();
+  }
 }
 
 function createSmtpCaptureServer(target: string[]): Server {

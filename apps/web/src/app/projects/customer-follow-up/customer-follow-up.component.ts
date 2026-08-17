@@ -33,7 +33,10 @@ import {
   COCKPIT_OPERATION_POLICY,
   releaseCockpitOperationOnFinalize,
 } from '../cockpit-operation-policy';
-import { CustomerFollowUpApiService } from './customer-follow-up-api.service';
+import {
+  CustomerFollowUpApiError,
+  CustomerFollowUpApiService,
+} from './customer-follow-up-api.service';
 
 @Component({
   selector: 'app-customer-follow-up',
@@ -69,6 +72,7 @@ export class CustomerFollowUpComponent implements OnInit {
   readonly draftFeedback = signal<string | null>(null);
   readonly sendResult = signal<string | null>(null);
   readonly preview = signal<CustomerFollowUpPingPreview | null>(null);
+  readonly duplicateRiskPending = signal(false);
   readonly referenceOptions = signal<readonly CustomerFollowUpReferenceOption[]>([]);
   readonly saving = computed(
     () => this.operationPolicy.activeOperation() === 'customer-follow-up-save',
@@ -175,7 +179,7 @@ export class CustomerFollowUpComponent implements OnInit {
       )
       .subscribe({
         next: (state) => {
-          this.applyState(state);
+          this.applyState(state, { preserveDraft: this.draftForm.dirty });
           this.draftFeedback.set('Customer follow-up settings saved.');
           this.committedChange.emit();
         },
@@ -208,7 +212,7 @@ export class CustomerFollowUpComponent implements OnInit {
       )
       .subscribe({
         next: (state) => {
-          this.applyState(state);
+          this.applyState(state, { preserveSettings: this.settingsForm.dirty });
           this.draftFeedback.set('Piszkozat mentve.');
           this.committedChange.emit();
         },
@@ -238,6 +242,7 @@ export class CustomerFollowUpComponent implements OnInit {
       .subscribe({
         next: (preview) => {
           this.preview.set(preview);
+          this.duplicateRiskPending.set(false);
           this.previewFocusReturn = trigger;
           this.focusAfterNextRender('[data-testid="cancel-follow-up-preview-button"] button');
         },
@@ -248,6 +253,7 @@ export class CustomerFollowUpComponent implements OnInit {
   cancelPreview(): void {
     const focusReturn = this.previewFocusReturn;
     this.preview.set(null);
+    this.duplicateRiskPending.set(false);
     this.previewFocusReturn = null;
     if (focusReturn) {
       afterNextRender(() => focusReturn.isConnected && focusReturn.focus(), {
@@ -256,7 +262,7 @@ export class CustomerFollowUpComponent implements OnInit {
     }
   }
 
-  sendPing(): void {
+  sendPing(acknowledgeDuplicateRisk = false): void {
     const currentPreview = this.preview();
     if (!currentPreview || this.controlsDisabled()) {
       return;
@@ -268,7 +274,10 @@ export class CustomerFollowUpComponent implements OnInit {
     this.actionError.set(null);
     this.sendResult.set(null);
     this.api
-      .send(this.projectId(), { previewToken: currentPreview.previewToken })
+      .send(this.projectId(), {
+        previewToken: currentPreview.previewToken,
+        acknowledgeDuplicateRisk,
+      })
       .pipe(
         releaseCockpitOperationOnFinalize(lease),
         takeUntilDestroyed(this.destroyRef),
@@ -276,13 +285,27 @@ export class CustomerFollowUpComponent implements OnInit {
       .subscribe({
         next: () => {
           this.preview.set(null);
+          this.duplicateRiskPending.set(false);
           this.sendResult.set('Ping elküldve az ügyfélnek.');
           this.reloadState();
           this.focusAfterNextRender('[data-testid="follow-up-send-result"]');
           this.committedChange.emit();
         },
         error: (error: Error) => {
+          if (
+            error instanceof CustomerFollowUpApiError &&
+            error.code === 'FOLLOW_UP_DELIVERY_UNKNOWN'
+          ) {
+            this.duplicateRiskPending.set(true);
+            this.actionError.set(null);
+            this.focusAfterNextRender(
+              '[data-testid="acknowledge-follow-up-duplicate-risk-button"] button',
+            );
+            this.committedChange.emit();
+            return;
+          }
           this.preview.set(null);
+          this.duplicateRiskPending.set(false);
           this.actionError.set(error.message);
           this.committedChange.emit();
         },
@@ -317,20 +340,30 @@ export class CustomerFollowUpComponent implements OnInit {
       });
   }
 
-  private applyState(state: CustomerFollowUpState): void {
+  private applyState(
+    state: CustomerFollowUpState,
+    options: {
+      readonly preserveDraft?: boolean;
+      readonly preserveSettings?: boolean;
+    } = {},
+  ): void {
     this.state.set(state);
-    this.settingsForm.reset({
-      enabled: state.enabled,
-      intervalMinutes: state.intervalMinutes,
-      expiresAt: state.expiresAt ? new Date(state.expiresAt) : null,
-    });
-    this.draftForm.reset(
-      {
-        messageDraft: state.messageDraft ?? '',
-        referencedFollowUpId: state.referencedFollowUpId,
-      },
-      { emitEvent: false },
-    );
+    if (!options.preserveSettings) {
+      this.settingsForm.reset({
+        enabled: state.enabled,
+        intervalMinutes: state.intervalMinutes,
+        expiresAt: state.expiresAt ? new Date(state.expiresAt) : null,
+      });
+    }
+    if (!options.preserveDraft) {
+      this.draftForm.reset(
+        {
+          messageDraft: state.messageDraft ?? '',
+          referencedFollowUpId: state.referencedFollowUpId,
+        },
+        { emitEvent: false },
+      );
+    }
   }
 
   private focusAfterNextRender(selector: string): void {

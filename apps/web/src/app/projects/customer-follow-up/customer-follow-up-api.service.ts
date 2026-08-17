@@ -12,6 +12,16 @@ import type {
 } from '@project-maker/contracts';
 import { catchError, type Observable, throwError } from 'rxjs';
 
+export class CustomerFollowUpApiError extends Error {
+  constructor(
+    message: string,
+    readonly code: string | null,
+  ) {
+    super(message);
+    this.name = 'CustomerFollowUpApiError';
+  }
+}
+
 @Injectable({ providedIn: 'root' })
 export class CustomerFollowUpApiService {
   private readonly http = inject(HttpClient);
@@ -88,9 +98,13 @@ export class CustomerFollowUpApiService {
   private fail(error: unknown, action: string): Observable<never> {
     if (!(error instanceof HttpErrorResponse)) {
       return throwError(() =>
-        new Error(error instanceof Error ? error.message : `Nem sikerült ${action}.`),
+        new CustomerFollowUpApiError(
+          error instanceof Error ? error.message : `Nem sikerült ${action}.`,
+          null,
+        ),
       );
     }
+    const code = readErrorCode(error.error);
     console.error('Customer follow-up API request failed.', {
       action,
       status: error.status,
@@ -98,16 +112,32 @@ export class CustomerFollowUpApiService {
     });
     if (error.status === 409) {
       return throwError(() =>
-        new Error(`Nem sikerült ${action}, mert az állapot időközben megváltozott. Töltsd újra az aktuális piszkozatot.`),
+        new CustomerFollowUpApiError(
+          `Nem sikerült ${action}, mert az állapot időközben megváltozott. Töltsd újra az aktuális piszkozatot.`,
+          code,
+        ),
       );
     }
     if (error.status === 503) {
       return throwError(() =>
-        new Error(`Nem sikerült ${action}, mert az e-mail-küldés nem érhető el. Ellenőrizd az SMTP-beállítást.`),
+        new CustomerFollowUpApiError(
+          `Nem sikerült ${action}, mert az e-mail-küldés nem érhető el. Ellenőrizd az SMTP-beállítást.`,
+          code,
+        ),
       );
     }
     return throwError(() =>
-      new Error(`Nem sikerült ${action} (HTTP ${error.status}). Próbáld újra.`),
+      new CustomerFollowUpApiError(
+        `Nem sikerült ${action} (HTTP ${error.status}). Próbáld újra.`,
+        code,
+      ),
     );
   }
+}
+
+function readErrorCode(value: unknown): string | null {
+  if (!value || typeof value !== 'object' || !('code' in value)) {
+    return null;
+  }
+  return typeof value.code === 'string' ? value.code : null;
 }

@@ -339,6 +339,9 @@ These are intentionally separate flows:
   open Discovery follow-up from the same project. Manual send requires a
   15-minute, single-use preview token whose fingerprint binds the recipient,
   normalized draft, draft version, and referenced follow-up version/status.
+  The manual delivery claim also has a 15-minute lease. A stale `SENDING`
+  attempt reconciles once to `UNKNOWN`; the same current preview can be sent
+  again only when the caller explicitly acknowledges duplicate-delivery risk.
   A durable attempt and redacted audit metadata are retained. The message
   contains no Markdown, Claude instruction, interview package, follow-up owner,
   category, answer, source linkage, identifiers, or audit content. The timer

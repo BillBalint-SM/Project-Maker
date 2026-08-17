@@ -809,13 +809,15 @@ Lejárat után az automatikus feldolgozás kikapcsolja az ütemezést és törli
 A kézi ping akkor is használható, ha az automatikus ütemezés `Disabled`. A piszkozat kötelező, a kapcsolódó nyitott Discovery follow-up opcionális. A levélbe csak a megírt üzenet, valamint választás esetén a kérdés, a következő lépés és a határidő kerül. A felelős, kategória, válasz/döntés, forráshivatkozás, azonosítók, auditadatok, Markdown és Claude-instrukciók kimaradnak. A piszkozat környező szóközeit a szerver levágja; a mentett tartalom nem lehet üres és legfeljebb 10 000 karakteres.
 
 1. Írd meg az `Üzenet az ügyfélnek` mezőt, és szükség esetén válassz egy nyitott Discovery follow-upot.
-2. Válaszd a `Piszkozat mentése` gombot. Ha közben más mentett, a saját szöveged megmarad; csak az `Aktuális piszkozat újratöltése` írja felül.
+2. Válaszd a `Piszkozat mentése` gombot. Ha közben más mentett, a saját szöveged megmarad; csak az `Aktuális piszkozat újratöltése` írja felül. A ping-piszkozat és az automatikus cadence külön űrlap: az egyik mentése nem dobja el a másik még nem mentett módosítását.
 3. Válaszd a `Pontos előnézet` gombot.
 4. Ellenőrizd a címzettet, a tárgyat és a teljes levélszöveget.
 5. A `Mégse` visszavisz az előnézetet megnyitó gombra. A `Küldés az ügyfélnek` egyszer használható előnézeti tokennel indítja a levelet.
-6. Várd meg a `Customer follow-up ping sent.` sikerüzenetet, majd ellenőrizd a `Last ping`, `Last delivery` és az audit history értékét.
+6. Várd meg a `Ping elküldve az ügyfélnek.` sikerüzenetet, majd ellenőrizd a `Last ping`, `Last delivery` és az audit history értékét.
 
 Ha az előnézet óta megváltozik a címzett, a piszkozat vagy a hivatkozott follow-up, a küldés konfliktussal leáll. Töltsd újra az aktuális állapotot, mentsd újra a szándékos módosítást, és készíts új előnézetet. Sikertelen SMTP-küldéskor `FAILED` állapot, biztonságos hibakód és redaktált audit-esemény marad; az audit nem tartalmazza a címzettet vagy a levél szövegét.
+
+Ha egy kézi küldés 15 percnél tovább `SENDING` marad, a rendszer `UNKNOWN` kísérletként rendezi: nem bizonyítható, hogy az SMTP már elfogadta-e. Ellenőrizd a kimenő postafiókot. Csak ezután válaszd a `Kockázat elfogadása és újraküldés` gombot; ez a külön művelet tudatosan elfogadja, hogy az ügyfél duplikált levelet kaphat.
 
 Archivált projektben a mentett ping olvasható marad, de a szerkesztés, előnézet és küldés letiltott. Ha a munka valóban újraindult, előbb állítsd vissza a projektet, ellenőrizd a címzettet és a hivatkozott follow-up nyitott állapotát, majd készíts friss előnézetet.
 
@@ -954,6 +956,7 @@ Minden eseménynek van típusa, időpontja és egy JSON-formátumú payloadja. A
 | `CUSTOMER_REVIEW_EMAIL_SENT` / `CUSTOMER_REVIEW_EMAIL_FAILED` | Csak korábban létrejött, történeti legacy customer-review esemény; új ilyen küldés már nem indítható |
 | `CUSTOMER_FOLLOW_UP_DRAFT_UPDATED` | Az ügyfél-ping piszkozata vagy hivatkozása megváltozott; az esemény csak verziót, hivatkozás-jelzőt és hosszt tárol |
 | `CUSTOMER_FOLLOW_UP_PING_SENT` / `CUSTOMER_FOLLOW_UP_PING_FAILED` | Előnézetből indított ügyfél-ping kézbesítési kísérlete; a címzett és a levélszöveg nem kerül az auditba |
+| `CUSTOMER_FOLLOW_UP_PING_UNKNOWN` | A 15 perces kézbesítési lease lejárt, ezért a korábbi küldés eredménye kézi ellenőrzést igényel; az esemény nem tartalmaz címzettet vagy levélszöveget |
 
 Projekt létrehozásáról és közönséges workspace-mentésről nem készül teljes, felhasználóhoz kötött auditbejegyzés. Az auditból az sem látszik, ki kattintott. Ha szervezeti felelősség vagy jóváhagyó személy bizonyítása szükséges, azt a jelenlegi Project Maker önmagában nem biztosítja.
 
