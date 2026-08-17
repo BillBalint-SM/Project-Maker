@@ -3,7 +3,10 @@ import { randomUUID } from 'node:crypto';
 import { describe, it } from 'node:test';
 import { DataSource } from 'typeorm';
 
-import { migrationsForFreshDatabase } from './migration-harness';
+import { migrationsForHistoricalDatabase } from './migration-harness';
+
+const CUSTOMER_FOLLOW_UP_PING_MIGRATION =
+  'CustomerFollowUpPingDraft0015CustomerFollowUpPingDraft1787126400000';
 
 describe('Customer follow-up ping migration (PostgreSQL)', () => {
   it('migrates empty drafts and refuses rollback after retained ping activity', async () => {
@@ -22,7 +25,7 @@ describe('Customer follow-up ping migration (PostgreSQL)', () => {
       migrationDataSource = new DataSource({
         type: 'postgres',
         url: migrationUrl,
-        migrations: [...migrationsForFreshDatabase()],
+        migrations: [...migrationsForHistoricalDatabase(CUSTOMER_FOLLOW_UP_PING_MIGRATION)],
       });
       await migrationDataSource.initialize();
       await migrationDataSource.runMigrations();

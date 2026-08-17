@@ -13,6 +13,7 @@ import {
 import type { ProjectCockpit, ProjectWorkspace } from '@project-maker/contracts';
 
 import { CreateProjectDto } from './dto/create-project.dto';
+import { UpdateProjectBasicsDto } from './dto/update-project-basics.dto';
 import { UpdateProjectWorkspaceDto } from './dto/update-project-workspace.dto';
 import { ProjectsService } from './projects.service';
 
@@ -43,6 +44,14 @@ export class ProjectsController {
     @Body() input: UpdateProjectWorkspaceDto,
   ): Promise<ProjectWorkspace> {
     return this.projectsService.updateWorkspace(projectId, input);
+  }
+
+  @Patch(':projectId/basics')
+  updateBasics(
+    @Param('projectId', new ParseUUIDPipe()) projectId: string,
+    @Body() input: UpdateProjectBasicsDto,
+  ): Promise<ProjectWorkspace> {
+    return this.projectsService.updateBasics(projectId, input);
   }
 
   @Post(':projectId/archive')

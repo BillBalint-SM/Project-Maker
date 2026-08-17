@@ -9,6 +9,7 @@ import type {
   ProjectActivityFeed,
   ProjectPreparationStatus,
   ProjectWorkspace,
+  UpdateProjectBasicsInput,
 } from '@project-maker/contracts';
 
 import {
@@ -42,6 +43,18 @@ export class ProjectApiService {
     return this.http
       .post<ProjectWorkspace>('/api/projects', input)
       .pipe(catchError((error: unknown) => this.fail(error, 'create the project')));
+  }
+
+  updateProjectBasics(
+    projectId: string,
+    input: UpdateProjectBasicsInput,
+  ): Observable<ProjectWorkspace> {
+    return this.http
+      .patch<ProjectWorkspace>(
+        `/api/projects/${encodeURIComponent(projectId)}/basics`,
+        input,
+      )
+      .pipe(catchError((error: unknown) => this.fail(error, 'save the project basics')));
   }
 
   loadCockpit(projectId: string): Observable<CockpitView> {

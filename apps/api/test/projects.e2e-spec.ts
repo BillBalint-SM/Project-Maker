@@ -1,6 +1,7 @@
 import { INestApplication } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import assert from 'node:assert/strict';
+import { randomUUID } from 'node:crypto';
 import { after, before, describe, it } from 'node:test';
 import request from 'supertest';
 import { DataSource } from 'typeorm';
@@ -56,6 +57,89 @@ describe('ProjectsController (e2e)', () => {
     if (!listResponse.body.some((project: { id: string }) => project.id === projectId)) {
       throw new Error('created project was not returned by GET /projects');
     }
+  });
+
+  it('returns one Project-start draft for repeated use of the same creation command', async () => {
+    const creationRequestId = randomUUID();
+    const projectName = `Idempotent project start ${creationRequestId}`;
+    const input = {
+      creationRequestId,
+      name: projectName,
+      customerContactName: 'Test Contact',
+      customerContactEmail: 'test@example.test',
+      internalOwnerName: 'Test PO/PM',
+      nextActionOwnerRole: 'INTERNAL_OWNER',
+    };
+
+    const [first, second] = await Promise.all([
+      request(app.getHttpServer()).post('/projects').send(input),
+      request(app.getHttpServer()).post('/projects').send(input),
+    ]);
+
+    assert.equal(first.status, 201);
+    assert.equal(second.status, 201);
+    assert.equal(first.body.id, second.body.id);
+
+    const listResponse = await request(app.getHttpServer()).get('/projects').expect(200);
+    assert.equal(
+      listResponse.body.filter((project: { name: string }) => project.name === projectName).length,
+      1,
+    );
+  });
+
+  it('updates valid Project basics only before the first question schema is accepted', async () => {
+    const projectId = await createProject('editable-basics');
+    const acceptedBasics = {
+      name: `Updated Project basics ${projectId}`,
+      customerContactName: 'Updated Customer',
+      customerContactEmail: 'updated-customer@example.test',
+      internalOwnerName: 'Updated PO/PM',
+    };
+
+    const updated = await request(app.getHttpServer())
+      .patch(`/projects/${projectId}/basics`)
+      .send(acceptedBasics)
+      .expect(200);
+    assert.equal(updated.body.name, acceptedBasics.name);
+    assert.equal(updated.body.customerContactName, acceptedBasics.customerContactName);
+    assert.equal(updated.body.customerContactEmail, acceptedBasics.customerContactEmail);
+    assert.equal(updated.body.internalOwnerName, acceptedBasics.internalOwnerName);
+
+    const bankResponse = await request(app.getHttpServer()).get('/settings/base-questions').expect(200);
+    const stableKey = bankResponse.body.questions[0]?.stableKey as string | undefined;
+    assert.ok(stableKey);
+    await request(app.getHttpServer())
+      .post(`/projects/${projectId}/question-schema`)
+      .send({ questions: [{ stableKey, required: true, blocking: true }] })
+      .expect(201);
+
+    const rejectedName = `Rejected Project basics ${projectId}`;
+    await request(app.getHttpServer())
+      .patch(`/projects/${projectId}/basics`)
+      .send({ ...acceptedBasics, name: rejectedName })
+      .expect(409);
+
+    const listResponse = await request(app.getHttpServer()).get('/projects').expect(200);
+    const retainedProject = listResponse.body.find(
+      (project: { id: string }) => project.id === projectId,
+    );
+    assert.equal(retainedProject.name, acceptedBasics.name);
+  });
+
+  it('keeps a basics-only Project-start draft eligible for guarded deletion', async () => {
+    const projectId = await createProject('edited-bare-draft');
+    await request(app.getHttpServer())
+      .patch(`/projects/${projectId}/basics`)
+      .send({
+        name: `Edited bare draft ${projectId}`,
+        customerContactName: 'Edited Contact',
+        customerContactEmail: 'edited-contact@example.test',
+        internalOwnerName: 'Edited PO/PM',
+      })
+      .expect(200);
+
+    await request(app.getHttpServer()).delete(`/projects/${projectId}`).expect(204);
+    await request(app.getHttpServer()).get(`/projects/${projectId}/cockpit`).expect(404);
   });
 
   it('manages a named Markdown template draft through preview and publication', async () => {

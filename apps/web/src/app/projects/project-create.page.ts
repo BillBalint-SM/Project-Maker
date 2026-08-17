@@ -33,6 +33,7 @@ export class ProjectCreatePage {
 
   readonly createError = signal<string | null>(null);
   readonly saving = signal(false);
+  private readonly creationRequestId = crypto.randomUUID();
 
   readonly createForm = new FormGroup({
     name: new FormControl('', {
@@ -57,7 +58,7 @@ export class ProjectCreatePage {
     }),
   });
 
-  createProject(): void {
+  createProject(destination: 'portfolio' | 'schema'): void {
     this.createForm.markAllAsTouched();
     if (this.createForm.invalid || this.saving()) {
       return;
@@ -68,6 +69,7 @@ export class ProjectCreatePage {
     this.createError.set(null);
     this.api
       .createProject({
+        creationRequestId: this.creationRequestId,
         name: value.name.trim(),
         customerContactName: value.customerContactName.trim(),
         customerContactEmail: value.customerContactEmail.trim(),
@@ -77,7 +79,11 @@ export class ProjectCreatePage {
       .subscribe({
         next: (project) => {
           this.saving.set(false);
-          void this.router.navigate(['/projects', project.id, 'interview']);
+          void this.router.navigate(
+            destination === 'portfolio'
+              ? ['/']
+              : ['/projects', project.id, 'interview'],
+          );
         },
         error: (error: Error) => {
           this.createError.set(error.message);
