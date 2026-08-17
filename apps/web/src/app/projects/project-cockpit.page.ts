@@ -141,7 +141,9 @@ export class ProjectCockpitPage implements OnInit {
       validators: [Validators.required, Validators.email, Validators.maxLength(320)],
     }),
   });
-  readonly basicsSaving = signal(false);
+  readonly basicsSaving = computed(
+    () => this.operationPolicy.activeOperation() === 'project-basics-save',
+  );
   readonly basicsError = signal<string | null>(null);
   readonly basicsFeedback = signal<string | null>(null);
 
@@ -295,35 +297,46 @@ export class ProjectCockpitPage implements OnInit {
 
   canEditBasics(): boolean {
     const view = this.view();
-    return view?.project.status === 'DRAFT' && view.preparationStatus.state === 'SCHEMA_REQUIRED';
+    return view?.project.status !== 'ARCHIVED' && view?.preparationStatus.state === 'SCHEMA_REQUIRED';
   }
 
   saveProjectBasics(): void {
     this.basicsForm.markAllAsTouched();
-    if (this.basicsForm.invalid || this.basicsSaving() || !this.canEditBasics()) {
+    if (
+      this.basicsForm.invalid ||
+      this.cockpitMutationInProgress() ||
+      !this.canEditBasics()
+    ) {
       return;
     }
 
     const value = this.basicsForm.getRawValue();
-    this.basicsSaving.set(true);
+    const lease = this.operationPolicy.tryAcquire('project-basics-save');
+    if (!lease) {
+      return;
+    }
     this.basicsError.set(null);
     this.basicsFeedback.set(null);
-    this.api.updateProjectBasics(this.projectId, {
-      name: value.name.trim(),
-      internalOwnerName: value.internalOwnerName.trim(),
-      customerContactName: value.customerContactName.trim(),
-      customerContactEmail: value.customerContactEmail.trim(),
-    }).subscribe({
-      next: (project) => {
-        this.applyWorkspaceResponse(project);
-        this.basicsFeedback.set('Alapadatok mentve.');
-        this.basicsSaving.set(false);
-      },
-      error: (error: Error) => {
-        this.basicsError.set(error.message);
-        this.basicsSaving.set(false);
-      },
-    });
+    this.api
+      .updateProjectBasics(this.projectId, {
+        name: value.name.trim(),
+        internalOwnerName: value.internalOwnerName.trim(),
+        customerContactName: value.customerContactName.trim(),
+        customerContactEmail: value.customerContactEmail.trim(),
+      })
+      .pipe(
+        releaseCockpitOperationOnFinalize(lease),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe({
+        next: (project) => {
+          this.applyWorkspaceResponse(project);
+          this.basicsFeedback.set('Alapadatok mentve.');
+        },
+        error: (error: Error) => {
+          this.basicsError.set(error.message);
+        },
+      });
   }
 
   archiveProject(): void {
