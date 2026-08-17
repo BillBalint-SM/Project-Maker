@@ -128,10 +128,7 @@ export class CustomerFollowUpService implements OnModuleInit, OnModuleDestroy {
       await this.findProject(manager, projectId, false);
       const existing = await manager.getRepository(CustomerFollowUpEntity).findOneBy({ projectId });
       await this.reconcileExpiredManualAttempts(manager, projectId, new Date());
-      const latestManualAttempt = await manager.getRepository(CustomerFollowUpDeliveryAttemptEntity).findOne({
-        where: { projectId },
-        order: { attemptedAt: 'DESC', createdAt: 'DESC', id: 'ASC' },
-      });
+      const latestManualAttempt = await findLatestManualAttempt(manager, projectId);
       return toState(existing ?? createDefaultState(projectId), latestManualAttempt);
     });
   }
@@ -168,7 +165,7 @@ export class CustomerFollowUpService implements OnModuleInit, OnModuleDestroy {
         intervalMinutes: String(saved.intervalMinutes),
         expiresAt: saved.expiresAt ? saved.expiresAt.toISOString() : 'NONE',
       });
-      return toState(saved);
+      return toState(saved, await findLatestManualAttempt(manager, projectId));
     });
   }
 
@@ -217,7 +214,7 @@ export class CustomerFollowUpService implements OnModuleInit, OnModuleDestroy {
         hasReference: String(referencedFollowUp !== null),
         messageLength: String(messageDraft.length),
       });
-      return toState(saved);
+      return toState(saved, await findLatestManualAttempt(manager, projectId));
     });
   }
 
@@ -298,7 +295,10 @@ export class CustomerFollowUpService implements OnModuleInit, OnModuleDestroy {
         },
         order: { attemptedAt: 'DESC', createdAt: 'DESC', id: 'ASC' },
       });
-      if (latestAttempt?.state === 'UNKNOWN') {
+      if (
+        latestAttempt?.state === 'UNKNOWN' &&
+        input.acknowledgeDuplicateRiskForAttemptId !== latestAttempt.id
+      ) {
         return { requiresDuplicateRiskAcknowledgement: true };
       }
       const claimedAt = nextAttemptTimestamp(attemptedAt, latestAttempt);
@@ -432,7 +432,10 @@ export class CustomerFollowUpService implements OnModuleInit, OnModuleDestroy {
     for (const candidate of candidates) {
       const result = await this.processDueState(candidate.id, now);
       if (result) {
-        sentStates.push(toState(result.state));
+        sentStates.push(toState(
+          result.state,
+          await findLatestManualAttempt(this.dataSource.manager, result.state.projectId),
+        ));
       }
     }
     return sentStates;
@@ -909,6 +912,16 @@ function rejectArchivedProject(project: Project): void {
   if (project.status === 'ARCHIVED') {
     throw new ConflictException('Archived projects cannot send customer emails.');
   }
+}
+
+function findLatestManualAttempt(
+  manager: EntityManager,
+  projectId: string,
+): Promise<CustomerFollowUpDeliveryAttemptEntity | null> {
+  return manager.getRepository(CustomerFollowUpDeliveryAttemptEntity).findOne({
+    where: { projectId },
+    order: { attemptedAt: 'DESC', createdAt: 'DESC', id: 'ASC' },
+  });
 }
 
 function toState(

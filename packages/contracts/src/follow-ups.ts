@@ -85,6 +85,7 @@ export interface UpdateCustomerFollowUpInput {
 
 export interface SendFollowUpPingInput {
   readonly previewToken: string;
+  readonly acknowledgeDuplicateRiskForAttemptId?: string;
 }
 
 export interface RetryFollowUpPingInput {
