@@ -3,7 +3,6 @@ import { Test } from '@nestjs/testing';
 import assert from 'node:assert/strict';
 import { after, before, describe, it } from 'node:test';
 import request from 'supertest';
-import { DataSource } from 'typeorm';
 
 import { AppModule } from '../src/app.module';
 import {
@@ -214,11 +213,21 @@ describe('Correlated Customer replies', () => {
       .expect(200);
     assert.equal(mismatch.body.correspondences[0].messages[0].senderClassification, 'UNRECOGNIZED');
     const correspondenceId = mismatch.body.correspondences[0].id as string;
-
-    await app.get(DataSource).query(
-      `UPDATE "customer_correspondences" SET "status" = 'Lezárva', "unread_message_count" = 0 WHERE "id" = $1`,
-      [correspondenceId],
-    );
+    const priorMessageId = mismatch.body.correspondences[0].messages[0].id as string;
+    await request(app.getHttpServer())
+      .post(`/projects/${projectId}/customer-correspondences/${correspondenceId}/commands`)
+      .send({
+        command: 'CLASSIFY_MESSAGE',
+        expectedVersion: mismatch.body.correspondences[0].processingVersion,
+        messageId: priorMessageId,
+        classification: 'Elfogadva',
+        closeCorrespondence: true,
+      })
+      .expect(201);
+    await request(app.getHttpServer())
+      .post(`/projects/${projectId}/customer-correspondences/${correspondenceId}/commands`)
+      .send({ command: 'MARK_REVIEWED', expectedVersion: mismatch.body.correspondences[0].processingVersion + 1 })
+      .expect(201);
     graph.queue(inboundMessage(lateId, replyToAddress, '2026-08-18T17:00:00.000Z'));
     await request(app.getHttpServer()).post('/customer-mailbox-sync/refresh').send({}).expect(201);
 
@@ -227,6 +236,7 @@ describe('Correlated Customer replies', () => {
       .expect(200);
     assert.equal(reopened.body.correspondences[0].status, 'Új válasz');
     assert.equal(reopened.body.correspondences[0].unreadMessageCount, 1);
+    assert.equal(reopened.body.correspondences[0].messages[0].classification, 'Elfogadva');
     assert.deepEqual(
       reopened.body.correspondences[0].messages.map((message: { providerMessageReference: string }) => message.providerMessageReference),
       [mismatchId, lateId],
@@ -268,6 +278,10 @@ describe('Correlated Customer replies', () => {
       .post(`/projects/${projectId}/customer-correspondences/${correspondenceId}/commands`)
       .send({ command: 'SET_STATUS', expectedVersion: 5, status: 'not-a-status' })
       .expect(400);
+    await request(app.getHttpServer())
+      .post(`/projects/${projectId}/customer-correspondences/${correspondenceId}/commands`)
+      .send({ command: 'SET_STATUS', expectedVersion: 5, status: 'Lezárva' })
+      .expect(409);
     const competing = await Promise.all([
       request(app.getHttpServer())
         .post(`/projects/${projectId}/customer-correspondences/${correspondenceId}/commands`)
@@ -279,10 +293,10 @@ describe('Correlated Customer replies', () => {
     assert.deepEqual(competing.map((response) => response.status).sort(), [201, 409]);
 
     const classifications = [
-      'Elfogadva',
       'Módosítást kér',
       'Kérdés vagy válasz',
       'Egyéb',
+      'Elfogadva',
     ] as const;
     let version = 6;
     for (const [index, classification] of classifications.entries()) {

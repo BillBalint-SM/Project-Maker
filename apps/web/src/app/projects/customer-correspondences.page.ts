@@ -8,6 +8,7 @@ import type {
   CustomerInboundMessageClassification,
   ProjectCustomerCorrespondenceWork,
 } from '@project-maker/contracts';
+import { customerInboundMessageClassifications } from '@project-maker/contracts/customer-mail';
 
 import { CustomerRepliesApiService } from './customer-replies-api.service';
 
@@ -86,9 +87,7 @@ export class CustomerCorrespondencesPage implements OnInit {
   readonly loading = signal(true);
   readonly error = signal<string | null>(null);
   readonly busy = signal(false);
-  readonly classifications = [
-    'Elfogadva', 'Módosítást kér', 'Kérdés vagy válasz', 'Egyéb',
-  ] as const;
+  readonly classifications = customerInboundMessageClassifications;
   ngOnInit(): void {
     this.api.forProject(this.projectId).subscribe({
       next: (correspondenceWork) => {

@@ -128,6 +128,9 @@ export class CustomerRepliesService {
       if (input.command === 'SET_STATUS') {
         requireStatusTransition(current.status, input.status);
         if (current.status === input.status) return;
+        if (input.status === 'Lezárva') {
+          await requireEveryInboundMessageClassified(manager, correspondenceId);
+        }
         await updateCorrespondence(manager, correspondenceId, input.status, current.unread_message_count);
         await audit(manager, projectId, 'CUSTOMER_CORRESPONDENCE_STATUS_CHANGED', {
           correspondenceId,
@@ -151,6 +154,9 @@ export class CustomerRepliesService {
          SET "classification" = EXCLUDED."classification", "updated_at" = CURRENT_TIMESTAMP`,
         [input.messageId, input.classification],
       );
+      if (input.closeCorrespondence) {
+        await requireEveryInboundMessageClassified(manager, correspondenceId);
+      }
       const nextStatus = input.closeCorrespondence ? 'Lezárva' : current.status;
       await updateCorrespondence(manager, correspondenceId, nextStatus, current.unread_message_count);
       await audit(manager, projectId, 'CUSTOMER_INBOUND_MESSAGE_CLASSIFIED', {
@@ -164,6 +170,22 @@ export class CustomerRepliesService {
     const correspondence = view.correspondences.find((item) => item.id === correspondenceId);
     if (!correspondence) throw new NotFoundException('Customer correspondence not found.');
     return correspondence;
+  }
+}
+
+async function requireEveryInboundMessageClassified(
+  manager: EntityManager,
+  correspondenceId: string,
+): Promise<void> {
+  const rows = await manager.query(
+    `SELECT COUNT(*)::integer AS "count"
+     FROM "customer_inbound_messages" message
+     LEFT JOIN "customer_inbound_message_processing" processing ON processing."message_id" = message."id"
+     WHERE message."correspondence_id" = $1 AND processing."message_id" IS NULL`,
+    [correspondenceId],
+  ) as Array<{ count: number }>;
+  if ((rows[0]?.count ?? 0) > 0) {
+    throw new ConflictException('Every Customer reply must be classified before closing the correspondence.');
   }
 }
 
