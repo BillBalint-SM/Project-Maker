@@ -1,3 +1,4 @@
+import { DatePipe } from '@angular/common';
 import { Component, inject, OnInit, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { ButtonModule } from 'primeng/button';
@@ -5,10 +6,16 @@ import { CardModule } from 'primeng/card';
 import { MessageModule } from 'primeng/message';
 import { ProgressSpinnerModule } from 'primeng/progressspinner';
 import { TagModule } from 'primeng/tag';
-import type { ProjectPreparationStatus, ProjectWorkspace } from '@project-maker/contracts';
+import type {
+  CustomerMailboxSyncState,
+  CustomerMailboxSyncStatus,
+  ProjectPreparationStatus,
+  ProjectWorkspace,
+} from '@project-maker/contracts';
 import { forkJoin, map, of, switchMap } from 'rxjs';
 
 import { ProjectApiService } from './project-api.service';
+import { CustomerMailboxSyncApiService } from './customer-mailbox-sync-api.service';
 import { projectStatusLabel } from './project-status-label';
 
 @Component({
@@ -16,6 +23,7 @@ import { projectStatusLabel } from './project-status-label';
   imports: [
     ButtonModule,
     CardModule,
+    DatePipe,
     MessageModule,
     ProgressSpinnerModule,
     RouterLink,
@@ -26,11 +34,16 @@ import { projectStatusLabel } from './project-status-label';
 })
 export class ProjectListPage implements OnInit {
   private readonly api = inject(ProjectApiService);
+  private readonly mailboxApi = inject(CustomerMailboxSyncApiService);
 
   readonly projects = signal<readonly PortfolioProject[]>([]);
   readonly loading = signal(true);
   readonly loadError = signal<string | null>(null);
   readonly statusLabel = projectStatusLabel;
+  readonly mailboxStatus = signal<CustomerMailboxSyncStatus | null>(null);
+  readonly mailboxLoading = signal(true);
+  readonly mailboxRefreshing = signal(false);
+  readonly mailboxError = signal<string | null>(null);
 
   projectRoute(entry: PortfolioProject): readonly string[] {
     return entry.preparationStatus?.state === 'SCHEMA_REQUIRED'
@@ -46,6 +59,51 @@ export class ProjectListPage implements OnInit {
 
   ngOnInit(): void {
     this.loadProjects();
+    this.loadMailboxStatus();
+  }
+
+  loadMailboxStatus(): void {
+    this.mailboxLoading.set(true);
+    this.mailboxError.set(null);
+    this.mailboxApi.status().subscribe({
+      next: (status) => {
+        this.mailboxStatus.set(status);
+        this.mailboxLoading.set(false);
+      },
+      error: (error: Error) => {
+        this.mailboxError.set(error.message);
+        this.mailboxLoading.set(false);
+      },
+    });
+  }
+
+  refreshMailbox(): void {
+    if (this.mailboxRefreshing()) return;
+    this.mailboxRefreshing.set(true);
+    this.mailboxError.set(null);
+    this.mailboxApi.refresh().subscribe({
+      next: (status) => {
+        this.mailboxStatus.set(status);
+        this.mailboxRefreshing.set(false);
+      },
+      error: (error: Error) => {
+        this.mailboxError.set(error.message);
+        this.mailboxRefreshing.set(false);
+      },
+    });
+  }
+
+  mailboxStateLabel(state: CustomerMailboxSyncState): string {
+    const labels: Record<CustomerMailboxSyncState, string> = {
+      NOT_CONFIGURED: 'Postafiók nincs konfigurálva',
+      INITIALIZING: 'Postafiók kapcsolódása folyamatban',
+      CURRENT: 'Postafiók naprakész',
+      DELAYED: 'Postafiók-szinkron késik',
+      UNAVAILABLE: 'Postafiók átmenetileg nem érhető el',
+      CONFIGURATION_ERROR: 'Postafiók-beállítás javítandó',
+      AUTHORIZATION_ERROR: 'Postafiók-jogosultság javítandó',
+    };
+    return labels[state];
   }
 
   loadProjects(): void {

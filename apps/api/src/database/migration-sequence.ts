@@ -18,6 +18,7 @@ import { CustomerFollowUpPingDraft0015CustomerFollowUpPingDraft1787126400000 } f
 import { ProjectStartCreationRequest0016ProjectStartCreationRequest1787212800000 } from '../migrations/0016-project-start-creation-request';
 import { M365InterviewHandoff0017M365InterviewHandoff1787299200000 } from '../migrations/0017-m365-interview-handoff';
 import { M365CustomerFollowUpPing0018M365CustomerFollowUpPing1787385600000 } from '../migrations/0018-m365-customer-follow-up-ping';
+import { CustomerMailboxSync0019CustomerMailboxSync1787472000000 } from '../migrations/0019-customer-mailbox-sync';
 
 export type ApiMigration = new () => MigrationInterface;
 
@@ -40,6 +41,7 @@ export const migrationSequence: readonly ApiMigration[] = [
   ProjectStartCreationRequest0016ProjectStartCreationRequest1787212800000,
   M365InterviewHandoff0017M365InterviewHandoff1787299200000,
   M365CustomerFollowUpPing0018M365CustomerFollowUpPing1787385600000,
+  CustomerMailboxSync0019CustomerMailboxSync1787472000000,
 ];
 
 export function migrationsThrough(migrationName: string): readonly ApiMigration[] {
