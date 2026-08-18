@@ -97,6 +97,7 @@ ordered TypeORM migrations registered in
 17. `0017-m365-interview-handoff.ts` — Microsoft 365 identities, immutable outbound Customer communication, correspondence anchors, and delivery attempts for interview handoffs.
 18. `0018-m365-customer-follow-up-ping.ts` — Microsoft 365 correspondence identities and acceptance results for Customer follow-up pings.
 19. `0019-customer-mailbox-sync.ts` — durable dedicated-mailbox identity, completed Graph delta checkpoint, bounded freshness/failure state, synchronization timestamps, lease ownership, and retained post-baseline mailbox changes.
+20. `0020-correlated-customer-replies.ts` — append-only normalized inbound Customer messages, token-only correlation evidence, bounded attachment metadata, correspondence ordering indexes, and rollback protection for retained messages.
 
 The deployed API image contains the compiled migration classes, but not the
 TypeScript migration source tree used by the development-only
@@ -147,7 +148,7 @@ docker compose --env-file .env exec -T api node -e $migrationStatusScript
 
 `pending: false` means that all migration classes in the running image are
 recorded in the database. The `applied` array is the database's migration
-history; the nineteen expected names are listed above.
+history; the twenty expected names are listed above.
 
 There is no safe arbitrary migration selector in the runtime image. A
 controlled revert can undo only the latest applied migration through a

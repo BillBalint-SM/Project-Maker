@@ -22,6 +22,7 @@ import {
   customerMailboxChangesToken,
 } from '../mail-delivery/customer-mail-boundary';
 import { CustomerMailboxSyncEntity } from './customer-mailbox-sync.entity';
+import { CustomerReplyIngestionService } from '../customer-replies/customer-reply-ingestion.service';
 
 export const customerMailboxClockToken = 'CUSTOMER_MAILBOX_CLOCK';
 export interface CustomerMailboxClock {
@@ -44,6 +45,7 @@ export class CustomerMailboxSyncService implements OnModuleInit, OnModuleDestroy
     @Inject(customerMailboxClockToken)
     private readonly clock: CustomerMailboxClock,
     private readonly config: ConfigService,
+    private readonly replyIngestion: CustomerReplyIngestionService,
   ) {
     this.pollIntervalMs = pollInterval(config.get<string>('CUSTOMER_MAILBOX_SYNC_POLL_INTERVAL_MS'));
   }
@@ -171,27 +173,7 @@ export class CustomerMailboxSyncService implements OnModuleInit, OnModuleDestroy
         },
       );
       if (result.affected === 0) return result;
-      for (const change of retainedChanges) {
-        if (change.changeType !== 'UPSERTED') continue;
-        await manager.query(
-          `INSERT INTO "customer_mailbox_change_inbox" (
-             "mailbox_address", "message_reference", "internet_message_id", "in_reply_to",
-             "sender_address", "subject", "text_content", "received_at", "observed_at"
-           ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-           ON CONFLICT ("mailbox_address", "message_reference") DO NOTHING`,
-          [
-            mailboxAddress,
-            change.messageReference,
-            change.internetMessageId,
-            change.inReplyTo,
-            change.senderAddress,
-            change.subject,
-            change.textContent,
-            change.receivedAt,
-            this.clock.now(),
-          ],
-        );
-      }
+      await this.replyIngestion.ingest(manager, mailboxAddress, retainedChanges, this.clock.now());
       return result;
     });
     const saved = await this.syncRepository.findOneBy({ mailboxAddress });
