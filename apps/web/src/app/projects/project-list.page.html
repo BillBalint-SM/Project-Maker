@@ -8,6 +8,34 @@
     <a pButton routerLink="/projects/new" data-testid="new-project-button">Új projekt</a>
   </div>
 
+  <aside class="mailbox-sync-panel" aria-labelledby="mailbox-sync-title">
+    <div>
+      <span class="eyebrow">Customer kommunikáció</span>
+      <h2 id="mailbox-sync-title">Customer postafiók</h2>
+      @if (mailboxLoading()) {
+        <p data-testid="mailbox-sync-status">Postafiók állapotának betöltése…</p>
+      } @else if (mailboxStatus(); as status) {
+        <p data-testid="mailbox-sync-status">{{ mailboxStateLabel(status.state) }}</p>
+        <small>
+          Utolsó sikeres frissítés:
+          {{ status.lastSuccessfulSyncAt ? (status.lastSuccessfulSyncAt | date: 'yyyy. MM. dd. HH:mm') : 'még nem történt' }}
+        </small>
+      }
+      @if (mailboxError()) {
+        <p class="mailbox-sync-error" role="alert">{{ mailboxError() }}</p>
+      }
+    </div>
+    <p-button
+      label="Üzenetek frissítése"
+      icon="pi pi-refresh"
+      severity="secondary"
+      data-testid="refresh-customer-mailbox"
+      [loading]="mailboxRefreshing()"
+      [disabled]="mailboxLoading() || mailboxRefreshing()"
+      (onClick)="refreshMailbox()"
+    />
+  </aside>
+
   @if (loading()) {
     <div class="state-panel" data-testid="projects-loading" aria-live="polite">
       <p-progress-spinner ariaLabel="Loading projects" />

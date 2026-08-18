@@ -61,6 +61,25 @@ export interface CustomerMailboxCheckpoint {
   readonly value: string;
 }
 
+export const customerMailboxSyncStates = [
+  'NOT_CONFIGURED',
+  'INITIALIZING',
+  'CURRENT',
+  'DELAYED',
+  'UNAVAILABLE',
+  'CONFIGURATION_ERROR',
+  'AUTHORIZATION_ERROR',
+] as const;
+export type CustomerMailboxSyncState = (typeof customerMailboxSyncStates)[number];
+
+export interface CustomerMailboxSyncStatus {
+  readonly mailboxAddress: string | null;
+  readonly state: CustomerMailboxSyncState;
+  readonly baselineEstablished: boolean;
+  readonly lastSuccessfulSyncAt: string | null;
+  readonly refreshInProgress: boolean;
+}
+
 export function parseMailSystemAcceptanceState(value: unknown): MailSystemAcceptanceState {
   return parseClosedValue(value, mailSystemAcceptanceStates, 'mail-system acceptance state');
 }
@@ -75,6 +94,10 @@ export function parseCustomerCorrespondenceStatus(value: unknown): CustomerCorre
 
 export function parseCustomerMailErrorCode(value: unknown): CustomerMailErrorCode {
   return parseClosedValue(value, customerMailErrorCodes, 'customer mail error code');
+}
+
+export function parseCustomerMailboxSyncState(value: unknown): CustomerMailboxSyncState {
+  return parseClosedValue(value, customerMailboxSyncStates, 'customer mailbox sync state');
 }
 
 function parseClosedValue<const T extends readonly string[]>(

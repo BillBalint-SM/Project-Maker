@@ -16,6 +16,7 @@ export interface CustomerOutboundMail {
 }
 
 export interface CustomerMailboxChanges {
+  isConfigured(): boolean;
   readChanges(checkpoint: CustomerMailboxCheckpoint | null): Promise<CustomerMailboxChangePage>;
 }
 
@@ -42,6 +43,10 @@ export class CustomerMailBoundaryError extends Error {
 
 @Injectable()
 export class UnavailableCustomerMailboxChanges implements CustomerMailboxChanges {
+  isConfigured(): boolean {
+    return false;
+  }
+
   async readChanges(_checkpoint: CustomerMailboxCheckpoint | null): Promise<CustomerMailboxChangePage> {
     throw new CustomerMailBoundaryError('CONFIGURATION_ERROR');
   }
