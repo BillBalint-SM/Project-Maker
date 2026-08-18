@@ -21,8 +21,14 @@ import { CustomerRepliesApiService } from './customer-replies-api.service';
       <span class="eyebrow">Customer kommunikáció</span>
       <h1 id="customer-replies-title">Customer válaszok</h1>
       @if (loading()) { <p>Válaszok betöltése…</p> }
-      @else if (error()) { <p role="alert">{{ error() }}</p> }
+      @else if (loadError()) { <p role="alert">{{ loadError() }}</p> }
       @else if (correspondenceWork(); as current) {
+        @if (commandError()) {
+          <div class="command-error" role="alert">
+            <p>{{ commandError() }}</p>
+            <button type="button" (click)="reload()">Adatok újratöltése</button>
+          </div>
+        }
         <p data-testid="project-new-reply-count">{{ current.newReplyCount }} új válasz</p>
         @for (correspondence of current.correspondences; track correspondence.id) {
           <article class="correspondence" [attr.data-testid]="'correspondence-' + correspondence.id">
@@ -85,16 +91,28 @@ export class CustomerCorrespondencesPage implements OnInit {
   readonly projectId = this.route.snapshot.paramMap.get('projectId') ?? '';
   readonly correspondenceWork = signal<ProjectCustomerCorrespondenceWork | null>(null);
   readonly loading = signal(true);
-  readonly error = signal<string | null>(null);
+  readonly loadError = signal<string | null>(null);
+  readonly commandError = signal<string | null>(null);
   readonly busy = signal(false);
   readonly classifications = customerInboundMessageClassifications;
   ngOnInit(): void {
+    this.load();
+  }
+
+  reload(): void {
+    this.loading.set(true);
+    this.commandError.set(null);
+    this.load();
+  }
+
+  private load(): void {
+    this.loadError.set(null);
     this.api.forProject(this.projectId).subscribe({
       next: (correspondenceWork) => {
         this.correspondenceWork.set(correspondenceWork);
         this.loading.set(false);
       },
-      error: (error: Error) => { this.error.set(error.message); this.loading.set(false); },
+      error: (error: Error) => { this.loadError.set(error.message); this.loading.set(false); },
     });
   }
 
@@ -126,7 +144,7 @@ export class CustomerCorrespondencesPage implements OnInit {
 
   private execute(correspondence: CustomerCorrespondenceView, command: CustomerCorrespondenceCommand): void {
     this.busy.set(true);
-    this.error.set(null);
+    this.commandError.set(null);
     this.api.command(this.projectId, correspondence.id, command).subscribe({
       next: (updated) => {
         this.correspondenceWork.update((work) => work && ({
@@ -138,8 +156,12 @@ export class CustomerCorrespondencesPage implements OnInit {
           correspondences: work.correspondences.map((item) => item.id === updated.id ? updated : item),
         }));
         this.busy.set(false);
+        this.api.summary().subscribe({ error: () => undefined });
       },
-      error: (error: Error) => { this.error.set(error.message); this.busy.set(false); },
+      error: () => {
+        this.commandError.set('A művelet nem hajtható végre a jelenlegi adatokkal. Töltsd újra az adatokat, majd próbáld meg ismét.');
+        this.busy.set(false);
+      },
     });
   }
 }

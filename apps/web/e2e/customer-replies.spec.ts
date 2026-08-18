@@ -36,8 +36,16 @@ test('surfaces one safe token-correlated Customer reply across global and Portfo
   await expect(history).toBeVisible();
   await expect(history.locator('xpath=..')).not.toHaveAttribute('open');
 
+  await page.getByRole('button', { name: 'Lezárás' }).click();
+  await expect(page.getByRole('alert')).toContainText('Töltsd újra az adatokat');
+  await expect(page.getByText('Mehet tovább.')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Adatok újratöltése' })).toBeVisible();
+  await page.getByRole('button', { name: 'Adatok újratöltése' }).click();
+  await expect(page.getByText('Mehet tovább.')).toBeVisible();
+
   await page.getByRole('button', { name: 'Átnéztem' }).click();
   await expect(page.getByText('0 olvasatlan üzenet')).toBeVisible();
+  await expect(page.getByTestId('global-customer-reply-count')).not.toContainText('(1)');
   const classification = page.getByLabel('Kézi besorolás');
   await classification.selectOption('Módosítást kér');
   await expect(classification).toHaveValue('Módosítást kér');
