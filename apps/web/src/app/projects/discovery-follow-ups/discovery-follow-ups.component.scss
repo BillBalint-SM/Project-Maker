@@ -41,6 +41,15 @@
   padding: 1rem;
 }
 
+.discovery-follow-up-item--review {
+  border-color: var(--p-primary-color);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--p-primary-color) 20%, transparent);
+}
+
+.reply-review-context {
+  font-weight: 700;
+}
+
 .discovery-follow-up-meta {
   align-items: center;
   display: flex;

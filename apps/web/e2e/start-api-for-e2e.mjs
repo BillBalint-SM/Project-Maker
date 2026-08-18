@@ -27,6 +27,7 @@ const graphClientPrivateKeyBase64 = Buffer.from(
 ).toString('base64');
 const graphMessages = [];
 let rejectNextGraphMessage = false;
+let unknownNextGraphMessage = false;
 let mailboxDeltaVersion = 0;
 let mailboxDeltaRequests = 0;
 const mailboxDeltaPreferHeaders = [];
@@ -42,6 +43,7 @@ const graphServer = createServer((request, response) => {
   if (request.method === 'POST' && request.url === '/__test/reset') {
     graphMessages.length = 0;
     rejectNextGraphMessage = false;
+    unknownNextGraphMessage = false;
     mailboxDeltaVersion = 0;
     mailboxDeltaRequests = 0;
     mailboxDeltaPreferHeaders.length = 0;
@@ -53,6 +55,11 @@ const graphServer = createServer((request, response) => {
   }
   if (request.method === 'POST' && request.url === '/__test/reject-next') {
     rejectNextGraphMessage = true;
+    response.writeHead(204).end();
+    return;
+  }
+  if (request.method === 'POST' && request.url === '/__test/unknown-next') {
+    unknownNextGraphMessage = true;
     response.writeHead(204).end();
     return;
   }
@@ -112,6 +119,11 @@ const graphServer = createServer((request, response) => {
         ...graphMessage,
         __senderAddress: senderSegment ? decodeURIComponent(senderSegment) : null,
       });
+      if (unknownNextGraphMessage) {
+        unknownNextGraphMessage = false;
+        response.destroy();
+        return;
+      }
       response.writeHead(202).end();
     });
     return;

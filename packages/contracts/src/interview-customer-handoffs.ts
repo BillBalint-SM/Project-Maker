@@ -39,6 +39,8 @@ export interface InterviewCustomerHandoffSummary {
   readonly createdAt: string;
   readonly attemptedAt: string | null;
   readonly sentAt: string | null;
+  /** A token-correlated inbound reply proves Customer receipt without rewriting UNKNOWN. */
+  readonly receiptEvidence: boolean;
 }
 
 export interface InterviewCustomerHandoffDetail extends InterviewCustomerHandoffSummary {

@@ -31,8 +31,12 @@
         <p-button label="Újrapróbálás" [disabled]="busy() || readOnly()" data-testid="retry-failed-handoff" (onClick)="retry(active)" />
       }
       @if (active.state === 'UNKNOWN') {
-        <p-message severity="warn" data-testid="handoff-state-message">A levelezőrendszer átvételi eredménye nem ismert. Újrapróbálás előtt ellenőrizd a kimenő postafiókot.</p-message>
-        <p-button label="Ellenőrzés után újrapróbálás" [disabled]="busy() || readOnly()" data-testid="retry-unknown-handoff" (onClick)="confirmUnknownRetry(active, $any($event.currentTarget))" />
+        @if (active.receiptEvidence) {
+          <p-message severity="success" data-testid="handoff-receipt-evidence">A Customer válasza igazolja az átvételt. Az eredeti ismeretlen kézbesítési eredmény megmarad, újraküldés nem szükséges.</p-message>
+        } @else {
+          <p-message severity="warn" data-testid="handoff-state-message">A levelezőrendszer átvételi eredménye nem ismert. Újrapróbálás előtt ellenőrizd a kimenő postafiókot.</p-message>
+          <p-button label="Ellenőrzés után újrapróbálás" [disabled]="busy() || readOnly()" data-testid="retry-unknown-handoff" (onClick)="confirmUnknownRetry(active, $any($event.currentTarget))" />
+        }
       }
     </section>
   } @else if (history().length > 0) {

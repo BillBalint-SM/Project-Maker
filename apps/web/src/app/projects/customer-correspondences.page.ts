@@ -11,10 +11,12 @@ import type {
 import { customerInboundMessageClassifications } from '@project-maker/contracts/customer-mail';
 
 import { CustomerRepliesApiService } from './customer-replies-api.service';
+import { InterviewReplyOutcomeComponent } from '../interviews/interview-handoff/interview-reply-outcome.component';
+import { DiscoveryReplyOutcomeComponent } from './discovery-follow-ups/discovery-reply-outcome.component';
 
 @Component({
   selector: 'app-customer-correspondences-page',
-  imports: [DatePipe, RouterLink],
+  imports: [DatePipe, DiscoveryReplyOutcomeComponent, InterviewReplyOutcomeComponent, RouterLink],
   template: `
     <a class="back-link" [routerLink]="['/projects', projectId, 'status']">← Projektállapot</a>
     <section aria-labelledby="customer-replies-title">
@@ -23,6 +25,9 @@ import { CustomerRepliesApiService } from './customer-replies-api.service';
       @if (loading()) { <p>Válaszok betöltése…</p> }
       @else if (loadError()) { <p role="alert">{{ loadError() }}</p> }
       @else if (correspondenceWork(); as current) {
+        @if (current.projectArchived) {
+          <p role="status">Az archivált projekt levelezése olvasható. A feldolgozáshoz vagy a forrásfolyamat módosításához előbb állítsd vissza a projektet.</p>
+        }
         @if (commandError()) {
           <div class="command-error" role="alert">
             <p>{{ commandError() }}</p>
@@ -37,15 +42,27 @@ import { CustomerRepliesApiService } from './customer-replies-api.service';
             <div class="processing-actions">
               <button type="button"
                 [attr.data-testid]="'mark-reviewed-' + correspondence.id"
-                [disabled]="busy() || correspondence.unreadMessageCount === 0"
+                [disabled]="busy() || current.projectArchived || correspondence.unreadMessageCount === 0"
                 (click)="markReviewed(correspondence)">Átnéztem</button>
               @if (correspondence.status === 'Új válasz' || correspondence.status === 'Lezárva') {
-                <button type="button" [disabled]="busy()" (click)="setStatus(correspondence, 'Feldolgozás alatt')">Feldolgozás megkezdése</button>
+                <button type="button" [disabled]="busy() || current.projectArchived" (click)="setStatus(correspondence, 'Feldolgozás alatt')">Feldolgozás megkezdése</button>
               }
               @if (correspondence.status !== 'Lezárva') {
-                <button type="button" [disabled]="busy()" (click)="setStatus(correspondence, 'Lezárva')">Lezárás</button>
+                <button type="button" [disabled]="busy() || current.projectArchived" (click)="setStatus(correspondence, 'Lezárva')">Lezárás</button>
               }
             </div>
+            @if (correspondence.unknownDeliveryReceiptEvidence) {
+              <p class="receipt-evidence" data-testid="unknown-delivery-receipt-evidence">A Customer válasza átvételi bizonyíték; az ismeretlen kézbesítési eredmény változatlanul megmarad, újraküldés nem javasolt.</p>
+            }
+            <app-interview-reply-outcome
+              [projectId]="projectId"
+              [projectArchived]="current.projectArchived"
+              [correspondence]="correspondence"
+            />
+            <app-discovery-reply-outcome
+              [projectId]="projectId"
+              [correspondence]="correspondence"
+            />
             @for (message of correspondence.messages; track message.id) {
               <section class="inbound-message" [attr.data-testid]="'inbound-message-' + message.id">
                 <header><strong>{{ message.senderAddress || 'Ismeretlen feladó' }}</strong><time>{{ message.receivedAt | date: 'yyyy. MM. dd. HH:mm' }}</time></header>
@@ -55,7 +72,7 @@ import { CustomerRepliesApiService } from './customer-replies-api.service';
                 <label>
                   Kézi besorolás
                   <select [attr.data-testid]="'classification-' + message.id"
-                    [disabled]="busy()"
+                    [disabled]="busy() || current.projectArchived"
                     (change)="classify(correspondence, message.id, $event)">
                     <option value="" [selected]="!message.classification">Válassz besorolást</option>
                     @for (classification of classifications; track classification) {
@@ -81,6 +98,7 @@ import { CustomerRepliesApiService } from './customer-replies-api.service';
     .inbound-message header { display: flex; justify-content: space-between; gap: 1rem; }
     .message-text, pre { white-space: pre-wrap; overflow-wrap: anywhere; font: inherit; }
     .sender-warning { color: var(--p-orange-700); font-weight: 700; }
+    .receipt-evidence { color: var(--p-green-700); font-weight: 700; }
     .processing-actions { display: flex; flex-wrap: wrap; gap: .5rem; }
     label { display: grid; gap: .35rem; margin-block: .75rem; max-width: 22rem; }
   `,

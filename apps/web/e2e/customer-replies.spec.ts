@@ -1,9 +1,14 @@
 import { expect, test, type APIRequestContext } from '@playwright/test';
 
-test('surfaces one safe token-correlated Customer reply across global and Portfolio views', async ({ page, request }) => {
+const graphBaseUrl = 'http://127.0.0.1:25260';
+
+test.beforeEach(async ({ request }) => {
+  await request.post(`${graphBaseUrl}/__test/reset`);
   await request.post('/api/customer-mailbox-sync/refresh');
+});
+
+test('surfaces one safe token-correlated Customer reply across global and Portfolio views', async ({ page, request }) => {
   const setup = await createSentHandoff(request);
-  const graphBaseUrl = 'http://127.0.0.1:25260';
   const sent = await request.get(`${graphBaseUrl}/__test/messages`).then((response) => response.json()) as Array<{
     message: { replyTo: Array<{ emailAddress: { address: string } }> };
   }>;
@@ -49,6 +54,10 @@ test('surfaces one safe token-correlated Customer reply across global and Portfo
   const classification = page.getByLabel('Kézi besorolás');
   await classification.selectOption('Módosítást kér');
   await expect(classification).toHaveValue('Módosítást kér');
+  await page.getByRole('button', { name: 'Új összefoglaló-verzió készítése' }).click();
+  await expect(page).toHaveURL(new RegExp(`/projects/${setup.projectId}/interview\\?roundId=${setup.roundId}#customer-handoff$`));
+  await expect(page.getByTestId('handoff-modification-summary')).toBeVisible();
+  await page.goto(`/projects/${setup.projectId}/customer-correspondences`);
   await page.getByRole('button', { name: 'Feldolgozás megkezdése' }).click();
   await expect(page.getByRole('heading', { name: 'Feldolgozás alatt' })).toBeVisible();
   await page.getByRole('button', { name: 'Lezárás' }).click();
@@ -68,6 +77,67 @@ test('surfaces one safe token-correlated Customer reply across global and Portfo
   await expect(page.getByText('1 olvasatlan üzenet')).toBeVisible();
   await expect(page.getByText('Újabb Customer válasz.')).toBeVisible();
   await expect(page.getByLabel('Kézi besorolás').first()).toHaveValue('Módosítást kér');
+});
+
+test('opens the exact ping source without resolving it and retains UNKNOWN evidence through archive and restore', async ({ page, request }) => {
+  const suffix = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  const customerEmail = `ping-outcome-${suffix}@example.test`;
+  const project = await request.post('/api/projects', { data: {
+    name: `Ping outcome ${suffix}`,
+    customerContactName: 'Ügyfél Anna',
+    customerContactEmail: customerEmail,
+    internalOwnerName: 'PO Péter',
+    nextActionOwnerRole: 'CUSTOMER_CONTACT',
+  } }).then((response) => response.json()) as { id: string };
+  const followUp = await request.post(`/api/projects/${project.id}/discovery-follow-ups`, { data: {
+    category: 'BUSINESS',
+    question: 'Melyik jóváhagyás hiányzik?',
+    owner: 'PO Péter',
+    dueDate: '2026-09-15',
+    nextStep: 'Az ügyfél pontosítja a jóváhagyást.',
+  } }).then((response) => response.json()) as { id: string; status: string };
+  await request.patch(`/api/projects/${project.id}/follow-up/draft`, { data: {
+    messageDraft: 'Kérlek, pontosítsd a hiányzó jóváhagyást.',
+    referencedFollowUpId: followUp.id,
+    expectedVersion: 1,
+  } });
+  const preview = await request.post(`/api/projects/${project.id}/follow-up/ping/preview`, { data: {
+    expectedVersion: 2,
+  } }).then((response) => response.json()) as { previewToken: string };
+  await request.post(`${graphBaseUrl}/__test/unknown-next`);
+  const unknown = await request.post(`/api/projects/${project.id}/follow-up/ping`, { data: {
+    previewToken: preview.previewToken,
+  } });
+  expect(unknown.status()).toBe(503);
+  const sent = await request.get(`${graphBaseUrl}/__test/messages`).then((response) => response.json()) as Array<{
+    message: { replyTo: Array<{ emailAddress: { address: string } }> };
+  }>;
+  const replyToAddress = sent.at(-1)?.message.replyTo[0]?.emailAddress.address;
+  expect(replyToAddress).toBeTruthy();
+  await queueReply(request, `unknown-ping-${suffix}`, customerEmail, replyToAddress!, 'Átvettük, pontosítjuk.');
+  await request.post('/api/customer-mailbox-sync/refresh');
+
+  await page.goto(`/projects/${project.id}/customer-correspondences`);
+  await expect(page.getByTestId('unknown-delivery-receipt-evidence')).toContainText('átvételi bizonyíték');
+  await page.getByRole('link', { name: 'Forrás Discovery follow-up áttekintése' }).click();
+  await expect(page).toHaveURL(new RegExp(`reviewFollowUpId=${followUp.id}`));
+  await expect(page.getByTestId('reply-review-context')).toContainText('nem módosította és nem oldotta fel');
+  const afterReview = await request.get(`/api/projects/${project.id}/discovery-follow-ups`)
+    .then((response) => response.json()) as Array<{ id: string; status: string; version: number }>;
+  expect(afterReview.find((item) => item.id === followUp.id)?.status).toBe(followUp.status);
+  expect(afterReview.find((item) => item.id === followUp.id)?.version).toBe(1);
+
+  await request.post(`/api/projects/${project.id}/archive`);
+  await queueReply(request, `archived-ping-${suffix}`, customerEmail, replyToAddress!, 'Archiválás után érkezett válasz.');
+  await request.post('/api/customer-mailbox-sync/refresh');
+  await page.goto(`/projects/${project.id}/customer-correspondences`);
+  await expect(page.getByText('Archiválás után érkezett válasz.')).toBeVisible();
+  await expect(page.getByLabel('Kézi besorolás').first()).toBeDisabled();
+  await request.post(`/api/projects/${project.id}/restore`);
+  await page.reload();
+  await expect(page.getByLabel('Kézi besorolás').first()).toBeEnabled();
+  await expect(page.getByText('2 olvasatlan üzenet')).toBeVisible();
+  await expect(page.getByTestId('unknown-delivery-receipt-evidence')).toBeVisible();
 });
 
 async function createSentHandoff(request: APIRequestContext) {
@@ -96,5 +166,22 @@ async function createSentHandoff(request: APIRequestContext) {
     senderAddress: preview.senderAddress,
   } });
   expect(sent.ok()).toBe(true);
-  return { projectId: project.id, customerEmail };
+  return { projectId: project.id, roundId: round.id, customerEmail };
+}
+
+async function queueReply(
+  request: APIRequestContext,
+  id: string,
+  senderAddress: string,
+  replyToAddress: string,
+  content: string,
+): Promise<void> {
+  await request.post(`${graphBaseUrl}/__test/queue-mailbox-message`, { data: {
+    id,
+    from: { emailAddress: { address: senderAddress } },
+    toRecipients: [{ emailAddress: { address: replyToAddress } }],
+    subject: 'Re: Customer follow-up',
+    body: { contentType: 'text', content },
+    receivedDateTime: new Date().toISOString(),
+  } });
 }
