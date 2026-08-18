@@ -147,7 +147,7 @@ docker compose --env-file .env exec -T api node -e $migrationStatusScript
 
 `pending: false` means that all migration classes in the running image are
 recorded in the database. The `applied` array is the database's migration
-history; the eleven expected names are listed above.
+history; the nineteen expected names are listed above.
 
 There is no safe arbitrary migration selector in the runtime image. A
 controlled revert can undo only the latest applied migration through a
