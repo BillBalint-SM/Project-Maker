@@ -66,6 +66,15 @@ export class CorrelatedCustomerReplies0020CorrelatedCustomerReplies1787558400000
       BEFORE UPDATE OR DELETE ON "customer_inbound_messages"
       FOR EACH ROW EXECUTE FUNCTION "protect_customer_inbound_message"()
     `);
+    await queryRunner.query(`
+      UPDATE "customer_mailbox_sync"
+      SET "delta_checkpoint" = NULL,
+          "state" = 'INITIALIZING',
+          "failure_code" = NULL,
+          "lease_token" = NULL,
+          "lease_expires_at" = NULL
+      WHERE "baseline_established"
+    `);
   }
 
   async down(queryRunner: QueryRunner): Promise<void> {
