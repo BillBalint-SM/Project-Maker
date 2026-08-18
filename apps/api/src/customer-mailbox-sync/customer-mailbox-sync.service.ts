@@ -72,9 +72,8 @@ export class CustomerMailboxSyncService implements OnModuleInit, OnModuleDestroy
 
   async status(): Promise<CustomerMailboxSyncStatus> {
     const mailboxAddress = this.mailboxAddress();
-    if (!mailboxAddress || !this.mailbox.isConfigured()) {
-      return emptyStatus(mailboxAddress, 'NOT_CONFIGURED');
-    }
+    if (!mailboxAddress) return emptyStatus(null, 'NOT_CONFIGURED');
+    if (!this.mailbox.isConfigured()) return emptyStatus(mailboxAddress, 'CONFIGURATION_ERROR');
     const state = await this.syncRepository.findOneBy({ mailboxAddress });
     const now = this.clock.now();
     return state
@@ -97,9 +96,8 @@ export class CustomerMailboxSyncService implements OnModuleInit, OnModuleDestroy
 
   private async performRefresh(): Promise<CustomerMailboxSyncStatus> {
     const mailboxAddress = this.mailboxAddress();
-    if (!mailboxAddress || !this.mailbox.isConfigured()) {
-      return emptyStatus(mailboxAddress, 'NOT_CONFIGURED');
-    }
+    if (!mailboxAddress) return emptyStatus(null, 'NOT_CONFIGURED');
+    if (!this.mailbox.isConfigured()) return emptyStatus(mailboxAddress, 'CONFIGURATION_ERROR');
 
     const attemptedAt = this.clock.now();
     const leaseToken = randomUUID();
