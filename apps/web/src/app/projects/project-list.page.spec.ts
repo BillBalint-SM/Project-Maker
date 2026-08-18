@@ -5,6 +5,7 @@ import { describe, expect, it, vi } from 'vitest';
 import type { CustomerMailboxSyncStatus } from '@project-maker/contracts';
 
 import { CustomerMailboxSyncApiService } from './customer-mailbox-sync-api.service';
+import { CustomerRepliesApiService } from './customer-replies-api.service';
 import { ProjectApiService } from './project-api.service';
 import { ProjectListPage } from './project-list.page';
 
@@ -36,6 +37,12 @@ describe('ProjectListPage customer mailbox synchronization', () => {
           useValue: { listProjects: vi.fn().mockReturnValue(of([])) },
         },
         { provide: CustomerMailboxSyncApiService, useValue: mailboxApi },
+        {
+          provide: CustomerRepliesApiService,
+          useValue: {
+            summary: vi.fn().mockReturnValue(of({ newReplyCount: 0, projectCount: 0, projects: [] })),
+          },
+        },
       ],
     }).compileComponents();
 
