@@ -577,6 +577,19 @@ describe('Correlated Customer replies', () => {
       .expect(200);
     assert.equal(stillUnknown.body.state, 'UNKNOWN');
     assert.equal(stillUnknown.body.receiptEvidence, true);
+
+    const revision = await request(app.getHttpServer())
+      .post(`/projects/${projectId}/rounds/${roundId}/customer-handoffs`)
+      .send({})
+      .expect(201);
+    assert.equal(revision.body.state, 'DRAFT');
+    assert.equal(revision.body.version, 2);
+    assert.equal(revision.body.supersedesHandoffId, handoffId);
+    const preservedUnknown = await request(app.getHttpServer())
+      .get(`/projects/${projectId}/rounds/${roundId}/customer-handoffs/${handoffId}`)
+      .expect(200);
+    assert.equal(preservedUnknown.body.state, 'UNKNOWN');
+    assert.equal(preservedUnknown.body.receiptEvidence, true);
   });
 });
 

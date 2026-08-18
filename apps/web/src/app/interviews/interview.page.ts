@@ -79,6 +79,7 @@ export class InterviewPage implements OnInit, OnDestroy {
   private readonly inFlightRequestIds = new Map<string, Set<number>>();
 
   readonly projectId = this.route.snapshot.paramMap.get('projectId') ?? '';
+  readonly requestedRoundId = this.route.snapshot.queryParamMap.get('roundId');
   readonly handoffRequested = this.route.snapshot.fragment === 'customer-handoff';
   readonly bank = signal<BaseQuestionBank | null>(null);
   readonly schema = signal<ProjectQuestionSchema | null>(null);
@@ -128,7 +129,9 @@ export class InterviewPage implements OnInit, OnDestroy {
     forkJoin({
       bank: this.questionBankApi.loadBaseQuestionBank(),
       schema: this.questionBankApi.loadProjectSchema(this.projectId),
-      activeRound: this.interviewApi.getActiveInitialIntake(this.projectId),
+      activeRound: this.requestedRoundId
+        ? this.interviewApi.getRound(this.projectId, this.requestedRoundId)
+        : this.interviewApi.getActiveInitialIntake(this.projectId),
       project: this.projectApi.loadProjectWorkspace(this.projectId),
     }).subscribe({
       next: ({ bank, schema, activeRound, project }) => {

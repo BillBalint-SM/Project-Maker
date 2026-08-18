@@ -83,7 +83,9 @@ export class InterviewCustomerHandoffService {
       const repository = manager.getRepository(InterviewCustomerHandoffEntity);
       const latest = await repository.findOne({ where: { roundId }, order: { version: 'DESC' }, lock: { mode: 'pessimistic_write' } });
       if (!latest) return toDetail(await this.establishFirstDraft(manager, projectId, roundId));
-      if (latest.state !== 'SENT') throw new ConflictException('Már van aktív összefoglaló-verzió.');
+      const canSupersede = latest.state === 'SENT'
+        || (latest.state === 'UNKNOWN' && await hasCustomerReceiptEvidence(manager, latest.correspondenceId));
+      if (!canSupersede) throw new ConflictException('Már van aktív összefoglaló-verzió.');
       const draft = await repository.save(newDraft(repository, projectId, roundId, latest.version + 1, latest.id));
       await audit(manager, projectId, 'INTERVIEW_HANDOFF_REVISION_STARTED', draft);
       return toDetail(draft);

@@ -29,6 +29,7 @@ const expectedMigrationNames = [
   'CustomerMailboxSync0019CustomerMailboxSync1787472000000',
   'CorrelatedCustomerReplies0020CorrelatedCustomerReplies1787558400000',
   'CustomerCorrespondenceProcessing0021CustomerCorrespondenceProcessing1787644800000',
+  'ReceiptProvenHandoffRevision0022ReceiptProvenHandoffRevision1787731200000',
 ] as const;
 
 type MigrationConstructor = new () => { readonly name?: string };

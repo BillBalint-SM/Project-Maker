@@ -42,6 +42,18 @@ describe('InterviewPage', () => {
     expect(schemaCheckbox?.disabled).toBe(true);
   });
 
+  it('loads the exact requested source round instead of the active round', async () => {
+    const requestedRound = buildOpenRound(buildTextQuestion({}));
+    const questionBankApi = createQuestionBankApi(null, null);
+    const interviewApi = createInterviewApi(null, null);
+    interviewApi.getRound.mockReturnValue(of(requestedRound));
+
+    await renderInterviewPage('project-123', questionBankApi, interviewApi, 'round-1');
+
+    expect(interviewApi.getRound).toHaveBeenCalledWith('project-123', 'round-1');
+    expect(interviewApi.getActiveInitialIntake).not.toHaveBeenCalled();
+  });
+
   it('renders server-projected missing and complete assessment status tags with stable fragment targets', async () => {
     const missingQuestion = buildOptionalTextQuestion({
       checklistStatus: 'Nincs meg',
@@ -823,6 +835,7 @@ async function renderInterviewPage(
     readonly updateProjectSchema: ReturnType<typeof vi.fn>;
   },
   interviewApi: {
+    readonly getRound: ReturnType<typeof vi.fn>;
     readonly getActiveInitialIntake: ReturnType<typeof vi.fn>;
     readonly createRound: ReturnType<typeof vi.fn>;
     readonly updateAnswer: ReturnType<typeof vi.fn>;
@@ -830,6 +843,7 @@ async function renderInterviewPage(
     readonly resetAssessment: ReturnType<typeof vi.fn>;
     readonly finishRound: ReturnType<typeof vi.fn>;
   },
+  roundId?: string,
 ): Promise<{ readonly fixture: ComponentFixture<InterviewPage>; readonly nativeElement: HTMLElement }> {
   TestBed.resetTestingModule();
   await TestBed.configureTestingModule({
@@ -841,6 +855,8 @@ async function renderInterviewPage(
         useValue: {
           snapshot: {
             paramMap: convertToParamMap({ projectId }),
+            queryParamMap: convertToParamMap(roundId ? { roundId } : {}),
+            fragment: null,
           },
         },
       },
@@ -889,6 +905,7 @@ function createInterviewApi(
   activeRound: InterviewRound | null,
   updateAnswer: ReturnType<typeof vi.fn> | null,
 ): {
+  readonly getRound: ReturnType<typeof vi.fn>;
   readonly getActiveInitialIntake: ReturnType<typeof vi.fn>;
   readonly createRound: ReturnType<typeof vi.fn>;
   readonly updateAnswer: ReturnType<typeof vi.fn>;
@@ -897,6 +914,7 @@ function createInterviewApi(
   readonly finishRound: ReturnType<typeof vi.fn>;
 } {
   return {
+    getRound: vi.fn(),
     getActiveInitialIntake: vi.fn().mockReturnValue(of(activeRound)),
     createRound: vi.fn(),
     updateAnswer: updateAnswer ?? vi.fn(),

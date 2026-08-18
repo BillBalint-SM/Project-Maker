@@ -45,6 +45,14 @@ export class InterviewApiService {
       );
   }
 
+  getRound(projectId: string, roundId: string): Observable<InterviewRound> {
+    const encodedProjectId = encodeURIComponent(projectId);
+    const encodedRoundId = encodeURIComponent(roundId);
+    return this.http
+      .get<InterviewRound>(`/api/projects/${encodedProjectId}/rounds/${encodedRoundId}`)
+      .pipe(catchError((error: unknown) => failApiRequest(error, 'betölteni a kiválasztott interjúkört')));
+  }
+
   createRound(
     projectId: string,
     input: CreateInterviewRoundInput,
