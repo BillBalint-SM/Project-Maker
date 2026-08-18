@@ -154,6 +154,7 @@ export class CustomerMailboxSyncService implements OnModuleInit, OnModuleDestroy
       state.failureCode = null;
     } catch (error) {
       const failure = error instanceof CustomerMailBoundaryError ? error.code : 'TEMPORARY_FAILURE';
+      if (failure === 'INVALID_CURSOR') state.deltaCheckpoint = null;
       state.state = failureState(failure);
       state.failureCode = failure;
     }
@@ -223,7 +224,9 @@ function failureState(code: string): CustomerMailboxSyncState {
 
 function pollInterval(configuredValue: string | undefined): number {
   const parsed = Number(configuredValue ?? '60000');
-  return Number.isSafeInteger(parsed) && parsed >= 100 ? parsed : 60_000;
+  return Number.isSafeInteger(parsed) && parsed >= 100 && parsed <= 2_147_483_647
+    ? parsed
+    : 60_000;
 }
 
 async function wait(durationMs: number): Promise<void> {

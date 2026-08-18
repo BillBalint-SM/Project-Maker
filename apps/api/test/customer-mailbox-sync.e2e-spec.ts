@@ -295,6 +295,77 @@ describe('Customer mailbox synchronization', () => {
     }
   });
 
+  it('discards an expired delta checkpoint before rebuilding the current mailbox view', async () => {
+    pages.push({
+      changes: [],
+      nextPageCheckpoint: null,
+      completedCheckpoint: { value: 'delta-before-expiry' },
+    });
+    await request(apps[0].getHttpServer())
+      .post('/customer-mailbox-sync/refresh')
+      .send({})
+      .expect(201);
+
+    mailboxFailure = new CustomerMailBoundaryError('INVALID_CURSOR');
+    const unavailable = await request(apps[0].getHttpServer())
+      .post('/customer-mailbox-sync/refresh')
+      .send({})
+      .expect(201);
+    assert.equal(unavailable.body.state, 'UNAVAILABLE');
+
+    mailboxFailure = null;
+    pages.push({
+      changes: [],
+      nextPageCheckpoint: null,
+      completedCheckpoint: { value: 'delta-after-recovery' },
+    });
+    const recovered = await request(apps[0].getHttpServer())
+      .post('/customer-mailbox-sync/refresh')
+      .send({})
+      .expect(201);
+
+    assert.equal(recovered.body.state, 'CURRENT');
+    assert.equal(recovered.body.baselineEstablished, true);
+    assert.deepEqual(requestedCheckpoints, [
+      null,
+      { value: 'delta-before-expiry' },
+      null,
+    ]);
+  });
+
+  it('falls back before scheduling a poll interval beyond the Node timer limit', async () => {
+    const originalSetInterval = global.setInterval;
+    const previousPollInterval = process.env['CUSTOMER_MAILBOX_SYNC_POLL_INTERVAL_MS'];
+    const scheduledDelays: number[] = [];
+    process.env['CUSTOMER_MAILBOX_SYNC_POLL_INTERVAL_MS'] = '2147483648';
+    global.setInterval = ((handler: TimerHandler, delay?: number, ...args: unknown[]) => {
+      scheduledDelays.push(Number(delay));
+      return originalSetInterval(handler, 60_000, ...args);
+    }) as typeof setInterval;
+
+    let app: INestApplication | undefined;
+    try {
+      const module = await Test.createTestingModule({ imports: [AppModule] })
+        .overrideProvider(customerMailboxChangesToken)
+        .useValue({ isConfigured: () => true, readChanges: async () => ({}) })
+        .overrideProvider(customerMailboxClockToken)
+        .useValue({ now: () => new Date(currentTime) })
+        .compile();
+      app = module.createNestApplication({ logger: false });
+      await app.init();
+      assert.equal(scheduledDelays.includes(60_000), true);
+      assert.equal(scheduledDelays.some((delay) => delay > 2_147_483_647), false);
+    } finally {
+      await app?.close();
+      global.setInterval = originalSetInterval;
+      if (previousPollInterval === undefined) {
+        delete process.env['CUSTOMER_MAILBOX_SYNC_POLL_INTERVAL_MS'];
+      } else {
+        process.env['CUSTOMER_MAILBOX_SYNC_POLL_INTERVAL_MS'] = previousPollInterval;
+      }
+    }
+  });
+
   it('prevents an expired worker from overwriting a completed takeover', async () => {
     pages.push(
       { changes: [], nextPageCheckpoint: null, completedCheckpoint: { value: 'delta-stale' } },
