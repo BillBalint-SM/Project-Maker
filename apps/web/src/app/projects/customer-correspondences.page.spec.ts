@@ -10,6 +10,15 @@ describe('CustomerCorrespondencesPage', () => {
   it('renders reply text safely and keeps quoted history collapsed', async () => {
     const correspondence = {
       id: 'correspondence-1', status: 'Új válasz' as const, unreadMessageCount: 1, processingVersion: 1,
+      predecessorId: null,
+      source: {
+        type: 'INTERVIEW_HANDOFF' as const,
+        roundId: 'round-1',
+        handoffId: 'handoff-1',
+        version: 1,
+        state: 'SENT' as const,
+      },
+      unknownDeliveryReceiptEvidence: false,
       messages: [{
         id: 'message-1', providerMessageReference: 'provider-1', internetMessageId: null,
         receivedAt: '2026-08-18T14:00:00.000Z', senderAddress: 'other@example.test',
@@ -20,7 +29,7 @@ describe('CustomerCorrespondencesPage', () => {
         classification: null,
       }],
     };
-    const work = { newReplyCount: 1, correspondences: [correspondence] };
+    const work = { newReplyCount: 1, projectArchived: false, correspondences: [correspondence] };
     const command = vi.fn()
       .mockReturnValueOnce(throwError(() => new Error('rejected')))
       .mockReturnValue(of({ ...correspondence, unreadMessageCount: 0, processingVersion: 2 }));
