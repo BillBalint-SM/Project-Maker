@@ -84,6 +84,9 @@ interface EditConflictRefreshSnapshot {
 export class DiscoveryFollowUpsComponent implements OnInit {
   readonly projectId = input.required<string>();
   readonly projectStatus = input.required<ProjectStatus>();
+  readonly reviewFollowUpId = input<string | null>(null);
+  readonly reviewFollowUpVersion = input<string | null>(null);
+  readonly reviewCorrespondenceId = input<string | null>(null);
   readonly committedChange = output<void>();
 
   private readonly api = inject(DiscoveryFollowUpsApiService);
@@ -287,6 +290,14 @@ export class DiscoveryFollowUpsComponent implements OnInit {
         next: (followUps) => {
           this.followUps.set(sortDiscoveryFollowUps(followUps));
           this.loading.set(false);
+          const reviewFollowUpId = this.reviewFollowUpId();
+          if (reviewFollowUpId && followUps.some((followUp) => followUp.id === reviewFollowUpId)) {
+            afterNextRender(() => {
+              const item = this.document.querySelector<HTMLElement>(`[data-follow-up-id="${reviewFollowUpId}"]`);
+              item?.scrollIntoView({ block: 'center' });
+              item?.focus();
+            }, { injector: this.injector });
+          }
         },
         error: (error: Error) => {
           this.loadError.set(error.message);

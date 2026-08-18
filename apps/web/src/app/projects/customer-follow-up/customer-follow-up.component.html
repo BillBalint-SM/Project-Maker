@@ -62,15 +62,19 @@
   } @else if (current.latestManualAttempt?.state === 'UNKNOWN') {
     <section class="follow-up-recovery follow-up-recovery--warning" data-testid="follow-up-unknown-recovery">
       <h3>Az ügyfél-ping eredménye bizonytalan</h3>
-      <p>Ellenőrizd a kimenő postafiókot. Az újraküldés duplikált levelet eredményezhet.</p>
-      <p-button
-        type="button"
-        label="Ellenőriztem, újraküldöm"
-        severity="warn"
-        [disabled]="controlsDisabled()"
-        data-testid="retry-unknown-follow-up-ping-button"
-        (onClick)="openRetryConfirmation(current.latestManualAttempt!)"
-      />
+      @if (current.latestManualAttempt.receiptEvidence) {
+        <p data-testid="follow-up-receipt-evidence">A Customer válasza igazolja az átvételt. Az eredeti ismeretlen eredmény megmarad, újraküldés nem szükséges.</p>
+      } @else {
+        <p>Ellenőrizd a kimenő postafiókot. Az újraküldés duplikált levelet eredményezhet.</p>
+        <p-button
+          type="button"
+          label="Ellenőriztem, újraküldöm"
+          severity="warn"
+          [disabled]="controlsDisabled()"
+          data-testid="retry-unknown-follow-up-ping-button"
+          (onClick)="openRetryConfirmation(current.latestManualAttempt!)"
+        />
+      }
     </section>
   }
 
