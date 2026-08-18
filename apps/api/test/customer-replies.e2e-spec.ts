@@ -396,7 +396,6 @@ describe('Correlated Customer replies', () => {
       state: 'SENT',
     });
     assert.equal(classified.body.predecessorId, null);
-    assert.equal(classified.body.outcome?.command, 'START_HANDOFF_REVISION');
 
     const revision = await request(app.getHttpServer())
       .post(`/projects/${projectId}/rounds/${classified.body.source.roundId}/customer-handoffs`)
@@ -489,11 +488,6 @@ describe('Correlated Customer replies', () => {
       followUpId: followUp.body.id,
       followUpVersion: 1,
     });
-    assert.deepEqual(correspondence.outcome, {
-      command: 'REVIEW_DISCOVERY_FOLLOW_UP',
-      followUpId: followUp.body.id,
-      followUpVersion: 1,
-    });
     assert.equal(correspondence.unknownDeliveryReceiptEvidence, true);
     const stateWithEvidence = await request(app.getHttpServer()).get(`/projects/${projectId}/follow-up`).expect(200);
     assert.equal(stateWithEvidence.body.latestManualAttempt.state, 'UNKNOWN');
@@ -538,7 +532,7 @@ describe('Correlated Customer replies', () => {
     assert.equal(restored.body.correspondences[0].unreadMessageCount, 2);
     assert.equal(restored.body.correspondences[0].processingVersion, classified.body.processingVersion + 1);
     assert.equal(restored.body.correspondences[0].messages.length, 2);
-    assert.deepEqual(restored.body.correspondences[0].outcome, correspondence.outcome);
+    assert.deepEqual(restored.body.correspondences[0].source, correspondence.source);
   });
 
   it('suppresses retry for an UNKNOWN handoff after a correlated receipt while preserving UNKNOWN', async () => {

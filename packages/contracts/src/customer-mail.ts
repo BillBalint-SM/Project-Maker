@@ -105,14 +105,6 @@ export type CustomerCorrespondenceSource =
       readonly followUpVersion: number | null;
     };
 
-export type CustomerCorrespondenceOutcome =
-  | { readonly command: 'START_HANDOFF_REVISION' }
-  | {
-      readonly command: 'REVIEW_DISCOVERY_FOLLOW_UP';
-      readonly followUpId: string;
-      readonly followUpVersion: number;
-    };
-
 export interface CustomerCorrespondenceView {
   readonly id: string;
   readonly predecessorId: string | null;
@@ -120,7 +112,6 @@ export interface CustomerCorrespondenceView {
   readonly unreadMessageCount: number;
   readonly processingVersion: number;
   readonly source: CustomerCorrespondenceSource;
-  readonly outcome: CustomerCorrespondenceOutcome | null;
   readonly unknownDeliveryReceiptEvidence: boolean;
   readonly messages: readonly CustomerInboundMessageView[];
 }

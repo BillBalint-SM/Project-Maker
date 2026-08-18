@@ -304,9 +304,6 @@ function toCorrespondence(
         version: row.handoff_version,
         state: row.handoff_state,
       },
-      outcome: messages.some((message) => message.classification === 'Módosítást kér')
-        ? { command: 'START_HANDOFF_REVISION' }
-        : null,
       unknownDeliveryReceiptEvidence: row.unknown_delivery_receipt_evidence,
       messages,
     };
@@ -327,13 +324,6 @@ function toCorrespondence(
       followUpId: row.source_follow_up_id,
       followUpVersion: row.source_follow_up_version,
     },
-    outcome: row.source_follow_up_id && row.source_follow_up_version !== null && messages.length > 0
-      ? {
-          command: 'REVIEW_DISCOVERY_FOLLOW_UP',
-          followUpId: row.source_follow_up_id,
-          followUpVersion: row.source_follow_up_version,
-        }
-      : null,
     unknownDeliveryReceiptEvidence: row.unknown_delivery_receipt_evidence,
     messages,
   };

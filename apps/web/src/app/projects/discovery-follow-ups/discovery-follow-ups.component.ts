@@ -85,6 +85,7 @@ export class DiscoveryFollowUpsComponent implements OnInit {
   readonly projectId = input.required<string>();
   readonly projectStatus = input.required<ProjectStatus>();
   readonly reviewFollowUpId = input<string | null>(null);
+  readonly reviewFollowUpVersion = input<string | null>(null);
   readonly reviewCorrespondenceId = input<string | null>(null);
   readonly committedChange = output<void>();
 

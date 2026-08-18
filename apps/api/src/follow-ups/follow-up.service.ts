@@ -35,6 +35,7 @@ import {
 import { createFollowUpConfiguration } from '../config/follow-up.config';
 import { AuditEvent } from '../audit/audit-event.entity';
 import { Project } from '../projects/project.entity';
+import { hasCustomerReceiptEvidence } from '../customer-replies/customer-receipt-evidence';
 import { CustomerCorrespondenceEntity } from '../interview-customer-handoffs/customer-correspondence.entity';
 import { CustomerOutboundAttemptEntity } from '../interview-customer-handoffs/customer-outbound-attempt.entity';
 import { CustomerOutboundCommunicationEntity } from '../interview-customer-handoffs/customer-outbound-communication.entity';
@@ -143,7 +144,7 @@ export class CustomerFollowUpService implements OnModuleInit, OnModuleDestroy {
       return toState(
         existing ?? createDefaultState(projectId),
         latestManualAttempt,
-        await hasReceiptEvidence(manager, latestManualAttempt?.correspondenceId ?? null),
+        await hasCustomerReceiptEvidence(manager, latestManualAttempt?.correspondenceId ?? null),
       );
     });
   }
@@ -181,7 +182,7 @@ export class CustomerFollowUpService implements OnModuleInit, OnModuleDestroy {
         expiresAt: saved.expiresAt ? saved.expiresAt.toISOString() : 'NONE',
       });
       const latestAttempt = await findLatestManualAttempt(manager, projectId);
-      return toState(saved, latestAttempt, await hasReceiptEvidence(manager, latestAttempt?.correspondenceId ?? null));
+      return toState(saved, latestAttempt, await hasCustomerReceiptEvidence(manager, latestAttempt?.correspondenceId ?? null));
     });
   }
 
@@ -240,7 +241,7 @@ export class CustomerFollowUpService implements OnModuleInit, OnModuleDestroy {
         hasReference: String(referencedFollowUp !== null),
         messageLength: String(messageDraft.length),
       });
-      return toState(saved, latestAttempt, await hasReceiptEvidence(manager, latestAttempt?.correspondenceId ?? null));
+      return toState(saved, latestAttempt, await hasCustomerReceiptEvidence(manager, latestAttempt?.correspondenceId ?? null));
     });
   }
 
@@ -406,7 +407,7 @@ export class CustomerFollowUpService implements OnModuleInit, OnModuleDestroy {
           message: 'A kézbesítési állapot időközben megváltozott. Töltsd újra az aktuális állapotot.',
         });
       }
-      if (await hasReceiptEvidence(manager, latestAttempt.correspondenceId)) {
+      if (await hasCustomerReceiptEvidence(manager, latestAttempt.correspondenceId)) {
         throw new ConflictException({
           code: 'FOLLOW_UP_RECEIPT_EVIDENCE',
           message: 'A Customer válasza igazolja az átvételt; ezt a logikai kézbesítést nem szabad újraküldeni.',
@@ -1349,21 +1350,6 @@ function toManualAttempt(
     sentAt: value.sentAt?.toISOString() ?? null,
     receiptEvidence,
   };
-}
-
-async function hasReceiptEvidence(
-  manager: EntityManager,
-  correspondenceId: string | null,
-): Promise<boolean> {
-  if (!correspondenceId) return false;
-  const rows = await manager.query(
-    `SELECT EXISTS (
-       SELECT 1 FROM "customer_inbound_messages"
-       WHERE "correspondence_id" = $1
-     ) AS "present"`,
-    [correspondenceId],
-  ) as Array<{ present: boolean }>;
-  return rows[0]?.present ?? false;
 }
 
 function toSafeManualFailureCode(value: string | null): string | null {
