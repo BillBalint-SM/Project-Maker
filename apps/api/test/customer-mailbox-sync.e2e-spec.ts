@@ -21,6 +21,7 @@ import {
 } from '../src/mail-delivery/customer-mail-boundary';
 
 describe('Customer mailbox synchronization', () => {
+  const mailboxRun = Date.now().toString(36);
   const apps: INestApplication[] = [];
   let dataSource: DataSource;
   const requestedCheckpoints: Array<CustomerMailboxCheckpoint | null> = [];
@@ -31,6 +32,7 @@ describe('Customer mailbox synchronization', () => {
   let mailboxFailure: CustomerMailBoundaryError | null = null;
   let mailboxConfigured = true;
   let allowExpiredLeaseTakeover = false;
+  let mailboxSequence = 0;
 
   before(async () => {
     process.env['CUSTOMER_MAILBOX_ADDRESS'] = 'project-maker@pte.hu';
@@ -72,8 +74,8 @@ describe('Customer mailbox synchronization', () => {
   });
 
   beforeEach(async () => {
-    await dataSource.query('DELETE FROM "customer_mailbox_change_inbox"');
-    await dataSource.query('DELETE FROM "customer_mailbox_sync"');
+    mailboxSequence += 1;
+    process.env['CUSTOMER_MAILBOX_ADDRESS'] = `mailbox-sync-${mailboxRun}-${mailboxSequence}@pte.hu`;
     requestedCheckpoints.length = 0;
     pages = [];
     releaseRead = null;
@@ -98,7 +100,7 @@ describe('Customer mailbox synchronization', () => {
       .expect(201);
 
     assert.equal(refreshed.body.state, 'CURRENT');
-    assert.equal(refreshed.body.mailboxAddress, 'project-maker@pte.hu');
+    assert.equal(refreshed.body.mailboxAddress, process.env['CUSTOMER_MAILBOX_ADDRESS']);
     assert.equal(refreshed.body.baselineEstablished, true);
     assert.equal(typeof refreshed.body.lastSuccessfulSyncAt, 'string');
     assert.equal(refreshed.body.refreshInProgress, false);
@@ -249,7 +251,9 @@ describe('Customer mailbox synchronization', () => {
     >(
       `SELECT message_reference, subject, text_content
        FROM customer_mailbox_change_inbox
+       WHERE mailbox_address = $1
        ORDER BY message_reference`,
+      [process.env['CUSTOMER_MAILBOX_ADDRESS']],
     );
     assert.deepEqual(retained, [
       {
@@ -276,7 +280,10 @@ describe('Customer mailbox synchronization', () => {
     ] as const;
 
     for (const [errorCode, expectedState] of cases) {
-      await dataSource.query('DELETE FROM "customer_mailbox_sync"');
+      await dataSource.query(
+        'DELETE FROM "customer_mailbox_sync" WHERE "mailbox_address" = $1',
+        [process.env['CUSTOMER_MAILBOX_ADDRESS']],
+      );
       mailboxFailure = new CustomerMailBoundaryError(errorCode);
       const response = await request(apps[0].getHttpServer())
         .post('/customer-mailbox-sync/refresh')
@@ -331,8 +338,11 @@ function mailboxChange(messageReference: string) {
     internetMessageId: `<${messageReference}@pte.hu>`,
     inReplyTo: '<outbound-message@project-maker.local>',
     senderAddress: 'customer@pte.hu',
+    recipientAddresses: ['project-maker@pte.hu'],
     subject: 'Új ügyfélválasz',
     textContent: 'A projekt mehet tovább.',
     receivedAt: '2026-08-18T11:59:00.000Z',
+    attachmentCount: 0,
+    attachments: [],
   };
 }

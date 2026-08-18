@@ -46,9 +46,55 @@ export interface CustomerMailboxChange {
   readonly internetMessageId: string | null;
   readonly inReplyTo: string | null;
   readonly senderAddress: string | null;
+  readonly recipientAddresses: readonly string[];
   readonly subject: string | null;
   readonly textContent: string | null;
   readonly receivedAt: string | null;
+  readonly attachmentCount: number;
+  readonly attachments: readonly CustomerMailboxAttachmentMetadata[];
+}
+
+export interface CustomerMailboxAttachmentMetadata {
+  readonly name: string;
+  readonly contentType: string;
+  readonly size: number;
+}
+
+export type CustomerReplySenderClassification = 'CUSTOMER_CONTACT' | 'UNRECOGNIZED';
+
+export interface CustomerInboundMessageView {
+  readonly id: string;
+  readonly providerMessageReference: string;
+  readonly internetMessageId: string | null;
+  readonly receivedAt: string;
+  readonly senderAddress: string | null;
+  readonly senderClassification: CustomerReplySenderClassification;
+  readonly recipientAddresses: readonly string[];
+  readonly subject: string | null;
+  readonly textContent: string;
+  readonly visibleText: string;
+  readonly quotedText: string | null;
+  readonly attachmentCount: number;
+  readonly attachments: readonly CustomerMailboxAttachmentMetadata[];
+  readonly correlationEvidence: 'TOKENIZED_REPLY_TO';
+}
+
+export interface CustomerCorrespondenceView {
+  readonly id: string;
+  readonly status: CustomerCorrespondenceStatus;
+  readonly unreadMessageCount: number;
+  readonly messages: readonly CustomerInboundMessageView[];
+}
+
+export interface ProjectCustomerCorrespondenceWork {
+  readonly newReplyCount: number;
+  readonly correspondences: readonly CustomerCorrespondenceView[];
+}
+
+export interface CustomerReplySummary {
+  readonly newReplyCount: number;
+  readonly projectCount: number;
+  readonly projects: readonly { readonly projectId: string; readonly newReplyCount: number }[];
 }
 
 export interface CustomerMailboxChangePage {
