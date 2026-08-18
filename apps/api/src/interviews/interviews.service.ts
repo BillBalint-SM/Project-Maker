@@ -58,6 +58,17 @@ export class InterviewsService {
     });
   }
 
+  async getRound(projectId: string, roundId: string): Promise<InterviewRound> {
+    return this.dataSource.transaction(async (manager) => {
+      await requireProject(manager, projectId, false);
+      const round = await manager.getRepository(InterviewRoundEntity).findOneBy({ id: roundId, projectId });
+      if (!round) {
+        throw new NotFoundException('Interview round not found.');
+      }
+      return loadInterviewRound(manager, round);
+    });
+  }
+
   async createRound(projectId: string, input: CreateInterviewRoundDto): Promise<InterviewRound> {
     return this.dataSource.transaction(async (manager) => {
       const assessmentPolicy = await loadRoundQuestionAssessmentPolicy();

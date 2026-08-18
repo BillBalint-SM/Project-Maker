@@ -33,6 +33,14 @@ export class InterviewsController {
     response.status(200).json(activeRound);
   }
 
+  @Get(':roundId')
+  getRound(
+    @Param('projectId', new ParseUUIDPipe()) projectId: string,
+    @Param('roundId', new ParseUUIDPipe()) roundId: string,
+  ): Promise<InterviewRound> {
+    return this.interviewsService.getRound(projectId, roundId);
+  }
+
   @Post()
   createRound(
     @Param('projectId', new ParseUUIDPipe()) projectId: string,

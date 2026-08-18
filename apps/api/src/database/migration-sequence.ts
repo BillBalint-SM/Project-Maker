@@ -21,6 +21,7 @@ import { M365CustomerFollowUpPing0018M365CustomerFollowUpPing1787385600000 } fro
 import { CustomerMailboxSync0019CustomerMailboxSync1787472000000 } from '../migrations/0019-customer-mailbox-sync';
 import { CorrelatedCustomerReplies0020CorrelatedCustomerReplies1787558400000 } from '../migrations/0020-correlated-customer-replies';
 import { CustomerCorrespondenceProcessing0021CustomerCorrespondenceProcessing1787644800000 } from '../migrations/0021-customer-correspondence-processing';
+import { ReceiptProvenHandoffRevision0022ReceiptProvenHandoffRevision1787731200000 } from '../migrations/0022-receipt-proven-handoff-revision';
 
 export type ApiMigration = new () => MigrationInterface;
 
@@ -46,6 +47,7 @@ export const migrationSequence: readonly ApiMigration[] = [
   CustomerMailboxSync0019CustomerMailboxSync1787472000000,
   CorrelatedCustomerReplies0020CorrelatedCustomerReplies1787558400000,
   CustomerCorrespondenceProcessing0021CustomerCorrespondenceProcessing1787644800000,
+  ReceiptProvenHandoffRevision0022ReceiptProvenHandoffRevision1787731200000,
 ];
 
 export function migrationsThrough(migrationName: string): readonly ApiMigration[] {

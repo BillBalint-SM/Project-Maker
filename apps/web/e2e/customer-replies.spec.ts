@@ -55,7 +55,7 @@ test('surfaces one safe token-correlated Customer reply across global and Portfo
   await classification.selectOption('Módosítást kér');
   await expect(classification).toHaveValue('Módosítást kér');
   await page.getByRole('button', { name: 'Új összefoglaló-verzió készítése' }).click();
-  await expect(page).toHaveURL(new RegExp(`/projects/${setup.projectId}/interview`));
+  await expect(page).toHaveURL(new RegExp(`/projects/${setup.projectId}/interview\\?roundId=${setup.roundId}#customer-handoff$`));
   await expect(page.getByTestId('handoff-modification-summary')).toBeVisible();
   await page.goto(`/projects/${setup.projectId}/customer-correspondences`);
   await page.getByRole('button', { name: 'Feldolgozás megkezdése' }).click();
@@ -166,7 +166,7 @@ async function createSentHandoff(request: APIRequestContext) {
     senderAddress: preview.senderAddress,
   } });
   expect(sent.ok()).toBe(true);
-  return { projectId: project.id, customerEmail };
+  return { projectId: project.id, roundId: round.id, customerEmail };
 }
 
 async function queueReply(
