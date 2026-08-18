@@ -91,7 +91,7 @@ test('authors, previews, cancels, and explicitly sends one referenced customer p
     address: 'po.ping@pte.hu',
   });
   expect(graphRequest.message?.replyTo?.[0]?.emailAddress?.address)
-    .toMatch(/^project-maker\+[A-Za-z0-9_-]{43}@pte\.hu$/);
+    .toMatch(/^project-maker\+[a-f0-9]{48}@pte\.hu$/);
 });
 
 test('preserves the local draft after a stale preview and reloads only on explicit request', async ({

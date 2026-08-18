@@ -954,7 +954,7 @@ async function createPingCorrespondence(
   sender: ResolvedCustomerSender,
   reference: DiscoveryFollowUpEntity | null,
 ): Promise<CustomerOutboundCommunicationEntity> {
-  const token = randomBytes(32).toString('base64url');
+  const token = randomBytes(24).toString('hex');
   const replyToAddress = customerReplyToAddress(dedicatedCustomerSender(config).address, token);
   const previewDigest = customerMailDigest(JSON.stringify({
     draftVersion: attempt.draftVersion,

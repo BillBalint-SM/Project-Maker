@@ -64,12 +64,18 @@ export class MicrosoftGraphMailClient implements GraphMailClient {
 
   async readMailboxPage(checkpoint: string | null): Promise<GraphMailboxPage> {
     this.requireConfigured();
-    const initial = `${this.baseUrl}/v1.0/users/${encodeURIComponent(this.mailboxAddress)}/mailFolders/inbox/messages/delta`;
+    const selectedFields = 'id,internetMessageId,internetMessageHeaders,from,toRecipients,ccRecipients,bccRecipients,subject,body,receivedDateTime';
+    const initial = `${this.baseUrl}/v1.0/users/${encodeURIComponent(this.mailboxAddress)}/mailFolders/inbox/messages/delta?$select=${selectedFields}&$expand=attachments($select=name,contentType,size)`;
     const url = checkpoint ?? initial;
     if (!url.startsWith(`${this.baseUrl}/`)) throw new GraphMailClientError('INVALID_CURSOR');
     let response: Response;
     try {
-      response = await fetch(url, { headers: { authorization: `Bearer ${await this.accessToken()}` } });
+      response = await fetch(url, {
+        headers: {
+          authorization: `Bearer ${await this.accessToken()}`,
+          prefer: 'IdType="ImmutableId"',
+        },
+      });
     } catch {
       throw new GraphMailClientError('TEMPORARY');
     }
