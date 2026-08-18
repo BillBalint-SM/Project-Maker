@@ -1,0 +1,92 @@
+<section aria-labelledby="active-queue-title">
+  <a class="back-link" routerLink="/">← Vissza a portfólióhoz</a>
+
+  <div class="page-heading">
+    <span class="eyebrow">Portfólió</span>
+    <h1 id="active-queue-title">Aktív munkasor</h1>
+    <p>Az aktív projektek következő teendői sürgősség szerint rendezve.</p>
+  </div>
+
+  @if (loading()) {
+    <div class="state-panel" data-testid="active-queue-loading" aria-live="polite">
+      <p-progress-spinner ariaLabel="Az aktív munkasor betöltése" />
+      <p>Az aktív munkasor betöltése…</p>
+    </div>
+  } @else if (loadError()) {
+    <div class="state-panel" data-testid="active-queue-error" role="alert">
+      <h2>Az aktív munkasor nem tölthető be</h2>
+      <p>{{ loadError() }}</p>
+      <p-button label="Újrapróbálás" severity="secondary" (onClick)="load()" />
+    </div>
+  } @else if (page(); as queuePage) {
+    @if (queuePage.totalCount === 0) {
+      <div class="state-panel" data-testid="active-queue-empty">
+        <h2>Nincs aktív projekt</h2>
+        <p>A munkasorban minden nem archivált projekt megjelenik.</p>
+        <a pButton routerLink="/projects/new">Új projekt létrehozása</a>
+      </div>
+    } @else {
+      <div class="queue-summary" aria-live="polite">
+        <strong>
+          {{ queuePage.items.length }} projekt látható az összesen {{ queuePage.totalCount }} aktív projektből
+        </strong>
+        <span>Betöltve: {{ queuePage.retrievedAt | date: 'yyyy. MM. dd. HH:mm' }}</span>
+      </div>
+
+      <div class="queue-groups">
+        @for (group of groups(); track group.urgency) {
+          <section class="queue-group" data-testid="active-queue-group" [attr.aria-labelledby]="'queue-group-' + group.urgency">
+            <div class="group-heading">
+              <h2 [id]="'queue-group-' + group.urgency">{{ group.label }}</h2>
+              <span>
+                {{ group.items.length }} látható, összesen {{ queuePage.groupCounts[group.urgency] }} projekt
+              </span>
+            </div>
+            <ul>
+              @for (item of group.items; track item.projectId) {
+                <li class="queue-row">
+                  <div class="project-column">
+                    <a
+                      class="project-name"
+                      [routerLink]="projectRoute(item.projectId)"
+                      [attr.data-testid]="'queue-project-' + item.projectId"
+                    >{{ item.projectName }}</a>
+                    <div class="tags">
+                      <p-tag [value]="item.urgencyLabel" />
+                      <p-tag [value]="item.preparationStatus.label" severity="secondary" />
+                    </div>
+                  </div>
+                  <dl>
+                    <div>
+                      <dt>Következő lépés</dt>
+                      <dd>{{ item.nextAction || 'Nincs megadva' }}</dd>
+                    </div>
+                    <div>
+                      <dt>Felelős</dt>
+                      <dd>{{ item.nextActionOwner.displayName || 'Nincs kijelölve' }}</dd>
+                    </div>
+                    <div>
+                      <dt>Határidő</dt>
+                      <dd>{{ item.dueAt ? (item.dueAt | date: 'yyyy. MM. dd. HH:mm') : 'Nincs megadva' }}</dd>
+                    </div>
+                    @if (item.urgency === 'CUSTOMER_REPLY') {
+                      <div>
+                        <dt>Új válaszok</dt>
+                        <dd>{{ item.newReplyCount }}</dd>
+                      </div>
+                    }
+                  </dl>
+                  <a
+                    pButton
+                    [routerLink]="actionRoute(item)"
+                    [attr.data-testid]="'queue-action-' + item.projectId"
+                  >{{ item.primaryAction.label }}</a>
+                </li>
+              }
+            </ul>
+          </section>
+        }
+      </div>
+    }
+  }
+</section>

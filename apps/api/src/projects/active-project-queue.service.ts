@@ -1,0 +1,267 @@
+import { Inject, Injectable } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import type {
+  ActiveProjectQueueItem,
+  ActiveProjectQueuePage,
+  ActiveProjectUrgency,
+} from '@project-maker/contracts';
+import { Repository } from 'typeorm';
+
+import { ProjectPreparationStatusService } from '../project-preparation/project-preparation-status.service';
+import { Project } from './project.entity';
+import { toNextActionOwner } from './projects.service';
+
+export const activeProjectQueueClockToken = 'ACTIVE_PROJECT_QUEUE_CLOCK';
+
+export interface ActiveProjectQueueClock {
+  now(): Date;
+}
+
+const pageSize = 10;
+const urgencyOrder: Readonly<Record<ActiveProjectUrgency, number>> = {
+  CUSTOMER_REPLY: 0,
+  OVERDUE: 1,
+  DUE_SOON: 2,
+  IN_PROGRESS: 3,
+};
+const urgencyLabels: Readonly<Record<ActiveProjectUrgency, string>> = {
+  CUSTOMER_REPLY: 'Új ügyfélválasz',
+  OVERDUE: 'Lejárt a következő lépés',
+  DUE_SOON: 'Hamarosan lejár',
+  IN_PROGRESS: 'Folyamatban',
+};
+
+interface ReplyAggregate {
+  readonly project_id: string;
+  readonly new_reply_count: string;
+}
+
+interface QueueCandidate {
+  readonly project: Project;
+  readonly urgency: ActiveProjectUrgency;
+  readonly newReplyCount: number;
+}
+
+@Injectable()
+export class ActiveProjectQueueService {
+  constructor(
+    @InjectRepository(Project)
+    private readonly projectRepository: Repository<Project>,
+    private readonly preparationStatusService: ProjectPreparationStatusService,
+    @Inject(activeProjectQueueClockToken)
+    private readonly clock: ActiveProjectQueueClock,
+  ) {}
+
+  async firstPage(): Promise<ActiveProjectQueuePage> {
+    const retrievedAt = this.clock.now();
+    const [projects, replyAggregates] = await Promise.all([
+      this.projectRepository
+        .createQueryBuilder('project')
+        .where('project.status <> :archived', { archived: 'ARCHIVED' })
+        .getMany(),
+      this.projectRepository.manager.query<ReplyAggregate[]>(
+        `SELECT project_id,
+                COUNT(*) FILTER (WHERE status = 'Új válasz') AS new_reply_count
+           FROM customer_correspondences
+          GROUP BY project_id`,
+      ),
+    ]);
+    const repliesByProjectId = new Map(
+      replyAggregates.map((aggregate) => [aggregate.project_id, aggregate]),
+    );
+    const candidates = projects
+      .map((project): QueueCandidate => {
+        const aggregate = repliesByProjectId.get(project.id);
+        const newReplyCount = Number(aggregate?.new_reply_count ?? 0);
+        return {
+          project,
+          urgency: classifyActiveProjectUrgency(project.dueAt, newReplyCount > 0, retrievedAt),
+          newReplyCount,
+        };
+      })
+      .sort(compareCandidates);
+    const firstCandidates = candidates.slice(0, pageSize);
+    const statusesByProjectId = await this.preparationStatusService.getStatuses(
+      firstCandidates.map(({ project }) => project),
+    );
+    const groupCounts = {
+      CUSTOMER_REPLY: 0,
+      OVERDUE: 0,
+      DUE_SOON: 0,
+      IN_PROGRESS: 0,
+    } satisfies Record<ActiveProjectUrgency, number>;
+    for (const candidate of candidates) {
+      groupCounts[candidate.urgency] += 1;
+    }
+
+    const items = firstCandidates.map(({ project, urgency, newReplyCount }): ActiveProjectQueueItem => {
+      const preparationStatus = statusesByProjectId.get(project.id);
+      if (!preparationStatus) {
+        throw new TypeError(`Missing preparation status for Project ${project.id}.`);
+      }
+      return {
+        projectId: project.id,
+        projectName: project.name,
+        urgency,
+        urgencyLabel: urgencyLabels[urgency],
+        preparationStatus,
+        nextAction: project.nextAction,
+        nextActionOwner: toNextActionOwner(project),
+        dueAt: project.dueAt?.toISOString() ?? null,
+        newReplyCount,
+        primaryAction:
+          urgency === 'CUSTOMER_REPLY'
+            ? { target: 'CUSTOMER_CORRESPONDENCE', label: 'Ügyféllevelezés megnyitása' }
+            : preparationStatus.primaryAction,
+      };
+    });
+
+    return {
+      items,
+      totalCount: candidates.length,
+      groupCounts,
+      retrievedAt: retrievedAt.toISOString(),
+    };
+  }
+}
+
+export function classifyActiveProjectUrgency(
+  dueAt: Date | null,
+  hasNewReply: boolean,
+  now: Date,
+): ActiveProjectUrgency {
+  if (hasNewReply) {
+    return 'CUSTOMER_REPLY';
+  }
+  if (dueAt && dueAt < now) {
+    return 'OVERDUE';
+  }
+  if (dueAt && dueAt <= endOfSeventhBudapestDay(now)) {
+    return 'DUE_SOON';
+  }
+  return 'IN_PROGRESS';
+}
+
+function compareCandidates(left: QueueCandidate, right: QueueCandidate): number {
+  return compareActiveProjectQueueOrder(
+    {
+      urgency: left.urgency,
+      dueAt: left.project.dueAt,
+      projectName: left.project.name,
+      projectId: left.project.id,
+    },
+    {
+      urgency: right.urgency,
+      dueAt: right.project.dueAt,
+      projectName: right.project.name,
+      projectId: right.project.id,
+    },
+  );
+}
+
+export interface ActiveProjectQueueOrderValue {
+  readonly urgency: ActiveProjectUrgency;
+  readonly dueAt: Date | null;
+  readonly projectName: string;
+  readonly projectId: string;
+}
+
+export function compareActiveProjectQueueOrder(
+  left: ActiveProjectQueueOrderValue,
+  right: ActiveProjectQueueOrderValue,
+): number {
+  return (
+    urgencyOrder[left.urgency] - urgencyOrder[right.urgency] ||
+    compareNullableDates(left.dueAt, right.dueAt) ||
+    normalizeProjectName(left.projectName).localeCompare(normalizeProjectName(right.projectName), 'hu') ||
+    left.projectId.localeCompare(right.projectId)
+  );
+}
+
+function compareNullableDates(left: Date | null, right: Date | null): number {
+  if (left === null) return right === null ? 0 : 1;
+  if (right === null) return -1;
+  return left.getTime() - right.getTime();
+}
+
+function normalizeProjectName(name: string): string {
+  return name.normalize('NFD').replace(/\p{M}/gu, '').toLocaleLowerCase('hu-HU');
+}
+
+function endOfSeventhBudapestDay(now: Date): Date {
+  const dateParts = zonedDateParts(now, 'Europe/Budapest');
+  const target = new Date(Date.UTC(dateParts.year, dateParts.month - 1, dateParts.day + 7));
+  return zonedLocalToInstant(
+    {
+      year: target.getUTCFullYear(),
+      month: target.getUTCMonth() + 1,
+      day: target.getUTCDate(),
+      hour: 23,
+      minute: 59,
+      second: 59,
+      millisecond: 999,
+    },
+    'Europe/Budapest',
+  );
+}
+
+interface DateParts {
+  readonly year: number;
+  readonly month: number;
+  readonly day: number;
+  readonly hour: number;
+  readonly minute: number;
+  readonly second: number;
+  readonly millisecond: number;
+}
+
+function zonedDateParts(date: Date, timeZone: string): DateParts {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hourCycle: 'h23',
+  }).formatToParts(date);
+  const value = (type: Intl.DateTimeFormatPartTypes) =>
+    Number(parts.find((part) => part.type === type)?.value);
+  return {
+    year: value('year'),
+    month: value('month'),
+    day: value('day'),
+    hour: value('hour'),
+    minute: value('minute'),
+    second: value('second'),
+    millisecond: date.getUTCMilliseconds(),
+  };
+}
+
+function zonedLocalToInstant(parts: DateParts, timeZone: string): Date {
+  const desiredAsUtc = Date.UTC(
+    parts.year,
+    parts.month - 1,
+    parts.day,
+    parts.hour,
+    parts.minute,
+    parts.second,
+    parts.millisecond,
+  );
+  let candidate = desiredAsUtc;
+  for (let iteration = 0; iteration < 3; iteration += 1) {
+    const observed = zonedDateParts(new Date(candidate), timeZone);
+    const observedAsUtc = Date.UTC(
+      observed.year,
+      observed.month - 1,
+      observed.day,
+      observed.hour,
+      observed.minute,
+      observed.second,
+      observed.millisecond,
+    );
+    candidate += desiredAsUtc - observedAsUtc;
+  }
+  return new Date(candidate);
+}
