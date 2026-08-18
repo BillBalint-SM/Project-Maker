@@ -29,12 +29,13 @@ describe('Customer mailbox synchronization', () => {
   let readStarted: (() => void) | null = null;
   let currentTime = new Date('2026-08-18T12:00:00.000Z');
   let mailboxFailure: CustomerMailBoundaryError | null = null;
+  let mailboxConfigured = true;
   let allowExpiredLeaseTakeover = false;
 
   before(async () => {
     process.env['CUSTOMER_MAILBOX_ADDRESS'] = 'project-maker@pte.hu';
     const mailbox: CustomerMailboxChanges = {
-      isConfigured: () => true,
+      isConfigured: () => mailboxConfigured,
       readChanges: async (checkpoint): Promise<CustomerMailboxChangePage> => {
         requestedCheckpoints.push(checkpoint);
         if (requestedCheckpoints.length > 1 && releaseRead && !allowExpiredLeaseTakeover) {
@@ -79,6 +80,7 @@ describe('Customer mailbox synchronization', () => {
     readStarted = null;
     currentTime = new Date('2026-08-18T12:00:00.000Z');
     mailboxFailure = null;
+    mailboxConfigured = true;
     allowExpiredLeaseTakeover = false;
   });
 
@@ -259,6 +261,14 @@ describe('Customer mailbox synchronization', () => {
   });
 
   it('distinguishes bounded configuration, authorization, and availability failures', async () => {
+    mailboxConfigured = false;
+    const invalidConfiguration = await request(apps[0].getHttpServer())
+      .post('/customer-mailbox-sync/refresh')
+      .send({})
+      .expect(201);
+    assert.equal(invalidConfiguration.body.state, 'CONFIGURATION_ERROR');
+    mailboxConfigured = true;
+
     const cases = [
       ['CONFIGURATION_ERROR', 'CONFIGURATION_ERROR'],
       ['AUTHENTICATION_ERROR', 'AUTHORIZATION_ERROR'],

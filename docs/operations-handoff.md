@@ -59,6 +59,7 @@ do not commit `.env` or real credentials.
 | `WEB_PORT` | yes | Host port mapped to Nginx port `8080`. |
 | `CORS_ORIGIN` | yes | One exact browser origin, for example `http://localhost:8080`; paths, wildcards, credentials, and origin lists are rejected. |
 | `FOLLOW_UP_POLL_INTERVAL_MS` | no | Automatic follow-up poll interval. Valid range is 5,000–86,400,000 ms; default is 60,000. |
+| `CUSTOMER_MAILBOX_SYNC_POLL_INTERVAL_MS` | no | Dedicated Customer mailbox delta poll interval in milliseconds. The default is 60,000; non-integer values and values below 100 fall back to that default. |
 | `CUSTOMER_MAILBOX_NAME` / `CUSTOMER_MAILBOX_ADDRESS` | yes | Dedicated Microsoft 365 sender identity. Graph receives both values in the message `from`; reply correlation uses high-entropy plus-addresses at this mailbox. |
 | `GRAPH_TENANT_ID` / `GRAPH_CLIENT_ID` | yes | Microsoft Graph application identity. |
 | `GRAPH_CLIENT_CERTIFICATE_THUMBPRINT` / `GRAPH_CLIENT_PRIVATE_KEY_BASE64` | yes | Certificate credential registered for the application. Supply the SHA-1 thumbprint as exactly 40 hexadecimal characters without separators. Inject the base64-encoded PEM private key only through deployment secrets; never commit or log it. |
@@ -92,6 +93,10 @@ ordered TypeORM migrations registered in
 13. `0013-markdown-template-library.ts` — named Markdown template drafts and immutable published versions, Default template seed, remembered project choice, and immutable revision provenance; rollback refuses retained template activity.
 14. `0014-interview-customer-handoff.ts` — named internal ownership, concrete next-action owner role, `OPEN`/`ENDED` interview meeting semantics, content versions, immutable sent customer-handoff versions, editable draft gating, and guarded rollback while handoff history exists.
 15. `0015-customer-follow-up-ping-draft.ts` — one optimistic customer-ping draft per project, same-project Discovery reference integrity, bounded preview state, durable delivery attempts, and guarded rollback while new ping activity is retained.
+16. `0016-project-start-creation-request.ts` — durable Project-start creation request identity for retry-safe draft creation.
+17. `0017-m365-interview-handoff.ts` — Microsoft 365 identities, immutable outbound Customer communication, correspondence anchors, and delivery attempts for interview handoffs.
+18. `0018-m365-customer-follow-up-ping.ts` — Microsoft 365 correspondence identities and acceptance results for Customer follow-up pings.
+19. `0019-customer-mailbox-sync.ts` — durable dedicated-mailbox identity, completed Graph delta checkpoint, bounded freshness/failure state, synchronization timestamps, lease ownership, and retained post-baseline mailbox changes.
 
 The deployed API image contains the compiled migration classes, but not the
 TypeScript migration source tree used by the development-only
