@@ -18,7 +18,7 @@ export default defineConfig({
       timeout: 120_000,
     },
     {
-      command: 'pnpm exec ng serve --host 127.0.0.1 --port 4200',
+      command: 'pnpm exec ng serve --host 127.0.0.1 --port 4200 --prebundle=false',
       url: 'http://127.0.0.1:4200',
       reuseExistingServer: false,
       timeout: 120_000,

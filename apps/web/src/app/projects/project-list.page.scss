@@ -11,6 +11,31 @@
   grid-template-columns: repeat(auto-fill, minmax(min(100%, 21rem), 1fr));
 }
 
+.mailbox-sync-panel {
+  align-items: center;
+  background: color-mix(in srgb, var(--p-primary-50) 55%, white);
+  border: 1px solid var(--p-content-border-color);
+  border-radius: 1rem;
+  display: flex;
+  gap: 1.5rem;
+  justify-content: space-between;
+  margin: 1.5rem 0;
+  padding: 1.1rem 1.25rem;
+}
+
+.mailbox-sync-panel h2,
+.mailbox-sync-panel p {
+  margin: 0.2rem 0;
+}
+
+.mailbox-sync-panel small {
+  color: var(--p-text-muted-color);
+}
+
+.mailbox-sync-error {
+  color: var(--p-red-700);
+}
+
 .project-card {
   background: var(--p-content-background);
   border: 1px solid var(--p-content-border-color);
@@ -80,6 +105,11 @@
 
 @media (max-width: 36rem) {
   .heading-row {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .mailbox-sync-panel {
     align-items: stretch;
     flex-direction: column;
   }

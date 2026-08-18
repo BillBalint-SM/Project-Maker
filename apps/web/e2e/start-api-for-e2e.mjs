@@ -27,6 +27,7 @@ const graphClientPrivateKeyBase64 = Buffer.from(
 ).toString('base64');
 const graphMessages = [];
 let rejectNextGraphMessage = false;
+let mailboxDeltaVersion = 0;
 const graphServer = createServer((request, response) => {
   if (request.method === 'GET' && request.url === '/__test/messages') {
     response.writeHead(200, { 'content-type': 'application/json' });
@@ -36,6 +37,7 @@ const graphServer = createServer((request, response) => {
   if (request.method === 'POST' && request.url === '/__test/reset') {
     graphMessages.length = 0;
     rejectNextGraphMessage = false;
+    mailboxDeltaVersion = 0;
     response.writeHead(204).end();
     return;
   }
@@ -102,6 +104,16 @@ const graphServer = createServer((request, response) => {
       });
       response.writeHead(202).end();
     });
+    return;
+  }
+  if (request.method === 'GET' && request.url?.includes('/mailFolders/inbox/messages/delta')) {
+    mailboxDeltaVersion += 1;
+    const deltaPath = request.url.split('?')[0];
+    response.writeHead(200, { 'content-type': 'application/json' });
+    response.end(JSON.stringify({
+      value: [],
+      '@odata.deltaLink': `http://127.0.0.1:${graphPort}${deltaPath}?$deltatoken=playwright-${mailboxDeltaVersion}`,
+    }));
     return;
   }
   response.writeHead(404).end();
