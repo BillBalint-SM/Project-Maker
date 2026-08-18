@@ -104,7 +104,9 @@ async function retainInboundMessage(
   if (inserted.length === 0 || !correlation) return;
   await manager.query(
     `UPDATE "customer_correspondences"
-     SET "status" = 'Új válasz', "unread_message_count" = "unread_message_count" + 1
+          SET "status" = 'Új válasz',
+              "unread_message_count" = "unread_message_count" + 1,
+              "processing_version" = "processing_version" + 1
      WHERE "id" = $1`,
     [correlation.correspondence_id],
   );
