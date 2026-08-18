@@ -54,6 +54,9 @@ describe('ProjectListPage customer mailbox synchronization', () => {
     expect(
       fixture.nativeElement.querySelector('[data-testid="mailbox-sync-status"]')?.textContent,
     ).toContain('Postafiók-szinkron késik');
+    expect(
+      fixture.nativeElement.querySelector('[data-testid="active-project-queue-link"]')?.getAttribute('href'),
+    ).toBe('/projects/active');
 
     const refreshHost = fixture.nativeElement.querySelector(
       '[data-testid="refresh-customer-mailbox"]',

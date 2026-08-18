@@ -14,5 +14,6 @@ import { ProjectPreparationStatusService } from './project-preparation-status.se
   ],
   controllers: [ProjectPreparationStatusController],
   providers: [ProjectPreparationStatusService],
+  exports: [ProjectPreparationStatusService],
 })
 export class ProjectPreparationModule {}

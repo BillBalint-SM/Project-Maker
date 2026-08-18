@@ -1,0 +1,17 @@
+import type { ActiveProjectQueueActionTarget } from '@project-maker/contracts';
+
+export function projectActionRoute(
+  projectId: string,
+  target: ActiveProjectQueueActionTarget,
+): readonly string[] {
+  switch (target) {
+    case 'CUSTOMER_CORRESPONDENCE':
+      return ['/projects', projectId, 'customer-correspondences'];
+    case 'INTERVIEW':
+      return ['/projects', projectId, 'interview'];
+    case 'READINESS':
+      return ['/projects', projectId, 'readiness'];
+    case 'DECISION_REVIEW':
+      return ['/projects', projectId, 'decision-review'];
+  }
+}

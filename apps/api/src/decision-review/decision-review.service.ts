@@ -12,6 +12,8 @@ import { loadGeneralPlaybookV1 } from '@project-maker/contracts/general-playbook
 import { DataSource, EntityManager, Repository } from 'typeorm';
 
 import { AuditEvent } from '../audit/audit-event.entity';
+import { findCurrentInitialIntakeSources } from '../interviews/current-initial-intake-source';
+import type { InterviewRoundEntity } from '../interviews/interview-round.entity';
 import { Project } from '../projects/project.entity';
 import { ReadinessService } from '../readiness/readiness.service';
 import {
@@ -46,8 +48,16 @@ export class DecisionReviewService {
     if (!project) {
       throw new NotFoundException('Project not found.');
     }
-
-    return this.toReview(project, this.dataSource.manager);
+    const sourceRounds = await findCurrentInitialIntakeSources(this.dataSource.manager, [projectId]);
+    const review = (await this.getReviewsForProjectsWithManager(
+      this.dataSource.manager,
+      [project],
+      sourceRounds,
+    )).get(projectId);
+    if (!review) {
+      throw new TypeError(`Missing Decision Review for Project ${projectId}.`);
+    }
+    return review;
   }
 
   async getReviewWithManager(
@@ -58,7 +68,68 @@ export class DecisionReviewService {
     if (!project) {
       throw new NotFoundException('Project not found.');
     }
-    return this.toReview(project, manager);
+    const sourceRounds = await findCurrentInitialIntakeSources(manager, [projectId]);
+    const review = (await this.getReviewsForProjectsWithManager(
+      manager,
+      [project],
+      sourceRounds,
+    )).get(projectId);
+    if (!review) {
+      throw new TypeError(`Missing Decision Review for Project ${projectId}.`);
+    }
+    return review;
+  }
+
+  async getReviewsForProjectsWithManager(
+    manager: EntityManager,
+    projects: readonly Project[],
+    sourceRoundsByProjectId: ReadonlyMap<string, InterviewRoundEntity>,
+  ): Promise<ReadonlyMap<string, ProjectDecisionReview>> {
+    const [policy, readinessByProjectId] = await Promise.all([
+      loadGeneralPlaybookV1(),
+      this.readinessService.getReadinessForProjectsWithManager(
+        manager,
+        projects,
+        sourceRoundsByProjectId,
+      ),
+    ]);
+    const reviews = new Map<string, ProjectDecisionReview>();
+    for (const project of projects) {
+        const inputs = toInputs(project);
+        const readiness = readinessByProjectId.get(project.id);
+        if (!readiness) {
+          throw new TypeError(`Missing readiness result for Project ${project.id}.`);
+        }
+        if (!hasCompleteDecisionReviewInputs(inputs) || !readiness.available) {
+          reviews.set(project.id, {
+              projectId: project.id,
+              inputs,
+              dimensions: decisionReviewDimensions(policy),
+              ratingScale: {
+                minimum: policy.scoring.decision.scale.minimum,
+                maximum: policy.scoring.decision.scale.maximum,
+              },
+              editable: project.status !== archivedStatus,
+              available: false,
+              unavailableReasons: [
+                ...(hasCompleteDecisionReviewInputs(inputs) ? [] : ['INCOMPLETE_INPUT' as const]),
+                ...(readiness.available ? [] : [readiness.reason]),
+              ],
+            });
+          continue;
+        }
+        reviews.set(
+          project.id,
+          calculateDecisionReview(
+            project.id,
+            inputs,
+            project.status !== archivedStatus,
+            readiness,
+            policy,
+          ),
+        );
+    }
+    return reviews;
   }
 
   async updateReview(
@@ -90,40 +161,6 @@ export class DecisionReviewService {
     return this.getReview(projectId);
   }
 
-  private async toReview(
-    project: Project,
-    manager: EntityManager,
-  ): Promise<ProjectDecisionReview> {
-    const inputs = toInputs(project);
-    const [policy, readiness] = await Promise.all([
-      loadGeneralPlaybookV1(),
-      this.readinessService.getReadinessWithManager(manager, project.id),
-    ]);
-    if (!hasCompleteDecisionReviewInputs(inputs) || !readiness.available) {
-      return {
-        projectId: project.id,
-        inputs,
-        dimensions: decisionReviewDimensions(policy),
-        ratingScale: {
-          minimum: policy.scoring.decision.scale.minimum,
-          maximum: policy.scoring.decision.scale.maximum,
-        },
-        editable: project.status !== archivedStatus,
-        available: false,
-        unavailableReasons: [
-          ...(hasCompleteDecisionReviewInputs(inputs) ? [] : ['INCOMPLETE_INPUT' as const]),
-          ...(readiness.available ? [] : [readiness.reason]),
-        ],
-      };
-    }
-    return calculateDecisionReview(
-      project.id,
-      inputs,
-      project.status !== archivedStatus,
-      readiness,
-      policy,
-    );
-  }
 }
 
 async function findLockedProject(manager: EntityManager, projectId: string): Promise<Project> {

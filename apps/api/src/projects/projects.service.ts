@@ -393,7 +393,7 @@ function synchronizeCompatibilityOwner(project: Project): void {
   }
 }
 
-function toNextActionOwner(project: Project): ProjectWorkspace['nextActionOwner'] {
+export function toNextActionOwner(project: Project): ProjectWorkspace['nextActionOwner'] {
   const displayName = project.nextActionOwnerRole === 'INTERNAL_OWNER'
     ? project.internalOwnerName
     : project.nextActionOwnerRole === 'CUSTOMER_CONTACT'
