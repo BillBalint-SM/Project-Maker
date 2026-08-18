@@ -33,6 +33,7 @@ class HandoffFeatureProbeModule {}
 
 class ControlledGraphMailClient implements GraphMailClient {
   readonly submitted: GraphOutboundMessage[] = [];
+  readonly readCheckpoints: (string | null)[] = [];
   submitFailure: GraphMailClientError | null = null;
   submissionAccepted = true;
   pages = new Map<string, GraphMailboxPage>();
@@ -54,6 +55,7 @@ class ControlledGraphMailClient implements GraphMailClient {
   }
 
   async readMailboxPage(cursor: string | null): Promise<GraphMailboxPage> {
+    this.readCheckpoints.push(cursor);
     const key = cursor ?? 'initial';
     const failure = this.readFailure.get(key);
     if (failure) throw failure;
@@ -123,6 +125,36 @@ describe('Graph customer mail boundary', () => {
     client.configured = false;
 
     assert.equal(new GraphCustomerMailBoundary(client).isConfigured(), false);
+  });
+
+  it('fails closed before submitting when the configured provider is unavailable', async () => {
+    const client = new ControlledGraphMailClient();
+    client.configured = false;
+    const boundary = new GraphCustomerMailBoundary(client);
+
+    await assert.rejects(
+      boundary.submit({
+        senderAddress: 'project-maker@pte.hu',
+        recipientAddress: 'customer@example.test',
+        replyToAddress: 'project-maker+token@pte.hu',
+        subject: 'Kérdésséma',
+        textContent: 'Tartalom',
+      }),
+      (error) => isSafeBoundaryError(error, 'CONFIGURATION_ERROR'),
+    );
+    assert.deepEqual(client.submitted, []);
+  });
+
+  it('fails closed before reading mailbox changes when the configured provider is unavailable', async () => {
+    const client = new ControlledGraphMailClient();
+    client.configured = false;
+    client.pages.set('initial', { value: [], nextCheckpoint: null, completedCheckpoint: 'baseline' });
+
+    await assert.rejects(
+      new GraphCustomerMailBoundary(client).readChanges(null),
+      (error) => isSafeBoundaryError(error, 'CONFIGURATION_ERROR'),
+    );
+    assert.deepEqual(client.readCheckpoints, []);
   });
 
   it('represents provider rejection as mail-system rejection, not delivery state', async () => {
