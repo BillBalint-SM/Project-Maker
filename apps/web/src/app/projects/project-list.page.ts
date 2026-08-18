@@ -66,12 +66,7 @@ export class ProjectListPage implements OnInit {
   ngOnInit(): void {
     this.loadProjects();
     this.loadMailboxStatus();
-    this.repliesApi.summary().subscribe({
-      next: (summary) => this.projectReplyCounts.set(
-        new Map(summary.projects.map((project) => [project.projectId, project.newReplyCount])),
-      ),
-      error: () => undefined,
-    });
+    this.loadReplySummary();
   }
 
   loadMailboxStatus(): void {
