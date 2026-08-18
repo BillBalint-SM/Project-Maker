@@ -386,6 +386,8 @@
     <app-discovery-follow-ups
       [projectId]="projectId"
       [projectStatus]="current.cockpit.status"
+      [reviewFollowUpId]="reviewFollowUpId"
+      [reviewCorrespondenceId]="reviewCorrespondenceId"
       (committedChange)="handleDiscoveryCommittedChange()"
     />
 

@@ -14,9 +14,19 @@ import { DataSource, type EntityManager } from 'typeorm';
 
 interface CorrespondenceRow {
   id: string;
+  predecessor_id: string | null;
   status: CustomerCorrespondenceStatus;
   unread_message_count: number;
   processing_version: number;
+  source_type: 'INTERVIEW_HANDOFF' | 'CUSTOMER_FOLLOW_UP_PING';
+  source_id: string;
+  handoff_round_id: string | null;
+  handoff_version: number | null;
+  handoff_state: 'DRAFT' | 'SENDING' | 'SENT' | 'FAILED' | 'UNKNOWN' | null;
+  ping_state: 'SENDING' | 'SENT' | 'FAILED' | 'UNKNOWN' | null;
+  source_follow_up_id: string | null;
+  source_follow_up_version: number | null;
+  unknown_delivery_receipt_evidence: boolean;
 }
 
 interface MessageRow {
@@ -62,15 +72,37 @@ export class CustomerRepliesService {
 
   async forProject(projectId: string): Promise<ProjectCustomerCorrespondenceWork> {
     const project = await this.dataSource.query(
-      'SELECT "id" FROM "projects" WHERE "id" = $1',
+      'SELECT "id", "status" FROM "projects" WHERE "id" = $1',
       [projectId],
-    ) as Array<{ id: string }>;
+    ) as Array<{ id: string; status: string }>;
     if (project.length === 0) throw new NotFoundException('Project not found.');
     const correspondences = await this.dataSource.query(
-      `SELECT "id", "status", "unread_message_count", "processing_version"
-       FROM "customer_correspondences"
-       WHERE "project_id" = $1
-       ORDER BY "created_at", "id"`,
+      `SELECT correspondence."id", correspondence."predecessor_id", correspondence."status",
+              correspondence."unread_message_count", correspondence."processing_version",
+              correspondence."source_follow_up_id", correspondence."source_follow_up_version",
+              outbound."source_type", outbound."source_id",
+              handoff."round_id" AS "handoff_round_id", handoff."version" AS "handoff_version",
+              handoff."state" AS "handoff_state", ping."state" AS "ping_state",
+              (
+                EXISTS (
+                  SELECT 1 FROM "customer_outbound_attempts" attempt
+                  WHERE attempt."outbound_communication_id" = correspondence."outbound_communication_id"
+                    AND attempt."result" = 'UNKNOWN'
+                )
+                AND EXISTS (
+                  SELECT 1 FROM "customer_inbound_messages" message
+                  WHERE message."correspondence_id" = correspondence."id"
+                )
+              ) AS "unknown_delivery_receipt_evidence"
+       FROM "customer_correspondences" correspondence
+       JOIN "customer_outbound_communications" outbound
+         ON outbound."id" = correspondence."outbound_communication_id"
+       LEFT JOIN "interview_customer_handoffs" handoff
+         ON outbound."source_type" = 'INTERVIEW_HANDOFF' AND handoff."id" = outbound."source_id"
+       LEFT JOIN "customer_follow_up_delivery_attempts" ping
+         ON outbound."source_type" = 'CUSTOMER_FOLLOW_UP_PING' AND ping."id" = outbound."source_id"
+       WHERE correspondence."project_id" = $1
+       ORDER BY correspondence."created_at", correspondence."id"`,
       [projectId],
     ) as CorrespondenceRow[];
     const messages = await this.dataSource.query(
@@ -86,13 +118,11 @@ export class CustomerRepliesService {
     ) as MessageRow[];
     return {
       newReplyCount: correspondences.reduce((sum, row) => sum + row.unread_message_count, 0),
-      correspondences: correspondences.map((row) => ({
-        id: row.id,
-        status: row.status,
-        unreadMessageCount: row.unread_message_count,
-        processingVersion: row.processing_version,
-        messages: messages.filter((message) => message.correspondence_id === row.id).map(toMessage),
-      })),
+      projectArchived: project[0]?.status === 'ARCHIVED',
+      correspondences: correspondences.map((row) => toCorrespondence(
+        row,
+        messages.filter((message) => message.correspondence_id === row.id).map(toMessage),
+      )),
     };
   }
 
@@ -250,5 +280,61 @@ function toMessage(row: MessageRow) {
     attachments: row.attachments,
     correlationEvidence: row.correlation_evidence,
     classification: row.classification,
+  };
+}
+
+function toCorrespondence(
+  row: CorrespondenceRow,
+  messages: ReturnType<typeof toMessage>[],
+): CustomerCorrespondenceView {
+  if (row.source_type === 'INTERVIEW_HANDOFF') {
+    if (!row.handoff_round_id || row.handoff_version === null || row.handoff_state === null) {
+      throw new ConflictException('Customer correspondence handoff source is incomplete.');
+    }
+    return {
+      id: row.id,
+      predecessorId: row.predecessor_id,
+      status: row.status,
+      unreadMessageCount: row.unread_message_count,
+      processingVersion: row.processing_version,
+      source: {
+        type: row.source_type,
+        roundId: row.handoff_round_id,
+        handoffId: row.source_id,
+        version: row.handoff_version,
+        state: row.handoff_state,
+      },
+      outcome: messages.some((message) => message.classification === 'Módosítást kér')
+        ? { command: 'START_HANDOFF_REVISION' }
+        : null,
+      unknownDeliveryReceiptEvidence: row.unknown_delivery_receipt_evidence,
+      messages,
+    };
+  }
+  if (row.ping_state === null) {
+    throw new ConflictException('Customer correspondence ping source is incomplete.');
+  }
+  return {
+    id: row.id,
+    predecessorId: row.predecessor_id,
+    status: row.status,
+    unreadMessageCount: row.unread_message_count,
+    processingVersion: row.processing_version,
+    source: {
+      type: row.source_type,
+      attemptId: row.source_id,
+      state: row.ping_state,
+      followUpId: row.source_follow_up_id,
+      followUpVersion: row.source_follow_up_version,
+    },
+    outcome: row.source_follow_up_id && row.source_follow_up_version !== null && messages.length > 0
+      ? {
+          command: 'REVIEW_DISCOVERY_FOLLOW_UP',
+          followUpId: row.source_follow_up_id,
+          followUpVersion: row.source_follow_up_version,
+        }
+      : null,
+    unknownDeliveryReceiptEvidence: row.unknown_delivery_receipt_evidence,
+    messages,
   };
 }

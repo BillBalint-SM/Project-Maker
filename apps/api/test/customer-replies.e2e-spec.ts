@@ -7,6 +7,7 @@ import request from 'supertest';
 import { AppModule } from '../src/app.module';
 import {
   graphMailClientToken,
+  GraphMailClientError,
   type GraphMailClient,
   type GraphMailboxMessage,
   type GraphMailboxPage,
@@ -15,6 +16,7 @@ import {
 
 class CustomerReplyGraphFake implements GraphMailClient {
   readonly sent: GraphOutboundMessage[] = [];
+  submitMode: 'SUCCESS' | 'UNKNOWN' = 'SUCCESS';
   private changes: readonly GraphMailboxMessage[] = [];
   private deltaVersion = 0;
   private heldRead: { started: () => void; wait: Promise<void> } | null = null;
@@ -23,6 +25,7 @@ class CustomerReplyGraphFake implements GraphMailClient {
 
   async submit(message: GraphOutboundMessage) {
     this.sent.push(message);
+    if (this.submitMode === 'UNKNOWN') throw new GraphMailClientError('UNKNOWN_OUTCOME');
     return { accepted: true, id: `outbound-${this.sent.length}` } as const;
   }
 
@@ -348,6 +351,238 @@ describe('Correlated Customer replies', () => {
     await request(app.getHttpServer())
       .get(`/projects/${projectId}/customer-correspondences`)
       .expect(200);
+  });
+
+  it('connects a change-request reply to the established handoff revision command and predecessor correspondence', async () => {
+    const { projectId, roundId, customerEmail } = await createEndedInterview(app);
+    const history = await request(app.getHttpServer())
+      .get(`/projects/${projectId}/rounds/${roundId}/customer-handoffs`)
+      .expect(200);
+    const firstHandoffId = history.body[0].id as string;
+    const firstPreview = await request(app.getHttpServer())
+      .post(`/projects/${projectId}/rounds/${roundId}/customer-handoffs/${firstHandoffId}/preview`)
+      .send({ mode: 'CUSTOM', name: 'PO Péter', address: 'po.peter@pte.hu' })
+      .expect(201);
+    const firstSent = await request(app.getHttpServer())
+      .post(`/projects/${projectId}/rounds/${roundId}/customer-handoffs/${firstHandoffId}/send`)
+      .send(sendInput(firstPreview.body))
+      .expect(201);
+    const firstReplyTo = graph.sent.at(-1)?.replyTo[0]?.emailAddress.address;
+    assert.ok(firstReplyTo);
+
+    graph.queue({
+      ...inboundMessage(`change-request-${Date.now()}-${Math.random()}`, firstReplyTo, '2026-08-18T19:00:00.000Z'),
+      from: { emailAddress: { address: customerEmail } },
+    });
+    await request(app.getHttpServer()).post('/customer-mailbox-sync/refresh').send({}).expect(201);
+    const received = await request(app.getHttpServer())
+      .get(`/projects/${projectId}/customer-correspondences`)
+      .expect(200);
+    const firstCorrespondence = received.body.correspondences[0];
+    const classified = await request(app.getHttpServer())
+      .post(`/projects/${projectId}/customer-correspondences/${firstCorrespondence.id}/commands`)
+      .send({
+        command: 'CLASSIFY_MESSAGE',
+        expectedVersion: firstCorrespondence.processingVersion,
+        messageId: firstCorrespondence.messages[0].id,
+        classification: 'Módosítást kér',
+      })
+      .expect(201);
+    assert.deepEqual(classified.body.source, {
+      type: 'INTERVIEW_HANDOFF',
+      roundId,
+      handoffId: firstHandoffId,
+      version: 1,
+      state: 'SENT',
+    });
+    assert.equal(classified.body.predecessorId, null);
+    assert.equal(classified.body.outcome?.command, 'START_HANDOFF_REVISION');
+
+    const revision = await request(app.getHttpServer())
+      .post(`/projects/${projectId}/rounds/${classified.body.source.roundId}/customer-handoffs`)
+      .send({})
+      .expect(201);
+    assert.equal(revision.body.version, 2);
+    assert.equal(revision.body.supersedesHandoffId, firstHandoffId);
+    await request(app.getHttpServer())
+      .put(`/projects/${projectId}/rounds/${roundId}/customer-handoffs/${revision.body.id}/draft`)
+      .send({ modificationSummary: 'A Customer módosítási kérésének átvezetése.' })
+      .expect(200);
+    const secondPreview = await request(app.getHttpServer())
+      .post(`/projects/${projectId}/rounds/${roundId}/customer-handoffs/${revision.body.id}/preview`)
+      .send({ mode: 'CUSTOM', name: 'PO Péter', address: 'po.peter@pte.hu' })
+      .expect(201);
+    const secondSent = await request(app.getHttpServer())
+      .post(`/projects/${projectId}/rounds/${roundId}/customer-handoffs/${revision.body.id}/send`)
+      .send(sendInput(secondPreview.body))
+      .expect(201);
+    assert.notEqual(secondSent.body.correspondenceId, firstSent.body.correspondenceId);
+
+    const linked = await request(app.getHttpServer())
+      .get(`/projects/${projectId}/customer-correspondences`)
+      .expect(200);
+    const secondCorrespondence = linked.body.correspondences.find(
+      (correspondence: { id: string }) => correspondence.id === secondSent.body.correspondenceId,
+    );
+    assert.equal(secondCorrespondence.predecessorId, firstSent.body.correspondenceId);
+    assert.equal(linked.body.correspondences.length, 2);
+  });
+
+  it('retains UNKNOWN ping receipt evidence and source review state across archive and restore', async () => {
+    const suffix = `${Date.now()}-${Math.random()}`;
+    const customerEmail = `ping-reply-${suffix}@example.test`;
+    const project = await request(app.getHttpServer()).post('/projects').send({
+      name: `Ping reply ${suffix}`,
+      customerContactName: 'Ügyfél Anna',
+      customerContactEmail: customerEmail,
+      internalOwnerName: 'PO Péter',
+      nextActionOwnerRole: 'CUSTOMER_CONTACT',
+    }).expect(201);
+    const projectId = project.body.id as string;
+    const followUp = await request(app.getHttpServer())
+      .post(`/projects/${projectId}/discovery-follow-ups`)
+      .send({
+        category: 'BUSINESS',
+        question: 'Melyik üzleti szabály hiányzik?',
+        owner: 'PO Péter',
+        dueDate: '2026-09-15',
+        nextStep: 'Az ügyfél pontosítja a szabályt.',
+      })
+      .expect(201);
+    await request(app.getHttpServer())
+      .patch(`/projects/${projectId}/follow-up/draft`)
+      .send({
+        messageDraft: 'Kérlek, pontosítsd a nyitott kérdést.',
+        referencedFollowUpId: followUp.body.id,
+        expectedVersion: 1,
+      })
+      .expect(200);
+    const preview = await request(app.getHttpServer())
+      .post(`/projects/${projectId}/follow-up/ping/preview`)
+      .send({ expectedVersion: 2 })
+      .expect(201);
+    graph.submitMode = 'UNKNOWN';
+    const unknown = await request(app.getHttpServer())
+      .post(`/projects/${projectId}/follow-up/ping`)
+      .send({ previewToken: preview.body.previewToken })
+      .expect(503);
+    graph.submitMode = 'SUCCESS';
+    assert.equal(unknown.body.code, 'FOLLOW_UP_DELIVERY_UNKNOWN');
+    const stateBeforeReply = await request(app.getHttpServer()).get(`/projects/${projectId}/follow-up`).expect(200);
+    const attemptId = stateBeforeReply.body.latestManualAttempt.attemptId as string;
+    const replyToAddress = graph.sent.at(-1)?.replyTo[0]?.emailAddress.address;
+    assert.ok(replyToAddress);
+
+    graph.queue({
+      ...inboundMessage(`unknown-receipt-${suffix}`, replyToAddress, '2026-08-18T20:00:00.000Z'),
+      from: { emailAddress: { address: customerEmail } },
+    });
+    await request(app.getHttpServer()).post('/customer-mailbox-sync/refresh').send({}).expect(201);
+    const received = await request(app.getHttpServer())
+      .get(`/projects/${projectId}/customer-correspondences`)
+      .expect(200);
+    const correspondence = received.body.correspondences[0];
+    assert.deepEqual(correspondence.source, {
+      type: 'CUSTOMER_FOLLOW_UP_PING',
+      attemptId,
+      state: 'UNKNOWN',
+      followUpId: followUp.body.id,
+      followUpVersion: 1,
+    });
+    assert.deepEqual(correspondence.outcome, {
+      command: 'REVIEW_DISCOVERY_FOLLOW_UP',
+      followUpId: followUp.body.id,
+      followUpVersion: 1,
+    });
+    assert.equal(correspondence.unknownDeliveryReceiptEvidence, true);
+    const stateWithEvidence = await request(app.getHttpServer()).get(`/projects/${projectId}/follow-up`).expect(200);
+    assert.equal(stateWithEvidence.body.latestManualAttempt.state, 'UNKNOWN');
+    assert.equal(stateWithEvidence.body.latestManualAttempt.receiptEvidence, true);
+    const blockedRetry = await request(app.getHttpServer())
+      .post(`/projects/${projectId}/follow-up/ping/retry`)
+      .send({ attemptId, acknowledgeDuplicateRisk: true })
+      .expect(409);
+    assert.equal(blockedRetry.body.code, 'FOLLOW_UP_RECEIPT_EVIDENCE');
+
+    const classified = await request(app.getHttpServer())
+      .post(`/projects/${projectId}/customer-correspondences/${correspondence.id}/commands`)
+      .send({
+        command: 'CLASSIFY_MESSAGE',
+        expectedVersion: correspondence.processingVersion,
+        messageId: correspondence.messages[0].id,
+        classification: 'Kérdés vagy válasz',
+      })
+      .expect(201);
+    await request(app.getHttpServer()).post(`/projects/${projectId}/archive`).send({}).expect(201);
+    graph.queue({
+      ...inboundMessage(`archived-receipt-${suffix}`, replyToAddress, '2026-08-18T20:30:00.000Z'),
+      from: { emailAddress: { address: customerEmail } },
+    });
+    await request(app.getHttpServer()).post('/customer-mailbox-sync/refresh').send({}).expect(201);
+    const archived = await request(app.getHttpServer())
+      .get(`/projects/${projectId}/customer-correspondences`)
+      .expect(200);
+    assert.equal(archived.body.correspondences[0].unreadMessageCount, 2);
+    assert.equal(archived.body.correspondences[0].status, 'Új válasz');
+    assert.equal(archived.body.correspondences[0].messages[0].classification, 'Kérdés vagy válasz');
+    assert.deepEqual(archived.body.correspondences[0].source, correspondence.source);
+    await request(app.getHttpServer())
+      .post(`/projects/${projectId}/customer-correspondences/${correspondence.id}/commands`)
+      .send({ command: 'MARK_REVIEWED', expectedVersion: classified.body.processingVersion + 1 })
+      .expect(409);
+
+    await request(app.getHttpServer()).post(`/projects/${projectId}/restore`).send({}).expect(201);
+    const restored = await request(app.getHttpServer())
+      .get(`/projects/${projectId}/customer-correspondences`)
+      .expect(200);
+    assert.equal(restored.body.correspondences[0].unreadMessageCount, 2);
+    assert.equal(restored.body.correspondences[0].processingVersion, classified.body.processingVersion + 1);
+    assert.equal(restored.body.correspondences[0].messages.length, 2);
+    assert.deepEqual(restored.body.correspondences[0].outcome, correspondence.outcome);
+  });
+
+  it('suppresses retry for an UNKNOWN handoff after a correlated receipt while preserving UNKNOWN', async () => {
+    const suffix = `${Date.now()}-${Math.random()}`;
+    const { projectId, roundId, customerEmail } = await createEndedInterview(app);
+    const history = await request(app.getHttpServer())
+      .get(`/projects/${projectId}/rounds/${roundId}/customer-handoffs`)
+      .expect(200);
+    const handoffId = history.body[0].id as string;
+    const preview = await request(app.getHttpServer())
+      .post(`/projects/${projectId}/rounds/${roundId}/customer-handoffs/${handoffId}/preview`)
+      .send({ mode: 'CUSTOM', name: 'PO Péter', address: 'po.peter@pte.hu' })
+      .expect(201);
+    graph.submitMode = 'UNKNOWN';
+    const unknown = await request(app.getHttpServer())
+      .post(`/projects/${projectId}/rounds/${roundId}/customer-handoffs/${handoffId}/send`)
+      .send(sendInput(preview.body))
+      .expect(201);
+    graph.submitMode = 'SUCCESS';
+    assert.equal(unknown.body.state, 'UNKNOWN');
+    const replyToAddress = graph.sent.at(-1)?.replyTo[0]?.emailAddress.address;
+    assert.ok(replyToAddress);
+    graph.queue({
+      ...inboundMessage(`unknown-handoff-receipt-${suffix}`, replyToAddress, '2026-08-18T21:00:00.000Z'),
+      from: { emailAddress: { address: customerEmail } },
+    });
+    await request(app.getHttpServer()).post('/customer-mailbox-sync/refresh').send({}).expect(201);
+
+    const withReceipt = await request(app.getHttpServer())
+      .get(`/projects/${projectId}/rounds/${roundId}/customer-handoffs`)
+      .expect(200);
+    assert.equal(withReceipt.body[0].state, 'UNKNOWN');
+    assert.equal(withReceipt.body[0].receiptEvidence, true);
+    const submittedCount = graph.sent.length;
+    await request(app.getHttpServer())
+      .post(`/projects/${projectId}/rounds/${roundId}/customer-handoffs/${handoffId}/retry`)
+      .send({ acknowledgeDuplicateRisk: true })
+      .expect(409);
+    assert.equal(graph.sent.length, submittedCount);
+    const stillUnknown = await request(app.getHttpServer())
+      .get(`/projects/${projectId}/rounds/${roundId}/customer-handoffs/${handoffId}`)
+      .expect(200);
+    assert.equal(stillUnknown.body.state, 'UNKNOWN');
+    assert.equal(stillUnknown.body.receiptEvidence, true);
   });
 });
 

@@ -21,6 +21,8 @@ export interface CustomerFollowUpManualAttempt {
   readonly failureCode: string | null;
   readonly attemptedAt: string;
   readonly sentAt: string | null;
+  /** A token-correlated inbound reply proves Customer receipt without rewriting the immutable send outcome. */
+  readonly receiptEvidence: boolean;
 }
 
 export interface CustomerFollowUpState {
