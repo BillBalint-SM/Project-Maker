@@ -144,14 +144,30 @@ describe('Correlated Customer replies', () => {
       attachmentCount: 1,
       attachments: [{ name: 'scope.pdf', contentType: 'application/pdf', size: 2048 }],
       correlationEvidence: 'TOKENIZED_REPLY_TO',
+      classification: null,
     }]);
+
+    const correspondenceId = correspondence.body.correspondences[0].id as string;
+    assert.equal(correspondence.body.correspondences[0].processingVersion, 2);
+    const reviewed = await request(app.getHttpServer())
+      .post(`/projects/${projectId}/customer-correspondences/${correspondenceId}/commands`)
+      .send({ command: 'MARK_REVIEWED', expectedVersion: 2 })
+      .expect(201);
+    assert.equal(reviewed.body.unreadMessageCount, 0);
+    assert.equal(reviewed.body.processingVersion, 3);
+    const reviewedAgain = await request(app.getHttpServer())
+      .post(`/projects/${projectId}/customer-correspondences/${correspondenceId}/commands`)
+      .send({ command: 'MARK_REVIEWED', expectedVersion: 2 })
+      .expect(201);
+    assert.equal(reviewedAgain.body.unreadMessageCount, 0);
+    assert.equal(reviewedAgain.body.processingVersion, 3);
 
     graph.queue(reply);
     await request(app.getHttpServer()).post('/customer-mailbox-sync/refresh').send({}).expect(201);
     const replayed = await request(app.getHttpServer())
       .get(`/projects/${projectId}/customer-correspondences`)
       .expect(200);
-    assert.equal(replayed.body.newReplyCount, 1);
+    assert.equal(replayed.body.newReplyCount, 0);
     assert.equal(replayed.body.correspondences[0].messages.length, 1);
   });
 
@@ -224,6 +240,101 @@ describe('Correlated Customer replies', () => {
     );
     await request(app.getHttpServer()).delete(`/projects/${projectId}`).expect(409);
   });
+
+  it('processes every reply explicitly without changing Project lifecycle state', async () => {
+    const { projectId, replyToAddress } = await createSentCorrespondence(app, graph);
+    const suffix = `${Date.now()}-${Math.random()}`;
+    graph.queue(
+      inboundMessage(`accepted-${suffix}`, replyToAddress, '2026-08-18T18:00:00.000Z'),
+      inboundMessage(`change-${suffix}`, replyToAddress, '2026-08-18T18:01:00.000Z'),
+      inboundMessage(`question-${suffix}`, replyToAddress, '2026-08-18T18:02:00.000Z'),
+      inboundMessage(`other-${suffix}`, replyToAddress, '2026-08-18T18:03:00.000Z'),
+    );
+    await request(app.getHttpServer()).post('/customer-mailbox-sync/refresh').send({}).expect(201);
+    const initial = await request(app.getHttpServer())
+      .get(`/projects/${projectId}/customer-correspondences`)
+      .expect(200);
+    const correspondence = initial.body.correspondences[0];
+    const correspondenceId = correspondence.id as string;
+    assert.equal(correspondence.status, 'Új válasz');
+    assert.equal(correspondence.unreadMessageCount, 4);
+    assert.equal(correspondence.processingVersion, 5);
+    assert.deepEqual(
+      correspondence.messages.map((message: { classification: string | null }) => message.classification),
+      [null, null, null, null],
+    );
+
+    await request(app.getHttpServer())
+      .post(`/projects/${projectId}/customer-correspondences/${correspondenceId}/commands`)
+      .send({ command: 'SET_STATUS', expectedVersion: 5, status: 'not-a-status' })
+      .expect(400);
+    const competing = await Promise.all([
+      request(app.getHttpServer())
+        .post(`/projects/${projectId}/customer-correspondences/${correspondenceId}/commands`)
+        .send({ command: 'SET_STATUS', expectedVersion: 5, status: 'Feldolgozás alatt' }),
+      request(secondApp.getHttpServer())
+        .post(`/projects/${projectId}/customer-correspondences/${correspondenceId}/commands`)
+        .send({ command: 'SET_STATUS', expectedVersion: 5, status: 'Feldolgozás alatt' }),
+    ]);
+    assert.deepEqual(competing.map((response) => response.status).sort(), [201, 409]);
+
+    const classifications = [
+      'Elfogadva',
+      'Módosítást kér',
+      'Kérdés vagy válasz',
+      'Egyéb',
+    ] as const;
+    let version = 6;
+    for (const [index, classification] of classifications.entries()) {
+      const classified = await request(app.getHttpServer())
+        .post(`/projects/${projectId}/customer-correspondences/${correspondenceId}/commands`)
+        .send({
+          command: 'CLASSIFY_MESSAGE',
+          expectedVersion: version,
+          messageId: correspondence.messages[index].id,
+          classification,
+          closeCorrespondence: classification === 'Elfogadva',
+        })
+        .expect(201);
+      version += 1;
+      assert.equal(classified.body.messages[index].classification, classification);
+    }
+    const processed = await request(app.getHttpServer())
+      .post(`/projects/${projectId}/customer-correspondences/${correspondenceId}/commands`)
+      .send({ command: 'MARK_REVIEWED', expectedVersion: version })
+      .expect(201);
+    assert.equal(processed.body.status, 'Lezárva');
+    assert.equal(processed.body.unreadMessageCount, 0);
+    assert.deepEqual(
+      processed.body.messages.map((message: { classification: string }) => message.classification),
+      classifications,
+    );
+
+    const cockpit = await request(app.getHttpServer()).get(`/projects/${projectId}/cockpit`).expect(200);
+    assert.equal(cockpit.body.status, 'DRAFT');
+    const audit = await request(app.getHttpServer()).get(`/projects/${projectId}/audit-events`).expect(200);
+    const processingEvents = audit.body.events.filter((event: { eventType: string }) =>
+      event.eventType.startsWith('CUSTOMER_'),
+    );
+    assert.equal(processingEvents.length >= 6, true);
+    const serializedAudit = JSON.stringify(processingEvents);
+    assert.equal(serializedAudit.includes('@example.test'), false);
+    assert.equal(serializedAudit.includes(`Válasz accepted-${suffix}`), false);
+    const activity = await request(app.getHttpServer()).get(`/projects/${projectId}/activity`).expect(200);
+    assert.equal(
+      activity.body.events.some((event: { summary: string }) => event.summary.includes('Customer')),
+      true,
+    );
+
+    await request(app.getHttpServer()).post(`/projects/${projectId}/archive`).expect(201);
+    await request(app.getHttpServer())
+      .post(`/projects/${projectId}/customer-correspondences/${correspondenceId}/commands`)
+      .send({ command: 'SET_STATUS', expectedVersion: version + 1, status: 'Feldolgozás alatt' })
+      .expect(409);
+    await request(app.getHttpServer())
+      .get(`/projects/${projectId}/customer-correspondences`)
+      .expect(200);
+  });
 });
 
 function inboundMessage(id: string, replyToAddress: string, receivedAt: string): GraphMailboxMessage {
@@ -276,4 +387,26 @@ async function createEndedInterview(app: INestApplication): Promise<{
     .send({})
     .expect(201);
   return { projectId: project.body.id, roundId: round.body.id, customerEmail };
+}
+
+async function createSentCorrespondence(
+  app: INestApplication,
+  graph: CustomerReplyGraphFake,
+): Promise<{ projectId: string; replyToAddress: string }> {
+  const { projectId, roundId } = await createEndedInterview(app);
+  const history = await request(app.getHttpServer())
+    .get(`/projects/${projectId}/rounds/${roundId}/customer-handoffs`)
+    .expect(200);
+  const handoffId = history.body[0].id as string;
+  const preview = await request(app.getHttpServer())
+    .post(`/projects/${projectId}/rounds/${roundId}/customer-handoffs/${handoffId}/preview`)
+    .send({ mode: 'CUSTOM', name: 'PO Péter', address: 'po.peter@pte.hu' })
+    .expect(201);
+  await request(app.getHttpServer())
+    .post(`/projects/${projectId}/rounds/${roundId}/customer-handoffs/${handoffId}/send`)
+    .send(sendInput(preview.body))
+    .expect(201);
+  const replyToAddress = graph.sent.at(-1)?.replyTo[0]?.emailAddress.address;
+  assert.ok(replyToAddress);
+  return { projectId, replyToAddress };
 }

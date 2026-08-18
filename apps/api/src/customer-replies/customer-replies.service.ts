@@ -1,16 +1,22 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { randomUUID } from 'node:crypto';
+
+import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import type {
+  CustomerCorrespondenceCommand,
   CustomerCorrespondenceStatus,
+  CustomerCorrespondenceView,
+  CustomerInboundMessageClassification,
   CustomerReplySenderClassification,
   CustomerReplySummary,
   ProjectCustomerCorrespondenceWork,
 } from '@project-maker/contracts';
-import { DataSource } from 'typeorm';
+import { DataSource, type EntityManager } from 'typeorm';
 
 interface CorrespondenceRow {
   id: string;
   status: CustomerCorrespondenceStatus;
   unread_message_count: number;
+  processing_version: number;
 }
 
 interface MessageRow {
@@ -29,6 +35,7 @@ interface MessageRow {
   attachments: Array<{ name: string; contentType: string; size: number }>;
   correlation_evidence: 'TOKENIZED_REPLY_TO';
   correspondence_id: string;
+  classification: CustomerInboundMessageClassification | null;
 }
 
 @Injectable()
@@ -60,7 +67,7 @@ export class CustomerRepliesService {
     ) as Array<{ id: string }>;
     if (project.length === 0) throw new NotFoundException('Project not found.');
     const correspondences = await this.dataSource.query(
-      `SELECT "id", "status", "unread_message_count"
+      `SELECT "id", "status", "unread_message_count", "processing_version"
        FROM "customer_correspondences"
        WHERE "project_id" = $1
        ORDER BY "created_at", "id"`,
@@ -70,8 +77,9 @@ export class CustomerRepliesService {
       `SELECT "id", "provider_message_reference", "internet_message_id", "received_at",
               "sender_address", "sender_classification", "recipient_addresses", "subject",
               "text_content", "visible_text", "quoted_text", "attachment_count", "attachments",
-              "correlation_evidence", "correspondence_id"
-       FROM "customer_inbound_messages"
+              "correlation_evidence", message."correspondence_id", processing."classification"
+       FROM "customer_inbound_messages" message
+       LEFT JOIN "customer_inbound_message_processing" processing ON processing."message_id" = message."id"
        WHERE "project_id" = $1
        ORDER BY "received_at", "provider_message_reference"`,
       [projectId],
@@ -82,10 +90,125 @@ export class CustomerRepliesService {
         id: row.id,
         status: row.status,
         unreadMessageCount: row.unread_message_count,
+        processingVersion: row.processing_version,
         messages: messages.filter((message) => message.correspondence_id === row.id).map(toMessage),
       })),
     };
   }
+
+  async command(
+    projectId: string,
+    correspondenceId: string,
+    input: CustomerCorrespondenceCommand,
+  ): Promise<CustomerCorrespondenceView> {
+    await this.dataSource.transaction(async (manager) => {
+      const rows = await manager.query(
+        `SELECT correspondence."id", correspondence."status", correspondence."unread_message_count",
+                correspondence."processing_version", project."status" AS "project_status"
+         FROM "customer_correspondences" correspondence
+         JOIN "projects" project ON project."id" = correspondence."project_id"
+         WHERE correspondence."id" = $1 AND correspondence."project_id" = $2
+         FOR UPDATE OF correspondence`,
+        [correspondenceId, projectId],
+      ) as Array<CorrespondenceRow & { project_status: string }>;
+      const current = rows[0];
+      if (!current) throw new NotFoundException('Customer correspondence not found.');
+      if (current.project_status === 'ARCHIVED') {
+        throw new ConflictException('Archived projects cannot process Customer correspondence.');
+      }
+      if (input.command === 'MARK_REVIEWED' && current.unread_message_count === 0) return;
+      if (current.processing_version !== input.expectedVersion) {
+        throw new ConflictException('Customer correspondence has changed.');
+      }
+      if (input.command === 'MARK_REVIEWED') {
+        await updateCorrespondence(manager, correspondenceId, current.status, 0);
+        await audit(manager, projectId, 'CUSTOMER_CORRESPONDENCE_REVIEWED', { correspondenceId });
+        return;
+      }
+      if (input.command === 'SET_STATUS') {
+        requireStatusTransition(current.status, input.status);
+        if (current.status === input.status) return;
+        await updateCorrespondence(manager, correspondenceId, input.status, current.unread_message_count);
+        await audit(manager, projectId, 'CUSTOMER_CORRESPONDENCE_STATUS_CHANGED', {
+          correspondenceId,
+          status: input.status,
+        });
+        return;
+      }
+      const message = await manager.query(
+        `SELECT "id" FROM "customer_inbound_messages"
+         WHERE "id" = $1 AND "correspondence_id" = $2 AND "project_id" = $3`,
+        [input.messageId, correspondenceId, projectId],
+      ) as Array<{ id: string }>;
+      if (!message[0]) throw new NotFoundException('Customer inbound message not found.');
+      if (input.closeCorrespondence && input.classification !== 'Elfogadva') {
+        throw new BadRequestException('Only an accepted reply may close the correspondence while classifying.');
+      }
+      await manager.query(
+        `INSERT INTO "customer_inbound_message_processing" ("message_id", "classification")
+         VALUES ($1, $2)
+         ON CONFLICT ("message_id") DO UPDATE
+         SET "classification" = EXCLUDED."classification", "updated_at" = CURRENT_TIMESTAMP`,
+        [input.messageId, input.classification],
+      );
+      const nextStatus = input.closeCorrespondence ? 'Lezárva' : current.status;
+      await updateCorrespondence(manager, correspondenceId, nextStatus, current.unread_message_count);
+      await audit(manager, projectId, 'CUSTOMER_INBOUND_MESSAGE_CLASSIFIED', {
+        correspondenceId,
+        messageId: input.messageId,
+        classification: input.classification,
+        correspondenceClosed: String(Boolean(input.closeCorrespondence)),
+      });
+    });
+    const view = await this.forProject(projectId);
+    const correspondence = view.correspondences.find((item) => item.id === correspondenceId);
+    if (!correspondence) throw new NotFoundException('Customer correspondence not found.');
+    return correspondence;
+  }
+}
+
+async function updateCorrespondence(
+  manager: EntityManager,
+  correspondenceId: string,
+  status: CustomerCorrespondenceStatus,
+  unreadMessageCount: number,
+): Promise<void> {
+  await manager.query(
+    `UPDATE "customer_correspondences"
+     SET "status" = $2, "unread_message_count" = $3,
+         "processing_version" = "processing_version" + 1
+     WHERE "id" = $1`,
+    [correspondenceId, status, unreadMessageCount],
+  );
+}
+
+function requireStatusTransition(
+  current: CustomerCorrespondenceStatus,
+  next: CustomerCorrespondenceStatus,
+): void {
+  if (next === current) return;
+  const allowed: Readonly<Record<CustomerCorrespondenceStatus, readonly CustomerCorrespondenceStatus[]>> = {
+    'Válaszra vár': ['Lezárva'],
+    'Új válasz': ['Feldolgozás alatt', 'Lezárva'],
+    'Feldolgozás alatt': ['Lezárva'],
+    'Lezárva': ['Feldolgozás alatt'],
+  };
+  if (!allowed[current].includes(next)) {
+    throw new ConflictException('Invalid Customer correspondence status transition.');
+  }
+}
+
+async function audit(
+  manager: EntityManager,
+  projectId: string,
+  eventType: string,
+  payload: Readonly<Record<string, string>>,
+): Promise<void> {
+  await manager.query(
+    `INSERT INTO "audit_events" ("id", "project_id", "event_type", "payload")
+     VALUES ($1, $2, $3, $4::jsonb)`,
+    [randomUUID(), projectId, eventType, JSON.stringify(payload)],
+  );
 }
 
 function toMessage(row: MessageRow) {
@@ -104,5 +227,6 @@ function toMessage(row: MessageRow) {
     attachmentCount: row.attachment_count,
     attachments: row.attachments,
     correlationEvidence: row.correlation_evidence,
+    classification: row.classification,
   };
 }
