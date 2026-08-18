@@ -210,10 +210,19 @@
         @for (followUp of followUps(); track followUp.id) {
           <li
             class="discovery-follow-up-item"
+            [class.discovery-follow-up-item--review]="reviewFollowUpId() === followUp.id"
+            [attr.id]="'discovery-follow-up-' + followUp.id"
             data-testid="discovery-follow-up-item"
             [attr.data-follow-up-id]="followUp.id"
             tabindex="-1"
           >
+            @if (reviewFollowUpId() === followUp.id) {
+              <p class="reply-review-context" role="status" data-testid="reply-review-context">
+                Ez a Discovery follow-up a Customer pingre érkezett válasz áttekintési kontextusa.
+                @if (reviewCorrespondenceId()) { A correspondence azonosítója: {{ reviewCorrespondenceId() }}. }
+                A válasz nem módosította és nem oldotta fel automatikusan a follow-upot.
+              </p>
+            }
             <div class="discovery-follow-up-meta">
               <strong>{{ followUp.category }}</strong>
               <p-tag [value]="followUp.status" data-testid="discovery-follow-up-status" />

@@ -140,7 +140,11 @@ export class CustomerFollowUpService implements OnModuleInit, OnModuleDestroy {
       const existing = await manager.getRepository(CustomerFollowUpEntity).findOneBy({ projectId });
       await this.reconcileExpiredManualAttempts(manager, projectId, new Date());
       const latestManualAttempt = await findLatestManualAttempt(manager, projectId);
-      return toState(existing ?? createDefaultState(projectId), latestManualAttempt);
+      return toState(
+        existing ?? createDefaultState(projectId),
+        latestManualAttempt,
+        await hasReceiptEvidence(manager, latestManualAttempt?.correspondenceId ?? null),
+      );
     });
   }
 
@@ -176,7 +180,8 @@ export class CustomerFollowUpService implements OnModuleInit, OnModuleDestroy {
         intervalMinutes: String(saved.intervalMinutes),
         expiresAt: saved.expiresAt ? saved.expiresAt.toISOString() : 'NONE',
       });
-      return toState(saved, await findLatestManualAttempt(manager, projectId));
+      const latestAttempt = await findLatestManualAttempt(manager, projectId);
+      return toState(saved, latestAttempt, await hasReceiptEvidence(manager, latestAttempt?.correspondenceId ?? null));
     });
   }
 
@@ -235,7 +240,7 @@ export class CustomerFollowUpService implements OnModuleInit, OnModuleDestroy {
         hasReference: String(referencedFollowUp !== null),
         messageLength: String(messageDraft.length),
       });
-      return toState(saved, await findLatestManualAttempt(manager, projectId));
+      return toState(saved, latestAttempt, await hasReceiptEvidence(manager, latestAttempt?.correspondenceId ?? null));
     });
   }
 
@@ -399,6 +404,12 @@ export class CustomerFollowUpService implements OnModuleInit, OnModuleDestroy {
         throw new ConflictException({
           code: 'FOLLOW_UP_RETRY_STALE',
           message: 'A kézbesítési állapot időközben megváltozott. Töltsd újra az aktuális állapotot.',
+        });
+      }
+      if (await hasReceiptEvidence(manager, latestAttempt.correspondenceId)) {
+        throw new ConflictException({
+          code: 'FOLLOW_UP_RECEIPT_EVIDENCE',
+          message: 'A Customer válasza igazolja az átvételt; ezt a logikai kézbesítést nem szabad újraküldeni.',
         });
       }
       if (latestAttempt.state === 'UNKNOWN' && !input.acknowledgeDuplicateRisk) {
@@ -1305,6 +1316,7 @@ function findLatestManualAttempt(
 function toState(
   value: CustomerFollowUpEntity,
   latestManualAttempt: CustomerFollowUpDeliveryAttemptEntity | null = null,
+  receiptEvidence = false,
 ): CustomerFollowUpState {
   return {
     projectId: value.projectId,
@@ -1318,11 +1330,14 @@ function toState(
     nextPingAt: toIsoOrNull(value.nextPingAt, 'follow-up nextPingAt'),
     lastDeliveryStatus: value.lastDeliveryStatus,
     lastDeliveryError: toSafeDeliveryError(value.lastDeliveryError),
-    latestManualAttempt: latestManualAttempt ? toManualAttempt(latestManualAttempt) : null,
+    latestManualAttempt: latestManualAttempt ? toManualAttempt(latestManualAttempt, receiptEvidence) : null,
   };
 }
 
-function toManualAttempt(value: CustomerFollowUpDeliveryAttemptEntity): CustomerFollowUpManualAttempt {
+function toManualAttempt(
+  value: CustomerFollowUpDeliveryAttemptEntity,
+  receiptEvidence: boolean,
+): CustomerFollowUpManualAttempt {
   return {
     attemptId: value.id,
     state: value.state,
@@ -1332,7 +1347,23 @@ function toManualAttempt(value: CustomerFollowUpDeliveryAttemptEntity): Customer
     failureCode: toSafeManualFailureCode(value.failureCode),
     attemptedAt: value.attemptedAt.toISOString(),
     sentAt: value.sentAt?.toISOString() ?? null,
+    receiptEvidence,
   };
+}
+
+async function hasReceiptEvidence(
+  manager: EntityManager,
+  correspondenceId: string | null,
+): Promise<boolean> {
+  if (!correspondenceId) return false;
+  const rows = await manager.query(
+    `SELECT EXISTS (
+       SELECT 1 FROM "customer_inbound_messages"
+       WHERE "correspondence_id" = $1
+     ) AS "present"`,
+    [correspondenceId],
+  ) as Array<{ present: boolean }>;
+  return rows[0]?.present ?? false;
 }
 
 function toSafeManualFailureCode(value: string | null): string | null {

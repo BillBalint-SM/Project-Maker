@@ -89,11 +89,39 @@ export interface CustomerInboundMessageView {
   readonly classification: CustomerInboundMessageClassification | null;
 }
 
+export type CustomerCorrespondenceSource =
+  | {
+      readonly type: 'INTERVIEW_HANDOFF';
+      readonly roundId: string;
+      readonly handoffId: string;
+      readonly version: number;
+      readonly state: 'DRAFT' | 'SENDING' | 'SENT' | 'FAILED' | 'UNKNOWN';
+    }
+  | {
+      readonly type: 'CUSTOMER_FOLLOW_UP_PING';
+      readonly attemptId: string;
+      readonly state: 'SENDING' | 'SENT' | 'FAILED' | 'UNKNOWN';
+      readonly followUpId: string | null;
+      readonly followUpVersion: number | null;
+    };
+
+export type CustomerCorrespondenceOutcome =
+  | { readonly command: 'START_HANDOFF_REVISION' }
+  | {
+      readonly command: 'REVIEW_DISCOVERY_FOLLOW_UP';
+      readonly followUpId: string;
+      readonly followUpVersion: number;
+    };
+
 export interface CustomerCorrespondenceView {
   readonly id: string;
+  readonly predecessorId: string | null;
   readonly status: CustomerCorrespondenceStatus;
   readonly unreadMessageCount: number;
   readonly processingVersion: number;
+  readonly source: CustomerCorrespondenceSource;
+  readonly outcome: CustomerCorrespondenceOutcome | null;
+  readonly unknownDeliveryReceiptEvidence: boolean;
   readonly messages: readonly CustomerInboundMessageView[];
 }
 
@@ -114,6 +142,7 @@ export type CustomerCorrespondenceCommand =
 
 export interface ProjectCustomerCorrespondenceWork {
   readonly newReplyCount: number;
+  readonly projectArchived: boolean;
   readonly correspondences: readonly CustomerCorrespondenceView[];
 }
 

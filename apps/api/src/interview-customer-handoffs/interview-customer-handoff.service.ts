@@ -57,14 +57,19 @@ export class InterviewCustomerHandoffService {
     return this.dataSource.transaction(async (manager) => {
       await requireRound(manager, projectId, roundId, false);
       await reconcileExpiredSending(manager, projectId, roundId);
-      return (await manager.getRepository(InterviewCustomerHandoffEntity).find({ where: { projectId, roundId }, order: { version: 'DESC' } })).map(toSummary);
+      const handoffs = await manager.getRepository(InterviewCustomerHandoffEntity).find({ where: { projectId, roundId }, order: { version: 'DESC' } });
+      return Promise.all(handoffs.map(async (handoff) => toSummary(
+        handoff,
+        await hasReceiptEvidence(manager, handoff.correspondenceId),
+      )));
     });
   }
 
   async get(projectId: string, roundId: string, handoffId: string): Promise<InterviewCustomerHandoffDetail> {
     return this.dataSource.transaction(async (manager) => {
       await requireRound(manager, projectId, roundId, false);
-      return toDetail(await requireHandoff(manager, projectId, roundId, handoffId, false));
+      const handoff = await requireHandoff(manager, projectId, roundId, handoffId, false);
+      return toDetail(handoff, await hasReceiptEvidence(manager, handoff.correspondenceId));
     });
   }
 
@@ -138,6 +143,9 @@ export class InterviewCustomerHandoffService {
       const { project } = await requireRound(manager, projectId, roundId, true);
       requireMutable(project);
       const handoff = await requireHandoff(manager, projectId, roundId, handoffId, true);
+      if (await hasReceiptEvidence(manager, handoff.correspondenceId)) {
+        throw new ConflictException('A Customer válasza igazolja az átvételt; ezt a logikai verziót nem szabad újraküldeni.');
+      }
       if (handoff.state === 'UNKNOWN' && !acknowledged) throw new BadRequestException('A kettős küldés kockázatát el kell fogadni.');
       if (!['FAILED', 'UNKNOWN'].includes(handoff.state)) throw new ConflictException('Ez a küldés nem próbálható újra.');
       if (!handoff.subject || !handoff.textContent || !handoff.htmlContent || !handoff.recipientEmail) throw new ConflictException('Nincs újraküldhető rögzített tartalom.');
@@ -229,10 +237,22 @@ async function reconcileExpiredSending(manager: EntityManager, projectId: string
 function clearPrepared(row: InterviewCustomerHandoffEntity) { Object.assign(row, { recipientName: null, recipientEmail: null, senderName: null, senderAddress: null, replyToAddress: null, replyTokenHash: null, mailSystemAcceptance: null, messageReference: null, correspondenceId: null, outboundCommunicationId: null, internalOwnerName: null, subject: null, htmlContent: null, textContent: null, previewDigest: null, sourceContentVersion: null, attemptedAt: null, sentAt: null }); }
 function normalize(value: string | null) { const trimmed = value?.trim(); return trimmed ? trimmed : null; }
 function requireMutable(project: Project) { if (project.status === 'ARCHIVED') throw new ConflictException('Archived projects are read-only.'); }
-function toSummary(row: InterviewCustomerHandoffEntity): InterviewCustomerHandoffSummary { return { id: row.id, projectId: row.projectId, roundId: row.roundId, version: row.version, state: row.state, modificationSummary: row.modificationSummary, supersedesHandoffId: row.supersedesHandoffId, recipientName: row.recipientName, recipientEmail: row.recipientEmail, senderName: row.senderName, senderAddress: row.senderAddress, createdAt: row.createdAt.toISOString(), attemptedAt: row.attemptedAt?.toISOString() ?? null, sentAt: row.sentAt?.toISOString() ?? null }; }
-function toDetail(row: InterviewCustomerHandoffEntity): InterviewCustomerHandoffDetail { return { ...toSummary(row), internalOwnerName: row.internalOwnerName, subject: row.subject, htmlContent: row.htmlContent, textContent: row.textContent, sourceContentVersion: row.sourceContentVersion, failureCode: row.failureCode, replyToAddress: row.replyToAddress, mailSystemAcceptance: row.mailSystemAcceptance, messageReference: row.messageReference, correspondenceId: row.correspondenceId }; }
+function toSummary(row: InterviewCustomerHandoffEntity, receiptEvidence = false): InterviewCustomerHandoffSummary { return { id: row.id, projectId: row.projectId, roundId: row.roundId, version: row.version, state: row.state, modificationSummary: row.modificationSummary, supersedesHandoffId: row.supersedesHandoffId, recipientName: row.recipientName, recipientEmail: row.recipientEmail, senderName: row.senderName, senderAddress: row.senderAddress, createdAt: row.createdAt.toISOString(), attemptedAt: row.attemptedAt?.toISOString() ?? null, sentAt: row.sentAt?.toISOString() ?? null, receiptEvidence }; }
+function toDetail(row: InterviewCustomerHandoffEntity, receiptEvidence = false): InterviewCustomerHandoffDetail { return { ...toSummary(row, receiptEvidence), internalOwnerName: row.internalOwnerName, subject: row.subject, htmlContent: row.htmlContent, textContent: row.textContent, sourceContentVersion: row.sourceContentVersion, failureCode: row.failureCode, replyToAddress: row.replyToAddress, mailSystemAcceptance: row.mailSystemAcceptance, messageReference: row.messageReference, correspondenceId: row.correspondenceId }; }
 async function audit(manager: EntityManager, projectId: string, eventType: string, row: InterviewCustomerHandoffEntity) { await manager.getRepository(AuditEvent).save({ id: randomUUID(), projectId, eventType, payload: { roundId: row.roundId, handoffId: row.id, version: String(row.version), state: row.state } }); }
 
 function senderFromDigestInput(input: SendInterviewCustomerHandoffInput): { name: string; address: string } {
   return requireCustomerSender(input.senderName, input.senderAddress);
+}
+
+async function hasReceiptEvidence(manager: EntityManager, correspondenceId: string | null): Promise<boolean> {
+  if (!correspondenceId) return false;
+  const rows = await manager.query(
+    `SELECT EXISTS (
+       SELECT 1 FROM "customer_inbound_messages"
+       WHERE "correspondence_id" = $1
+     ) AS "present"`,
+    [correspondenceId],
+  ) as Array<{ present: boolean }>;
+  return rows[0]?.present ?? false;
 }
