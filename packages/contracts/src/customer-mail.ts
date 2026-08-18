@@ -62,6 +62,15 @@ export interface CustomerMailboxAttachmentMetadata {
 
 export type CustomerReplySenderClassification = 'CUSTOMER_CONTACT' | 'UNRECOGNIZED';
 
+export const customerInboundMessageClassifications = [
+  'Elfogadva',
+  'Módosítást kér',
+  'Kérdés vagy válasz',
+  'Egyéb',
+] as const;
+export type CustomerInboundMessageClassification =
+  (typeof customerInboundMessageClassifications)[number];
+
 export interface CustomerInboundMessageView {
   readonly id: string;
   readonly providerMessageReference: string;
@@ -77,14 +86,31 @@ export interface CustomerInboundMessageView {
   readonly attachmentCount: number;
   readonly attachments: readonly CustomerMailboxAttachmentMetadata[];
   readonly correlationEvidence: 'TOKENIZED_REPLY_TO';
+  readonly classification: CustomerInboundMessageClassification | null;
 }
 
 export interface CustomerCorrespondenceView {
   readonly id: string;
   readonly status: CustomerCorrespondenceStatus;
   readonly unreadMessageCount: number;
+  readonly processingVersion: number;
   readonly messages: readonly CustomerInboundMessageView[];
 }
+
+export type CustomerCorrespondenceCommand =
+  | { readonly command: 'MARK_REVIEWED'; readonly expectedVersion: number }
+  | {
+      readonly command: 'SET_STATUS';
+      readonly expectedVersion: number;
+      readonly status: CustomerCorrespondenceStatus;
+    }
+  | {
+      readonly command: 'CLASSIFY_MESSAGE';
+      readonly expectedVersion: number;
+      readonly messageId: string;
+      readonly classification: CustomerInboundMessageClassification;
+      readonly closeCorrespondence?: boolean;
+    };
 
 export interface ProjectCustomerCorrespondenceWork {
   readonly newReplyCount: number;

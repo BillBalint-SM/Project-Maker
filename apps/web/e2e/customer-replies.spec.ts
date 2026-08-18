@@ -35,6 +35,39 @@ test('surfaces one safe token-correlated Customer reply across global and Portfo
   const history = page.getByText('Korábbi idézett levelezés');
   await expect(history).toBeVisible();
   await expect(history.locator('xpath=..')).not.toHaveAttribute('open');
+
+  await page.getByRole('button', { name: 'Lezárás' }).click();
+  await expect(page.getByRole('alert')).toContainText('Töltsd újra az adatokat');
+  await expect(page.getByText('Mehet tovább.')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Adatok újratöltése' })).toBeVisible();
+  await page.getByRole('button', { name: 'Adatok újratöltése' }).click();
+  await expect(page.getByText('Mehet tovább.')).toBeVisible();
+
+  await page.getByRole('button', { name: 'Átnéztem' }).click();
+  await expect(page.getByText('0 olvasatlan üzenet')).toBeVisible();
+  await expect(page.getByTestId('global-customer-reply-count')).not.toContainText('(1)');
+  const classification = page.getByLabel('Kézi besorolás');
+  await classification.selectOption('Módosítást kér');
+  await expect(classification).toHaveValue('Módosítást kér');
+  await page.getByRole('button', { name: 'Feldolgozás megkezdése' }).click();
+  await expect(page.getByRole('heading', { name: 'Feldolgozás alatt' })).toBeVisible();
+  await page.getByRole('button', { name: 'Lezárás' }).click();
+  await expect(page.getByRole('heading', { name: 'Lezárva' })).toBeVisible();
+
+  await request.post(`${graphBaseUrl}/__test/queue-mailbox-message`, { data: {
+    id: `playwright-late-reply-${Date.now()}`,
+    from: { emailAddress: { address: setup.customerEmail } },
+    toRecipients: [{ emailAddress: { address: replyToAddress } }],
+    subject: 'Re: Projektösszefoglaló',
+    body: { contentType: 'text', content: 'Újabb Customer válasz.' },
+    receivedDateTime: '2026-08-18T18:30:00.000Z',
+  } });
+  await request.post('/api/customer-mailbox-sync/refresh');
+  await page.reload();
+  await expect(page.getByRole('heading', { name: 'Új válasz' })).toBeVisible();
+  await expect(page.getByText('1 olvasatlan üzenet')).toBeVisible();
+  await expect(page.getByText('Újabb Customer válasz.')).toBeVisible();
+  await expect(page.getByLabel('Kézi besorolás').first()).toHaveValue('Módosítást kér');
 });
 
 async function createSentHandoff(request: APIRequestContext) {

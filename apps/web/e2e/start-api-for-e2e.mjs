@@ -244,9 +244,9 @@ function runPnpmOnce(args) {
 
 function spawnPnpm(args, options) {
   if (process.platform === 'win32') {
-    return spawn('cmd.exe', ['/d', '/s', '/c', 'pnpm', ...args], options);
+    return spawn('cmd.exe', ['/d', '/s', '/c', 'npx', '--yes', 'pnpm@11.20.0', ...args], options);
   }
-  return spawn('pnpm', args, options);
+  return spawn('npx', ['--yes', 'pnpm@11.20.0', ...args], options);
 }
 
 async function resetLocalE2eDatabase(databaseUrl) {
