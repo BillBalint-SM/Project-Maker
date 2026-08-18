@@ -15,7 +15,7 @@ import { CustomerRepliesApiService } from './customer-replies-api.service';
       <h1 id="customer-replies-title">Customer válaszok</h1>
       @if (loading()) { <p>Válaszok betöltése…</p> }
       @else if (error()) { <p role="alert">{{ error() }}</p> }
-      @else if (work(); as current) {
+      @else if (correspondenceWork(); as current) {
         <p data-testid="project-new-reply-count">{{ current.newReplyCount }} új válasz</p>
         @for (correspondence of current.correspondences; track correspondence.id) {
           <article class="correspondence" [attr.data-testid]="'correspondence-' + correspondence.id">
@@ -51,12 +51,15 @@ export class CustomerCorrespondencesPage implements OnInit {
   private readonly api = inject(CustomerRepliesApiService);
   private readonly route = inject(ActivatedRoute);
   readonly projectId = this.route.snapshot.paramMap.get('projectId') ?? '';
-  readonly work = signal<ProjectCustomerCorrespondenceWork | null>(null);
+  readonly correspondenceWork = signal<ProjectCustomerCorrespondenceWork | null>(null);
   readonly loading = signal(true);
   readonly error = signal<string | null>(null);
   ngOnInit(): void {
     this.api.forProject(this.projectId).subscribe({
-      next: (work) => { this.work.set(work); this.loading.set(false); },
+      next: (correspondenceWork) => {
+        this.correspondenceWork.set(correspondenceWork);
+        this.loading.set(false);
+      },
       error: (error: Error) => { this.error.set(error.message); this.loading.set(false); },
     });
   }

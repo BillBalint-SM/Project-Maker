@@ -70,7 +70,12 @@ export class MicrosoftGraphMailClient implements GraphMailClient {
     if (!url.startsWith(`${this.baseUrl}/`)) throw new GraphMailClientError('INVALID_CURSOR');
     let response: Response;
     try {
-      response = await fetch(url, { headers: { authorization: `Bearer ${await this.accessToken()}` } });
+      response = await fetch(url, {
+        headers: {
+          authorization: `Bearer ${await this.accessToken()}`,
+          prefer: 'IdType="ImmutableId"',
+        },
+      });
     } catch {
       throw new GraphMailClientError('TEMPORARY');
     }

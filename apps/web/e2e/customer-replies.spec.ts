@@ -20,6 +20,9 @@ test('surfaces one safe token-correlated Customer reply across global and Portfo
     attachments: [{ name: 'scope.pdf', contentType: 'application/pdf', size: 2048 }],
   } });
   await request.post('/api/customer-mailbox-sync/refresh');
+  const mailboxStats = await request.get(`${graphBaseUrl}/__test/mailbox-stats`)
+    .then((response) => response.json()) as { preferHeaders: Array<string | null> };
+  expect(mailboxStats.preferHeaders).toContain('IdType="ImmutableId"');
 
   await page.goto('/');
   await expect(page.getByTestId('global-customer-reply-count')).toContainText('(1)');
