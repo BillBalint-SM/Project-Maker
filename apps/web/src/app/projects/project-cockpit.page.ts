@@ -77,6 +77,7 @@ export class ProjectCockpitPage implements OnInit {
 
   readonly projectId = this.route.snapshot.paramMap.get('projectId') ?? '';
   readonly reviewFollowUpId = this.route.snapshot.queryParamMap.get('reviewFollowUpId');
+  readonly reviewFollowUpVersion = this.route.snapshot.queryParamMap.get('reviewFollowUpVersion');
   readonly reviewCorrespondenceId = this.route.snapshot.queryParamMap.get('reviewCorrespondenceId');
   readonly statusOptions = activeProjectStatusOptions;
   readonly ownerRoleOptions = computed(() => {

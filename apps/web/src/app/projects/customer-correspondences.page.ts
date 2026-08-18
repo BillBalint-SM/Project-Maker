@@ -1,6 +1,6 @@
 import { DatePipe } from '@angular/common';
 import { Component, inject, OnInit, signal } from '@angular/core';
-import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import type {
   CustomerCorrespondenceCommand,
   CustomerCorrespondenceStatus,
@@ -11,11 +11,12 @@ import type {
 import { customerInboundMessageClassifications } from '@project-maker/contracts/customer-mail';
 
 import { CustomerRepliesApiService } from './customer-replies-api.service';
-import { InterviewHandoffApiService } from '../interviews/interview-handoff/interview-handoff-api.service';
+import { InterviewReplyOutcomeComponent } from '../interviews/interview-handoff/interview-reply-outcome.component';
+import { DiscoveryReplyOutcomeComponent } from './discovery-follow-ups/discovery-reply-outcome.component';
 
 @Component({
   selector: 'app-customer-correspondences-page',
-  imports: [DatePipe, RouterLink],
+  imports: [DatePipe, DiscoveryReplyOutcomeComponent, InterviewReplyOutcomeComponent, RouterLink],
   template: `
     <a class="back-link" [routerLink]="['/projects', projectId, 'status']">← Projektállapot</a>
     <section aria-labelledby="customer-replies-title">
@@ -53,18 +54,15 @@ import { InterviewHandoffApiService } from '../interviews/interview-handoff/inte
             @if (correspondence.unknownDeliveryReceiptEvidence) {
               <p class="receipt-evidence" data-testid="unknown-delivery-receipt-evidence">A Customer válasza átvételi bizonyíték; az ismeretlen kézbesítési eredmény változatlanul megmarad, újraküldés nem javasolt.</p>
             }
-            @if (correspondence.outcome?.command === 'START_HANDOFF_REVISION' && correspondence.source.type === 'INTERVIEW_HANDOFF') {
-              <button type="button"
-                [disabled]="busy() || current.projectArchived"
-                [attr.data-testid]="'start-handoff-revision-' + correspondence.id"
-                (click)="startHandoffRevision(correspondence)">Új összefoglaló-verzió készítése</button>
-            }
-            @if (correspondence.outcome?.command === 'REVIEW_DISCOVERY_FOLLOW_UP' && correspondence.source.type === 'CUSTOMER_FOLLOW_UP_PING') {
-              <a [routerLink]="['/projects', projectId]"
-                [queryParams]="{ reviewFollowUpId: correspondence.outcome!.followUpId, reviewCorrespondenceId: correspondence.id }"
-                [fragment]="'discovery-follow-up-' + correspondence.outcome!.followUpId"
-                [attr.data-testid]="'review-ping-source-' + correspondence.id">Forrás Discovery follow-up áttekintése</a>
-            }
+            <app-interview-reply-outcome
+              [projectId]="projectId"
+              [projectArchived]="current.projectArchived"
+              [correspondence]="correspondence"
+            />
+            <app-discovery-reply-outcome
+              [projectId]="projectId"
+              [correspondence]="correspondence"
+            />
             @for (message of correspondence.messages; track message.id) {
               <section class="inbound-message" [attr.data-testid]="'inbound-message-' + message.id">
                 <header><strong>{{ message.senderAddress || 'Ismeretlen feladó' }}</strong><time>{{ message.receivedAt | date: 'yyyy. MM. dd. HH:mm' }}</time></header>
@@ -107,9 +105,7 @@ import { InterviewHandoffApiService } from '../interviews/interview-handoff/inte
 })
 export class CustomerCorrespondencesPage implements OnInit {
   private readonly api = inject(CustomerRepliesApiService);
-  private readonly handoffs = inject(InterviewHandoffApiService);
   private readonly route = inject(ActivatedRoute);
-  private readonly router = inject(Router);
   readonly projectId = this.route.snapshot.paramMap.get('projectId') ?? '';
   readonly correspondenceWork = signal<ProjectCustomerCorrespondenceWork | null>(null);
   readonly loading = signal(true);
@@ -161,24 +157,6 @@ export class CustomerCorrespondencesPage implements OnInit {
       expectedVersion: correspondence.processingVersion,
       messageId,
       classification,
-    });
-  }
-
-  startHandoffRevision(correspondence: CustomerCorrespondenceView): void {
-    if (correspondence.source.type !== 'INTERVIEW_HANDOFF') return;
-    this.busy.set(true);
-    this.commandError.set(null);
-    this.handoffs.start(this.projectId, correspondence.source.roundId).subscribe({
-      next: () => {
-        void this.router.navigate(['/projects', this.projectId, 'interview'], {
-          queryParams: { roundId: correspondence.source.type === 'INTERVIEW_HANDOFF' ? correspondence.source.roundId : null },
-          fragment: 'interview-handoff',
-        });
-      },
-      error: () => {
-        this.commandError.set('Az új összefoglaló-verzió nem indítható. Töltsd újra az adatokat, és ellenőrizd a projekt állapotát.');
-        this.busy.set(false);
-      },
     });
   }
 

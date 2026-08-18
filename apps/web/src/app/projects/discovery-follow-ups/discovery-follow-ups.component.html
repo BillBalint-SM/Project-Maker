@@ -219,6 +219,7 @@
             @if (reviewFollowUpId() === followUp.id) {
               <p class="reply-review-context" role="status" data-testid="reply-review-context">
                 Ez a Discovery follow-up a Customer pingre érkezett válasz áttekintési kontextusa.
+                @if (reviewFollowUpVersion()) { A ping a {{ reviewFollowUpVersion() }}. forrásverzióhoz tartozik. }
                 @if (reviewCorrespondenceId()) { A correspondence azonosítója: {{ reviewCorrespondenceId() }}. }
                 A válasz nem módosította és nem oldotta fel automatikusan a follow-upot.
               </p>

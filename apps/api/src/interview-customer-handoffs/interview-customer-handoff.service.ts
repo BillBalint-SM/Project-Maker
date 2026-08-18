@@ -11,6 +11,7 @@ import { RoundQuestionAssessmentOverrideEntity } from '../interviews/round-quest
 import { RoundQuestionSnapshotEntity } from '../interviews/round-question-snapshot.entity';
 import { CustomerMailBoundaryError, type CustomerOutboundMail, customerOutboundMailToken, immutableOutboundCustomerMessage } from '../mail-delivery/customer-mail-boundary';
 import { Project } from '../projects/project.entity';
+import { hasCustomerReceiptEvidence } from '../customer-replies/customer-receipt-evidence';
 import {
   customerMailDigest as sha256,
   customerReplyToAddress as plusAddress,
@@ -60,7 +61,7 @@ export class InterviewCustomerHandoffService {
       const handoffs = await manager.getRepository(InterviewCustomerHandoffEntity).find({ where: { projectId, roundId }, order: { version: 'DESC' } });
       return Promise.all(handoffs.map(async (handoff) => toSummary(
         handoff,
-        await hasReceiptEvidence(manager, handoff.correspondenceId),
+        await hasCustomerReceiptEvidence(manager, handoff.correspondenceId),
       )));
     });
   }
@@ -69,7 +70,7 @@ export class InterviewCustomerHandoffService {
     return this.dataSource.transaction(async (manager) => {
       await requireRound(manager, projectId, roundId, false);
       const handoff = await requireHandoff(manager, projectId, roundId, handoffId, false);
-      return toDetail(handoff, await hasReceiptEvidence(manager, handoff.correspondenceId));
+      return toDetail(handoff, await hasCustomerReceiptEvidence(manager, handoff.correspondenceId));
     });
   }
 
@@ -143,7 +144,7 @@ export class InterviewCustomerHandoffService {
       const { project } = await requireRound(manager, projectId, roundId, true);
       requireMutable(project);
       const handoff = await requireHandoff(manager, projectId, roundId, handoffId, true);
-      if (await hasReceiptEvidence(manager, handoff.correspondenceId)) {
+      if (await hasCustomerReceiptEvidence(manager, handoff.correspondenceId)) {
         throw new ConflictException('A Customer válasza igazolja az átvételt; ezt a logikai verziót nem szabad újraküldeni.');
       }
       if (handoff.state === 'UNKNOWN' && !acknowledged) throw new BadRequestException('A kettős küldés kockázatát el kell fogadni.');
@@ -243,16 +244,4 @@ async function audit(manager: EntityManager, projectId: string, eventType: strin
 
 function senderFromDigestInput(input: SendInterviewCustomerHandoffInput): { name: string; address: string } {
   return requireCustomerSender(input.senderName, input.senderAddress);
-}
-
-async function hasReceiptEvidence(manager: EntityManager, correspondenceId: string | null): Promise<boolean> {
-  if (!correspondenceId) return false;
-  const rows = await manager.query(
-    `SELECT EXISTS (
-       SELECT 1 FROM "customer_inbound_messages"
-       WHERE "correspondence_id" = $1
-     ) AS "present"`,
-    [correspondenceId],
-  ) as Array<{ present: boolean }>;
-  return rows[0]?.present ?? false;
 }
