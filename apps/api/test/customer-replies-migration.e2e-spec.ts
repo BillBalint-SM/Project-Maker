@@ -83,12 +83,14 @@ describe('Correlated Customer replies migration (PostgreSQL)', () => {
       await database.initialize();
       await database.runMigrations();
       await database.undoLastMigration();
+      await database.undoLastMigration();
       const absent = await database.query(
         `SELECT table_name FROM information_schema.tables WHERE table_name = 'customer_inbound_messages'`,
       );
       assert.deepEqual(absent, []);
 
       await database.runMigrations();
+      const inboundMessageId = randomUUID();
       await database.query(
         `INSERT INTO customer_mailbox_sync (mailbox_address, state)
          VALUES ('project-maker@pte.hu', 'INITIALIZING')`,
@@ -101,8 +103,22 @@ describe('Correlated Customer replies migration (PostgreSQL)', () => {
          ) VALUES ($1, 'project-maker@pte.hu', 'retained-provider-message', 'UNMATCHED',
            'NO_VALID_REPLY_TOKEN', 'UNRECOGNIZED', '[]'::jsonb, 'Retained', 'Retained',
            CURRENT_TIMESTAMP, 0, '[]'::jsonb)`,
-        [randomUUID()],
+        [inboundMessageId],
       );
+      await database.query(
+        `INSERT INTO customer_inbound_message_processing (message_id, classification)
+         VALUES ($1, 'Egyéb')`,
+        [inboundMessageId],
+      );
+      await assert.rejects(
+        database.undoLastMigration(),
+        /Migration 0021 cannot remove retained Customer correspondence processing history/,
+      );
+      await database.query(
+        'DELETE FROM customer_inbound_message_processing WHERE message_id = $1',
+        [inboundMessageId],
+      );
+      await database.undoLastMigration();
       await assert.rejects(
         database.undoLastMigration(),
         /Migration 0020 cannot remove retained Customer inbound messages/,

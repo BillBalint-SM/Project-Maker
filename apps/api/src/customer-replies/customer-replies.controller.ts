@@ -1,6 +1,7 @@
-import { Controller, Get, Param, ParseUUIDPipe } from '@nestjs/common';
-import type { CustomerReplySummary, ProjectCustomerCorrespondenceWork } from '@project-maker/contracts';
+import { Body, Controller, Get, Param, ParseUUIDPipe, Post } from '@nestjs/common';
+import type { CustomerCorrespondenceCommand, CustomerCorrespondenceView, CustomerReplySummary, ProjectCustomerCorrespondenceWork } from '@project-maker/contracts';
 
+import { CustomerCorrespondenceCommandDto } from './dto/customer-correspondence-command.dto';
 import { CustomerRepliesService } from './customer-replies.service';
 
 @Controller()
@@ -17,5 +18,14 @@ export class CustomerRepliesController {
     @Param('projectId', new ParseUUIDPipe()) projectId: string,
   ): Promise<ProjectCustomerCorrespondenceWork> {
     return this.replies.forProject(projectId);
+  }
+
+  @Post('projects/:projectId/customer-correspondences/:correspondenceId/commands')
+  command(
+    @Param('projectId', new ParseUUIDPipe()) projectId: string,
+    @Param('correspondenceId', new ParseUUIDPipe()) correspondenceId: string,
+    @Body() input: CustomerCorrespondenceCommandDto,
+  ): Promise<CustomerCorrespondenceView> {
+    return this.replies.command(projectId, correspondenceId, input as CustomerCorrespondenceCommand);
   }
 }

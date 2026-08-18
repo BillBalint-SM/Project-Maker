@@ -123,4 +123,7 @@ const projectActivitySummaries: Readonly<Record<string, string>> = {
   CUSTOMER_FOLLOW_UP_PING_UNKNOWN: 'Az ügyfél-ping küldési eredménye bizonytalan; kézi ellenőrzés szükséges.',
   CUSTOMER_REVIEW_EMAIL_FAILED: 'Az ügyfél-review e-mail küldése nem sikerült.',
   CUSTOMER_REVIEW_EMAIL_SENT: 'Ügyfél-review e-mail elküldve.',
+  CUSTOMER_CORRESPONDENCE_REVIEWED: 'A Customer levelezés új üzenetei át lettek nézve.',
+  CUSTOMER_CORRESPONDENCE_STATUS_CHANGED: 'A Customer levelezés feldolgozási állapota megváltozott.',
+  CUSTOMER_INBOUND_MESSAGE_CLASSIFIED: 'Egy Customer válasz kézi besorolást kapott.',
 };
