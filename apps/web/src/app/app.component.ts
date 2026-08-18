@@ -1,5 +1,7 @@
-import { Component } from '@angular/core';
+import { Component, inject, OnInit, signal } from '@angular/core';
 import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+
+import { CustomerRepliesApiService } from './projects/customer-replies-api.service';
 
 @Component({
   selector: 'app-root',
@@ -16,6 +18,7 @@ import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
         </a>
         <nav class="app-nav" aria-label="Application navigation">
           <a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">Projects</a>
+          <a routerLink="/" data-testid="global-customer-reply-count">Customer válaszok@if (newReplyCount() > 0) { ({{ newReplyCount() }}) }</a>
           <a routerLink="/settings/questions" routerLinkActive="active">Kérdésbank beállítások</a>
           <a routerLink="/settings/markdown-templates" routerLinkActive="active">Markdown beállítások</a>
         </nav>
@@ -122,4 +125,11 @@ import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
     }
   `,
 })
-export class AppComponent {}
+export class AppComponent implements OnInit {
+  private readonly replies = inject(CustomerRepliesApiService);
+  readonly newReplyCount = signal(0);
+  ngOnInit(): void {
+    this.replies.summaryChanges.subscribe((summary) => this.newReplyCount.set(summary.newReplyCount));
+    this.replies.summary().subscribe({ error: () => undefined });
+  }
+}

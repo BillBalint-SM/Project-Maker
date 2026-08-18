@@ -26,6 +26,11 @@ export const routes: Routes = [
     title: 'Project interview | Project Maker',
   },
   {
+    path: 'projects/:projectId/customer-correspondences',
+    loadComponent: () => import('./projects/customer-correspondences.page').then((module) => module.CustomerCorrespondencesPage),
+    title: 'Customer válaszok | Project Maker',
+  },
+  {
     path: 'projects/:projectId/status',
     loadComponent: () =>
       import('./projects/project-status.page').then(

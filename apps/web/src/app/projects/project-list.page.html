@@ -70,6 +70,11 @@
             <h2>{{ entry.project.name }}</h2>
             <p-tag [value]="portfolioStatusLabel(entry)" />
           </div>
+          @if (replyCount(entry.project.id) > 0) {
+            <span class="reply-indicator" [attr.data-testid]="'project-reply-count-' + entry.project.id">
+              {{ replyCount(entry.project.id) }} új Customer válasz
+            </span>
+          }
           <dl>
             <div>
               <dt>Következő lépés felelőse</dt>
@@ -80,7 +85,10 @@
               <dd>{{ entry.project.nextAction || 'Nincs megadva' }}</dd>
             </div>
           </dl>
-          <span class="open-label">Projektállapot megnyitása <span aria-hidden="true">→</span></span>
+          <span class="open-label">
+            {{ replyCount(entry.project.id) > 0 ? 'Customer válaszok megnyitása' : 'Projektállapot megnyitása' }}
+            <span aria-hidden="true">→</span>
+          </span>
         </a>
       }
     </div>

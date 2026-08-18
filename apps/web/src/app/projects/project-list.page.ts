@@ -16,6 +16,7 @@ import { forkJoin, map, of, switchMap } from 'rxjs';
 
 import { ProjectApiService } from './project-api.service';
 import { CustomerMailboxSyncApiService } from './customer-mailbox-sync-api.service';
+import { CustomerRepliesApiService } from './customer-replies-api.service';
 import { projectStatusLabel } from './project-status-label';
 
 @Component({
@@ -35,6 +36,7 @@ import { projectStatusLabel } from './project-status-label';
 export class ProjectListPage implements OnInit {
   private readonly api = inject(ProjectApiService);
   private readonly mailboxApi = inject(CustomerMailboxSyncApiService);
+  private readonly repliesApi = inject(CustomerRepliesApiService);
 
   readonly projects = signal<readonly PortfolioProject[]>([]);
   readonly loading = signal(true);
@@ -44,8 +46,12 @@ export class ProjectListPage implements OnInit {
   readonly mailboxLoading = signal(true);
   readonly mailboxRefreshing = signal(false);
   readonly mailboxError = signal<string | null>(null);
+  readonly projectReplyCounts = signal<ReadonlyMap<string, number>>(new Map());
 
   projectRoute(entry: PortfolioProject): readonly string[] {
+    if (this.replyCount(entry.project.id) > 0) {
+      return ['/projects', entry.project.id, 'customer-correspondences'];
+    }
     return entry.preparationStatus?.state === 'SCHEMA_REQUIRED'
       ? ['/projects', entry.project.id, 'interview']
       : ['/projects', entry.project.id, 'status'];
@@ -60,6 +66,12 @@ export class ProjectListPage implements OnInit {
   ngOnInit(): void {
     this.loadProjects();
     this.loadMailboxStatus();
+    this.repliesApi.summary().subscribe({
+      next: (summary) => this.projectReplyCounts.set(
+        new Map(summary.projects.map((project) => [project.projectId, project.newReplyCount])),
+      ),
+      error: () => undefined,
+    });
   }
 
   loadMailboxStatus(): void {
@@ -85,6 +97,7 @@ export class ProjectListPage implements OnInit {
       next: (status) => {
         this.mailboxStatus.set(status);
         this.mailboxRefreshing.set(false);
+        this.loadReplySummary();
       },
       error: (error: Error) => {
         this.mailboxError.set(error.message);
@@ -104,6 +117,19 @@ export class ProjectListPage implements OnInit {
       AUTHORIZATION_ERROR: 'Postafiók-jogosultság javítandó',
     };
     return labels[state];
+  }
+
+  replyCount(projectId: string): number {
+    return this.projectReplyCounts().get(projectId) ?? 0;
+  }
+
+  private loadReplySummary(): void {
+    this.repliesApi.summary().subscribe({
+      next: (summary) => this.projectReplyCounts.set(
+        new Map(summary.projects.map((project) => [project.projectId, project.newReplyCount])),
+      ),
+      error: () => undefined,
+    });
   }
 
   loadProjects(): void {
