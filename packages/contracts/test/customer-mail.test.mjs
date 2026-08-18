@@ -6,6 +6,7 @@ import {
   parseCustomerCorrespondenceStatus,
   parseMailSystemAcceptanceState,
   parseMailboxChangeType,
+  parseCustomerMailboxSyncState,
 } from '../dist/customer-mail.js';
 
 describe('customer mail runtime contracts', () => {
@@ -17,6 +18,7 @@ describe('customer mail runtime contracts', () => {
     assert.equal(parseCustomerMailErrorCode('AUTHENTICATION_ERROR'), 'AUTHENTICATION_ERROR');
     assert.equal(parseCustomerMailErrorCode('INVALID_CURSOR'), 'INVALID_CURSOR');
     assert.equal(parseCustomerCorrespondenceStatus('Új válasz'), 'Új válasz');
+    assert.equal(parseCustomerMailboxSyncState('CURRENT'), 'CURRENT');
   });
 
   it('rejects unknown state and error values at runtime', () => {
@@ -24,5 +26,6 @@ describe('customer mail runtime contracts', () => {
     assert.throws(() => parseMailboxChangeType('REPLIED'), TypeError);
     assert.throws(() => parseCustomerMailErrorCode('GRAPH_401'), TypeError);
     assert.throws(() => parseCustomerCorrespondenceStatus('DELIVERED'), TypeError);
+    assert.throws(() => parseCustomerMailboxSyncState('GRAPH_ERROR'), TypeError);
   });
 });

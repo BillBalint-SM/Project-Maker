@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { describe, it } from 'node:test';
 import { DataSource } from 'typeorm';
 
-import { migrationsForFreshDatabase } from './migration-harness';
+import { migrationsForHistoricalDatabase } from './migration-harness';
 
 describe('Microsoft 365 Customer follow-up ping migration (PostgreSQL)', () => {
   it('reverts an empty expansion and refuses to discard retained ping correspondence', async () => {
@@ -19,7 +19,11 @@ describe('Microsoft 365 Customer follow-up ping migration (PostgreSQL)', () => {
       database = new DataSource({
         type: 'postgres',
         url: withDatabaseName(databaseUrl, databaseName),
-        migrations: [...migrationsForFreshDatabase()],
+        migrations: [
+          ...migrationsForHistoricalDatabase(
+            'M365CustomerFollowUpPing0018M365CustomerFollowUpPing1787385600000',
+          ),
+        ],
       });
       await database.initialize();
       await database.runMigrations();

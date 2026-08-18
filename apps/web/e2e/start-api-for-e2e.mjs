@@ -27,6 +27,10 @@ const graphClientPrivateKeyBase64 = Buffer.from(
 ).toString('base64');
 const graphMessages = [];
 let rejectNextGraphMessage = false;
+let mailboxDeltaVersion = 0;
+let mailboxDeltaRequests = 0;
+let delayNextMailboxDelta = false;
+let failNextMailboxDelta = false;
 const graphServer = createServer((request, response) => {
   if (request.method === 'GET' && request.url === '/__test/messages') {
     response.writeHead(200, { 'content-type': 'application/json' });
@@ -36,6 +40,10 @@ const graphServer = createServer((request, response) => {
   if (request.method === 'POST' && request.url === '/__test/reset') {
     graphMessages.length = 0;
     rejectNextGraphMessage = false;
+    mailboxDeltaVersion = 0;
+    mailboxDeltaRequests = 0;
+    delayNextMailboxDelta = false;
+    failNextMailboxDelta = false;
     response.writeHead(204).end();
     return;
   }
@@ -104,8 +112,48 @@ const graphServer = createServer((request, response) => {
     });
     return;
   }
+  if (request.method === 'GET' && request.url === '/__test/mailbox-stats') {
+    response.writeHead(200, { 'content-type': 'application/json' });
+    response.end(JSON.stringify({ deltaRequests: mailboxDeltaRequests }));
+    return;
+  }
+  if (request.method === 'POST' && request.url === '/__test/delay-next-mailbox-delta') {
+    delayNextMailboxDelta = true;
+    response.writeHead(204).end();
+    return;
+  }
+  if (request.method === 'POST' && request.url === '/__test/fail-next-mailbox-delta') {
+    failNextMailboxDelta = true;
+    response.writeHead(204).end();
+    return;
+  }
+  if (request.method === 'GET' && request.url?.includes('/mailFolders/inbox/messages/delta')) {
+    mailboxDeltaRequests += 1;
+    if (failNextMailboxDelta) {
+      failNextMailboxDelta = false;
+      response.writeHead(503, { 'content-type': 'application/json' }).end('{}');
+      return;
+    }
+    if (delayNextMailboxDelta) {
+      delayNextMailboxDelta = false;
+      setTimeout(() => respondWithMailboxDelta(request, response), 250);
+      return;
+    }
+    respondWithMailboxDelta(request, response);
+    return;
+  }
   response.writeHead(404).end();
 });
+
+function respondWithMailboxDelta(request, response) {
+    mailboxDeltaVersion += 1;
+    const deltaPath = request.url.split('?')[0];
+    response.writeHead(200, { 'content-type': 'application/json' });
+    response.end(JSON.stringify({
+      value: [],
+      '@odata.deltaLink': `http://127.0.0.1:${graphPort}${deltaPath}?$deltatoken=playwright-${mailboxDeltaVersion}`,
+    }));
+}
 await new Promise((resolvePromise, rejectPromise) => {
   graphServer.once('error', rejectPromise);
   graphServer.listen(graphPort, '127.0.0.1', resolvePromise);
@@ -132,6 +180,7 @@ const apiProcess = spawnPnpm(
       GRAPH_CLIENT_ID: 'playwright-client',
       GRAPH_CLIENT_CERTIFICATE_THUMBPRINT: '0123456789abcdef0123456789abcdef01234567',
       GRAPH_CLIENT_PRIVATE_KEY_BASE64: graphClientPrivateKeyBase64,
+      CUSTOMER_MAILBOX_SYNC_POLL_INTERVAL_MS: '2000',
     },
     stdio: 'inherit',
     windowsHide: true,

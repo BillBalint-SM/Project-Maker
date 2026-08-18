@@ -8,6 +8,7 @@ import { DatabaseModule } from './database/database.module';
 import { DecisionReviewModule } from './decision-review/decision-review.module';
 import { DiscoveryFollowUpsModule } from './discovery-follow-ups/discovery-follow-ups.module';
 import { CustomerFollowUpModule } from './follow-ups/follow-up.module';
+import { CustomerMailboxSyncModule } from './customer-mailbox-sync/customer-mailbox-sync.module';
 import { HealthController } from './health.controller';
 import { InterviewsModule } from './interviews/interviews.module';
 import { MarkdownModule } from './markdown/markdown.module';
@@ -33,6 +34,7 @@ import { ReadinessModule } from './readiness/readiness.module';
     InterviewsModule,
     MarkdownModule,
     CustomerFollowUpModule,
+    CustomerMailboxSyncModule,
     DiscoveryFollowUpsModule,
     ReadinessModule,
   ],
