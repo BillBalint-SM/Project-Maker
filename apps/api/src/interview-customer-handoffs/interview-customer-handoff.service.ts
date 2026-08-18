@@ -120,7 +120,7 @@ export class InterviewCustomerHandoffService {
       if (preview.sourceContentVersion !== input.sourceContentVersion || preview.previewDigest !== input.previewDigest) {
         throw new ConflictException({ code: 'PREVIEW_STALE', message: 'Az interjú az előnézet óta megváltozott.' });
       }
-      const token = randomBytes(32).toString('base64url');
+      const token = randomBytes(24).toString('hex');
       const replyToAddress = plusAddress(dedicatedSender(this.config).address, token);
       const predecessor = handoff.supersedesHandoffId
         ? await manager.getRepository(InterviewCustomerHandoffEntity).findOneBy({ id: handoff.supersedesHandoffId })

@@ -35,12 +35,24 @@ export interface GraphMailboxMessage {
   readonly internetMessageId?: string | null;
   readonly internetMessageHeaders?: readonly { readonly name: string; readonly value: string }[];
   readonly from?: { readonly emailAddress?: { readonly address?: string | null } | null } | null;
+  readonly toRecipients?: readonly GraphMailboxRecipient[] | null;
+  readonly ccRecipients?: readonly GraphMailboxRecipient[] | null;
+  readonly bccRecipients?: readonly GraphMailboxRecipient[] | null;
   readonly subject?: string | null;
   readonly body?: {
     readonly contentType?: 'text' | 'html' | null;
     readonly content?: string | null;
   } | null;
   readonly receivedDateTime?: string | null;
+  readonly attachments?: readonly {
+    readonly name?: string | null;
+    readonly contentType?: string | null;
+    readonly size?: number | null;
+  }[] | null;
+}
+
+interface GraphMailboxRecipient {
+  readonly emailAddress?: { readonly address?: string | null } | null;
 }
 
 export interface GraphMailboxPage {
@@ -149,16 +161,51 @@ function normalizeMailboxChange(message: GraphMailboxMessage): CustomerMailboxCh
   const inReplyTo = message.internetMessageHeaders?.find(
     ({ name }) => name.toLowerCase() === 'in-reply-to',
   )?.value ?? null;
+  const recipientAddresses = uniqueAddresses([
+    ...(message.toRecipients ?? []),
+    ...(message.ccRecipients ?? []),
+    ...(message.bccRecipients ?? []),
+  ]);
+  const attachmentCount = message.attachments?.length ?? 0;
+  const attachments = (message.attachments ?? []).slice(0, 20).map((attachment) => ({
+    name: boundedText(attachment.name, 255, 'Névtelen melléklet'),
+    contentType: boundedText(attachment.contentType, 255, 'application/octet-stream'),
+    size: Number.isSafeInteger(attachment.size) && (attachment.size ?? -1) >= 0
+      ? attachment.size as number
+      : 0,
+  }));
   return Object.freeze({
     changeType: message['@removed'] === undefined ? 'UPSERTED' : 'DELETED',
     messageReference: message.id,
     internetMessageId: message.internetMessageId ?? null,
     inReplyTo,
     senderAddress: message.from?.emailAddress?.address ?? null,
+    recipientAddresses: Object.freeze(recipientAddresses),
     subject: message.subject ?? null,
     textContent: normalizeBodyText(message.body),
     receivedAt: message.receivedDateTime ?? null,
+    attachmentCount,
+    attachments: Object.freeze(attachments.map((attachment) => Object.freeze(attachment))),
   });
+}
+
+function uniqueAddresses(recipients: readonly GraphMailboxRecipient[]): string[] {
+  const seen = new Set<string>();
+  const addresses: string[] = [];
+  for (const recipient of recipients) {
+    const address = recipient.emailAddress?.address?.trim();
+    if (!address) continue;
+    const normalized = address.toLowerCase();
+    if (seen.has(normalized)) continue;
+    seen.add(normalized);
+    addresses.push(address);
+  }
+  return addresses;
+}
+
+function boundedText(value: string | null | undefined, maxLength: number, fallback: string): string {
+  const normalized = value?.trim();
+  return normalized ? normalized.slice(0, maxLength) : fallback;
 }
 
 function normalizeBodyText(body: GraphMailboxMessage['body']): string | null {

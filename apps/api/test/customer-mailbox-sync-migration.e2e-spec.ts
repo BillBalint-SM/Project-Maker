@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { describe, it } from 'node:test';
 import { DataSource } from 'typeorm';
 
-import { migrationsForFreshDatabase } from './migration-harness';
+import { migrationsForHistoricalDatabase } from './migration-harness';
 
 describe('Customer mailbox synchronization migration (PostgreSQL)', () => {
   it('reverts an unused sync state and refuses to discard an established delta baseline', async () => {
@@ -19,7 +19,7 @@ describe('Customer mailbox synchronization migration (PostgreSQL)', () => {
       database = new DataSource({
         type: 'postgres',
         url: withDatabaseName(databaseUrl, databaseName),
-        migrations: [...migrationsForFreshDatabase()],
+        migrations: [...migrationsForHistoricalDatabase('CustomerMailboxSync0019CustomerMailboxSync1787472000000')],
       });
       await database.initialize();
       await database.runMigrations();

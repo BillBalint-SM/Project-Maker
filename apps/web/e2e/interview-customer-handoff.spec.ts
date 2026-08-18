@@ -97,7 +97,7 @@ test.describe.serial('interview customer handoff browser journey', () => {
       name: 'Teszt PO',
       address: 'teszt.po@pte.hu',
     });
-    expect(firstGraphRequest.message?.replyTo?.[0]?.emailAddress?.address).toMatch(/^project-maker\+[A-Za-z0-9_-]{43}@pte\.hu$/);
+    expect(firstGraphRequest.message?.replyTo?.[0]?.emailAddress?.address).toMatch(/^project-maker\+[a-f0-9]{48}@pte\.hu$/);
 
     await page.getByTestId('inspect-handoff-version-1').click();
     await expect(page.getByTestId('selected-handoff-recipient')).toContainText(`handoff-${fixture.suffix}@example.test`);

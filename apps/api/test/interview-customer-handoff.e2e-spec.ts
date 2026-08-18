@@ -95,7 +95,7 @@ describe('Interview customer handoff HTTP boundary', () => {
     assert.equal(graphClient.deliveredMessageFrozen.at(-1), true);
     assert.equal(graphClient.delivered[0].body.content, firstPreview.body.htmlContent);
     assert.equal(graphClient.delivered[0].senderAddress, 'po.peter@pte.hu');
-    assert.match(graphClient.delivered[0].replyTo[0]?.emailAddress.address ?? '', /^project-maker\+[A-Za-z0-9_-]{43}@pte\.hu$/);
+    assert.match(graphClient.delivered[0].replyTo[0]?.emailAddress.address ?? '', /^project-maker\+[a-f0-9]{48}@pte\.hu$/);
     assert.equal(graphClient.delivered[0].saveToSentItems, true);
     assert.equal(sent.body.mailSystemAcceptance, 'ACCEPTED');
     assert.equal(sent.body.correspondenceId.length, 36);
