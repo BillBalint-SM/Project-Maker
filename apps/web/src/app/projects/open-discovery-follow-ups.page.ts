@@ -8,7 +8,10 @@ import { ProgressSpinnerModule } from 'primeng/progressspinner';
 import { TagModule } from 'primeng/tag';
 import { catchError, map, of, startWith, Subject, switchMap, tap } from 'rxjs';
 
-import { DiscoveryFollowUpsApiService } from './discovery-follow-ups/discovery-follow-ups-api.service';
+import {
+  DiscoveryFollowUpsApiError,
+  DiscoveryFollowUpsApiService,
+} from './discovery-follow-ups/discovery-follow-ups-api.service';
 import { discoveryFollowUpCategoryLabel } from './discovery-follow-ups/discovery-follow-up-label';
 
 @Component({
@@ -44,7 +47,7 @@ export class OpenDiscoveryFollowUpsPage implements OnInit {
               of({
                 items: null,
                 error:
-                  error instanceof Error
+                  error instanceof DiscoveryFollowUpsApiError
                     ? error.message
                     : 'Az utánkövetések nem tölthetők be. Próbáld meg újra.',
               }),

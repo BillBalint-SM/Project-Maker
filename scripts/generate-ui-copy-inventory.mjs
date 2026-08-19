@@ -262,7 +262,12 @@ function extractTypeScriptCopy(content, screen, source) {
 
     if (isTopLevelStringConcatenation(node)) {
       const rawCopy = renderStringConcatenation(node);
-      if (isUserFacingText(rawCopy)) {
+      if (
+        isUserFacingText(rawCopy) &&
+        !hasInternalErrorConstructorAncestor(node) &&
+        !isTechnicalSelector(rawCopy) &&
+        !isFormattingLiteral(rawCopy)
+      ) {
         const copy = normalizeCopy(rawCopy);
         entries.push([
           screen,
@@ -284,7 +289,13 @@ function extractTypeScriptCopy(content, screen, source) {
         normalizeCopy(node.text),
         `${source}:${sourceFile.getLineAndCharacterOfPosition(node.getStart(sourceFile)).line + 1}`,
       ]);
-    } else if (ts.isTemplateExpression(node) && isUserFacingText(node.getText(sourceFile))) {
+    } else if (
+      ts.isTemplateExpression(node) &&
+      isUserFacingText(node.getText(sourceFile)) &&
+      !hasInternalErrorConstructorAncestor(node) &&
+      !isTechnicalSelector(node.getText(sourceFile)) &&
+      !isFormattingLiteral(node.getText(sourceFile))
+    ) {
       entries.push([
         screen,
         typeScriptContext(node),
@@ -327,12 +338,26 @@ function renderStringConcatenation(node) {
 
 function isUserFacingTypeScriptLiteral(node) {
   if (!isUserFacingText(node.text) || isModuleSpecifier(node) || isObjectKey(node)) return false;
-  if (hasConsoleCallAncestor(node) || isTechnicalSelector(node.text)) return false;
+  if (
+    hasConsoleCallAncestor(node) ||
+    hasInternalErrorConstructorAncestor(node) ||
+    isTechnicalSelector(node.text) ||
+    isFormattingLiteral(node.text)
+  ) return false;
   return true;
 }
 
 function isUserFacingText(value) {
-  return /[áéíóöőúüűÁÉÍÓÖŐÚÜŰ]/.test(value) && /[A-Za-zÁÉÍÓÖŐÚÜŰáéíóöőúüű]/.test(value);
+  const normalized = value.trim();
+  if (!/\p{L}/u.test(normalized) || /^[A-Z0-9_:-]+$/.test(normalized)) {
+    return false;
+  }
+  return (
+    /\s/u.test(normalized) ||
+    /[.!?…]/u.test(normalized) ||
+    /^\p{Lu}/u.test(normalized) ||
+    /[áéíóöőúüűÁÉÍÓÖŐÚÜŰ]/.test(normalized)
+  );
 }
 
 function isModuleSpecifier(node) {
@@ -358,9 +383,40 @@ function hasConsoleCallAncestor(node) {
   return false;
 }
 
+function hasInternalErrorConstructorAncestor(node) {
+  const internalErrorConstructors = new Set([
+    'AggregateError',
+    'DOMException',
+    'Error',
+    'RangeError',
+    'ReferenceError',
+    'SyntaxError',
+    'TypeError',
+    'URIError',
+  ]);
+  let current = node.parent;
+  while (current && !ts.isStatement(current)) {
+    if (
+      ts.isNewExpression(current) &&
+      internalErrorConstructors.has(current.expression.getText())
+    ) return true;
+    current = current.parent;
+  }
+  return false;
+}
+
 function isTechnicalSelector(value) {
-  return value.startsWith('/') || value.startsWith('[') || value.startsWith('#') ||
-    (/^[a-z0-9-]+$/.test(value) && value.includes('-'));
+  const normalized = value.trim();
+  return normalized.startsWith('/') || normalized.startsWith('[') ||
+    normalized.startsWith('#') || normalized.startsWith('.') ||
+    /^(?:data|https?|mailto):/i.test(normalized) ||
+    (/^[a-z0-9-]+$/.test(normalized) && normalized.includes('-'));
+}
+
+function isFormattingLiteral(value) {
+  const normalized = value.trim().replace(/^`|`$/g, '');
+  return /^(?:y{2,4}|M{1,4}|d{1,4}|H{1,2}|m{1,2}|s{1,2})(?:[\s./:-]+(?:y{2,4}|M{1,4}|d{1,4}|H{1,2}|m{1,2}|s{1,2}))*\.?$/.test(normalized) ||
+    /^(?:application|audio|font|image|text|video)\/[a-z0-9.+-]+$/i.test(normalized);
 }
 
 function typeScriptContext(node) {

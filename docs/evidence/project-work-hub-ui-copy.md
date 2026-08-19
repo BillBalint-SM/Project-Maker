@@ -139,6 +139,8 @@ Ez a leltár a munkavállalói felületen megjelenő kanonikus navigációs neve
 | Alkalmazáskeret | Művelet | Utánkövetések | apps/web/src/app/app.component.ts |
 | Alkalmazáskeret | Művelet | Markdown beállítások | apps/web/src/app/app.component.ts |
 | Alkalmazáskeret | Művelet | Kérdésbank beállítások | apps/web/src/app/app.component.ts |
+| Alkalmazáskeret | Futásidejű UI-szöveg | :host display: block; min-height: 100vh; .app-header border-bottom: 1px solid var(--p-content-border-color); background: color-mix(in srgb, white 92%, var(--pm-cyan)); backdrop-filter: blur(0.75rem); position: sticky; top: 0; z-index: 10; .header-inner align-items: center; display: flex; gap: 1.5rem; justify-content: space-between; margin: 0 auto; max-width: 76rem; padding: 0 1.5rem; .brand align-items: center; color: var(--p-text-color); display: flex; gap: 0.75rem; padding: 0.85rem 0; text-decoration: none; .app-nav ul align-items: center; display: flex; gap: 0.35rem; list-style: none; margin: 0; padding: 0; .app-nav li align-items: center; display: flex; min-width: 0; .app-nav a border-radius: 0.55rem; color: var(--p-text-muted-color); padding: 0.55rem 0.75rem; text-decoration: none; .app-nav a:hover, .app-nav a.active background: var(--p-primary-50); color: var(--p-primary-color); .queue-nav-item background: color-mix(in srgb, var(--p-primary-50) 55%, transparent); border-radius: 0.55rem; .reply-count align-items: center; background: var(--p-primary-color); border-radius: 999px !important; color: var(--p-primary-contrast-color) !important; display: inline-flex; font-size: 0.75rem; font-weight: 800; justify-content: center; margin-right: 0.35rem; min-height: 1.55rem; min-width: 1.55rem; padding: 0.2rem 0.45rem !important; .brand-mark align-items: center; background: var(--p-primary-color); border-radius: 0.7rem; color: var(--p-primary-contrast-color); display: inline-flex; font-size: 0.78rem; font-weight: 800; height: 2.25rem; justify-content: center; letter-spacing: 0.04em; width: 2.25rem; .brand strong, .brand small display: block; .brand small color: var(--p-text-muted-color); font-size: 0.75rem; margin-top: 0.1rem; .app-main margin: 0 auto; max-width: 76rem; padding: 2.5rem 1.5rem 4rem; @media (max-width: 42rem) .header-inner align-items: flex-start; flex-direction: column; gap: 0; .app-nav, .app-nav ul flex-wrap: wrap; padding-bottom: 0.65rem; width: 100%; | apps/web/src/app/app.component.ts:57 |
+| Megosztott felületi szöveg | Futásidejű UI-szöveg | eyJpZCI6ImU4NTEzMzYyLWZmZmMtNDdkZC1iMGVhLWIyMTU0MTY4NmEzNSIsInByb2R1Y3QiOiJwcmltZXVpIiwidGllciI6ImNvbW11bml0eSIsInR5cGUiOiJkZXYiLCJpYXQiOjE3ODYwMTkwNzYsImV4cCI6MTgxNzU1NTA3Nn0.5m4EjSjYjkFbzebLQ6Gv0LkY5HirW8bj2ZuuCOt0NDJqa8RxP7pMw3VO10Wb9D0UAUeCqOU-IIa7Y9bOqyUgDQ | apps/web/src/app/app.config.ts:10 |
 | Megosztott felületi szöveg | Címke | Áttekintő \| Project Maker | apps/web/src/app/app.routes.ts:10 |
 | Megosztott felületi szöveg | Címke | Új projekt \| Project Maker | apps/web/src/app/app.routes.ts:18 |
 | Megosztott felületi szöveg | Címke | Folyamatban lévő ügyek \| Project Maker | apps/web/src/app/app.routes.ts:26 |
@@ -148,16 +150,45 @@ Ez a leltár a munkavállalói felületen megjelenő kanonikus navigációs neve
 | Megosztott felületi szöveg | Címke | Felmérés \| Project Maker | apps/web/src/app/app.routes.ts:65 |
 | Megosztott felületi szöveg | Címke | Felkészültség \| Project Maker | apps/web/src/app/app.routes.ts:73 |
 | Megosztott felületi szöveg | Címke | Döntési értékelés \| Project Maker | apps/web/src/app/app.routes.ts:81 |
+| Megosztott felületi szöveg | Címke | Markdown terv \| Project Maker | apps/web/src/app/app.routes.ts:89 |
 | Megosztott felületi szöveg | Címke | Ügyféllevelezés \| Project Maker | apps/web/src/app/app.routes.ts:97 |
 | Megosztott felületi szöveg | Címke | Projektbeállítások \| Project Maker | apps/web/src/app/app.routes.ts:105 |
 | Megosztott felületi szöveg | Címke | Kérdésbank beállítások \| Project Maker | apps/web/src/app/app.routes.ts:120 |
 | Megosztott felületi szöveg | Címke | Markdown beállítások \| Project Maker | apps/web/src/app/app.routes.ts:128 |
+| Megosztott felületi szöveg | Futásidejű UI-szöveg | color-mix(in srgb, projectMaker.electricBlue 8%, white) | apps/web/src/app/app.theme.ts:44 |
+| Megosztott felületi szöveg | Futásidejű UI-szöveg | color-mix(in srgb, projectMaker.electricBlue 16%, white) | apps/web/src/app/app.theme.ts:45 |
+| Megosztott felületi szöveg | Futásidejű UI-szöveg | color-mix(in srgb, projectMaker.electricBlue 28%, white) | apps/web/src/app/app.theme.ts:46 |
+| Megosztott felületi szöveg | Futásidejű UI-szöveg | color-mix(in srgb, projectMaker.electricBlue 48%, white) | apps/web/src/app/app.theme.ts:47 |
+| Megosztott felületi szöveg | Futásidejű UI-szöveg | color-mix(in srgb, projectMaker.electricBlue 72%, projectMaker.cyan ) | apps/web/src/app/app.theme.ts:48 |
+| Megosztott felületi szöveg | Futásidejű UI-szöveg | projectMaker.electricBlue | apps/web/src/app/app.theme.ts:49 |
+| Megosztott felületi szöveg | Futásidejű UI-szöveg | color-mix(in srgb, projectMaker.electricBlue 88%, projectMaker.deepNavy ) | apps/web/src/app/app.theme.ts:50 |
+| Megosztott felületi szöveg | Futásidejű UI-szöveg | color-mix(in srgb, projectMaker.electricBlue 72%, projectMaker.deepNavy ) | apps/web/src/app/app.theme.ts:51 |
+| Megosztott felületi szöveg | Futásidejű UI-szöveg | color-mix(in srgb, projectMaker.electricBlue 52%, projectMaker.deepNavy ) | apps/web/src/app/app.theme.ts:52 |
+| Megosztott felületi szöveg | Futásidejű UI-szöveg | color-mix(in srgb, projectMaker.electricBlue 28%, projectMaker.deepNavy ) | apps/web/src/app/app.theme.ts:53 |
+| Megosztott felületi szöveg | Futásidejű UI-szöveg | projectMaker.deepNavy | apps/web/src/app/app.theme.ts:54 |
+| Megosztott felületi szöveg | Futásidejű UI-szöveg | primary.500 | apps/web/src/app/app.theme.ts:55 |
+| Megosztott felületi szöveg | Futásidejű UI-szöveg | primary.600 | apps/web/src/app/app.theme.ts:57 |
+| Megosztott felületi szöveg | Futásidejű UI-szöveg | primary.700 | apps/web/src/app/app.theme.ts:58 |
+| Megosztott felületi szöveg | Futásidejű UI-szöveg | color-mix(in srgb, projectMaker.steelGray 8%, white) | apps/web/src/app/app.theme.ts:64 |
+| Megosztott felületi szöveg | Futásidejű UI-szöveg | color-mix(in srgb, projectMaker.steelGray 14%, white) | apps/web/src/app/app.theme.ts:65 |
+| Megosztott felületi szöveg | Futásidejű UI-szöveg | color-mix(in srgb, projectMaker.steelGray 24%, white) | apps/web/src/app/app.theme.ts:66 |
+| Megosztott felületi szöveg | Futásidejű UI-szöveg | color-mix(in srgb, projectMaker.steelGray 42%, white) | apps/web/src/app/app.theme.ts:67 |
+| Megosztott felületi szöveg | Futásidejű UI-szöveg | projectMaker.steelGray | apps/web/src/app/app.theme.ts:68 |
+| Megosztott felületi szöveg | Futásidejű UI-szöveg | color-mix(in srgb, projectMaker.steelGray 82%, projectMaker.deepNavy ) | apps/web/src/app/app.theme.ts:69 |
+| Megosztott felületi szöveg | Futásidejű UI-szöveg | color-mix(in srgb, projectMaker.steelGray 64%, projectMaker.deepNavy ) | apps/web/src/app/app.theme.ts:70 |
+| Megosztott felületi szöveg | Futásidejű UI-szöveg | color-mix(in srgb, projectMaker.steelGray 44%, projectMaker.deepNavy ) | apps/web/src/app/app.theme.ts:71 |
+| Megosztott felületi szöveg | Futásidejű UI-szöveg | color-mix(in srgb, projectMaker.steelGray 22%, projectMaker.deepNavy ) | apps/web/src/app/app.theme.ts:72 |
+| Megosztott felületi szöveg | Futásidejű UI-szöveg | color-mix(in srgb, projectMaker.steelGray 10%, projectMaker.deepNavy ) | apps/web/src/app/app.theme.ts:73 |
+| Megosztott felületi szöveg | Futásidejű UI-szöveg | surface.600 | apps/web/src/app/app.theme.ts:82 |
+| Megosztott felületi szöveg | Futásidejű UI-szöveg | projectMaker.cyan | apps/web/src/app/app.theme.ts:85 |
 | Megosztott felületi szöveg | Címke | Rövid szöveg | apps/web/src/app/base-question-type-label.ts:7 |
 | Megosztott felületi szöveg | Címke | Hosszú szöveg | apps/web/src/app/base-question-type-label.ts:8 |
 | Megosztott felületi szöveg | Címke | Egyszeres választás | apps/web/src/app/base-question-type-label.ts:9 |
 | Megosztott felületi szöveg | Címke | Többszörös választás | apps/web/src/app/base-question-type-label.ts:10 |
+| Megosztott felületi szöveg | Címke | Igen vagy nem | apps/web/src/app/base-question-type-label.ts:11 |
 | Megosztott felületi szöveg | Címke | Szám | apps/web/src/app/base-question-type-label.ts:12 |
 | Megosztott felületi szöveg | Címke | Dátum | apps/web/src/app/base-question-type-label.ts:13 |
+| Megosztott felületi szöveg | Hiba és helyreállítás | InterviewApiError | apps/web/src/app/interviews/interview-api.service.ts:20 |
 | Megosztott felületi szöveg | Futásidejű UI-szöveg | betölteni az aktív kezdő felmérési kört | apps/web/src/app/interviews/interview-api.service.ts:43 |
 | Megosztott felületi szöveg | Futásidejű UI-szöveg | betölteni a kiválasztott felmérési kört | apps/web/src/app/interviews/interview-api.service.ts:53 |
 | Megosztott felületi szöveg | Futásidejű UI-szöveg | elindítani a felmérési kört | apps/web/src/app/interviews/interview-api.service.ts:64 |
@@ -172,15 +203,21 @@ Ez a leltár a munkavállalói felületen megjelenő kanonikus navigációs neve
 | Megosztott felületi szöveg | Hiba és helyreállítás | Nem sikerült {érték}. {érték} | apps/web/src/app/interviews/interview-api.service.ts:176 |
 | Megosztott felületi szöveg | Hiba és helyreállítás | Nem sikerült {érték}. Frissítsd az oldalt, majd próbáld újra. | apps/web/src/app/interviews/interview-api.service.ts:182 |
 | Felmérési összefoglaló | Futásidejű UI-szöveg | betölteni az összefoglalókat | apps/web/src/app/interviews/interview-handoff/interview-handoff-api.service.ts:12 |
+| Felmérési összefoglaló | Futásidejű UI-szöveg | {érték}/sender-options | apps/web/src/app/interviews/interview-handoff/interview-handoff-api.service.ts:13 |
 | Felmérési összefoglaló | Futásidejű UI-szöveg | betölteni a feladókat | apps/web/src/app/interviews/interview-handoff/interview-handoff-api.service.ts:13 |
+| Felmérési összefoglaló | Futásidejű UI-szöveg | {érték}/{érték} | apps/web/src/app/interviews/interview-handoff/interview-handoff-api.service.ts:14 |
 | Felmérési összefoglaló | Futásidejű UI-szöveg | betölteni az összefoglalót | apps/web/src/app/interviews/interview-handoff/interview-handoff-api.service.ts:14 |
 | Felmérési összefoglaló | Futásidejű UI-szöveg | létrehozni az új verziót | apps/web/src/app/interviews/interview-handoff/interview-handoff-api.service.ts:15 |
+| Felmérési összefoglaló | Futásidejű UI-szöveg | {érték}/{érték}/draft | apps/web/src/app/interviews/interview-handoff/interview-handoff-api.service.ts:16 |
 | Felmérési összefoglaló | Futásidejű UI-szöveg | menteni a módosítás leírását | apps/web/src/app/interviews/interview-handoff/interview-handoff-api.service.ts:16 |
+| Felmérési összefoglaló | Futásidejű UI-szöveg | {érték}/{érték}/preview | apps/web/src/app/interviews/interview-handoff/interview-handoff-api.service.ts:17 |
 | Felmérési összefoglaló | Futásidejű UI-szöveg | elkészíteni az előnézetet | apps/web/src/app/interviews/interview-handoff/interview-handoff-api.service.ts:17 |
+| Felmérési összefoglaló | Futásidejű UI-szöveg | {érték}/{érték}/send | apps/web/src/app/interviews/interview-handoff/interview-handoff-api.service.ts:18 |
 | Felmérési összefoglaló | Futásidejű UI-szöveg | elküldeni az összefoglalót | apps/web/src/app/interviews/interview-handoff/interview-handoff-api.service.ts:18 |
+| Felmérési összefoglaló | Futásidejű UI-szöveg | {érték}/{érték}/retry | apps/web/src/app/interviews/interview-handoff/interview-handoff-api.service.ts:19 |
 | Felmérési összefoglaló | Futásidejű UI-szöveg | újrapróbálni a küldést | apps/web/src/app/interviews/interview-handoff/interview-handoff-api.service.ts:19 |
+| Felmérési összefoglaló | Futásidejű UI-szöveg | {érték}/{érték}/resume-editing | apps/web/src/app/interviews/interview-handoff/interview-handoff-api.service.ts:20 |
 | Felmérési összefoglaló | Futásidejű UI-szöveg | folytatni a szerkesztést | apps/web/src/app/interviews/interview-handoff/interview-handoff-api.service.ts:20 |
-| Felmérési összefoglaló | Futásidejű UI-szöveg | Nem sikerült {érték}. Próbáld meg újra. | apps/web/src/app/interviews/interview-handoff/interview-handoff-api.service.ts:28 |
 | Felmérési összefoglaló | Akadálymentes név | Aktív összefoglaló-tervezet | apps/web/src/app/interviews/interview-handoff/interview-handoff.component.html |
 | Felmérési összefoglaló | Művelet | Módosítás leírásának mentése | apps/web/src/app/interviews/interview-handoff/interview-handoff.component.html |
 | Felmérési összefoglaló | Művelet | Előnézet és küldés | apps/web/src/app/interviews/interview-handoff/interview-handoff.component.html |
@@ -217,8 +254,10 @@ Ez a leltár a munkavállalói felületen megjelenő kanonikus navigációs neve
 | Felmérési összefoglaló | Futásidejű UI-szöveg | Ismeretlen átadás ellenőrzése | apps/web/src/app/interviews/interview-handoff/interview-handoff.component.ts:71 |
 | Felmérési összefoglaló | Futásidejű UI-szöveg | A levelezőrendszer korábbi átvétele nem bizonyítható. Ellenőrizted a kimenő postafiókot, és vállalod az esetleges kettős küldést? | apps/web/src/app/interviews/interview-handoff/interview-handoff.component.ts:71 |
 | Felmérési összefoglaló | Címke | Ellenőriztem, újrapróbálom | apps/web/src/app/interviews/interview-handoff/interview-handoff.component.ts:71 |
+| Felmérési összefoglaló | Címke | Piszkozat | apps/web/src/app/interviews/interview-handoff/interview-handoff.component.ts:74 |
 | Felmérési összefoglaló | Címke | Átadás folyamatban | apps/web/src/app/interviews/interview-handoff/interview-handoff.component.ts:74 |
 | Felmérési összefoglaló | Címke | Átadva a levelezőrendszernek | apps/web/src/app/interviews/interview-handoff/interview-handoff.component.ts:74 |
+| Felmérési összefoglaló | Hiba és helyreállítás | Sikertelen | apps/web/src/app/interviews/interview-handoff/interview-handoff.component.ts:74 |
 | Felmérési összefoglaló | Címke | Ellenőrzést igényel | apps/web/src/app/interviews/interview-handoff/interview-handoff.component.ts:74 |
 | Felmérési összefoglaló | Művelet | Új összefoglaló-verzió készítése | apps/web/src/app/interviews/interview-handoff/interview-reply-outcome.component.ts |
 | Felmérési összefoglaló | Futásidejű UI-szöveg | Módosítást kér | apps/web/src/app/interviews/interview-handoff/interview-reply-outcome.component.ts:35 |
@@ -288,6 +327,7 @@ Ez a leltár a munkavállalói felületen megjelenő kanonikus navigációs neve
 | Felmérés | Futásidejű UI-szöveg | Nem sikerült menteni. {érték} | apps/web/src/app/interviews/interview.page.ts:645 |
 | Felmérés | Futásidejű UI-szöveg | Nem sikerült menteni. Próbáld újra. | apps/web/src/app/interviews/interview.page.ts:646 |
 | Felmérés | Futásidejű UI-szöveg | Piszkozat – automatikus mentésre vár | apps/web/src/app/interviews/interview.page.ts:649 |
+| Felmérés | Futásidejű UI-szöveg | Mentve | apps/web/src/app/interviews/interview.page.ts:652 |
 | Felmérés | Futásidejű UI-szöveg | Még nincs mentve | apps/web/src/app/interviews/interview.page.ts:654 |
 | Felmérés | Címke | Válasz újramentése: {érték} | apps/web/src/app/interviews/interview.page.ts:666 |
 | Felmérés | Címke | Kezdő felmérés | apps/web/src/app/interviews/interview.page.ts:680 |
@@ -369,7 +409,6 @@ Ez a leltár a munkavállalói felületen megjelenő kanonikus navigációs neve
 | Markdown terv | Futásidejű UI-szöveg | A Markdown-revízió v{érték} verziója elkészült. | apps/web/src/app/markdown/markdown.page.ts:170 |
 | Markdown terv | Hiba és helyreállítás | generálni a Markdown-revíziót | apps/web/src/app/markdown/markdown.page.ts:176 |
 | Markdown terv | Hiba és helyreállítás | betölteni a Markdown-revíziót | apps/web/src/app/markdown/markdown.page.ts:233 |
-| Folyamatban lévő ügyek | Futásidejű UI-szöveg | A folyamatban lévő ügyek nem tölthetők be. Ellenőrizd a kapcsolatot, majd próbáld újra. | apps/web/src/app/projects/active-project-queue-api.service.ts:26 |
 | Folyamatban lévő ügyek | Mezősúgó | Keresés projektnévben | apps/web/src/app/projects/active-project-queue.page.html |
 | Folyamatban lévő ügyek | Akadálymentes név | A folyamatban lévő ügyek lapozása | apps/web/src/app/projects/active-project-queue.page.html |
 | Folyamatban lévő ügyek | Művelet | ← Vissza az Áttekintőre | apps/web/src/app/projects/active-project-queue.page.html |
@@ -407,6 +446,7 @@ Ez a leltár a munkavállalói felületen megjelenő kanonikus navigációs neve
 | Folyamatban lévő ügyek | Futásidejű UI-szöveg | Új ügyfélválasz | apps/web/src/app/projects/active-project-queue.page.ts:41 |
 | Folyamatban lévő ügyek | Futásidejű UI-szöveg | Lejárt | apps/web/src/app/projects/active-project-queue.page.ts:42 |
 | Folyamatban lévő ügyek | Futásidejű UI-szöveg | Hamarosan lejár | apps/web/src/app/projects/active-project-queue.page.ts:43 |
+| Folyamatban lévő ügyek | Futásidejű UI-szöveg | Folyamatban | apps/web/src/app/projects/active-project-queue.page.ts:44 |
 | Folyamatban lévő ügyek | Futásidejű UI-szöveg | Kérdésséma szükséges | apps/web/src/app/projects/active-project-queue.page.ts:47 |
 | Folyamatban lévő ügyek | Futásidejű UI-szöveg | Felmérés folyamatban | apps/web/src/app/projects/active-project-queue.page.ts:48 |
 | Folyamatban lévő ügyek | Futásidejű UI-szöveg | Tisztázás szükséges | apps/web/src/app/projects/active-project-queue.page.ts:49 |
@@ -439,13 +479,20 @@ Ez a leltár a munkavállalói felületen megjelenő kanonikus navigációs neve
 | Ügyféllevelezés | Látható szöveg | {érték} melléklet | apps/web/src/app/projects/customer-correspondences.page.ts |
 | Ügyféllevelezés | Látható szöveg | {érték} — {érték} — {érték} byte | apps/web/src/app/projects/customer-correspondences.page.ts |
 | Ügyféllevelezés | Hiba és helyreállítás | A művelet nem hajtható végre a jelenlegi adatokkal. Töltsd újra az adatokat, majd próbáld meg ismét. | apps/web/src/app/projects/customer-correspondences.page.ts:232 |
+| Ügyfél-emlékeztető | Hiba és helyreállítás | CustomerFollowUpApiError | apps/web/src/app/projects/customer-follow-up/customer-follow-up-api.service.ts:23 |
 | Ügyfél-emlékeztető | Futásidejű UI-szöveg | betölteni az ügyfél-emlékeztetőt | apps/web/src/app/projects/customer-follow-up/customer-follow-up-api.service.ts:34 |
+| Ügyfél-emlékeztető | Futásidejű UI-szöveg | {érték}/reference-options | apps/web/src/app/projects/customer-follow-up/customer-follow-up-api.service.ts:43 |
 | Ügyfél-emlékeztető | Futásidejű UI-szöveg | betölteni a hivatkozható tisztázási tételeket | apps/web/src/app/projects/customer-follow-up/customer-follow-up-api.service.ts:45 |
+| Ügyfél-emlékeztető | Futásidejű UI-szöveg | {érték}/sender-options | apps/web/src/app/projects/customer-follow-up/customer-follow-up-api.service.ts:51 |
 | Ügyfél-emlékeztető | Futásidejű UI-szöveg | betölteni az ügyfél-emlékeztető feladóit | apps/web/src/app/projects/customer-follow-up/customer-follow-up-api.service.ts:52 |
 | Ügyfél-emlékeztető | Futásidejű UI-szöveg | menteni az automatikus emlékeztető beállításait | apps/web/src/app/projects/customer-follow-up/customer-follow-up-api.service.ts:62 |
+| Ügyfél-emlékeztető | Futásidejű UI-szöveg | {érték}/draft | apps/web/src/app/projects/customer-follow-up/customer-follow-up-api.service.ts:71 |
 | Ügyfél-emlékeztető | Futásidejű UI-szöveg | menteni az ügyfél-emlékeztető piszkozatát | apps/web/src/app/projects/customer-follow-up/customer-follow-up-api.service.ts:72 |
+| Ügyfél-emlékeztető | Futásidejű UI-szöveg | {érték}/ping/preview | apps/web/src/app/projects/customer-follow-up/customer-follow-up-api.service.ts:82 |
 | Ügyfél-emlékeztető | Futásidejű UI-szöveg | elkészíteni az ügyfél-emlékeztető előnézetét | apps/web/src/app/projects/customer-follow-up/customer-follow-up-api.service.ts:85 |
+| Ügyfél-emlékeztető | Futásidejű UI-szöveg | {érték}/ping | apps/web/src/app/projects/customer-follow-up/customer-follow-up-api.service.ts:94 |
 | Ügyfél-emlékeztető | Futásidejű UI-szöveg | elküldeni az ügyfél-emlékeztetőt | apps/web/src/app/projects/customer-follow-up/customer-follow-up-api.service.ts:95 |
+| Ügyfél-emlékeztető | Futásidejű UI-szöveg | {érték}/ping/retry | apps/web/src/app/projects/customer-follow-up/customer-follow-up-api.service.ts:105 |
 | Ügyfél-emlékeztető | Futásidejű UI-szöveg | újrapróbálni az ügyfél-emlékeztetőt | apps/web/src/app/projects/customer-follow-up/customer-follow-up-api.service.ts:108 |
 | Ügyfél-emlékeztető | Hiba és helyreállítás | Nem sikerült {érték}. Próbáld meg újra. | apps/web/src/app/projects/customer-follow-up/customer-follow-up-api.service.ts:125 |
 | Ügyfél-emlékeztető | Hiba és helyreállítás | Előbb ments egy nem üres ügyfél-emlékeztetőt. | apps/web/src/app/projects/customer-follow-up/customer-follow-up-api.service.ts:139 |
@@ -514,14 +561,15 @@ Ez a leltár a munkavállalói felületen megjelenő kanonikus navigációs neve
 | Ügyfél-emlékeztető | Látható szöveg | Kézbesítési hiba | apps/web/src/app/projects/customer-follow-up/customer-follow-up.component.html |
 | Ügyfél-emlékeztető | Látható szöveg | Felmérési összefoglaló megnyitása | apps/web/src/app/projects/customer-follow-up/customer-follow-up.component.html |
 | Ügyfél-emlékeztető | Futásidejű UI-szöveg | Az automatikus ügyfél-utánkövetés beállításai mentve lettek. | apps/web/src/app/projects/customer-follow-up/customer-follow-up.component.ts:213 |
+| Ügyfél-emlékeztető | Futásidejű UI-szöveg | Piszkozat mentve. | apps/web/src/app/projects/customer-follow-up/customer-follow-up.component.ts:246 |
 | Ügyfél-emlékeztető | Futásidejű UI-szöveg | Átadva a levelezőrendszernek. | apps/web/src/app/projects/customer-follow-up/customer-follow-up.component.ts:345 |
+| Ügyfél-emlékeztető | Futásidejű UI-szöveg | [data-testid="{érték}"] button | apps/web/src/app/projects/customer-follow-up/customer-follow-up.component.ts:384 |
 | Ügyfél-emlékeztető | Címke | Még nem történt küldés | apps/web/src/app/projects/customer-follow-up/customer-follow-up.component.ts:443 |
 | Ügyfél-emlékeztető | Címke | Sikeresen elküldve | apps/web/src/app/projects/customer-follow-up/customer-follow-up.component.ts:444 |
 | Ügyfél-emlékeztető | Hiba és helyreállítás | Sikertelen küldés | apps/web/src/app/projects/customer-follow-up/customer-follow-up.component.ts:445 |
+| Ügyfél-emlékeztető | Hiba és helyreállítás | Nincs jelzett hiba | apps/web/src/app/projects/customer-follow-up/customer-follow-up.component.ts:450 |
 | Ügyfél-emlékeztető | Hiba és helyreállítás | A kézbesítés eredménye bizonytalan. | apps/web/src/app/projects/customer-follow-up/customer-follow-up.component.ts:452 |
 | Ügyfél-emlékeztető | Hiba és helyreállítás | A levelezőrendszer elutasította a küldést. | apps/web/src/app/projects/customer-follow-up/customer-follow-up.component.ts:454 |
-| Nem társított ügyfélüzenetek | Futásidejű UI-szöveg | A nem társított ügyfélüzenetek most nem tölthetők be. | apps/web/src/app/projects/customer-mail-triage-api.service.ts:17 |
-| Nem társított ügyfélüzenetek | Futásidejű UI-szöveg | Az üzenet feldolgozása nem sikerült. Frissítsd a listát, majd próbáld újra. | apps/web/src/app/projects/customer-mail-triage-api.service.ts:31 |
 | Nem társított ügyfélüzenetek | Művelet | Üzenetek újratöltése | apps/web/src/app/projects/customer-mail-triage.page.html |
 | Nem társított ügyfélüzenetek | Művelet | ← Vissza az Áttekintőre | apps/web/src/app/projects/customer-mail-triage.page.html |
 | Nem társított ügyfélüzenetek | Látható szöveg | Ügyfélkapcsolat | apps/web/src/app/projects/customer-mail-triage.page.html |
@@ -540,12 +588,8 @@ Ez a leltár a munkavállalói felületen megjelenő kanonikus navigációs neve
 | Nem társított ügyfélüzenetek | Futásidejű UI-szöveg | Az üzenet társításához válassz ügyféllevelezést. | apps/web/src/app/projects/customer-mail-triage.page.ts:60 |
 | Nem társított ügyfélüzenetek | Címke | Kézbesítési jelentés | apps/web/src/app/projects/customer-mail-triage.page.ts:75 |
 | Nem társított ügyfélüzenetek | Címke | Automatikus távolléti válasz | apps/web/src/app/projects/customer-mail-triage.page.ts:75 |
-| Megosztott felületi szöveg | Hiba és helyreállítás | Az ügyfélpostafiók állapota most nem érhető el. A projektmunkát ettől folytathatod. | apps/web/src/app/projects/customer-mailbox-sync-api.service.ts:27 |
-| Ügyféllevelezés | Hiba és helyreállítás | Az ügyfélválaszok most nem érhetők el. A többi projektmunka folytatható; próbáld meg később újratölteni ezt az oldalt. | apps/web/src/app/projects/customer-replies-api.service.ts:38 |
 | Döntési értékelés | Látható szöveg | Projektkörnyezet | apps/web/src/app/projects/decision-review.page.html |
 | Döntési értékelés | Látható szöveg | A felkészültség és a hat értékelési szempont közös döntési eredménye. | apps/web/src/app/projects/decision-review.page.html |
-| Döntési értékelés | Futásidejű UI-szöveg | A döntési értékelés nem tölthető be. Próbáld újra. | apps/web/src/app/projects/decision-review/decision-review-api.service.ts:19 |
-| Döntési értékelés | Futásidejű UI-szöveg | A döntési értékelés nem menthető. Ellenőrizd a projekt állapotát, majd próbáld újra. | apps/web/src/app/projects/decision-review/decision-review-api.service.ts:34 |
 | Döntési értékelés | Művelet | Döntési értékelés újratöltése | apps/web/src/app/projects/decision-review/decision-review.component.html |
 | Döntési értékelés | Művelet | Döntési értékelés mentése | apps/web/src/app/projects/decision-review/decision-review.component.html |
 | Döntési értékelés | Látható szöveg | Döntési értékelés | apps/web/src/app/projects/decision-review/decision-review.component.html |
@@ -578,6 +622,9 @@ Ez a leltár a munkavállalói felületen megjelenő kanonikus navigációs neve
 | Döntési értékelés | Címke | Becslés előkészíthető | apps/web/src/app/projects/decision-review/decision-review.component.ts:38 |
 | Döntési értékelés | Címke | Becslésre kész | apps/web/src/app/projects/decision-review/decision-review.component.ts:39 |
 | Felkészültség | Címke | Üzleti | apps/web/src/app/projects/discovery-follow-ups/discovery-follow-up-label.ts:7 |
+| Felkészültség | Címke | Terjedelem | apps/web/src/app/projects/discovery-follow-ups/discovery-follow-up-label.ts:8 |
+| Felkészültség | Címke | Technikai | apps/web/src/app/projects/discovery-follow-ups/discovery-follow-up-label.ts:9 |
+| Felkészültség | Címke | Adatok | apps/web/src/app/projects/discovery-follow-ups/discovery-follow-up-label.ts:10 |
 | Felkészültség | Címke | Integráció | apps/web/src/app/projects/discovery-follow-ups/discovery-follow-up-label.ts:11 |
 | Felkészültség | Címke | Biztonság | apps/web/src/app/projects/discovery-follow-ups/discovery-follow-up-label.ts:12 |
 | Felkészültség | Címke | Üzemeltetés | apps/web/src/app/projects/discovery-follow-ups/discovery-follow-up-label.ts:13 |
@@ -588,6 +635,7 @@ Ez a leltár a munkavállalói felületen megjelenő kanonikus navigációs neve
 | Felkészültség | Futásidejű UI-szöveg | menteni az utánkövetés módosításait | apps/web/src/app/projects/discovery-follow-ups/discovery-follow-ups-api.service.ts:30 |
 | Felkészültség | Futásidejű UI-szöveg | módosítani az utánkövetés forrását | apps/web/src/app/projects/discovery-follow-ups/discovery-follow-ups-api.service.ts:31 |
 | Felkészültség | Futásidejű UI-szöveg | lezárni az utánkövetést | apps/web/src/app/projects/discovery-follow-ups/discovery-follow-ups-api.service.ts:32 |
+| Felkészültség | Hiba és helyreállítás | DiscoveryFollowUpsApiError | apps/web/src/app/projects/discovery-follow-ups/discovery-follow-ups-api.service.ts:42 |
 | Felkészültség | Hiba és helyreállítás | Nem sikerült {érték}. Frissítsd az oldalt, majd próbáld újra. | apps/web/src/app/projects/discovery-follow-ups/discovery-follow-ups-api.service.ts:165 |
 | Felkészültség | Hiba és helyreállítás | Nem sikerült {érték}, mert a szolgáltatás nem érhető el. Ellenőrizd a kapcsolatot, majd próbáld újra. | apps/web/src/app/projects/discovery-follow-ups/discovery-follow-ups-api.service.ts:182 |
 | Felkészültség | Hiba és helyreállítás | Nem sikerült {érték}. {érték} | apps/web/src/app/projects/discovery-follow-ups/discovery-follow-ups-api.service.ts:194 |
@@ -655,12 +703,14 @@ Ez a leltár a munkavállalói felületen megjelenő kanonikus navigációs neve
 | Felkészültség | Futásidejű UI-szöveg | Az utánkövetés forrása frissült. | apps/web/src/app/projects/discovery-follow-ups/discovery-follow-ups.component.ts:446 |
 | Felkészültség | Futásidejű UI-szöveg | A forrás nem távolítható el, amíg egy másik projektművelet folyamatban van. Várd meg a befejezését, majd próbáld meg ismét. | apps/web/src/app/projects/discovery-follow-ups/discovery-follow-ups.component.ts:525 |
 | Felkészültség | Futásidejű UI-szöveg | A forráshivatkozás nem törölhető, mert az utánkövetés már nem nyitott vagy nincs hozzárendelt forrása. Frissítsd az utánkövetéseket, majd próbáld újra. | apps/web/src/app/projects/discovery-follow-ups/discovery-follow-ups.component.ts:535 |
+| Felkészültség | Futásidejű UI-szöveg | discovery follow-up row | apps/web/src/app/projects/discovery-follow-ups/discovery-follow-ups.component.ts:550 |
 | Felkészültség | Futásidejű UI-szöveg | Az utánkövetés forráshivatkozása törölve. | apps/web/src/app/projects/discovery-follow-ups/discovery-follow-ups.component.ts:573 |
 | Felkészültség | Futásidejű UI-szöveg | Az utánkövetés módosításai mentve. | apps/web/src/app/projects/discovery-follow-ups/discovery-follow-ups.component.ts:697 |
 | Felkészültség | Hiba és helyreállítás | Az utánkövetés időközben megváltozott. A piszkozat megmaradt; mentés előtt töltsd be az aktuális verziót. | apps/web/src/app/projects/discovery-follow-ups/discovery-follow-ups.component.ts:708 |
 | Felkészültség | Futásidejű UI-szöveg | Az utánkövetés frissítés után nem található. Mentés előtt próbáld újra a frissítést. | apps/web/src/app/projects/discovery-follow-ups/discovery-follow-ups.component.ts:754 |
 | Felkészültség | Futásidejű UI-szöveg | A lezárt utánkövetés már nem szerkeszthető. Vesd el ezt a piszkozatot. | apps/web/src/app/projects/discovery-follow-ups/discovery-follow-ups.component.ts:761 |
 | Felkészültség | Futásidejű UI-szöveg | Az utánkövetés lezárva. | apps/web/src/app/projects/discovery-follow-ups/discovery-follow-ups.component.ts:884 |
+| Felkészültség | Futásidejű UI-szöveg | Escape | apps/web/src/app/projects/discovery-follow-ups/discovery-follow-ups.component.ts:1079 |
 | Felkészültség | Művelet | Kapcsolódó tisztázási tétel áttekintése | apps/web/src/app/projects/discovery-follow-ups/discovery-reply-outcome.component.ts |
 | Utánkövetések | Látható szöveg | Portfólió | apps/web/src/app/projects/open-discovery-follow-ups.page.html |
 | Utánkövetések | Látható szöveg | A nyitott tisztázási tételek az összes aktív projektből, határidő szerint rendezve. | apps/web/src/app/projects/open-discovery-follow-ups.page.html |
@@ -675,16 +725,16 @@ Ez a leltár a munkavállalói felületen megjelenő kanonikus navigációs neve
 | Utánkövetések | Látható szöveg | Határidő | apps/web/src/app/projects/open-discovery-follow-ups.page.html |
 | Utánkövetések | Látható szöveg | Következő lépés | apps/web/src/app/projects/open-discovery-follow-ups.page.html |
 | Utánkövetések | Művelet | Utánkövetés megnyitása | apps/web/src/app/projects/open-discovery-follow-ups.page.html |
-| Utánkövetések | Hiba és helyreállítás | Az utánkövetések nem tölthetők be. Próbáld meg újra. | apps/web/src/app/projects/open-discovery-follow-ups.page.ts:49 |
-| Utánkövetések | Futásidejű UI-szöveg | Az utánkövetések ismét elérhetők. | apps/web/src/app/projects/open-discovery-follow-ups.page.ts:61 |
+| Utánkövetések | Hiba és helyreállítás | Az utánkövetések nem tölthetők be. Próbáld meg újra. | apps/web/src/app/projects/open-discovery-follow-ups.page.ts:52 |
+| Utánkövetések | Futásidejű UI-szöveg | Az utánkövetések ismét elérhetők. | apps/web/src/app/projects/open-discovery-follow-ups.page.ts:64 |
 | Megosztott felületi szöveg | Futásidejű UI-szöveg | betölteni a projekteket | apps/web/src/app/projects/project-api.service.ts:27 |
 | Megosztott felületi szöveg | Futásidejű UI-szöveg | betölteni a projektportfóliót | apps/web/src/app/projects/project-api.service.ts:33 |
 | Megosztott felületi szöveg | Futásidejű UI-szöveg | létrehozni a projektet | apps/web/src/app/projects/project-api.service.ts:39 |
+| Megosztott felületi szöveg | Futásidejű UI-szöveg | menteni a projekt alapadatait | apps/web/src/app/projects/project-api.service.ts:51 |
 | Megosztott felületi szöveg | Futásidejű UI-szöveg | betölteni a projektbeállításokat | apps/web/src/app/projects/project-api.service.ts:59 |
 | Megosztott felületi szöveg | Futásidejű UI-szöveg | betölteni a projekt felkészültségi állapotát | apps/web/src/app/projects/project-api.service.ts:70 |
 | Megosztott felületi szöveg | Futásidejű UI-szöveg | betölteni a projekt aktuális feladatát | apps/web/src/app/projects/project-api.service.ts:78 |
 | Megosztott felületi szöveg | Futásidejű UI-szöveg | betölteni a legutóbbi projektaktivitást | apps/web/src/app/projects/project-api.service.ts:84 |
-| Megosztott felületi szöveg | Futásidejű UI-szöveg | A projekt nem található. Térj vissza a projektlistához, és ellenőrizd újra. | apps/web/src/app/projects/project-api.service.ts:92 |
 | Megosztott felületi szöveg | Futásidejű UI-szöveg | betölteni a projektkoordináció szerkesztési adatait | apps/web/src/app/projects/project-api.service.ts:97 |
 | Megosztott felületi szöveg | Futásidejű UI-szöveg | menteni a projektkoordinációt | apps/web/src/app/projects/project-api.service.ts:111 |
 | Megosztott felületi szöveg | Futásidejű UI-szöveg | archiválni a projektet | apps/web/src/app/projects/project-api.service.ts:126 |
@@ -708,6 +758,7 @@ Ez a leltár a munkavállalói felületen megjelenő kanonikus navigációs neve
 | Projektkörnyezet | Címke | Felmérés | apps/web/src/app/projects/project-context/project-context.page.ts:24 |
 | Projektkörnyezet | Címke | Felkészültség | apps/web/src/app/projects/project-context/project-context.page.ts:25 |
 | Projektkörnyezet | Címke | Döntési értékelés | apps/web/src/app/projects/project-context/project-context.page.ts:26 |
+| Projektkörnyezet | Címke | Markdown terv | apps/web/src/app/projects/project-context/project-context.page.ts:27 |
 | Projektkörnyezet | Címke | Projektbeállítások | apps/web/src/app/projects/project-context/project-context.page.ts:28 |
 | Projektkörnyezet | Címke | Vissza a folyamatban lévő ügyekhez | apps/web/src/app/projects/project-context/project-context.page.ts:72 |
 | Projektkörnyezet | Címke | Vissza az utánkövetésekhez | apps/web/src/app/projects/project-context/project-context.page.ts:75 |
@@ -781,6 +832,7 @@ Ez a leltár a munkavállalói felületen megjelenő kanonikus navigációs neve
 | Projektbeállítások | Cím | Projekt végleges törlése | apps/web/src/app/projects/project-settings.page.html |
 | Projektbeállítások | Látható szöveg | Csak mentett projektmunka nélküli piszkozat törölhető. A művelet nem vonható vissza. | apps/web/src/app/projects/project-settings.page.html |
 | Projektbeállítások | Futásidejű UI-szöveg | A projekt azonosítója hiányzik az útvonalból. | apps/web/src/app/projects/project-settings.page.ts:117 |
+| Projektbeállítások | Futásidejű UI-szöveg | A projekt alapadatai mentve lettek. | apps/web/src/app/projects/project-settings.page.ts:167 |
 | Projektbeállítások | Futásidejű UI-szöveg | A projekt életciklus-állapota frissítve lett. | apps/web/src/app/projects/project-settings.page.ts:190 |
 | Projektbeállítások | Futásidejű UI-szöveg | Projekt archiválása | apps/web/src/app/projects/project-settings.page.ts:201 |
 | Projektbeállítások | Futásidejű UI-szöveg | Az archivált projekt kikerül az aktív munkából, és a módosításai letiltásra kerülnek. Az adatok olvashatók és később visszaállíthatók maradnak. | apps/web/src/app/projects/project-settings.page.ts:202 |
@@ -833,7 +885,6 @@ Ez a leltár a munkavállalói felületen megjelenő kanonikus navigációs neve
 | Projektállapot | Futásidejű UI-szöveg | A projektkoordináció frissítve lett. | apps/web/src/app/projects/project-status.page.ts:162 |
 | Megosztott felületi szöveg | Címke | {érték} / {érték} kérdés megválaszolva | apps/web/src/app/projects/project-work-progress-label.ts:8 |
 | Megosztott felületi szöveg | Címke | {érték} / {érték} döntési szempont kitöltve | apps/web/src/app/projects/project-work-progress-label.ts:9 |
-| Felkészültség | Futásidejű UI-szöveg | A felkészültség értékelése nem tölthető be. Próbáld újra. | apps/web/src/app/projects/readiness-review/readiness-review-api.service.ts:20 |
 | Felkészültség | Művelet | Felkészültségi értékelés újratöltése | apps/web/src/app/projects/readiness-review/readiness-review.component.html |
 | Felkészültség | Művelet | Projektállapot megnyitása | apps/web/src/app/projects/readiness-review/readiness-review.component.html |
 | Felkészültség | Művelet | Kérdés megnyitása | apps/web/src/app/projects/readiness-review/readiness-review.component.html |
@@ -853,7 +904,6 @@ Ez a leltár a munkavállalói felületen megjelenő kanonikus navigációs neve
 | Felkészültség | Cím | Rendezendő hiányok | apps/web/src/app/projects/readiness-review/readiness-review.component.html |
 | Felkészültség | Látható szöveg | Nincs azonosított hiány. | apps/web/src/app/projects/readiness-review/readiness-review.component.html |
 | Felkészültség | Látható szöveg | {érték} · {érték} | apps/web/src/app/projects/readiness-review/readiness-review.component.html |
-| Felkészültség | Futásidejű UI-szöveg | Az ellenőrzőlista-hiányhoz nem érkezett kérdésazonosító. | apps/web/src/app/projects/readiness-review/readiness-review.component.ts:72 |
 | Felkészültség | Művelet | Utánkövetések újratöltése | apps/web/src/app/projects/readiness.page.html |
 | Felkészültség | Látható szöveg | Projektkörnyezet | apps/web/src/app/projects/readiness.page.html |
 | Felkészültség | Látható szöveg | A jelenlegi hiányok, tisztázási feladatok és utánkövetések. | apps/web/src/app/projects/readiness.page.html |
@@ -943,4 +993,4 @@ Ez a leltár a munkavállalói felületen megjelenő kanonikus navigációs neve
 | Kérdésbank beállítások | Futásidejű UI-szöveg | Az alapkérdés módosításai mentve. | apps/web/src/app/settings/question-bank.page.ts:226 |
 | Kérdésbank beállítások | Futásidejű UI-szöveg | Az alapkérdés létrejött. | apps/web/src/app/settings/question-bank.page.ts:226 |
 
-Összesen: **936** leltárelem.
+Összesen: **986** leltárelem.
