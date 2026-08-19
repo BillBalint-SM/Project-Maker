@@ -120,7 +120,9 @@ import { CustomerRepliesApiService } from './projects/customer-replies-api.servi
       }
 
       .app-nav {
+        flex-wrap: wrap;
         padding-bottom: 0.65rem;
+        width: 100%;
       }
     }
   `,
