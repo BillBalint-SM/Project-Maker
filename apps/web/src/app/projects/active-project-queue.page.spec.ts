@@ -1,3 +1,4 @@
+import { DATE_PIPE_DEFAULT_OPTIONS } from '@angular/common';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
 import type { ActiveProjectQueuePage } from '@project-maker/contracts';
@@ -283,6 +284,7 @@ describe('ActiveProjectQueuePageComponent', () => {
       providers: [
         provideRouter([]),
         { provide: ActiveProjectQueueApiService, useValue: api },
+        { provide: DATE_PIPE_DEFAULT_OPTIONS, useValue: { timezone: 'UTC' } },
       ],
     }).compileComponents();
     const fixture = TestBed.createComponent(ActiveProjectQueuePageComponent);
@@ -298,7 +300,7 @@ describe('ActiveProjectQueuePageComponent', () => {
     await fixture.whenStable();
 
     expect(api.getPage).toHaveBeenCalledTimes(2);
-    expect(fixture.nativeElement.textContent).toContain('Utolsó lekérés: 2026. 08. 19. 11:15');
+    expect(fixture.nativeElement.textContent).toContain('Utolsó lekérés: 2026. 08. 19. 09:15');
     expect(fixture.nativeElement.querySelector('[data-testid="queue-live-status"]')?.textContent)
       .toContain('A munkasor frissítve.');
     expect(document.activeElement).toBe(refreshButton);
