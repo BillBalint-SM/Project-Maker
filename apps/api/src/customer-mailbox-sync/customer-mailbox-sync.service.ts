@@ -36,6 +36,7 @@ export interface CustomerMailboxRetryRuntime {
 @Injectable()
 export class CustomerMailboxSyncService implements OnModuleInit, OnModuleDestroy {
   private static readonly leaseDurationMs = 2 * 60_000;
+  private static readonly maximumProviderRetryDelayMs = 30_000;
   private readonly logger = new Logger(CustomerMailboxSyncService.name);
   private readonly pollIntervalMs: number;
   private pollHandle: NodeJS.Timeout | null = null;
@@ -137,6 +138,7 @@ export class CustomerMailboxSyncService implements OnModuleInit, OnModuleDestroy
     if (!claim.claimed) return this.waitForActiveRefresh(mailboxAddress);
     const state = claim.state;
     const changes: CustomerMailboxChange[] = [];
+    const recoveryCutoff = state.lastSuccessfulSyncAt;
 
     try {
       let checkpoint: CustomerMailboxCheckpoint | null = state.deltaCheckpoint
@@ -144,7 +146,13 @@ export class CustomerMailboxSyncService implements OnModuleInit, OnModuleDestroy
         : null;
       for (;;) {
         const page = await this.readPageWithRetry(checkpoint);
-        if (state.baselineEstablished) changes.push(...page.changes);
+        if (state.baselineEstablished) {
+          changes.push(...page.changes);
+        } else if (recoveryCutoff) {
+          changes.push(...page.changes.filter((change) =>
+            receivedAfter(change, recoveryCutoff),
+          ));
+        }
         if (page.nextPageCheckpoint) {
           checkpoint = page.nextPageCheckpoint;
           continue;
@@ -216,9 +224,17 @@ export class CustomerMailboxSyncService implements OnModuleInit, OnModuleDestroy
           : 'TEMPORARY_FAILURE';
         const retryable = code === 'THROTTLED' || code === 'TEMPORARY_FAILURE';
         if (!retryable || attempt >= 2) throw error;
+        const providerDelayMs = error instanceof CustomerMailBoundaryError
+          ? error.retryAfterMs
+          : undefined;
+        if (
+          providerDelayMs !== undefined
+          && providerDelayMs > CustomerMailboxSyncService.maximumProviderRetryDelayMs
+        ) throw error;
         const exponentialMs = Math.min(2_000, 250 * (2 ** attempt));
-        const jitteredMs = Math.round(exponentialMs * (0.5 + this.retryRuntime.random()));
-        await this.retryRuntime.wait(jitteredMs);
+        const delayMs = providerDelayMs
+          ?? Math.round(exponentialMs * (0.5 + this.retryRuntime.random()));
+        await this.retryRuntime.wait(delayMs);
       }
     }
   }
@@ -239,6 +255,12 @@ export class CustomerMailboxSyncService implements OnModuleInit, OnModuleDestroy
   private delayedAfterMs(): number {
     return Math.max(2 * 60_000, this.pollIntervalMs * 2);
   }
+}
+
+function receivedAfter(change: CustomerMailboxChange, cutoff: Date): boolean {
+  if (change.changeType !== 'UPSERTED' || !change.receivedAt) return false;
+  const receivedAt = new Date(change.receivedAt);
+  return !Number.isNaN(receivedAt.getTime()) && receivedAt > cutoff;
 }
 
 function hasActiveLease(state: CustomerMailboxSyncEntity, now: Date): boolean {

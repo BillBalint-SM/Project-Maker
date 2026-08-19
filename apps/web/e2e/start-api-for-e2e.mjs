@@ -168,7 +168,7 @@ const graphServer = createServer((request, response) => {
     mailboxDeltaPreferHeaders.push(request.headers.prefer ?? null);
     if (throttleNextMailboxDelta) {
       throttleNextMailboxDelta = false;
-      response.writeHead(429, { 'content-type': 'application/json', 'retry-after': '0' }).end('{}');
+      response.writeHead(429, { 'content-type': 'application/json', 'retry-after': '1' }).end('{}');
       return;
     }
     if (failNextMailboxDelta) {

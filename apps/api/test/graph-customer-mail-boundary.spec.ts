@@ -308,10 +308,17 @@ describe('Graph customer mail boundary', () => {
   it('maps throttled and invalid mailbox checkpoints without leaking provider details', async () => {
     const client = new ControlledGraphMailClient();
     const boundary = new GraphCustomerMailBoundary(client);
-    client.readFailure.set('throttled', new GraphMailClientError('THROTTLED', 'Bearer secret-token'));
+    client.readFailure.set(
+      'throttled',
+      new GraphMailClientError('THROTTLED', 'Bearer secret-token', 1_200),
+    );
     client.readFailure.set('expired', new GraphMailClientError('INVALID_CURSOR', 'https://graph.example/delta?secret=1'));
 
-    await assert.rejects(boundary.readChanges({ value: 'throttled' }), (error) => isSafeBoundaryError(error, 'THROTTLED'));
+    await assert.rejects(
+      boundary.readChanges({ value: 'throttled' }),
+      (error) => isSafeBoundaryError(error, 'THROTTLED')
+        && (error as CustomerMailBoundaryError).retryAfterMs === 1_200,
+    );
     await assert.rejects(boundary.readChanges({ value: 'expired' }), (error) => isSafeBoundaryError(error, 'INVALID_CURSOR'));
   });
 });

@@ -326,8 +326,8 @@ describe('Customer mailbox synchronization', () => {
       completedCheckpoint: { value: 'delta-after-retry' },
     });
     mailboxFailures = [
+      new CustomerMailBoundaryError('THROTTLED', 1_200),
       new CustomerMailBoundaryError('TEMPORARY_FAILURE'),
-      new CustomerMailBoundaryError('THROTTLED'),
     ];
     const retryStarted = new Promise<void>((resolve) => {
       retryWaitStarted = resolve;
@@ -353,7 +353,7 @@ describe('Customer mailbox synchronization', () => {
     const [completed, joinedResult] = await Promise.all([first, joined]);
     assert.equal(completed.body.state, 'CURRENT');
     assert.equal(joinedResult.body.state, 'CURRENT');
-    assert.deepEqual(retryDelays, [250, 500]);
+    assert.deepEqual(retryDelays, [1_200, 500]);
     assert.equal(requestedCheckpoints.length, 3);
   });
 
@@ -405,7 +405,13 @@ describe('Customer mailbox synchronization', () => {
     releaseRetryWait = null;
     retryWaitStarted = null;
     pages.push({
-      changes: [mailboxChange('historical-during-recovery')],
+      changes: [
+        mailboxChange('historical-during-recovery'),
+        {
+          ...mailboxChange('arrived-during-cursor-gap'),
+          receivedAt: '2026-08-18T12:00:30.000Z',
+        },
+      ],
       nextPageCheckpoint: null,
       completedCheckpoint: { value: 'delta-after-recovery' },
     }, {
@@ -430,6 +436,7 @@ describe('Customer mailbox synchronization', () => {
       [process.env['CUSTOMER_MAILBOX_ADDRESS']],
     );
     assert.deepEqual(retained, [
+      { message_reference: 'arrived-during-cursor-gap' },
       { message_reference: 'new-after-recovery' },
       { message_reference: 'preserved-before-expiry' },
     ]);

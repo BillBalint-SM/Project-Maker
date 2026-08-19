@@ -42,6 +42,6 @@ test('runs single-flight manual refreshes and recovers from Graph throttling wit
     response.json() as Promise<{ deltaRequests: number }>,
   );
   expect(afterRetry.deltaRequests - beforeRetry.deltaRequests).toBe(2);
-  expect(Date.now() - retryStartedAt).toBeGreaterThanOrEqual(100);
+  expect(Date.now() - retryStartedAt).toBeGreaterThanOrEqual(900);
   await expect(page.getByTestId('new-project-button')).toBeEnabled();
 });

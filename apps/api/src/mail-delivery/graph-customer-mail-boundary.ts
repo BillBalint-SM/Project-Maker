@@ -71,7 +71,11 @@ export type GraphMailClientErrorCode =
   | 'UNKNOWN_OUTCOME';
 
 export class GraphMailClientError extends Error {
-  constructor(readonly code: GraphMailClientErrorCode, providerDetail?: string) {
+  constructor(
+    readonly code: GraphMailClientErrorCode,
+    providerDetail?: string,
+    readonly retryAfterMs?: number,
+  ) {
     super(providerDetail ?? 'Graph mail operation failed.');
     this.name = 'GraphMailClientError';
   }
@@ -290,5 +294,5 @@ function normalizeGraphError(error: unknown): CustomerMailBoundaryError {
     TEMPORARY: 'TEMPORARY_FAILURE',
     UNKNOWN_OUTCOME: 'OUTCOME_UNKNOWN',
   };
-  return new CustomerMailBoundaryError(codes[error.code]);
+  return new CustomerMailBoundaryError(codes[error.code], error.retryAfterMs);
 }
