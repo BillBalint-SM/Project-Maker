@@ -1,6 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import type {
+  ActiveProjectQueueCursorErrorCode,
   ActiveProjectQueueItem,
   ActiveProjectQueuePage,
   ActiveProjectQueueQuery,
@@ -9,6 +10,7 @@ import type {
 import { Repository } from 'typeorm';
 
 import { ProjectPreparationStatusService } from '../project-preparation/project-preparation-status.service';
+import { ActiveProjectQueueCursorCodec } from './active-project-queue-cursor';
 import { Project } from './project.entity';
 import { toNextActionOwner } from './projects.service';
 
@@ -43,17 +45,36 @@ interface QueueCandidate {
   readonly newReplyCount: number;
 }
 
+interface QueueCursor {
+  readonly version: 1;
+  readonly direction: 'NEXT' | 'PREVIOUS';
+  readonly filter: string;
+  readonly anchor: {
+    readonly urgency: ActiveProjectUrgency;
+    readonly dueAt: string | null;
+    readonly projectName: string;
+    readonly projectId: string;
+  };
+}
+
+export class ActiveProjectQueueCursorError extends Error {
+  constructor(readonly code: ActiveProjectQueueCursorErrorCode) {
+    super(code);
+  }
+}
+
 @Injectable()
 export class ActiveProjectQueueService {
   constructor(
     @InjectRepository(Project)
     private readonly projectRepository: Repository<Project>,
     private readonly preparationStatusService: ProjectPreparationStatusService,
+    private readonly cursorCodec: ActiveProjectQueueCursorCodec,
     @Inject(activeProjectQueueClockToken)
     private readonly clock: ActiveProjectQueueClock,
   ) {}
 
-  async firstPage(query: ActiveProjectQueueQuery = {}): Promise<ActiveProjectQueuePage> {
+  async getPage(query: ActiveProjectQueueQuery = {}): Promise<ActiveProjectQueuePage> {
     const retrievedAt = this.clock.now();
     const [projects, replyAggregates] = await Promise.all([
       this.projectRepository
@@ -102,9 +123,27 @@ export class ActiveProjectQueueService {
         return urgencies.length === 0 || urgencies.includes(urgency);
       })
       .sort(compareCandidates);
-    const firstCandidates = candidates.slice(0, pageSize);
+    const cursor = query.cursor ? decodeCursor(query.cursor, this.cursorCodec) : null;
+    if (cursor && cursor.filter !== cursorFilter(query)) {
+      throw new ActiveProjectQueueCursorError('MISMATCHED_CURSOR');
+    }
+    const anchorIndex = cursor
+      ? candidates.findIndex((candidate) => matchesAnchor(candidate, cursor.anchor))
+      : -1;
+    if (cursor && anchorIndex < 0) {
+      throw new ActiveProjectQueueCursorError('OBSOLETE_CURSOR');
+    }
+    const startIndex = cursor
+      ? cursor.direction === 'NEXT'
+        ? anchorIndex + 1
+        : Math.max(0, anchorIndex - pageSize)
+      : 0;
+    const pageCandidates = candidates.slice(
+      startIndex,
+      cursor?.direction === 'PREVIOUS' ? anchorIndex : startIndex + pageSize,
+    );
 
-    const items = firstCandidates.map(({ project, urgency, newReplyCount }): ActiveProjectQueueItem => {
+    const items = pageCandidates.map(({ project, urgency, newReplyCount }): ActiveProjectQueueItem => {
       const preparationStatus = requiredStatus(statusesByProjectId, project.id);
       return {
         projectId: project.id,
@@ -128,8 +167,86 @@ export class ActiveProjectQueueService {
       totalCount: candidates.length,
       groupCounts,
       retrievedAt: retrievedAt.toISOString(),
+      previousCursor:
+        startIndex > 0 && pageCandidates[0]
+          ? this.cursorCodec.seal(createCursor('PREVIOUS', query, pageCandidates[0]))
+          : null,
+      nextCursor:
+        startIndex + pageCandidates.length < candidates.length && pageCandidates.at(-1)
+          ? this.cursorCodec.seal(createCursor('NEXT', query, pageCandidates.at(-1)!))
+          : null,
     };
   }
+}
+
+function createCursor(
+  direction: QueueCursor['direction'],
+  query: ActiveProjectQueueQuery,
+  candidate: QueueCandidate,
+): QueueCursor {
+  return {
+    version: 1,
+    direction,
+    filter: cursorFilter(query),
+    anchor: {
+      urgency: candidate.urgency,
+      dueAt: candidate.project.dueAt?.toISOString() ?? null,
+      projectName: normalizeProjectName(candidate.project.name),
+      projectId: candidate.project.id,
+    },
+  };
+}
+
+function decodeCursor(raw: string, codec: ActiveProjectQueueCursorCodec): QueueCursor {
+  try {
+    const value = codec.open(raw);
+    if (!isQueueCursor(value)) throw new TypeError('Invalid cursor shape.');
+    return value;
+  } catch {
+    throw new ActiveProjectQueueCursorError('MALFORMED_CURSOR');
+  }
+}
+
+function isQueueCursor(value: unknown): value is QueueCursor {
+  if (!value || typeof value !== 'object') return false;
+  const cursor = value as Partial<QueueCursor>;
+  const anchor = cursor.anchor as Partial<QueueCursor['anchor']> | undefined;
+  return cursor.version === 1
+    && (cursor.direction === 'NEXT' || cursor.direction === 'PREVIOUS')
+    && typeof cursor.filter === 'string'
+    && Boolean(anchor)
+    && typeof anchor?.urgency === 'string'
+    && Object.hasOwn(urgencyOrder, anchor.urgency)
+    && (anchor.dueAt === null || isIsoInstant(anchor.dueAt))
+    && typeof anchor.projectName === 'string'
+    && typeof anchor.projectId === 'string'
+    && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+      anchor.projectId,
+    );
+}
+
+function isIsoInstant(value: unknown): value is string {
+  if (typeof value !== 'string') return false;
+  const date = new Date(value);
+  return !Number.isNaN(date.getTime()) && date.toISOString() === value;
+}
+
+function cursorFilter(query: ActiveProjectQueueQuery): string {
+  return JSON.stringify({
+    search: normalizeProjectName(query.search?.trim() ?? ''),
+    urgencies: [...(query.urgencies ?? [])].sort(),
+    preparationStates: [...(query.preparationStates ?? [])].sort(),
+  });
+}
+
+function matchesAnchor(
+  candidate: QueueCandidate,
+  anchor: QueueCursor['anchor'],
+): boolean {
+  return candidate.urgency === anchor.urgency
+    && (candidate.project.dueAt?.toISOString() ?? null) === anchor.dueAt
+    && normalizeProjectName(candidate.project.name) === anchor.projectName
+    && candidate.project.id === anchor.projectId;
 }
 
 export function classifyActiveProjectUrgency(
