@@ -52,6 +52,7 @@
 }
 
 .queue-summary,
+.queue-toolbar,
 .group-heading,
 .queue-row,
 .tags {
@@ -60,8 +61,30 @@
 }
 
 .queue-summary,
+.queue-toolbar,
 .group-heading {
   justify-content: space-between;
+}
+
+.queue-toolbar {
+  color: var(--p-text-muted-color);
+  margin-bottom: 1rem;
+}
+
+.queue-stale {
+  margin-bottom: 1rem;
+}
+
+.visually-hidden {
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  padding: 0;
+  position: absolute;
+  white-space: nowrap;
+  width: 1px;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
 }
 
 .queue-summary {
