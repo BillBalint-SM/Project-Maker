@@ -216,6 +216,79 @@ describe('Active project queue (e2e)', () => {
     });
   });
 
+  it('traverses a filtered queue forward and backward with stable non-overlapping cursors', async () => {
+    const token = `Cursor ${randomUUID().slice(0, 8)}`;
+    for (let index = 0; index < 12; index += 1) {
+      await createQueueProject(app, `${token} ${String(index).padStart(2, '0')}`);
+    }
+
+    const first = await request(app.getHttpServer())
+      .get('/projects/active-queue')
+      .query({ q: token })
+      .expect(200);
+    assert.equal(first.body.items.length, 10);
+    assert.equal(first.body.previousCursor, null);
+    assert.equal(typeof first.body.nextCursor, 'string');
+    const decodedToken = Buffer.from(first.body.nextCursor as string, 'base64url').toString('utf8');
+    assert.doesNotMatch(decodedToken, new RegExp(token));
+    assert.throws(() => JSON.parse(decodedToken) as unknown);
+
+    const second = await request(app.getHttpServer())
+      .get('/projects/active-queue')
+      .query({ q: token, cursor: first.body.nextCursor as string })
+      .expect(200);
+    assert.equal(second.body.items.length, 2);
+    assert.equal(second.body.nextCursor, null);
+    assert.equal(typeof second.body.previousCursor, 'string');
+    assert.deepEqual(
+      new Set([
+        ...first.body.items.map((item: { projectId: string }) => item.projectId),
+        ...second.body.items.map((item: { projectId: string }) => item.projectId),
+      ]).size,
+      12,
+    );
+
+    const previous = await request(app.getHttpServer())
+      .get('/projects/active-queue')
+      .query({ q: token, cursor: second.body.previousCursor as string })
+      .expect(200);
+    assert.deepEqual(
+      previous.body.items.map((item: { projectId: string }) => item.projectId),
+      first.body.items.map((item: { projectId: string }) => item.projectId),
+    );
+  });
+
+  it('classifies malformed, mismatched and obsolete cursor requests safely', async () => {
+    const token = `Cursor errors ${randomUUID().slice(0, 8)}`;
+    for (let index = 0; index < 11; index += 1) {
+      await createQueueProject(app, `${token} ${String(index).padStart(2, '0')}`);
+    }
+
+    await request(app.getHttpServer())
+      .get('/projects/active-queue')
+      .query({ q: token, cursor: 'not-a-cursor' })
+      .expect(400)
+      .expect(({ body }) => assert.equal(body.code, 'MALFORMED_CURSOR'));
+
+    const first = await request(app.getHttpServer())
+      .get('/projects/active-queue')
+      .query({ q: token })
+      .expect(200);
+    await request(app.getHttpServer())
+      .get('/projects/active-queue')
+      .query({ q: `${token} other`, cursor: first.body.nextCursor as string })
+      .expect(400)
+      .expect(({ body }) => assert.equal(body.code, 'MISMATCHED_CURSOR'));
+
+    const anchorId = first.body.items[9].projectId as string;
+    await request(app.getHttpServer()).post(`/projects/${anchorId}/archive`).expect(201);
+    await request(app.getHttpServer())
+      .get('/projects/active-queue')
+      .query({ q: token, cursor: first.body.nextCursor as string })
+      .expect(400)
+      .expect(({ body }) => assert.equal(body.code, 'OBSOLETE_CURSOR'));
+  });
+
   it('keeps the database read count fixed as the active portfolio grows', async () => {
     const bank = await request(app.getHttpServer()).get('/settings/base-questions').expect(200);
     const stableKey = bank.body.questions[0].stableKey as string;

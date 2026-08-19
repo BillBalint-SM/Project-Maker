@@ -1,16 +1,21 @@
 import { TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
 import type { ActiveProjectQueuePage } from '@project-maker/contracts';
-import { of, Subject } from 'rxjs';
+import { of, Subject, throwError } from 'rxjs';
 import { describe, expect, it, vi } from 'vitest';
 
-import { ActiveProjectQueueApiService } from './active-project-queue-api.service';
+import {
+  ActiveProjectQueueApiService,
+  ActiveProjectQueueCursorRequestError,
+} from './active-project-queue-api.service';
 import { ActiveProjectQueuePageComponent } from './active-project-queue.page';
 
 const page: ActiveProjectQueuePage = {
   retrievedAt: '2026-08-19T08:00:00.000Z',
   totalCount: 12,
   groupCounts: { CUSTOMER_REPLY: 6, OVERDUE: 0, DUE_SOON: 0, IN_PROGRESS: 6 },
+  previousCursor: 'previous-token',
+  nextCursor: 'next-token',
   items: [
     {
       projectId: '11111111-1111-4111-8111-111111111111',
@@ -51,7 +56,7 @@ const page: ActiveProjectQueuePage = {
 
 describe('ActiveProjectQueuePageComponent', () => {
   it('renders semantic urgency groups and routes each public action correctly', async () => {
-    const api = { firstPage: vi.fn().mockReturnValue(of(page)) };
+    const api = { getPage: vi.fn().mockReturnValue(of(page)) };
     await TestBed.configureTestingModule({
       imports: [ActiveProjectQueuePageComponent],
       providers: [
@@ -66,10 +71,11 @@ describe('ActiveProjectQueuePageComponent', () => {
     fixture.detectChanges();
 
     const element = fixture.nativeElement as HTMLElement;
-    expect(api.firstPage).toHaveBeenCalledWith({
+    expect(api.getPage).toHaveBeenCalledWith({
       search: undefined,
       urgencies: [],
       preparationStates: [],
+      cursor: undefined,
     });
     expect(element.querySelectorAll('[data-testid="active-queue-group"]')).toHaveLength(2);
     expect(element.textContent).toContain('Új ügyfélválasz');
@@ -87,7 +93,7 @@ describe('ActiveProjectQueuePageComponent', () => {
   it('restores known URL filters and debounces a trimmed search into replace-navigation', async () => {
     vi.useFakeTimers();
     try {
-      const api = { firstPage: vi.fn().mockReturnValue(of(page)) };
+      const api = { getPage: vi.fn().mockReturnValue(of(page)) };
       await TestBed.configureTestingModule({
         imports: [ActiveProjectQueuePageComponent],
         providers: [
@@ -104,10 +110,11 @@ describe('ActiveProjectQueuePageComponent', () => {
       await vi.runAllTimersAsync();
       fixture.detectChanges();
 
-      expect(api.firstPage).toHaveBeenCalledWith({
+      expect(api.getPage).toHaveBeenCalledWith({
         search: 'Árvíz',
         urgencies: ['OVERDUE'],
         preparationStates: ['SCHEMA_REQUIRED'],
+        cursor: undefined,
       });
       const input = fixture.nativeElement.querySelector('[data-testid="queue-search"]') as HTMLInputElement;
       expect(input.value).toBe('Árvíz');
@@ -134,7 +141,7 @@ describe('ActiveProjectQueuePageComponent', () => {
     const first = new Subject<ActiveProjectQueuePage>();
     const second = new Subject<ActiveProjectQueuePage>();
     const api = {
-      firstPage: vi.fn().mockImplementation((query: { search?: string }) =>
+      getPage: vi.fn().mockImplementation((query: { search?: string }) =>
         query.search === 'első' ? first : second),
     };
     await TestBed.configureTestingModule({
@@ -161,8 +168,75 @@ describe('ActiveProjectQueuePageComponent', () => {
     expect(fixture.nativeElement.textContent).not.toContain('Elavult eredmény');
   });
 
+  it('adds cursor navigation to browser history while preserving the active filters', async () => {
+    const api = { getPage: vi.fn().mockReturnValue(of(page)) };
+    await TestBed.configureTestingModule({
+      imports: [ActiveProjectQueuePageComponent],
+      providers: [
+        provideRouter([]),
+        { provide: ActiveProjectQueueApiService, useValue: api },
+      ],
+    }).compileComponents();
+    const router = TestBed.inject(Router);
+    await router.navigateByUrl('/?q=projekt&urgency=OVERDUE');
+    const navigate = vi.spyOn(router, 'navigate').mockResolvedValue(true);
+    const fixture = TestBed.createComponent(ActiveProjectQueuePageComponent);
+    await fixture.whenStable();
+
+    (fixture.nativeElement.querySelector('[data-testid="queue-next-page"]') as HTMLButtonElement).click();
+    await fixture.whenStable();
+
+    expect(navigate).toHaveBeenCalledWith([], expect.objectContaining({
+      queryParams: {
+        q: 'projekt',
+        urgency: ['OVERDUE'],
+        preparation: null,
+        cursor: 'next-token',
+      },
+      replaceUrl: false,
+    }));
+  });
+
+  it('recovers a rejected cursor URL to the first page with Hungarian guidance', async () => {
+    const firstPage = { ...page, previousCursor: null, nextCursor: null };
+    const api = {
+      getPage: vi.fn().mockImplementation((query: { cursor?: string }) =>
+        query.cursor
+          ? throwError(() => new ActiveProjectQueueCursorRequestError('OBSOLETE_CURSOR'))
+          : of(firstPage)),
+    };
+    await TestBed.configureTestingModule({
+      imports: [ActiveProjectQueuePageComponent],
+      providers: [
+        provideRouter([]),
+        { provide: ActiveProjectQueueApiService, useValue: api },
+      ],
+    }).compileComponents();
+    const router = TestBed.inject(Router);
+    await router.navigateByUrl('/?q=projekt&cursor=obsolete-token');
+    const fixture = TestBed.createComponent(ActiveProjectQueuePageComponent);
+    await fixture.whenStable();
+
+    expect(router.url).toBe('/?q=projekt');
+    expect(api.getPage).toHaveBeenLastCalledWith({
+      search: 'projekt',
+      urgencies: [],
+      preparationStates: [],
+      cursor: undefined,
+    });
+    expect(fixture.nativeElement.textContent).toContain(
+      'A korábbi oldal már nem állítható helyre. Az első oldalt mutatjuk.',
+    );
+
+    await router.navigateByUrl('/?q=másik-projekt');
+    await fixture.whenStable();
+    expect(fixture.nativeElement.textContent).not.toContain(
+      'A korábbi oldal már nem állítható helyre. Az első oldalt mutatjuk.',
+    );
+  });
+
   it('preserves the genuine empty-portfolio state when no filters are active', async () => {
-    const api = { firstPage: vi.fn().mockReturnValue(of({ ...page, totalCount: 0, items: [] })) };
+    const api = { getPage: vi.fn().mockReturnValue(of({ ...page, totalCount: 0, items: [] })) };
     await TestBed.configureTestingModule({
       imports: [ActiveProjectQueuePageComponent],
       providers: [
@@ -181,7 +255,7 @@ describe('ActiveProjectQueuePageComponent', () => {
   });
 
   it('distinguishes a filtered queue with no matching projects', async () => {
-    const api = { firstPage: vi.fn().mockReturnValue(of({ ...page, totalCount: 0, items: [] })) };
+    const api = { getPage: vi.fn().mockReturnValue(of({ ...page, totalCount: 0, items: [] })) };
     await TestBed.configureTestingModule({
       imports: [ActiveProjectQueuePageComponent],
       providers: [

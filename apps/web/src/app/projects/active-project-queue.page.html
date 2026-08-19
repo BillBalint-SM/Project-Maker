@@ -7,6 +7,12 @@
     <p>Az aktív projektek következő teendői sürgősség szerint rendezve.</p>
   </div>
 
+  @if (cursorRecoveryNotice()) {
+    <div class="state-panel" data-testid="queue-cursor-recovery" role="status">
+      <p>{{ cursorRecoveryNotice() }}</p>
+    </div>
+  }
+
   <section class="queue-filters" aria-labelledby="queue-filter-title">
     <h2 id="queue-filter-title">Munkasor szűrése</h2>
     <label class="search-field">
@@ -123,6 +129,24 @@
           </section>
         }
       </div>
+
+      <nav class="queue-pagination" aria-label="Munkasor lapozása">
+        <button
+          pButton
+          type="button"
+          severity="secondary"
+          data-testid="queue-previous-page"
+          [disabled]="!queuePage.previousCursor"
+          (click)="navigateToCursor(queuePage.previousCursor!)"
+        >Előző oldal</button>
+        <button
+          pButton
+          type="button"
+          data-testid="queue-next-page"
+          [disabled]="!queuePage.nextCursor"
+          (click)="navigateToCursor(queuePage.nextCursor!)"
+        >Következő oldal</button>
+      </nav>
     }
   }
 </section>
