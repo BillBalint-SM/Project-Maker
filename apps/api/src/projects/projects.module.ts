@@ -12,6 +12,8 @@ import {
   activeProjectQueueClockToken,
 } from './active-project-queue.service';
 import { Project } from './project.entity';
+import { ProjectWorkStateController } from './project-work-state.controller';
+import { ProjectWorkStateReadModel } from './project-work-state-read-model';
 import { ProjectsController } from './projects.controller';
 import { ProjectsService } from './projects.service';
 
@@ -21,10 +23,11 @@ import { ProjectsService } from './projects.service';
     MarkdownModule,
     ProjectPreparationModule,
   ],
-  controllers: [ActiveProjectQueueController, ProjectsController],
+  controllers: [ActiveProjectQueueController, ProjectWorkStateController, ProjectsController],
   providers: [
     ProjectsService,
     ActiveProjectQueueService,
+    ProjectWorkStateReadModel,
     ActiveProjectQueueCursorCodec,
     { provide: activeProjectQueueClockToken, useValue: { now: () => new Date() } },
   ],
