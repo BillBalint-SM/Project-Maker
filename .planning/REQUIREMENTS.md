@@ -25,10 +25,15 @@ The historical guided-intake execution record is preserved in the tracked
 - [ ] **INTAKE-04:** Users can manage follow-ups with owner, due date, status, answer/decision, and next step.
 - [x] **INTAKE-05:** The UI provides Hungarian coaching content and deterministic answer-quality guidance. Verified for the first `INITIAL_INTAKE` slice: loading, blocked, save, retry, validation, completion, and round-state messages are Hungarian, and question coaching is rendered deterministically from persisted contract metadata without a model or keyword path.
 
+## Customer communication
+
+- [x] **COMM-01.1:** Customer SMTP is structurally separated from internal Markdown delivery. The versioned Interview customer handoff is the only full customer-summary email; authored follow-up pings use exact preview, durable manual and scheduled delivery, explicit `FAILED`/`UNKNOWN` recovery, redacted audit data, and no Markdown revision, `.md` attachment, or Claude instruction input.
+
 ## Scoring and output
 
 - [x] **SCORE-01:** Completion, readiness, gaps, Decision Score, and recommended action implement the domain contract and have behavioral tests.
 - [x] **OUTPUT-01:** Structured Markdown is the canonical generated specification. Verified through a published Default template, named draft/published template lifecycle, safe placeholders, server-side preview and rendering, remembered project selection, and immutable revision provenance.
+- [ ] **OUTPUT-01.1:** A reviewed Markdown revision can be delivered as an internal Claude Code handoff. `COMM-01.1` is its satisfied safety prerequisite; no Customer SMTP route may consume this handoff.
 - [ ] **OUTPUT-02:** Acceptance criteria and user stories derive from the canonical specification.
 - [ ] **OUTPUT-03:** PDF and spreadsheet exports derive from the canonical specification and handle Hungarian text and dynamic content.
 - [x] **DOC-00:** A Git-tracked roadmap and documentation index distinguish delivered behavior, planned work, opportunities, improvements, and historical delivery evidence.

@@ -12,10 +12,12 @@ import {
   customerMailerToken,
   type CustomerMailerMessage,
 } from '../src/mail-delivery/smtp-mailer.service';
+import { CustomerFollowUpService } from '../src/follow-ups/follow-up.service';
 
 describe('Customer SMTP boundary', () => {
   let app: INestApplication;
   let dataSource: DataSource;
+  let followUpService: CustomerFollowUpService;
   const delivered: CustomerMailerMessage[] = [];
 
   before(async () => {
@@ -35,6 +37,7 @@ describe('Customer SMTP boundary', () => {
     app = module.createNestApplication({ logger: false });
     await app.init();
     dataSource = app.get(DataSource);
+    followUpService = app.get(CustomerFollowUpService);
   });
 
   beforeEach(() => {
@@ -79,8 +82,9 @@ describe('Customer SMTP boundary', () => {
     );
   });
 
-  it('rejects revision input and keeps the manual ping payload free of Markdown', async () => {
+  it('rejects revision input and keeps the manual ping free of internal delivery content', async () => {
     const projectId = await createProject(app, 'revision-free-ping');
+    const handoffText = await createInterviewHandoffPreview(app, projectId);
     const revision = await request(app.getHttpServer())
       .post(`/projects/${projectId}/markdown-revisions`)
       .send({ reason: 'MANUAL' });
@@ -108,7 +112,47 @@ describe('Customer SMTP boundary', () => {
       .post(`/projects/${projectId}/follow-up/ping`)
       .send({ previewToken: preview.body.previewToken });
     assert.equal(sent.status, 201, JSON.stringify(sent.body));
-    assertPingHasNoMarkdown(delivered[0], revision.body.content as string);
+    assertPingHasNoInternalDeliveryContent(
+      delivered[0],
+      revision.body.content as string,
+      handoffText,
+    );
+  });
+
+  it('keeps the scheduled ping free of internal delivery content', async () => {
+    const projectId = await createProject(app, 'scheduled-boundary');
+    const handoffText = await createInterviewHandoffPreview(app, projectId);
+    const revision = await request(app.getHttpServer())
+      .post(`/projects/${projectId}/markdown-revisions`)
+      .send({ reason: 'MANUAL' })
+      .expect(201);
+
+    await request(app.getHttpServer())
+      .patch(`/projects/${projectId}/follow-up/draft`)
+      .send({
+        messageDraft: 'Kérlek, jelezd a következő egyeztetés időpontját.',
+        referencedFollowUpId: null,
+        expectedVersion: 1,
+      })
+      .expect(200);
+    await request(app.getHttpServer())
+      .patch(`/projects/${projectId}/follow-up`)
+      .send({ enabled: true, intervalMinutes: 60 })
+      .expect(200);
+
+    const dueAt = new Date('2030-01-01T12:00:00.000Z');
+    await dataSource.query(
+      'UPDATE customer_follow_ups SET next_ping_at = $2 WHERE project_id = $1',
+      [projectId, dueAt],
+    );
+    const results = await followUpService.processDuePings(dueAt);
+
+    assert.equal(results.length, 1);
+    assertPingHasNoInternalDeliveryContent(
+      delivered[0],
+      revision.body.content as string,
+      handoffText,
+    );
 
   });
 });
@@ -127,12 +171,48 @@ async function createProject(app: INestApplication, label: string): Promise<stri
   return response.body.id as string;
 }
 
-function assertPingHasNoMarkdown(
+async function createInterviewHandoffPreview(
+  app: INestApplication,
+  projectId: string,
+): Promise<string> {
+  const bank = await request(app.getHttpServer())
+    .get('/settings/base-questions')
+    .expect(200);
+  const stableKey = bank.body.questions[0]?.stableKey as string | undefined;
+  assert.ok(stableKey);
+  await request(app.getHttpServer())
+    .post(`/projects/${projectId}/question-schema`)
+    .send({ questions: [{ stableKey, required: true, blocking: true }] })
+    .expect(201);
+  const round = await request(app.getHttpServer())
+    .post(`/projects/${projectId}/rounds`)
+    .send({ type: 'INITIAL_INTAKE' })
+    .expect(201);
+  await request(app.getHttpServer())
+    .post(`/projects/${projectId}/rounds/${round.body.id}/finish`)
+    .send({})
+    .expect(201);
+  const handoffs = await request(app.getHttpServer())
+    .get(`/projects/${projectId}/rounds/${round.body.id}/customer-handoffs`)
+    .expect(200);
+  const handoffId = handoffs.body[0]?.id as string | undefined;
+  assert.ok(handoffId);
+  const preview = await request(app.getHttpServer())
+    .post(`/projects/${projectId}/rounds/${round.body.id}/customer-handoffs/${handoffId}/preview`)
+    .send({ mode: 'CUSTOM', name: 'Teszt PO/PM', address: 'teszt@pte.hu' })
+    .expect(201);
+  return preview.body.textContent as string;
+}
+
+function assertPingHasNoInternalDeliveryContent(
   message: CustomerMailerMessage | undefined,
   revisionContent: string,
+  handoffText: string,
 ): void {
   assert.ok(message);
   assert.equal(message.html, undefined);
   assert.equal(message.text.includes(revisionContent), false);
+  assert.equal(message.text.includes(handoffText), false);
+  assert.doesNotMatch(message.text, /Nincs rögzített válasz/);
   assert.doesNotMatch(message.text, /\.md\b|Claude Code|execution-plan revision/i);
 }
