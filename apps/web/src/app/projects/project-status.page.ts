@@ -7,12 +7,13 @@ import { MessageModule } from 'primeng/message';
 import { ProgressSpinnerModule } from 'primeng/progressspinner';
 import type {
   ProjectActivityFeed,
-  ProjectPreparationStatus,
+  ProjectWorkState,
   ProjectWorkspace,
 } from '@project-maker/contracts';
 
 import { ProjectApiService } from './project-api.service';
-import { projectActionRoute } from './project-action-route';
+import { projectActionFragment, projectActionRoute } from './project-action-route';
+import { projectWorkProgressLabel } from './project-work-progress-label';
 
 @Component({
   selector: 'app-project-status-page',
@@ -34,24 +35,27 @@ export class ProjectStatusPage implements OnInit {
   readonly projectId = this.route.snapshot.paramMap.get('projectId') ?? '';
   readonly loading = signal(true);
   readonly loadError = signal<string | null>(null);
-  readonly preparationStatus = signal<ProjectPreparationStatus | null>(null);
-  readonly coordinationLoading = signal(true);
-  readonly coordinationError = signal<string | null>(null);
-  readonly project = signal<ProjectWorkspace | null>(null);
+  readonly workState = signal<ProjectWorkState | null>(null);
+  readonly customerMetadataLoading = signal(true);
+  readonly customerMetadataError = signal<string | null>(null);
+  readonly customerMetadata = signal<ProjectWorkspace | null>(null);
   readonly activityLoading = signal(true);
   readonly activityError = signal<string | null>(null);
   readonly activity = signal<ProjectActivityFeed | null>(null);
   readonly primaryActionRoute = computed(() => {
-    const preparationStatus = this.preparationStatus();
-    if (!preparationStatus) {
+    const workState = this.workState();
+    if (!workState) {
       return null;
     }
-    return projectActionRoute(this.projectId, preparationStatus.primaryAction.target);
+    return projectActionRoute(this.projectId, workState.primaryAction.target);
   });
+
+  readonly progressLabel = projectWorkProgressLabel;
+  readonly actionFragment = projectActionFragment;
 
   ngOnInit(): void {
     this.loadStatus();
-    this.loadCoordination();
+    this.loadCustomerMetadata();
     this.loadActivity();
   }
 
@@ -64,10 +68,10 @@ export class ProjectStatusPage implements OnInit {
 
     this.loading.set(true);
     this.loadError.set(null);
-    this.preparationStatus.set(null);
-    this.api.loadPreparationStatus(this.projectId).subscribe({
-      next: (preparationStatus) => {
-        this.preparationStatus.set(preparationStatus);
+    this.workState.set(null);
+    this.api.loadWorkState(this.projectId).subscribe({
+      next: (workState) => {
+        this.workState.set(workState);
         this.loading.set(false);
       },
       error: (error: Error) => {
@@ -77,24 +81,24 @@ export class ProjectStatusPage implements OnInit {
     });
   }
 
-  loadCoordination(): void {
+  loadCustomerMetadata(): void {
     if (!this.projectId) {
-      this.coordinationError.set('A projekt azonosítója hiányzik az útvonalból.');
-      this.coordinationLoading.set(false);
+      this.customerMetadataError.set('A projekt azonosítója hiányzik az útvonalból.');
+      this.customerMetadataLoading.set(false);
       return;
     }
 
-    this.coordinationLoading.set(true);
-    this.coordinationError.set(null);
-    this.project.set(null);
+    this.customerMetadataLoading.set(true);
+    this.customerMetadataError.set(null);
+    this.customerMetadata.set(null);
     this.api.loadProjectWorkspace(this.projectId).subscribe({
       next: (project) => {
-        this.project.set(project);
-        this.coordinationLoading.set(false);
+        this.customerMetadata.set(project);
+        this.customerMetadataLoading.set(false);
       },
       error: (error: Error) => {
-        this.coordinationError.set(error.message);
-        this.coordinationLoading.set(false);
+        this.customerMetadataError.set(error.message);
+        this.customerMetadataLoading.set(false);
       },
     });
   }

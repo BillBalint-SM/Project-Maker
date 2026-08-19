@@ -33,6 +33,7 @@ const page: ActiveProjectQueuePage = {
       nextActionOwner: { role: 'INTERNAL_OWNER', displayName: 'Kovács Anna', complete: true },
       dueAt: null,
       newReplyCount: 2,
+      progress: { kind: 'INTERVIEW_ANSWERS', answeredQuestions: 4, totalQuestions: 9 },
       primaryAction: { target: 'CUSTOMER_CORRESPONDENCE', label: 'Ügyféllevelezés megnyitása' },
     },
     {
@@ -80,6 +81,7 @@ describe('ActiveProjectQueuePageComponent', () => {
     });
     expect(element.querySelectorAll('[data-testid="active-queue-group"]')).toHaveLength(2);
     expect(element.textContent).toContain('Új ügyfélválasz');
+    expect(element.textContent).toContain('4 / 9 kérdés megválaszolva');
     expect(element.textContent).toContain('Folyamatban');
     expect(element.textContent).toContain('2 projekt látható az összesen 12 aktív projektből');
     expect(element.textContent).toContain('1 látható, összesen 6 projekt');

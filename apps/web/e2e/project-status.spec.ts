@@ -20,10 +20,9 @@ test('resumes schema-required projects directly and keeps the server-derived sta
   await page.goto(`/projects/${project.id}/status`);
 
   await expect(page.getByRole('heading', { name: 'Projektállapot' })).toBeVisible();
-  await expect(page.getByTestId('project-preparation-state')).toHaveText(
-    'Kérdésséma szükséges',
-  );
-  await page.getByTestId('project-preparation-primary-action').click();
+  await expect(page.getByTestId('project-work-reason')).toHaveText('Folyamatban');
+  await expect(page.getByTestId('project-status-card')).toContainText('Kérdésséma szükséges');
+  await page.getByTestId('project-work-primary-action').click();
   await expect(page).toHaveURL(`/projects/${project.id}/interview`);
 
   await page.goto(`/projects/${project.id}/readiness`);

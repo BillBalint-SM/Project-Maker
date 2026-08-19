@@ -7,6 +7,8 @@ export function projectActionRoute(
   switch (target) {
     case 'CUSTOMER_CORRESPONDENCE':
       return ['/projects', projectId, 'customer-correspondences'];
+    case 'PROJECT_COORDINATION':
+      return ['/projects', projectId];
     case 'INTERVIEW':
       return ['/projects', projectId, 'interview'];
     case 'READINESS':
@@ -14,4 +16,10 @@ export function projectActionRoute(
     case 'DECISION_REVIEW':
       return ['/projects', projectId, 'decision-review'];
   }
+}
+
+export function projectActionFragment(
+  target: ActiveProjectQueueActionTarget,
+): string | undefined {
+  return target === 'PROJECT_COORDINATION' ? 'workspace' : undefined;
 }

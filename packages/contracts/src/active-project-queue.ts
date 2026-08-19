@@ -1,5 +1,6 @@
 import type {
   NextActionOwner,
+  ProjectWorkspace,
 } from './projects.js';
 import type {
   ProjectPreparationActionTarget,
@@ -17,6 +18,7 @@ export type ActiveProjectUrgency = (typeof activeProjectUrgencies)[number];
 
 export type ActiveProjectQueueActionTarget =
   | 'CUSTOMER_CORRESPONDENCE'
+  | 'PROJECT_COORDINATION'
   | ProjectPreparationActionTarget;
 
 export interface ActiveProjectQueueAction {
@@ -24,7 +26,21 @@ export interface ActiveProjectQueueAction {
   readonly label: string;
 }
 
-export interface ActiveProjectQueueItem {
+export interface InterviewAnswerProgress {
+  readonly kind: 'INTERVIEW_ANSWERS';
+  readonly answeredQuestions: number;
+  readonly totalQuestions: number;
+}
+
+export interface DecisionInputProgress {
+  readonly kind: 'DECISION_INPUTS';
+  readonly completedInputs: number;
+  readonly totalInputs: number;
+}
+
+export type ProjectWorkProgress = InterviewAnswerProgress | DecisionInputProgress;
+
+export interface ProjectWorkState {
   readonly projectId: string;
   readonly projectName: string;
   readonly urgency: ActiveProjectUrgency;
@@ -34,7 +50,15 @@ export interface ActiveProjectQueueItem {
   readonly nextActionOwner: NextActionOwner;
   readonly dueAt: string | null;
   readonly newReplyCount: number;
+  readonly progress?: ProjectWorkProgress;
   readonly primaryAction: ActiveProjectQueueAction;
+}
+
+export type ActiveProjectQueueItem = ProjectWorkState;
+
+export interface ProjectPortfolioEntry {
+  readonly project: ProjectWorkspace;
+  readonly workState: ProjectWorkState | null;
 }
 
 export type ActiveProjectQueueGroupCounts = Readonly<Record<ActiveProjectUrgency, number>>;
