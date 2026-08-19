@@ -67,6 +67,7 @@ test('completes the keyboard employee journey and restores the paged queue URL a
     expect(created.status()).toBe(201);
   }
 
+  await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/');
   const queueLink = page.getByTestId('active-project-queue-link');
   await queueLink.focus();
@@ -90,16 +91,56 @@ test('completes the keyboard employee journey and restores the paged queue URL a
   expect(queueUrl).toContain('urgency=OVERDUE');
   expect(queueUrl).toContain('cursor=');
 
-  const primaryAction = page.locator('[data-testid^="queue-action-"]').first();
-  const primaryActionUrl = await primaryAction.getAttribute('href');
-  expect(primaryActionUrl).toMatch(/^\/projects\/[0-9a-f-]+#workspace$/);
+  const projectLink = page.locator('[data-testid^="queue-project-"]').first();
+  await projectLink.focus();
+  await projectLink.press('Enter');
+  await expect(page.getByTestId('project-context-shell')).toBeVisible();
+  await expect(page.getByTestId('project-context-nav-status')).toHaveAttribute(
+    'aria-current',
+    'page',
+  );
+  for (const context of [
+    'status',
+    'interview',
+    'readiness',
+    'decision-review',
+    'markdown',
+    'settings',
+  ]) {
+    await expect(page.getByTestId(`project-context-nav-${context}`)).toBeVisible();
+  }
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= document.documentElement.clientWidth,
+    ),
+  ).toBe(true);
+
+  const statusUrl = page.url();
+  await page.reload();
+  await expect(page).toHaveURL(statusUrl);
+  const queueReturn = new URL(queueUrl);
+  await expect(page.getByTestId('project-context-return')).toHaveAttribute(
+    'href',
+    `${queueReturn.pathname}${queueReturn.search}`,
+  );
+  await expect(page.getByTestId('project-status-card')).toHaveCount(0);
+
+  const primaryAction = page.getByTestId('project-context-primary-action');
   await expect(primaryAction).toHaveText('Következő lépés kezelése');
   await primaryAction.focus();
   await primaryAction.press('Enter');
-  await expect(page).toHaveURL(primaryActionUrl!);
+  await expect(page.getByTestId('workspace-form')).toBeVisible();
+  await page.reload();
   await expect(page.getByTestId('workspace-form')).toBeVisible();
 
   await page.goBack();
+  await expect(page).toHaveURL(statusUrl);
+  await page.goForward();
+  await expect(page.getByTestId('workspace-form')).toBeVisible();
+
+  const returnLink = page.getByTestId('project-context-return');
+  await returnLink.focus();
+  await returnLink.press('Enter');
   await expect(page).toHaveURL(queueUrl);
   await expect(page.getByTestId('queue-search')).toHaveValue(uniquePart);
   await expect(page.getByLabel('Lejárt', { exact: true })).toBeChecked();

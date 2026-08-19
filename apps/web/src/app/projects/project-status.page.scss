@@ -1,33 +1,6 @@
-.back-link,
-.open-cockpit-link {
-  color: var(--p-primary-color);
-  font-weight: 700;
-  text-decoration: none;
-}
-
-.back-link {
-  align-items: center;
-  display: inline-flex;
-  gap: 0.4rem;
-  margin-bottom: 2rem;
-}
-
-.preparation-state {
-  color: var(--p-primary-color);
-  display: block;
-  font-size: clamp(1.35rem, 4vw, 2rem);
-  line-height: 1.2;
-  margin-bottom: 0.75rem;
-}
-
 p {
   color: var(--p-text-muted-color);
   line-height: 1.5;
-}
-
-.open-cockpit-link {
-  display: inline-block;
-  margin-left: 1rem;
 }
 
 .status-hub-grid {
@@ -94,11 +67,6 @@ dd {
 }
 
 @media (max-width: 36rem) {
-  .open-cockpit-link {
-    display: block;
-    margin: 1rem 0 0;
-  }
-
   .status-hub-grid {
     grid-template-columns: 1fr;
   }

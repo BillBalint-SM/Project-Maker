@@ -36,7 +36,11 @@ test('surfaces one safe token-correlated Customer reply across global and Portfo
   await expect(portfolioCard).toContainText('Új ügyfélválasz');
   await expect(portfolioCard).toContainText('Ügyféllevelezés megnyitása');
   await portfolioCard.click();
-  await expect(page).toHaveURL(new RegExp(`/projects/${setup.projectId}/customer-correspondences$`));
+  await expect(page).toHaveURL(
+    (url) =>
+      url.pathname === `/projects/${setup.projectId}/customer-correspondences` &&
+      url.searchParams.get('returnTo') === '/',
+  );
   await expect(page.getByText('Mehet tovább.')).toBeVisible();
   await expect(page.locator('.inbound-message script')).toHaveCount(0);
   await expect(page.getByText('scope.pdf')).toBeVisible();
@@ -58,7 +62,13 @@ test('surfaces one safe token-correlated Customer reply across global and Portfo
   await classification.selectOption('Módosítást kér');
   await expect(classification).toHaveValue('Módosítást kér');
   await page.getByRole('button', { name: 'Új összefoglaló-verzió készítése' }).click();
-  await expect(page).toHaveURL(new RegExp(`/projects/${setup.projectId}/interview\\?roundId=${setup.roundId}#customer-handoff$`));
+  await expect(page).toHaveURL(
+    (url) =>
+      url.pathname === `/projects/${setup.projectId}/interview` &&
+      url.searchParams.get('roundId') === setup.roundId &&
+      url.searchParams.get('returnTo') === '/' &&
+      url.hash === '#customer-handoff',
+  );
   await expect(page.getByTestId('handoff-modification-summary')).toBeVisible();
   await page.goto(`/projects/${setup.projectId}/customer-correspondences`);
   await page.getByRole('button', { name: 'Feldolgozás megkezdése' }).click();

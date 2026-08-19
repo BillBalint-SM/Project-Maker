@@ -1,0 +1,63 @@
+<div class="project-context" data-testid="project-context-shell">
+  <a
+    class="return-link"
+    [routerLink]="returnLink()"
+    data-testid="project-context-return"
+  >
+    <span aria-hidden="true">←</span> {{ returnLabel() }}
+  </a>
+
+  <header class="context-header" aria-label="Kiválasztott projekt">
+    <div class="project-identity">
+      <span class="eyebrow">Projektkörnyezet</span>
+      @if (context.workState(); as workState) {
+        <strong class="project-name" data-testid="project-context-name">{{ workState.projectName }}</strong>
+        <p-tag [value]="workState.preparationStatus.label" data-testid="project-context-preparation" />
+      } @else {
+        <strong class="project-name">Projekt</strong>
+        @if (context.loading()) {
+          <span class="context-loading" aria-live="polite">
+            <p-progress-spinner ariaLabel="Projektkörnyezet betöltése" />
+            Projektkörnyezet betöltése…
+          </span>
+        } @else if (context.loadError(); as error) {
+          <span class="context-error" role="alert">{{ error }}</span>
+          <button pButton type="button" severity="secondary" (click)="context.reload()">
+            Projektkörnyezet újratöltése
+          </button>
+        }
+      }
+    </div>
+
+    @if (context.workState(); as workState) {
+      <div class="primary-task">
+        <span class="eyebrow">Most ezt intézd</span>
+        <strong>{{ workState.urgencyLabel }}</strong>
+        <a
+          pButton
+          [routerLink]="primaryActionRoute()"
+          [queryParams]="contextQueryParams()"
+          [fragment]="primaryActionFragment()"
+          data-testid="project-context-primary-action"
+        >{{ workState.primaryAction.label }}</a>
+      </div>
+    }
+
+    <nav class="context-navigation" aria-label="Projektkörnyezet navigációja">
+      @for (link of contextLinks; track link.key) {
+        <a
+          [routerLink]="contextRoute(link.path)"
+          [queryParams]="contextQueryParams()"
+          routerLinkActive="active"
+          ariaCurrentWhenActive="page"
+          [routerLinkActiveOptions]="linkMatchOptions"
+          [attr.data-testid]="'project-context-nav-' + link.key"
+        >{{ link.label }}</a>
+      }
+    </nav>
+  </header>
+
+  <div class="project-context-panel">
+    <router-outlet />
+  </div>
+</div>

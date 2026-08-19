@@ -1,12 +1,4 @@
 <section aria-labelledby="markdown-title">
-  <a
-    class="back-link"
-    [routerLink]="['/projects', projectId]"
-    data-testid="back-to-cockpit-link"
-  >
-    <span aria-hidden="true">←</span> Projektállapot
-  </a>
-
   <div class="page-heading markdown-heading">
     <span class="eyebrow">Generált dokumentum</span>
     <h1 id="markdown-title">Markdown specifikáció</h1>
@@ -137,6 +129,7 @@
                   [class.active]="isSelected(revision.id)"
                   [routerLink]="['/projects', projectId, 'markdown']"
                   [queryParams]="{ revision: revision.id }"
+                  queryParamsHandling="merge"
                   [attr.aria-current]="isSelected(revision.id) ? 'page' : null"
                   [attr.data-testid]="'markdown-revision-link-' + revision.id"
                 >
@@ -206,6 +199,7 @@
                     <a
                       [routerLink]="['/projects', projectId, 'markdown']"
                       [queryParams]="{ revision: previousRevisionId }"
+                      queryParamsHandling="merge"
                       data-testid="markdown-previous-revision-link"
                     >
                       Előző revízió megnyitása

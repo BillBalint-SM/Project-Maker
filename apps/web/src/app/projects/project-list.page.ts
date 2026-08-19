@@ -40,6 +40,7 @@ export class ProjectListPage implements OnInit {
   readonly loading = signal(true);
   readonly loadError = signal<string | null>(null);
   readonly statusLabel = projectStatusLabel;
+  readonly projectContextQueryParams = { returnTo: '/' } as const;
   readonly mailboxStatus = signal<CustomerMailboxSyncStatus | null>(null);
   readonly mailboxLoading = signal(true);
   readonly mailboxRefreshing = signal(false);

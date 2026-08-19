@@ -13,6 +13,7 @@ import type { CustomerCorrespondenceView } from '@project-maker/contracts';
           reviewFollowUpVersion: source.followUpVersion,
           reviewCorrespondenceId: correspondence().id
         }"
+        queryParamsHandling="merge"
         [fragment]="'discovery-follow-up-' + source.followUpId"
         [attr.data-testid]="'review-ping-source-' + correspondence().id">Forrás Discovery follow-up áttekintése</a>
     }

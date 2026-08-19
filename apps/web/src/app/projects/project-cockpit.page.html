@@ -1,7 +1,3 @@
-<a class="back-link" routerLink="/" data-testid="back-to-projects-link">
-  <span aria-hidden="true">←</span> All projects
-</a>
-
 @if (loading()) {
   <div class="state-panel" data-testid="cockpit-loading" aria-live="polite">
     <p-progress-spinner ariaLabel="Loading project cockpit" />
@@ -17,12 +13,6 @@
         data-testid="retry-cockpit-button"
         (onClick)="loadCockpit()"
       />
-      <p-button
-        label="Return to projects"
-        severity="secondary"
-        [outlined]="true"
-        routerLink="/"
-      />
     </div>
   </div>
 } @else if (view(); as current) {
@@ -32,20 +22,6 @@
         <span class="eyebrow">Projektmunka</span>
         <h1 id="cockpit-title">{{ current.project.name }}</h1>
         <p>Tartsd egyértelműen a következő lépés felelősét, feladatát és határidejét.</p>
-        <p-button
-          label="Projektinterjú megnyitása"
-          icon="pi pi-comments"
-          [outlined]="true"
-          [routerLink]="['/projects', projectId, 'interview']"
-          data-testid="open-project-interview-button"
-        />
-        <p-button
-          label="Markdown terv megnyitása"
-          icon="pi pi-file-edit"
-          [outlined]="true"
-          [routerLink]="['/projects', projectId, 'markdown']"
-          data-testid="open-markdown-button"
-        />
       </div>
       <p-tag
           [value]="statusLabel(current.cockpit.status)"
