@@ -59,7 +59,7 @@
     @if (!schema() && !round() && !projectArchived()) {
       <a
         class="back-link"
-        [routerLink]="['/projects', projectId]"
+        [routerLink]="['/projects', projectId, 'settings']"
         queryParamsHandling="preserve"
         fragment="project-basics"
         data-testid="edit-project-basics-link"

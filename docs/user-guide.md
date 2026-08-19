@@ -13,7 +13,7 @@ Megmutatja, mit érdemes rögzíteni, mit jelent az eredmény, mikor történik 
 - [A teljes napi workflow](#a-teljes-napi-workflow)
 - [Első projekted: vezetett gyorsindítás](#első-projekted-vezetett-gyorsindítás)
 - [Projektek és a portfolio](#projektek-és-a-portfolio)
-- [A projekt cockpit használata](#a-projekt-cockpit-használata)
+- [Projektállapot és Projektbeállítások](#projektállapot-és-projektbeállítások)
 - [A közös kérdésbank kezelése](#a-közös-kérdésbank-kezelése)
 - [Projektséma és kezdő interjú](#projektséma-és-kezdő-interjú)
 - [Interjú lezárása és ügyfélcsomag](#interjú-lezárása-és-ügyfélcsomag)
@@ -21,7 +21,7 @@ Megmutatja, mit érdemes rögzíteni, mit jelent az eredmény, mikor történik 
 - [Discovery follow-upok kezelése](#discovery-follow-upok-kezelése)
 - [Ügyfél-emlékeztetők](#ügyfél-emlékeztetők)
 - [Markdown-revíziók és átadási pillanatképek](#markdown-revíziók-és-átadási-pillanatképek)
-- [Audit history: mi történt a projekttel?](#audit-history-mi-történt-a-projekttel)
+- [Legutóbbi aktivitás és technikai audit](#legutóbbi-aktivitás-és-technikai-audit)
 - [Archiválás, visszaállítás és végleges törlés](#archiválás-visszaállítás-és-végleges-törlés)
 - [Hibahelyzetek és biztonságos folytatás](#hibahelyzetek-és-biztonságos-folytatás)
 - [Fogalomtár és állapotreferencia](#fogalomtár-és-állapotreferencia)
@@ -65,15 +65,15 @@ Az alkalmazás napi használatának lényege röviden:
 
 | Helyzet | Mit tegyél? | Mi lesz az eredmény? |
 | --- | --- | --- |
-| Új igény érkezett | Hozz létre projektet a kapcsolattartóval | Létrejön egy `DRAFT` cockpit |
+| Új igény érkezett | Hozz létre projektet a kapcsolattartóval | Létrejön egy `DRAFT` projekt, és megnyílik a felmérés indítása |
 | Elindul az igényfelmérés | Adj felelőst, következő lépést, határidőt, és válassz státuszt | A portfólióban mindenki ugyanazt az operatív állapotot látja |
 | Megvan a workshop kérdésköre | Tedd közzé a projektsémát | Rögzül, mely kérdések tartoznak ehhez a projekthez |
 | Elindul az interjú | Indíts kezdő interjúkört és rögzítsd a válaszokat | A kör saját kérdéspillanatképet kap |
 | Befejeződik a meeting | Zárd le akkor is, ha maradt hiány, majd küldd az ügyfélcsomagot most vagy később | Verziózott piszkozat készül; a hiányok a readinessben maradnak láthatók |
-| Tisztázottságot kell ellenőrizni | Tekintsd át a cockpit `Felkészültségi értékelés` kártyáját és kövesd a hiányok műveleteit | Aktuális kitöltöttség, felkészültség, tényezők és rendezett hiányok látszanak |
+| Tisztázottságot kell ellenőrizni | Nyisd meg a projekt `Felkészültség` oldalát, és kövesd a hiányok műveleteit | Aktuális kitöltöttség, felkészültség, tényezők és rendezett hiányok látszanak |
 | Új bizonytalanság merült fel | Hozz létre discovery follow-upot felelőssel és dátummal | A tisztázandó pont számonkérhetően megmarad |
 | Átadási pont vagy review következik | Generálj és ellenőrizz Markdown-revíziót | Letölthető, változatlan projektpillanatkép készül |
-| Lezárult az aktív munka | Archiváld a projektet | A történet megmarad, az aktív cockpit-módosítások leállnak |
+| Lezárult az aktív munka | Archiváld a projektet a `Projektbeállítások` veszélyzónájában | A történet megmarad, az aktív módosítások leállnak |
 
 Az alkalmazás nem kényszerít végig egy varázslón. A jó minőségű adat és a helyes sorrend a munkát végző csapat felelőssége.
 
@@ -110,15 +110,17 @@ Az alkalmazás nem mutatja meg, ki végzett egy műveletet. Egyezzetek meg a csa
 
 A felső navigáció két állandó kiindulópontot ad:
 
-- `Projects`: a projektportfólió és minden projekt cockpitjének bejárata;
+- `Projects`: a projektportfólió és minden projektkörnyezet bejárata;
 - `Settings`: a szervezeti szintű közös kérdésbank.
 
-Egy projekten belül az oldalak közötti visszalépő linkek őrzik a munkafolyamatot: `All projects` visszavisz a portfólióba, `Projekt áttekintő` vagy `Project cockpit` pedig az adott projekthez.
+Egy projekten belül a közös fejléc és a visszalépő link őrzi a munkafolyamatot: a visszalépés pontosan a korábbi Portfólió- vagy Aktív munkasor-állapotba visz, a projektfülek pedig ugyanabban a projektkörnyezetben maradnak.
 
 | Felület | Mire való? | Legfontosabb műveletek |
 | --- | --- | --- |
-| `Projects` | Aktív és archivált projektek áttekintése | Új projekt, cockpit megnyitása |
-| `Project cockpit` | Operatív állapot és projektközpont | Workspace mentése, follow-upok, e-mail, audit, lifecycle |
+| `Projects` | Aktív és archivált projektek áttekintése | Új projekt, következő feladat megnyitása |
+| `Projektállapot` | Napi munkaállapot és projektkoordináció | Következő lépés, felelős és határidő; Customer kommunikáció; legutóbbi aktivitás |
+| `Felkészültség` | Readiness és discovery tisztázások | Hiányok javítása, discovery follow-upok létrehozása és lezárása |
+| `Projektbeállítások` | Projektadminisztráció | Alapadatok, ügyfélkapcsolat, automatikus utánkövetés, életciklus, archiválás és törlés |
 | `Projektinterjú` | Projektséma, kezdő interjú és ügyfélcsomag | Séma elfogadása és első kör indítása, válaszadás, meeting lezárása, előnézet és küldés |
 | `Markdown specifikáció` | Változatlan kanonikus specifikációk | Revízió generálása, összehasonlítás, előnézet, letöltés |
 | `Base question bank` | Minden projekt közös kérdéskészlete | Kérdés létrehozása, új verziót létrehozó szerkesztés |
@@ -131,7 +133,7 @@ Az alábbi ábra a javasolt üzleti sorrendet mutatja. Nem rendszer által kiké
 
 ```mermaid
 flowchart LR
-    A[Projekt létrehozása] --> B[Cockpit és felelős kijelölése]
+    A[Projekt létrehozása] --> B[Projektállapot és felelős kijelölése]
     B --> C[Projektséma közzététele]
     C --> D[Kezdő interjú]
     D --> E[Meeting lezárása]
@@ -150,7 +152,7 @@ flowchart LR
 
 ### 1. Indítás és közös kontextus
 
-Hozd létre a projektet a megnevezett belső felelőssel, majd a cockpitben jelöld, hogy a következő feladat a belső felelősnél vagy az ügyfél kapcsolattartójánál van, mi az egyetlen konkrét következő lépés, és mikorra esedékes. A státusz azt fejezze ki, mi akadályozza vagy mi viszi előre az igényfelmérést.
+Hozd létre a projektet a megnevezett belső felelőssel. A `Projektállapot` oldalon jelöld, hogy a következő feladat a belső felelősnél vagy az ügyfél kapcsolattartójánál van, mi az egyetlen konkrét következő lépés, és mikorra esedékes. Az adminisztratív életciklus-állapotot a `Projektbeállítások` oldalon tartsd összhangban a valós helyzettel.
 
 ### 2. Kérdéskör rögzítése
 
@@ -162,7 +164,7 @@ Indíts kezdő interjúkört. Szöveges válasz után várd meg a `Mentve` álla
 
 ### 4. Felkészültség és nyitott tisztázások
 
-Az interjú értékelése után nyisd meg a cockpit `Felkészültségi értékelés` kártyáját. Az interjú közben felmerülő, később megválaszolandó pontokat ne rejtsd el egy hosszú válaszban. Hozz létre külön discovery follow-upot kategóriával, felelőssel, valódi céldátummal és következő lépéssel. Lezáráskor a döntést vagy választ is rögzítsd.
+Az interjú értékelése után nyisd meg a projekt `Felkészültség` oldalát. Az interjú közben felmerülő, később megválaszolandó pontokat ne rejtsd el egy hosszú válaszban. Hozz létre külön discovery follow-upot kategóriával, felelőssel, valódi céldátummal és következő lépéssel. Lezáráskor a döntést vagy választ is rögzítsd.
 
 ### 5. Pillanatkép és kommunikáció
 
@@ -187,9 +189,9 @@ Ez a gyorsindítás egy teljes, biztonságos első kört mutat. A részletes sza
 
 1. Nyisd meg a `Projects` oldalt, és válaszd a `New project` gombot.
 2. Add meg a projekt nevét, a kapcsolattartó nevét és e-mail-címét.
-3. Válaszd a `Create and open cockpit` gombot.
-4. A cockpit `Workspace` részében állítsd a státuszt `INTAKE_IN_PROGRESS` értékre.
-5. Ellenőrizd a belső felelős nevét, válaszd ki a következő feladat gazdáját (`Belső felelős` vagy `Ügyfél kapcsolattartó`), add meg a `Next action` és szükség szerint a `Due date and time` mezőt, majd válaszd a `Save workspace` gombot.
+3. Válaszd a projekt létrehozását és a felmérés megnyitását.
+4. A `Projektbeállítások` oldalon állítsd az életciklus-állapotot `Interjú folyamatban` értékre.
+5. A `Projektállapot` oldalon válaszd ki a következő feladat gazdáját (`PO/PM` vagy `Ügyfél`), add meg a következő lépést és szükség szerint a határidőt, majd válaszd a `Koordináció mentése` gombot.
 6. Nyisd meg az `Open project interview` oldalt.
 7. Ellenőrizd a kijelölt kérdéseket, majd válaszd a `Séma elfogadása és interjú indítása` gombot. Ez egy műveletként menti a kérdéssémát és indítja el az első interjúkört.
 8. Ha a séma mentése sikerült, de az interjú nem indult el, válaszd az `Interjú indításának újrapróbálása` gombot; a sémát ne hozd létre újra.
@@ -197,10 +199,10 @@ Ez a gyorsindítás egy teljes, biztonságos első kört mutat. A részletes sza
 10. A meeting végén válaszd a `Mentés, később küldöm` vagy a `Mentés és küldés` műveletet. A lezáráshoz nem kell minden üzleti hiányt kitölteni, de függőben lévő vagy hibás mentés nem maradhat.
 11. Küldés előtt olvasd át az ügyfélcsomag előnézetét és ellenőrizd a címzettet. A sikeres küldés változatlan verziót hoz létre.
 12. Ügyfél-módosítás esetén indíts új verziót, írd le a módosítás összefoglalását, szerkeszd a válaszokat, majd készíts új előnézetet és küldd el.
-13. Térj vissza a cockpitbe. Minden későbbi tisztázandó pontból hozz létre külön discovery follow-upot.
+13. Nyisd meg a `Felkészültség` oldalt. Minden későbbi tisztázandó pontból hozz létre külön discovery follow-upot.
 14. Átadás előtt nyisd meg az `Open Markdown plan` oldalt, és válaszd a `Generate Markdown revision` gombot.
 15. Ellenőrizd a `Content preview` tartalmát és a revízió metaadatait.
-16. Amikor már nincs aktív munka, térj vissza a cockpitbe, és archiváld a projektet.
+16. Amikor már nincs aktív munka, nyisd meg a `Projektbeállítások` oldalt, és archiváld a projektet a veszélyzónában.
 
 ### A gyorsindítás akkor kész, ha
 
@@ -210,7 +212,7 @@ Ez a gyorsindítás egy teljes, biztonságos első kört mutat. A részletes sza
 - a kezdő interjúkör lezárult;
 - minden még nyitott bizonytalanságnak van follow-up gazdája és dátuma;
 - a legfrissebb Markdown-revízió tartalmát valaki elolvasta;
-- az audit historyban megjelentek a fő mérföldkő-események.
+- a `Projektállapot` oldalon a legutóbbi munkához szükséges aktivitások érthetően megjelentek.
 
 ## Projektek és a portfolio
 
@@ -226,9 +228,9 @@ A `Projects` oldalon minden projekt egy kártya. A kártya megmutatja:
 - az aktuális lifecycle státuszt;
 - a következő feladat konkrét gazdáját, vagy a `Nincs kijelölve` jelzést;
 - a `Next action` értékét, vagy `Not defined` jelzést;
-- az `Open cockpit` belépési pontot.
+- a projekt aktuális elsődleges feladatához vezető belépési pontot.
 
-A lista a projekt saját workspace- vagy lifecycle-mentésének legutóbbi ideje szerint rendezi előre a kártyákat. Egy interjúválasz vagy follow-up önmagában nem feltétlenül mozgatja előre a projektet.
+A lista a projekt saját koordinációs vagy életciklus-mentésének legutóbbi ideje szerint rendezi előre a kártyákat. Egy interjúválasz vagy follow-up önmagában nem feltétlenül mozgatja előre a projektet.
 
 Azonos módosítási idő esetén a sorrend stabil marad. Az archivált projekt nem tűnik el: `ARCHIVED` státusszal ugyanebben a listában marad, hogy a történet később is megtalálható legyen.
 
@@ -277,9 +279,9 @@ A kereső, a jelölők, a frissítés, a lapozás és a sorműveletek billentyű
 3. Töltsd ki a `Customer contact name` mezőt a tényleges kapcsolattartó nevével; a mező legfeljebb 255 karaktert fogad el.
 4. Töltsd ki a `Customer contact email` mezőt érvényes, legfeljebb 320 karakteres e-mail-címmel.
 5. Ellenőrizd még egyszer a címet. A jelenlegi felületen később sem a projekt neve, sem a kapcsolattartó neve vagy e-mail-címe nem szerkeszthető.
-6. Válaszd a `Create and open cockpit` gombot.
+6. Válaszd a létrehozást és a felmérés megnyitását.
 
-Siker esetén a webapp létrehoz egy `DRAFT` projektet, és közvetlenül megnyitja a cockpitjét. A projekt már a portfólióban is látható.
+Siker esetén a webapp létrehoz egy `DRAFT` projektet, és közvetlenül a következő szükséges feladatra vezet. A projekt már a portfólióban is látható.
 
 Ha meggondoltad magad, a `Cancel` bezárja az űrlapot és nem hoz létre projektet. Ha az űrlap mezőhibát jelez, javítsd a kiemelt értéket; a projekt csak sikeres szerverválasz után jön létre.
 
@@ -287,96 +289,51 @@ Ha meggondoltad magad, a `Cancel` bezárja az űrlapot és nem hoz létre projek
 >
 > Ha a projekt még teljesen üres `DRAFT`, törölhető és helyesen újralétrehozható. Ha már van megőrzendő tevékenysége, archiváld, és a csapattal egyeztetett módon hozz létre helyes projektet. A régi történetet ne próbáld törléssel eltüntetni.
 
-## A projekt cockpit használata
+## Projektállapot és Projektbeállítások
 
-![A Digitális ügyfélportál mintaprojekt cockpitje státusszal, felelőssel, következő lépéssel és customer follow-up beállításokkal](assets/user-guide/02-cockpit.png)
+A projekt közös fejlécében ugyanaz a szerver által számított munkaállapot, elsődleges feladat és visszatérési út látszik minden projektoldalon. A régi, mindent egy helyre zsúfoló projektoldal helyett két világos felelősségű felületet használj.
 
-*A cockpit teteje a napi döntéshez szükséges négy adatot emeli ki: állapot, felelős, következő lépés és esedékesség.*
+### Projektállapot: a napi munkaközpont
 
-### Mire való a cockpit?
+A `Projektállapot` oldal a projekt nevét és aktuális munkaállapotát, az egyetlen elsődleges feladatot, a projektkoordinációt, az ügyféllevelezés állapotát és az utolsó öt munkához szükséges aktivitást mutatja.
 
-A cockpit az adott projekt központi operatív nézete. Innen nyitható meg a projektinterjú és a Markdown-oldal, itt kezelhető a workspace, az ügyfélkommunikáció, a discovery follow-up lista, az audit history és a projekt életciklusa.
+A koordinációban gyorsan szerkeszthető:
 
-A felső összefoglaló csak a legutóbb sikeresen mentett állapotot mutatja. Ha egy mezőt átírtál, de még nem választottad a `Save workspace` gombot, a kártyák és a projektlista nem tekinthetők frissnek.
+- a következő lépés felelőse: a megnevezett PO/PM vagy az ügyfélkapcsolattartó;
+- az egyetlen konkrét következő lépés;
+- a következő lépés határideje.
 
-### Lifecycle státuszok üzleti jelentése
+A `Koordináció mentése` csak ezt a három napi munkamezőt módosítja. Nem változtat projektnevet, kapcsolattartót, életciklus-állapotot, archiválást vagy automatikus ügyfél-utánkövetési beállítást. Sikeres mentés után a közös projektfejléc is a friss, szerver által számított állapotot mutatja.
 
-| Státusz | Mikor használd? | Mit nem jelent? |
+Az `Ügyféllevelezés` kártya megmutatja az új válaszok számát és a szükséges teendőt, majd a Customer kommunikációs oldalra vezet. A `Legutóbbi aktivitás` legfeljebb öt, magyarul összefoglalt üzleti eseményt mutat. Nyers eseménykód, JSON payload, ügyfélszöveg vagy titok nem jelenik meg az alkalmazotti felületen.
+
+### Projektbeállítások: adminisztráció és életciklus
+
+A `Projektbeállítások` oldal kezeli:
+
+- a projekt nevét, a belső PO/PM nevét és az ügyfélkapcsolattartó adatait;
+- az automatikus ügyfél-utánkövetés engedélyezését, időközét és végdátumát;
+- az adminisztratív életciklus-állapotot;
+- az archiválást, visszaállítást és a jogosult korai piszkozat végleges törlését.
+
+Az alapadatok csak az első kérdésséma elfogadásáig és aktív projektben szerkeszthetők. Ezután olvashatók maradnak, de a történeti azonosság védelmében nem írhatók át. Az automatikus ütemezés beállítása itt történik; a kézi ping megírása, előnézete, küldése és helyreállítása a Customer kommunikációs munkafelület feladata.
+
+### Életciklus-állapotok
+
+| Állapot | Mikor használd? | Mit nem jelent? |
 | --- | --- | --- |
-| `DRAFT` | Előkészítés; a projekt még szabadon formálódik | Nem jelenti, hogy törölhető: korábbi tevékenység ezt megakadályozhatja |
-| `INTAKE_IN_PROGRESS` | Aktív igényfelmérés, workshop vagy interjú folyik | Nem jelenti, hogy minden kérdésnek van válasza |
-| `WAITING_INTERNAL` | A következő érdemi lépés belső információra vagy döntésre vár | Nem automatikus; a felelősnek kell átállítania |
-| `WAITING_CUSTOMER` | A következő érdemi lépés ügyfélválaszra vár | Nem küld automatikusan levelet pusztán a státusz miatt |
-| `READY_FOR_PLANNING` | A felhasználó üzletileg tervezésre késznek jelöli | A státusz kiválasztása önmagában nem számít readiness értéket, nem kapuzza a munkafolyamatot, és nem tanúsít felkészültséget vagy teljességet |
-| `ARCHIVED` | Az aktív követés lezárt, a történet megmarad | Nem törlés; visszaállítható, de mindig `DRAFT` állapotba |
+| `Előkészítés alatt` | A projekt még formálódik | Nem jelenti automatikusan, hogy törölhető |
+| `Interjú folyamatban` | Aktív igényfelmérés, workshop vagy interjú folyik | Nem jelenti, hogy minden kérdésnek van válasza |
+| `Belső feladatra vár` | A következő érdemi lépés belső információra vagy döntésre vár | Nem automatikus; a csapat tartja naprakészen |
+| `Ügyfélre vár` | A következő érdemi lépés ügyfélválaszra vár | Önmagában nem küld levelet |
+| `Becslésre kész` | A csapat üzletileg tervezésre késznek jelöli | Nem formális jóváhagyás és nem readiness-tanúsítvány |
+| `Archivált` | Az aktív követés lezárt vagy szünetel, a történet megmarad | Nem törlés; visszaállítható |
 
-Az öt aktív státusz közül bármelyiket közvetlenül kiválaszthatod; nincs kényszerített státuszsorrend és nincs automatikus readiness-kapu. A csapatnak kell gondoskodnia arról, hogy a választott státusz megfeleljen a valós helyzetnek.
+A `Becslésre kész` állapotba lépés automatikusan létrehoz egy `MILESTONE` Markdown-revíziót `READY_FOR_PLANNING` mérföldkőnévvel. A revízió változatlan marad; téves állapotválasztást újabb helyes állapottal és szükség esetén új revízióval korrigálj.
 
-```mermaid
-stateDiagram-v2
-    direction LR
-    state "Aktív projekt — kézi státuszválasztás" as Active {
-        [*] --> DRAFT
-        state "Státusz kiválasztása" as MANUAL
-        DRAFT --> MANUAL
-        INTAKE_IN_PROGRESS --> MANUAL
-        WAITING_INTERNAL --> MANUAL
-        WAITING_CUSTOMER --> MANUAL
-        READY_FOR_PLANNING --> MANUAL
-        MANUAL --> DRAFT
-        MANUAL --> INTAKE_IN_PROGRESS
-        MANUAL --> WAITING_INTERNAL
-        MANUAL --> WAITING_CUSTOMER
-        MANUAL --> READY_FOR_PLANNING
-        note right of READY_FOR_PLANNING
-          Belépéskor automatikus MILESTONE
-          Markdown-revízió készül.
-        end note
-    }
-    Active --> ARCHIVED: Archive project
-    ARCHIVED --> DRAFT: Restore project — mindig DRAFT
-```
+### Archivált projekt
 
-### A workspace mezői
-
-| Mező | Üzleti jelentés | Jó kitöltési minta |
-| --- | --- | --- |
-| `Lifecycle status` | Hol tart vagy mire vár az igényfelmérés | `WAITING_CUSTOMER`, ha ténylegesen ügyfélválasz kell |
-| `Belső felelős` | A projektet vivő PO/PM munkatárs konkrét neve | „Kiss Anna” |
-| `Következő feladat gazdája` | A megnevezett belső felelős vagy az ügyfél megnevezett kapcsolattartója | A ténylegesen következőként cselekvő fél |
-| `Next action` | Egyetlen konkrét, végrehajtható következő lépés | „Adatgazdával az API elérhetőségének megerősítése” |
-| `Due date and time` | Mikorra kell megtörténnie a következő lépésnek | A csapat helyi idejében kiválasztott pontos időpont |
-
-A `Következő feladat gazdája`, a `Next action` és a határidő elhagyható. Az üres érték azonban a projektkártyán `Nincs kijelölve`, `Nincs meghatározva` vagy `Nincs határidő` formában jelenik meg, ezért csak akkor hagyd üresen, ha ez valóban a közös álláspont.
-
-A `Next action` legfeljebb 10 000 karakter lehet, de a jó következő lépés rövid, cselekvő igével kezdődik, egy felelőshöz köthető és ellenőrizhető eredménye van. Ne használd jegyzőkönyv vagy backlog helyett.
-
-A dátumválasztó a helyi dátumot és időt mutatja, a mentés pedig azt pontos időpillanatként őrzi meg. Ha más időzónában dolgozó kollégával egyeztetsz, a mentés előtt mondd ki az időzónát is.
-
-### Workspace mentése
-
-**Előfeltétel:** a projekt nem archivált, és nincs más mentés, lifecycle-művelet, e-mail-küldés vagy follow-up módosítás folyamatban.
-
-1. Módosítsd a szükséges mezőket.
-2. Ellenőrizd, hogy a státusz a valós üzleti helyzetet írja le.
-3. Válaszd a `Save workspace` gombot.
-4. Várd meg a sikerüzenetet és a felső összefoglaló frissülését.
-
-Mentés közben a kapcsolódó műveletek letiltva maradhatnak. Ez megakadályozza, hogy ugyanarról az oldalról két egymással versengő változtatást indíts.
-
-Hiba esetén az utoljára sikeresen mentett szerverállapot marad érvényes. Ellenőrizd a mezőhibát vagy a kapcsolatot, majd ismételd meg a mentést. Ha közben egy másik munkatárs archiválta vagy módosította a projektet, töltsd újra a cockpitot, és a friss állapotból dönts.
-
-### A `READY_FOR_PLANNING` mellékhatása
-
-Amikor a projekt más aktív státuszból `READY_FOR_PLANNING` állapotba kerül, a rendszer automatikusan létrehoz egy `MILESTONE` Markdown-revíziót `READY_FOR_PLANNING` mérföldkőnévvel. Ez akkor is megtörténik, ha a státuszválasztás üzletileg elhamarkodott volt.
-
-Sikeres mentés után ezért:
-
-1. nyisd meg az `Open Markdown plan` oldalt;
-2. ellenőrizd az új mérföldkő-revízió forrását és előnézetét;
-3. ha hiányt találsz, állítsd vissza a projekt valós aktív státuszát, pótold az adatot, majd később jelöld újra tervezésre késznek.
-
-A már létrejött revízió nem törölhető és nem írható át; a helyesbítés újabb revízióban jelenik meg.
+Archiválás és törlés kizárólag a `Projektbeállítások` elkülönített veszélyzónájában érhető el, és explicit megerősítést kér. Archiválás után a projektoldalak és beállítások olvashatók maradnak, a módosítások letiltódnak. Új munka előtt előbb válaszd a `Projekt visszaállítása` műveletet; a visszaállított életciklus-állapot mindig `Előkészítés alatt`.
 
 ## A közös kérdésbank kezelése
 
@@ -506,7 +463,7 @@ A discovery follow-upok és customer follow-up beállítások jelenleg nem rész
 
 Első megnyitáskor a felület minden aktuálisan aktív alapkérdést kijelöl. Ez kiindulási ajánlás, nem kötelező teljes lista.
 
-1. A cockpitben válaszd az `Open project interview` gombot.
+1. A projekt közös navigációjában nyisd meg a `Felmérés` oldalt.
 2. Olvasd el az `Aktív alapkérdések kiválasztása` listát.
 3. Hagyd kijelölve az adott projekthez szükséges kérdéseket, a nem relevánsakat vedd ki.
 4. Legalább egy kérdésnek kijelölve kell maradnia.
@@ -640,7 +597,7 @@ Lezárás után újabb kezdő interjúkört is indíthatsz. Az új kör az akkor
 
 ![Elérhető felkészültségi értékelés összesített kitöltöttséggel, tényezőkkel és egy ellenőrzőlista-hiány javítására mutató művelettel](assets/user-guide/07-readiness-review.png)
 
-*A cockpitban látható értékelés a kanonikus kezdő interjú aktuális állapotát, a tényezőket és a következő biztonságos javítási irányt mutatja; nem Decision Score és nem ajánlott döntés.*
+*A `Felkészültség` oldalon látható értékelés a kanonikus kezdő interjú aktuális állapotát, a tényezőket és a következő biztonságos javítási irányt mutatja; nem Decision Score és nem ajánlott döntés.*
 
 ### Mikor jelöld `Részben megvan` vagy `Nem releváns` értékre?
 
@@ -653,14 +610,14 @@ Ne használd a `Nem releváns` választ a hiányos információ elfedésére. Ha
 
 ### Az értékelés olvasása és javítása
 
-Az értékelés a cockpitban töltődik be. Elérhető állapotban ezt látod:
+Az értékelés a `Felkészültség` oldalon töltődik be. Elérhető állapotban ezt látod:
 
 - `Interjú kitöltöttsége`: a releváns ellenőrzőlista-elemek állapota; a `Nem releváns` elemeket nem számolja.
 - `Felkészültség`: a súlyozott összkép; a sáv jelzi, hogy pontosítás szükséges, becslés előkészíthető, becslésre kész vagy fejlesztésre kész.
 - `Értékelési tényezők`: külön mutatják az alapinformációk, az üzleti tisztázottság, a felelősség, az ellenőrzőlista és a discovery utánkövetés állapotát.
 - `Rendezett hiányok`: a `Kritikus`, `Fontos`, majd `Pontosítás` sorrendben megjelenő, általánosított javítási jelzések. A lista nem jelenít meg interjúválaszt, `Nem releváns` indoklást vagy discovery follow-up tartalmat.
 
-Minden hiány művelete a megfelelő munkafelületre vezet: a `Workspace megnyitása` a felelőshöz, a `Kérdés megnyitása` a megfelelő interjúkérdéshez, a `Discovery utánkövetések megnyitása` pedig a follow-up listához. Javítsd ott az adatot vagy zárd le a follow-upot, mentsd sikeresen, majd nézd meg a frissült értékelést. Workspace- vagy discovery-módosítás után a Cockpit oldal újratöltése nélkül is frissülhet az értékelés.
+Minden hiány művelete a megfelelő munkafelületre vezet: a koordinációs hiány a `Projektállapot` szerkesztőjéhez, a kérdéshiány a megfelelő interjúkérdéshez, a Discovery-hiány pedig ugyanazon `Felkészültség` oldal follow-up listájához. Javítsd ott az adatot vagy zárd le a follow-upot, mentsd sikeresen, majd ellenőrizd a frissült értékelést.
 
 ### Ha az értékelés nem elérhető vagy nem töltődik be
 
@@ -670,13 +627,13 @@ Minden hiány művelete a megfelelő munkafelületre vezet: a `Workspace megnyit
 | `Az értékeléshez frissített interjúséma szükséges` | A forráskör nem a jelenlegi kanonikus kérdéskészletet tartalmazza | Frissítsd a projektsémát, majd indíts új kezdő interjút; ne próbáld a régi kört kézzel átírni |
 | Betöltési hiba és `Újrapróbálás` | A felkészültségi kérés nem fejeződött be | Ellenőrizd a kapcsolatot, válaszd az `Újrapróbálás` gombot, és csak sikeres betöltés után hozz döntést az értékekből |
 
-Az elérhetetlen vagy hibás értékelés nem akadályozza meg a Workspace és a discovery follow-up kezelését. Mentsd ezeket a szokásos módon; az értékelés helyreállása után ellenőrizd újra a hiányokat. A `Felkészültség` és a Decision Score egyaránt döntéstámogatás: egyik sem helyettesít üzleti döntést vagy készít automatikus kimenetet.
+Az elérhetetlen vagy hibás értékelés nem akadályozza meg a projektkoordináció és a discovery follow-up kezelését. Mentsd ezeket a saját munkafelületükön; az értékelés helyreállása után ellenőrizd újra a hiányokat. A `Felkészültség` és a Decision Score egyaránt döntéstámogatás: egyik sem helyettesít üzleti döntést vagy készít automatikus kimenetet.
 
 ## Döntési értékelés és becslési ajánlás
 
-A cockpit `Döntési értékelés` kártyája hat, projekt-szintű 1–5 értékelést tart meg: üzleti érték, stratégiai illeszkedés, sürgősség, bizonyosság, komplexitás és kockázat. A komplexitás és a kockázat fordított irányban számít. Az értékeket egyszerre, a `Döntési értékelés mentése` gombbal menti a rendszer; a hiányos értékelés megmarad, de nem kap részpontszámot vagy részleges ajánlást.
+A külön `Döntési értékelés` oldal hat, projekt-szintű 1–5 értékelést tart meg: üzleti érték, stratégiai illeszkedés, sürgősség, bizonyosság, komplexitás és kockázat. A komplexitás és a kockázat fordított irányban számít. Az értékeket egyszerre, a `Döntési értékelés mentése` gombbal menti a rendszer; a hiányos értékelés megmarad, de nem kap részpontszámot vagy részleges ajánlást.
 
-**Előfeltétel a pontszámhoz:** mind a hat érték megvan, és a projekt aktuális kezdő interjúja a teljes, kanonikus sémából ad elérhető felkészültséget. Enélkül a kártya megmondja, hogy melyik feltétel hiányzik. A Workspace és a discovery follow-upok ilyenkor is a megszokott módon szerkeszthetők.
+**Előfeltétel a pontszámhoz:** mind a hat érték megvan, és a projekt aktuális kezdő interjúja a teljes, kanonikus sémából ad elérhető felkészültséget. Enélkül az oldal megmondja, hogy melyik feltétel hiányzik. A projektkoordináció és a discovery follow-upok ilyenkor is a megszokott módon szerkeszthetők.
 
 A szerver jeleníti meg a `Decision Score`-t, annak `Magas` (legalább 65), `Közepes` (40–64) vagy `Alacsony` (40 alatti) címkéjét, a felkészültséget és a becslést blokkoló hiányok darabszámát. A kártya a súlyokat és a fordított irányt is megmutatja, de nem mutat külön dimenziónkénti részpontokat és nem tartalmaz kliensoldali pontszámítást.
 
@@ -687,7 +644,7 @@ Az ajánlás sorrendje szándékosan szigorú:
 3. `Becslés előkészíthető`, ha a Score legalább 40 és a felkészültség legalább 65.
 4. Minden más esetben `Pontosítás szükséges`.
 
-Ezek ajánlások, nem jóváhagyások: a rendszer nem változtat projektstátuszt, nem rögzít Go/Conditional Go/No-Go döntést, és nem készít becslést vagy generált dokumentumot. Ha új `INITIAL_INTAKE` kör lesz aktuális, a hat megadott érték megmarad, de a Score és az ajánlás az új forrás felkészültségéből frissül. Archivált projektben az értékelés látható, de csak olvasható; visszaállítás után ismét menthető. Mentési vagy betöltési hiba esetén az erre a kártyára vonatkozó hiba és `Újrapróbálás` jelenik meg, a többi cockpit-munka nem akad el.
+Ezek ajánlások, nem jóváhagyások: a rendszer nem változtat projektstátuszt, nem rögzít Go/Conditional Go/No-Go döntést, és nem készít becslést vagy generált dokumentumot. Ha új `INITIAL_INTAKE` kör lesz aktuális, a hat megadott érték megmarad, de a Score és az ajánlás az új forrás felkészültségéből frissül. Archivált projektben az értékelés látható, de csak olvasható; visszaállítás után ismét menthető. Mentési vagy betöltési hiba esetén az oldal saját hibája és `Újrapróbálás` művelete jelenik meg, a többi projektmunka nem akad el.
 
 ## Discovery follow-upok kezelése
 
@@ -716,9 +673,9 @@ A discovery follow-up olyan tisztázandó üzleti tétel, amelynek van egyértel
 
 ### Új follow-up létrehozása
 
-**Előfeltétel:** a projekt nem archivált, és nincs más cockpit-módosítás folyamatban.
+**Előfeltétel:** a projekt nem archivált, és nincs más discovery-módosítás folyamatban.
 
-1. A cockpit `Discovery follow-ups` részében válaszd ki a `Category` értéket.
+1. A `Felkészültség` oldal `Discovery follow-ups` részében válaszd ki a `Category` értéket.
 2. A `Question` mezőbe egyetlen, megválaszolható tisztázást írj, legfeljebb 10 000 karakterben.
 3. Az `Owner` mezőben nevezd meg azt a személyt vagy egyértelmű szerepet, akinél a következő labda van; legfeljebb 255 karakter használható.
 4. A `Due date` mezőben valódi naptári céldátumot adj meg. Ez dátum, nem időpont.
@@ -784,10 +741,10 @@ Ha archivált állapotban kell valódi új döntést rögzíteni, előbb válasz
 
 ## Ügyfél-emlékeztetők
 
-A cockpit `Customer follow-up` része két összetartozó műveletet fog össze:
+A Customer utánkövetés két összetartozó, de külön munkafelületű műveletből áll:
 
-1. a follow-up beállítások egy jövőbeli automatikus emlékeztető-sorozatot vezérelnek;
-2. a mentett ügyfél-ping piszkozatból ellenőrzött előnézet után egyetlen kézi levél küldhető.
+1. a `Projektbeállítások` oldali utánkövetési beállítások egy jövőbeli automatikus emlékeztető-sorozatot vezérelnek;
+2. a Customer kommunikációs oldalon a mentett ügyfél-ping piszkozatból ellenőrzött előnézet után egyetlen kézi levél küldhető.
 
 Mindkettő a projekt létrehozásakor rögzített `Customer contact email` címre küld. A címzett nem írható felül. A kézi küldés előtt a rendszer pontos előnézetben mutatja a címzettet, a tárgyat és a teljes egyszerű szöveges levelet. A Claude Code-nak szánt Markdown és az interjúcsomag nem része ennek a levélnek.
 
@@ -805,11 +762,12 @@ Az Interview customer handoff az egyetlen teljes ügyfél-összefoglaló küldé
 
 Az alapértelmezett cadence 10 080 perc, vagyis hét nap, de ez csak kiindulási érték. A projekt valós kommunikációs megállapodása szerint állítsd be.
 
-1. Előbb ments egy nem üres ügyfél-ping piszkozatot.
-2. Állítsd be az engedélyezést, a cadence értéket és szükség esetén a `Stop after` időpontot.
-3. Engedélyezett ütemezésnél a lejárat csak jövőbeli időpont lehet.
-4. Válaszd a `Save follow-up settings` gombot.
-5. Ellenőrizd az `Automatic pings`, `Cadence`, `Expires` és `Next ping` összefoglalót.
+1. A Customer kommunikációs oldalon előbb ments egy nem üres ügyfél-ping piszkozatot.
+2. Nyisd meg a `Projektbeállítások` oldalt.
+3. Állítsd be az engedélyezést, a cadence értéket és szükség esetén a `Stop after` időpontot.
+4. Engedélyezett ütemezésnél a lejárat csak jövőbeli időpont lehet.
+5. Válaszd a `Save follow-up settings` gombot.
+6. Ellenőrizd az `Automatic pings`, `Cadence` és `Expires` összefoglalót.
 
 Ha bekapcsolod az automatikát, a következő ping a mentés időpontjától számított cadence alapján ütemeződik. Ha kikapcsolod, a `Next ping` megszűnik. Üres `Stop after` esetén az ütemezés nem jár le magától; a csapatnak kell kikapcsolnia vagy archiválnia a projektet.
 
@@ -843,16 +801,16 @@ Lejárat után az automatikus feldolgozás kikapcsolja az ütemezést és törli
 
 A kézi ping akkor is használható, ha az automatikus ütemezés `Disabled`. A piszkozat kötelező, a kapcsolódó nyitott Discovery follow-up opcionális. A levélbe csak a megírt üzenet, valamint választás esetén a kérdés, a következő lépés és a határidő kerül. A felelős, kategória, válasz/döntés, forráshivatkozás, azonosítók, auditadatok, Markdown és Claude-instrukciók kimaradnak. A piszkozat környező szóközeit a szerver levágja; a mentett tartalom nem lehet üres és legfeljebb 10 000 karakteres.
 
-1. Írd meg az `Üzenet az ügyfélnek` mezőt, és szükség esetén válassz egy nyitott Discovery follow-upot.
-2. Válaszd a `Piszkozat mentése` gombot. Ha közben más mentett, a saját szöveged megmarad; csak az `Aktuális piszkozat újratöltése` írja felül. A ping-piszkozat és az automatikus cadence külön űrlap: az egyik mentése nem dobja el a másik még nem mentett módosítását.
+1. Nyisd meg a Customer kommunikációs oldalt, írd meg az `Üzenet az ügyfélnek` mezőt, és szükség esetén válassz egy nyitott Discovery follow-upot.
+2. Válaszd a `Piszkozat mentése` gombot. Ha közben más mentett, a saját szöveged megmarad; csak az `Aktuális piszkozat újratöltése` írja felül. Az automatikus ütemezés ettől külön, a `Projektbeállítások` oldalon kezelhető.
 3. Válaszd a dedikált postafiókot, vagy add meg a feladó nevét és pontos `@pte.hu` címét. A projekt a legutóbb sikeresen használt feladót megjegyzi; a jóváhagyott név és cím együtt kerül a Microsoft Graph levél `from` mezőjébe.
 4. Válaszd a `Pontos előnézet` gombot, majd ellenőrizd a feladót, a címzettet, a tárgyat és a teljes levélszöveget.
 5. A `Mégse` visszavisz az előnézetet megnyitó gombra. A `Küldés az ügyfélnek` egyszer használható előnézeti tokennel indítja a levelet.
-6. Várd meg az `Átadva a levelezőrendszernek.` sikerüzenetet, majd ellenőrizd a `Last ping`, `Last delivery` és az audit history értékét. Ez a Graph-elfogadást bizonyítja, nem a kézbesítést vagy az olvasást.
+6. Várd meg az `Átadva a levelezőrendszernek.` sikerüzenetet, majd ellenőrizd a legutóbbi ping és kézbesítési kísérlet állapotát. Ez a Graph-elfogadást bizonyítja, nem a kézbesítést vagy az olvasást.
 
 Ha az előnézet óta megváltozik a feladó, a címzett, a piszkozat vagy a hivatkozott follow-up, a küldés konfliktussal leáll. Töltsd újra az aktuális állapotot, mentsd újra a szándékos módosítást, és készíts új előnézetet. Sikertelen Graph-küldéskor `FAILED` állapot, biztonságos hibakód és redaktált audit-esemény marad; az audit nem tartalmazza a címzettet vagy a levél szövegét. Ugyanazon logikai ping újrapróbálása megtartja az immutable outbound kommunikációt, a correspondence-et és a Reply-To azonosságát; egy későbbi új ping új azonosságokat kap.
 
-Amíg egy kézi attempt `SENDING`, a cockpit más módosításai letiltva maradnak. A felület rövid időközönként újraolvassa ezt az állapotot, ezért a bizonyított siker, hiba vagy a 15 perces lease lejárata oldalfrissítés nélkül feloldja a zárolást. Ha a Graph-kérés eredménye a levél átadása után nem bizonyítható, vagy a lease lejár, a rendszer `UNKNOWN` állapotot őriz meg. Ellenőrizd a kimenő postafiókot. Változatlan piszkozatnál csak ezután válaszd az `Ellenőriztem, újraküldöm`, majd a `Kockázat elfogadása és újraküldés` műveletet. Ha közben szándékosan módosítottad a piszkozatot, mentsd el, készíts friss előnézetet, majd azon válaszd a `Kockázat elfogadása és friss küldés` műveletet. Mindkét elfogadás a felületen látható, és az adott bizonytalan attempt azonosítójához kötődik; a rendszer nem tölti ki csendben.
+Amíg egy kézi attempt `SENDING`, a ping munkafelület saját módosításai letiltva maradnak. A felület rövid időközönként újraolvassa ezt az állapotot, ezért a bizonyított siker, hiba vagy a 15 perces lease lejárata oldalfrissítés nélkül feloldja a zárolást. Ha a Graph-kérés eredménye a levél átadása után nem bizonyítható, vagy a lease lejár, a rendszer `UNKNOWN` állapotot őriz meg. Ellenőrizd a kimenő postafiókot. Változatlan piszkozatnál csak ezután válaszd az `Ellenőriztem, újraküldöm`, majd a `Kockázat elfogadása és újraküldés` műveletet. Ha közben szándékosan módosítottad a piszkozatot, mentsd el, készíts friss előnézetet, majd azon válaszd a `Kockázat elfogadása és friss küldés` műveletet. Mindkét elfogadás a felületen látható, és az adott bizonytalan attempt azonosítójához kötődik; a rendszer nem tölti ki csendben.
 
 Archivált projektben a mentett ping olvasható marad, de a szerkesztés, előnézet és küldés letiltott. Ha a munka valóban újraindult, előbb állítsd vissza a projektet, ellenőrizd a címzettet és a hivatkozott follow-up nyitott állapotát, majd készíts friss előnézetet.
 
@@ -881,7 +839,7 @@ A revízió egy adott időpont projektállapotának változatlan, kanonikus Mark
 
 A forráspillanatkép jelenleg tartalmazza:
 
-- a projekt nevét, kapcsolattartóját és workspace-adatait;
+- a projekt nevét, kapcsolattartóját és koordinációs adatait;
 - a létrehozáskor elérhető legfrissebb projektsémát és annak kérdéseit;
 - a projekt addigi interjúköreit;
 - a körök kérdéspillanatképeit és mentett válaszait;
@@ -893,13 +851,13 @@ Az opcionális sablonblokkok a közvetlenül előttük álló címsorral együtt
 - a customer follow-up ütemezést és pingállapotot;
 - a később, más revízió után beírt adatokat.
 
-Ezért átadáskor a Markdown mellett külön ellenőrizd a cockpit discovery follow-up listáját is.
+Ezért átadáskor a Markdown mellett külön ellenőrizd a `Felkészültség` oldal discovery follow-up listáját is.
 
 ### Az első revízió létrehozása
 
 Revízió nélkül a `Revision history` rész a `No Markdown revisions yet` állapotot mutatja.
 
-1. A cockpitben válaszd az `Open Markdown plan` gombot.
+1. A projekt közös navigációjában nyisd meg a `Markdown terv` oldalt.
 2. A `Publikált sablon` mezőben válaszd ki a dokumentum szerkezetét. Az első alkalommal az `Alapértelmezett projektterv`, később a projekt utolsó sikeres választása jelenik meg.
 3. A `Generation reason` mezőben válassz okot.
 4. Szükség esetén add meg a `Milestone` nevet.
@@ -964,49 +922,13 @@ A globális navigáció `Markdown beállítások` oldalán több szervezeti sabl
 
 A felsorolt placeholderek zárt, dokumentált készletet alkotnak; a felület mindegyiknél jelzi a magyar megnevezést és azt, hogy az adat mindig rendelkezésre áll-e, vagy opcionálisan elhagyható. A `?` jelölés (például `{{project.readiness?}}`) külön Markdown blokkban álló opcionális teljes blokkot jelent; ismeretlen, hibás vagy szövegbe ágyazott opcionális placeholderrel a draft nem menthető vagy publikálható. A sablon nem futtat kódot és nem fér hozzá raw audit payloadhoz.
 
-## Audit history: mi történt a projekttel?
+## Legutóbbi aktivitás és technikai audit
 
-Az `Audit history` a cockpitben a fontosabb projekt-eseményeket mutatja. Arra való, hogy vissza tudd követni a fő mérföldköveket és küldési kísérleteket. Nem teljes mezőszintű módosításnapló, és nem felhasználóhoz rendelt biztonsági audit.
+A `Projektállapot` oldal `Legutóbbi aktivitás` kártyája az alkalmazotti munkához szükséges, legfeljebb öt legfrissebb üzleti eseményt mutatja magyar összefoglalóval és időponttal. A rendszer előbb kizárja a belső diagnosztikai eseményeket, és csak ezután választja ki az öt legfrissebbet.
 
-### A lista használata
+A teljes technikai audit továbbra is megmarad üzemeltetési és bizonyítási célra, de nem része az alkalmazotti felületnek. Nyers eseménykódot, payloadot vagy Customer-tartalmat ne keress és ne másolj a napi projektmunkába. Ha részletes technikai bizonyíték szükséges, azt az üzemeltető a védett API- és adatbázis-határon ellenőrizze.
 
-- A legújabb esemény van elöl.
-- Egy oldalon legfeljebb 10 esemény jelenik meg.
-- A `Previous` és `Next` gombbal mozoghatsz az oldalak között.
-- A `Showing … of …` felirat jelzi a látható tartományt és az összes esemény számát.
-- A `Retry audit history` csak az auditlista betöltését ismétli meg; a projekt többi adata ettől nem változik.
-- Üres állapotban a `No audit events have been recorded for this project yet.` üzenet jelenik meg.
-
-Minden eseménynek van típusa, időpontja és egy JSON-formátumú payloadja. A payload az esemény értelmezéséhez szükséges azonosítókat és állapotokat mutatja. Ne tekintsd végfelhasználói riportnak, és ne következtess belőle olyan adatra, amely nincs benne.
-
-### Eseményszótár
-
-| Eseménytípus | Mit igazol? |
-| --- | --- |
-| `PROJECT_ARCHIVED` | A projekt aktív státuszból `ARCHIVED` állapotba került |
-| `PROJECT_RESTORED` | Az archivált projekt `DRAFT` állapotba került vissza |
-| `PROJECT_QUESTION_SCHEMA_PUBLISHED` | Új projektséma-verzió készült, megadott bankverzióból és kérdésszámmal |
-| `INTERVIEW_ROUND_CREATED` | Új kezdő interjúkör és kérdéspillanatkép jött létre |
-| `ROUND_ANSWER_SAVED` | Egy körkérdéshez nem üres válasz mentődött |
-| `ROUND_ANSWER_CLEARED` | Egy korábbi válasz értéke üres állapotra változott |
-| `INTERVIEW_ROUND_ENDED` | A meeting lezárult és létrejött az első ügyfélcsomag-piszkozat |
-| `INTERVIEW_HANDOFF_REVISION_STARTED` | Egy elküldött csomag után új, szerkeszthető verzió indult |
-| `INTERVIEW_HANDOFF_SENT` | Az ügyfélcsomag adott, változatlan verziójának küldése sikerült |
-| `INTERVIEW_HANDOFF_FAILED` | Ismert kézbesítési hiba történt; ugyanaz a csomag újrapróbálható |
-| `INTERVIEW_HANDOFF_UNKNOWN` | A megszakadt küldés eredménye nem bizonyítható, kézi ellenőrzés kell |
-| `DISCOVERY_FOLLOW_UP_CREATED` | Új, felelőshöz és dátumhoz kötött discovery-tétel jött létre |
-| `DISCOVERY_FOLLOW_UP_UPDATED` | Nyitott discovery-tétel valódi módosítása; a payload csak a `followUpId` és `changedFields` mezőt tartalmazza, utóbbiban csak a megváltozott mezők neveit, szerkesztett szöveget vagy értéket nem |
-| `DISCOVERY_FOLLOW_UP_RESOLVED` | A tétel terminális státuszt kapott; a teljes döntésszöveg nincs az audit payloadban |
-| `MARKDOWN_REVISION_CREATED` | Új, változatlan Markdown-revízió készült |
-| `FOLLOW_UP_SETTINGS_UPDATED` | Az automatikus ping engedélyezése, cadence-e vagy lejárata változott |
-| `FOLLOW_UP_PING_SENT` | Kézi vagy automatikus follow-up ping küldési kísérlete sikerült |
-| `FOLLOW_UP_PING_FAILED` | A ping küldése nem sikerült; biztonságos hibakód maradt |
-| `CUSTOMER_REVIEW_EMAIL_SENT` / `CUSTOMER_REVIEW_EMAIL_FAILED` | Csak korábban létrejött, történeti legacy customer-review esemény; új ilyen küldés már nem indítható |
-| `CUSTOMER_FOLLOW_UP_DRAFT_UPDATED` | Az ügyfél-ping piszkozata vagy hivatkozása megváltozott; az esemény csak verziót, hivatkozás-jelzőt és hosszt tárol |
-| `CUSTOMER_FOLLOW_UP_PING_SENT` / `CUSTOMER_FOLLOW_UP_PING_FAILED` | Előnézetből indított ügyfél-ping kézbesítési kísérlete; a címzett és a levélszöveg nem kerül az auditba |
-| `CUSTOMER_FOLLOW_UP_PING_UNKNOWN` | A 15 perces kézbesítési lease lejárt, ezért a korábbi küldés eredménye kézi ellenőrzést igényel; az esemény nem tartalmaz címzettet vagy levélszöveget |
-
-Projekt létrehozásáról és közönséges workspace-mentésről nem készül teljes, felhasználóhoz kötött auditbejegyzés. Az auditból az sem látszik, ki kattintott. Ha szervezeti felelősség vagy jóváhagyó személy bizonyítása szükséges, azt a jelenlegi Project Maker önmagában nem biztosítja.
+A Project Maker auditja nem teljes mezőszintű módosításnapló és nem bizonyítja, ki kattintott. Ha szervezeti felelősség vagy jóváhagyó személy bizonyítása szükséges, azt külön szervezeti kontrollnak kell biztosítania.
 
 ## Archiválás, visszaállítás és végleges törlés
 
@@ -1019,13 +941,13 @@ Az archiválás és a törlés üzleti jelentése teljesen különböző:
 
 **Mikor használd?** Ha az aktív discovery-követés befejeződött vagy szünetel, de a projekt története később még kellhet.
 
-1. Győződj meg róla, hogy nincs workspace-mentés, follow-up feloldás vagy e-mail-küldés folyamatban.
+1. Győződj meg róla, hogy nincs koordinációmentés, follow-up feloldás vagy e-mail-küldés folyamatban.
 2. Ellenőrizd, hogy a legfontosabb válaszok és döntések mentve vannak.
 3. Szükség esetén generálj záró Markdown-revíziót.
 4. Válaszd az `Archive project` gombot.
 5. Várd meg a `Project archived.` sikerüzenetet és az `ARCHIVED` státuszt.
 
-Az archivált projekt a portfólióban marad. A cockpit workspace-mezői, a customer follow-up műveletek, valamint a discovery follow-up létrehozás és feloldás letiltottak. A listák és az audit továbbra is olvashatók.
+Az archivált projekt a portfólióban marad. A koordináció, a Customer utánkövetési műveletek, valamint a discovery follow-up létrehozás és feloldás letiltott. A projektoldalak, a megőrzött tartalom és a legutóbbi üzleti aktivitás továbbra is olvasható.
 
 A jelenlegi kiadásban az interjú- és Markdown-oldal közvetlen útvonala archiválás után is megnyitható lehet. Ezt ne értelmezd engedélyként új tartalom létrehozására. A biztonságos szabály: előbb `Restore project`, utána új séma, kör, válasz vagy revízió.
 
@@ -1083,7 +1005,7 @@ A Project Maker gyorsan jelez, ha egy kérés nem hajtható végre. A hibaüzene
 | Látható helyzet | Mi marad biztonságban? | Következő felhasználói lépés |
 | --- | --- | --- |
 | A webapp vagy az API nem elérhető | A korábban sikeresen mentett szerveradat megmarad; a még nem mentett szöveges piszkozat csak az aktuális lapon lehet látható | Ne nyiss párhuzamos másolatot. Várj a kapcsolat helyreállására, majd az oldal saját retry gombjával vagy frissítéssel ellenőrizd az állapotot |
-| `Projects`, cockpit, interjú, kérdésbank vagy Markdown betöltési hiba | A betöltés nem módosít adatot | Válaszd a `Try again`, `Retry` vagy `Újrapróbálás` műveletet. Cockpit-hibánál a `Return to projects` biztonságosan visszavisz a listához; ismételt hiba esetén jelezd az üzemeltetőnek |
+| Portfólió-, projektoldal-, interjú-, kérdésbank- vagy Markdown-betöltési hiba | A betöltés nem módosít adatot | Válaszd az oldal saját `Try again`, `Retry` vagy `Újrapróbálás` műveletét. A közös projektfejlécből vagy visszalépő linkkel biztonságosan visszatérhetsz; ismételt hiba esetén jelezd az üzemeltetőnek |
 | A projekt nem található | Más projekt nem változik | Térj vissza a `Projects` listára. Ellenőrizd, hogy a projektet nem törölték-e, és a listából nyisd meg újra |
 | A kiválasztott Markdown-revízió nem található | A többi revízió és projektadat megmarad | Térj vissza a revision historyhoz, és válassz létező revíziót |
 | `409` ütközés vagy elavult oldalállapot | A szerver az egyik érvényes állapotot megőrizte; az elutasított kérés nem írta felül | Discovery follow-up szerkesztési ütközésnél ne ezt az általános oldal-újratöltést használd; lásd a következő sort. Más esetben töltsd újra az oldalt, olvasd el a friss állapotot, majd csak szükség esetén ismételd meg a módosítást |
@@ -1103,8 +1025,8 @@ A Project Maker gyorsan jelez, ha egy kérés nem hajtható végre. A hibaüzene
 | Az ügyfél-ping előnézete elavult | Nem ment ki levél, a helyi piszkozat megmaradt | Töltsd újra az aktuális piszkozatot, ellenőrizd a címzettet és a hivatkozást, majd készíts új előnézetet |
 | E-mail-küldés `FAILED` | A projekt és a revízió megmarad; auditban hibakód rögzül | Ellenőrizd a címzettet és a szolgáltatás állapotát. Csak az ok tisztázása után ismételd meg a megfelelő küldést |
 | Az e-mail gomb letiltott módosított follow-up űrlap mellett | Semmi nem ment ki | Mentsd a follow-up beállítást, vagy állítsd vissza a mezőket a mentett értékre |
-| Archivált projektben módosítás vagy küldés nem engedett | Minden megőrzött projektadat változatlan | Ha valóban újraindul a munka, válaszd a `Restore project` gombot, állíts be friss workspace-adatot, majd folytasd |
-| Discovery follow-up már le van zárva | Az első terminális döntés megmarad | Töltsd újra a cockpitot. Ne hozz létre második feloldást; szükséges új kérdésből készíts új follow-upot |
+| Archivált projektben módosítás vagy küldés nem engedett | Minden megőrzött projektadat változatlan | Ha valóban újraindul a munka, a `Projektbeállítások` oldalon állítsd vissza, rögzíts friss koordinációt, majd folytasd |
+| Discovery follow-up már le van zárva | Az első terminális döntés megmarad | Töltsd újra a `Felkészültség` oldalt. Ne hozz létre második feloldást; szükséges új kérdésből készíts új follow-upot |
 | Törlési konfliktus | A teljes projekt és minden kapcsolódó adat megmarad | Ne távolíts el történetet a törlés kedvéért; archiváld a projektet |
 
 ### Mikor ne próbáld újra ugyanazt azonnal?
@@ -1128,7 +1050,8 @@ Ezekben az esetekben előbb töltsd vissza a szerver által ismert állapotot va
 | --- | --- |
 | Projekt | Egy ügyféligény önálló discovery-munkatere, saját kapcsolattartóval és történettel |
 | Portfolio / portfólió | Az aktív és archivált projektek közös `Projects` listája |
-| Cockpit | A projekt operatív központja, ahol az élő workspace, follow-up, kommunikáció, audit és lifecycle kezelhető |
+| Projektállapot | A napi munkaközpont: kanonikus munkaállapot, elsődleges feladat, koordináció, Customer kommunikáció és legutóbbi aktivitás |
+| Projektbeállítások | A projekt adminisztratív felülete: alapadatok, Customer konfiguráció, életciklus és veszélyzóna |
 | Belső felelős | A projektet vivő, név szerint rögzített PO/PM munkatárs |
 | Következő feladat gazdája | A belső felelős vagy az ügyfél kapcsolattartója; a felület mindig a kiválasztott konkrét nevet mutatja |
 | Next action | Az egyetlen konkrét művelet, amely a projektet a következő állapot felé viszi |
@@ -1185,7 +1108,7 @@ Az alábbiak nem elrejtett funkciók és nem más menüpontban találhatók; a j
 
 ### Projekt- és intake-munka
 
-- A projekt neve és a customer contact adatai létrehozás után nem szerkeszthetők.
+- A projekt neve és az ügyfélkapcsolati adatok az első kérdésséma elfogadásáig szerkeszthetők; utána olvashatók maradnak.
 - Csak kezdő, `INITIAL_INTAKE` kör indítható; külön stakeholder- és clarification-kör nincs.
 - A jelenlegi felület az aktuális kezdő interjúhoz tartozó ügyfélcsomag-verziókat mutatja; több külön történeti interjúkör összevont böngészője nincs.
 - A felkészültségi sáv nem állít át lifecycle státuszt, és nem helyettesíti a csapat üzleti döntését.
@@ -1194,7 +1117,7 @@ Az alábbiak nem elrejtett funkciók és nem más menüpontban találhatók; a j
 
 ### Follow-up és kommunikáció
 
-- Discovery follow-up újranyitása és törlése nem elérhető. Forráskapcsolat csak a cockpitban, nyitott follow-uphoz kezelhető; interjú- vagy readiness-oldalról nincs közvetlen linked létrehozás.
+- Discovery follow-up újranyitása és törlése nem elérhető. Forráskapcsolat a `Felkészültség` oldalon, nyitott follow-uphoz kezelhető.
 - Nincs automatikus lejártság-kiemelés vagy overdue riasztás a discovery listában.
 - Az interjú ügyfélcsomagja a projekt kapcsolattartójának küldhető, előnézettel és megerősítéssel; nincs címzett-felülírás, olvasási visszaigazolás vagy szabad levélsablon-szerkesztő.
 - A levélküldés nem rendelkezik felhasználói outboxszal vagy ismételt küldést láthatóan deduplikáló kezelőfelülettel.
@@ -1231,12 +1154,12 @@ Az alábbiak nem elrejtett funkciók és nem más menüpontban találhatók; a j
 ### Ügyfélnek küldés előtt
 
 - [ ] A projekt nem archivált.
-- [ ] A cockpitben szereplő kapcsolattartói név és e-mail-cím helyes.
+- [ ] A `Projektbeállítások` oldalon szereplő kapcsolattartói név és e-mail-cím helyes.
 - [ ] A follow-up beállítási űrlapon nincs nem mentett módosítás.
 - [ ] Ügyfél-ping esetén a mentett piszkozat és a pontos előnézet aktuális.
 - [ ] A legfrissebb revízió verzióját és `Content preview` tartalmát végigolvastam.
 - [ ] Tudom, hogy interjú-összegzést vagy rövid pinget küldök; a Claude Markdown egyik levélbe sem kerül.
-- [ ] Küldés után ellenőriztem a sikerüzenetet és a megfelelő audit-eseményt.
+- [ ] Küldés után ellenőriztem a sikerüzenetet és a kézbesítési kísérlet látható állapotát.
 
 ### Belső vagy ügyfél-átadás előtt
 
@@ -1248,16 +1171,16 @@ Az alábbiak nem elrejtett funkciók és nem más menüpontban találhatók; a j
 - [ ] A terminális follow-upok döntésszövege önmagában érthető.
 - [ ] Friss Markdown-revízió készült, és a change summary mellett a teljes előnézetet is ellenőriztem.
 - [ ] Az átvevő tudja, hogy a Markdown nem tartalmazza a discovery és customer follow-up állapotot.
-- [ ] Az audit historyban látható a várt séma-, kör-, revízió- és kommunikációs esemény.
+- [ ] A `Projektállapot` legutóbbi aktivitásai és a munkafelületek mentett állapotai összhangban vannak.
 
 ### Az aktív munka végén
 
 - [ ] Nincs `Piszkozat`, `Mentés folyamatban…` vagy mentési hiba.
-- [ ] A workspace legutolsó állapota mentve van.
+- [ ] A projektkoordináció és az életciklus-állapot legutolsó változata mentve van.
 - [ ] Nincs gazdátlan vagy dátum nélküli nyitott tisztázás.
 - [ ] Az automatikus pinget kikapcsoltam, ha nincs rá többé szükség.
 - [ ] Szükség esetén záró Markdown-revízió készült.
 - [ ] Hasznos történet esetén archiválást választottam törlés helyett.
-- [ ] Archiválás után ellenőriztem az `ARCHIVED` státuszt és a `PROJECT_ARCHIVED` audit-eseményt.
+- [ ] Archiválás után ellenőriztem az `Archivált` állapotot és a csak olvasható projektfelületeket.
 
-Ha a fenti ellenőrzőlisták teljesülnek, a következő munkatárs a cockpitből, a follow-up listából, a Markdown-történetből és az auditból ugyanazt a projektállapotot tudja rekonstruálni, amelyből te befejezted a munkát.
+Ha a fenti ellenőrzőlisták teljesülnek, a következő munkatárs a `Projektállapot`, a `Felkészültség`, a Customer kommunikáció, a `Projektbeállítások` és a Markdown-történet alapján ugyanazt a projektállapotot tudja rekonstruálni, amelyből te befejezted a munkát.

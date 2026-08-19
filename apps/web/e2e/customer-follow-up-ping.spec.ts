@@ -36,7 +36,7 @@ test('authors, previews, cancels, and explicitly sends one referenced customer p
     },
   );
 
-  await page.goto(`/projects/${project.id}`);
+  await page.goto(`/projects/${project.id}/customer-correspondences`);
   const message = 'Kérlek, küldd el a hiányzó üzleti jóváhagyást.';
   await page.getByTestId('follow-up-message-draft').fill(`  ${message}  `);
   await page.getByTestId('follow-up-reference-select').selectOption(reference.id);
@@ -109,7 +109,7 @@ test('preserves the local draft after a stale preview and reloads only on explic
       expectedVersion: 1,
     },
   );
-  await page.goto(`/projects/${project.id}`);
+  await page.goto(`/projects/${project.id}/customer-correspondences`);
   await nativeButton(page, 'preview-follow-up-ping-button').click();
   await expect(page.getByRole('alertdialog', { name: 'Customer follow-up ping előnézete' })).toBeVisible();
 
@@ -142,7 +142,7 @@ test('keeps the saved ping readable and mutation controls disabled after archive
   });
   await apiJson(request, 'POST', `/projects/${project.id}/archive`, {});
 
-  await page.goto(`/projects/${project.id}`);
+  await page.goto(`/projects/${project.id}/customer-correspondences`);
   await expect(page.getByTestId('follow-up-message-draft')).toHaveValue(
     'Archiválás után is olvasható ügyfélüzenet',
   );
@@ -152,7 +152,7 @@ test('keeps the saved ping readable and mutation controls disabled after archive
   await expect(nativeButton(page, 'preview-follow-up-ping-button')).toBeDisabled();
 });
 
-test('preserves unsaved ping and cadence edits when the other form is saved', async ({
+test('keeps ping work and automatic scheduling on dedicated persistent surfaces', async ({
   page,
   request,
 }) => {
@@ -162,23 +162,30 @@ test('preserves unsaved ping and cadence edits when the other form is saved', as
     referencedFollowUpId: null,
     expectedVersion: 1,
   });
-  await page.goto(`/projects/${project.id}`);
+  await page.goto(`/projects/${project.id}/customer-correspondences`);
 
   const messageInput = page.getByTestId('follow-up-message-draft');
-  const intervalInput = page.getByTestId('follow-up-interval-input');
-  await messageInput.fill('Még nem mentett helyi üzenet');
-  await intervalInput.fill('1440');
-  await nativeButton(page, 'save-follow-up-settings-button').click();
-  await expect(page.getByTestId('follow-up-interval-value')).toContainText('1440 minutes');
-  await expect(messageInput).toHaveValue('Még nem mentett helyi üzenet');
-
+  await expect(messageInput).toHaveValue('Szerveren mentett kiinduló üzenet');
+  await expect(page.getByTestId('follow-up-interval-input')).toHaveCount(0);
+  await messageInput.fill('Mentett napi ügyfélüzenet');
   await nativeButton(page, 'save-follow-up-draft-button').click();
   await expect(page.getByTestId('follow-up-draft-feedback')).toContainText('Piszkozat mentve');
-  await intervalInput.fill('2880');
-  await messageInput.fill('Második mentendő üzenet');
-  await nativeButton(page, 'save-follow-up-draft-button').click();
-  await expect(messageInput).toHaveValue('Második mentendő üzenet');
-  await expect(intervalInput).toHaveValue('2880');
+
+  await page.goto(`/projects/${project.id}/settings`);
+  await expect(page.getByTestId('follow-up-message-draft')).toHaveCount(0);
+  const intervalInput = page.getByTestId('follow-up-interval-input');
+  await intervalInput.fill('1440');
+  await nativeButton(page, 'save-follow-up-settings-button').click();
+  await expect(page.getByTestId('follow-up-interval-value')).toContainText('1440 perc');
+
+  await page.goto(`/projects/${project.id}/customer-correspondences`);
+  await expect(page.getByTestId('follow-up-message-draft')).toHaveValue(
+    'Mentett napi ügyfélüzenet',
+  );
+  await expect(nativeButton(page, 'save-follow-up-settings-button')).toHaveCount(0);
+
+  await page.goto(`/projects/${project.id}/settings`);
+  await expect(page.getByTestId('follow-up-interval-input')).toHaveValue('1440');
 });
 
 test('requires a saved valid draft before automatic scheduling can be enabled', async ({
@@ -186,7 +193,7 @@ test('requires a saved valid draft before automatic scheduling can be enabled', 
   request,
 }) => {
   const project = await createProject(request, 'schedule-prerequisite');
-  await page.goto(`/projects/${project.id}`);
+  await page.goto(`/projects/${project.id}/settings`);
 
   await page.getByTestId('follow-up-enabled-input').check();
   await nativeButton(page, 'save-follow-up-settings-button').click();
@@ -194,7 +201,7 @@ test('requires a saved valid draft before automatic scheduling can be enabled', 
   await expect(page.getByTestId('follow-up-action-error')).toContainText(
     'Előbb ments egy nem üres Customer follow-up ping üzenetet.',
   );
-  await expect(page.getByTestId('follow-up-enabled-value')).toContainText('Disabled');
+  await expect(page.getByTestId('follow-up-enabled-value')).toContainText('Kikapcsolva');
 });
 
 test('shows a validation-paused schedule and resumes it after a valid draft save', async ({
@@ -231,7 +238,7 @@ test('shows a validation-paused schedule and resumes it after a valid draft save
   );
   await pauseCustomerSchedule(project.id);
 
-  await page.goto(`/projects/${project.id}`);
+  await page.goto(`/projects/${project.id}/customer-correspondences`);
   await expect(page.getByTestId('follow-up-schedule-validation-pause')).toContainText(
     'Az automatikus ügyfél-ping szünetel',
   );
@@ -239,7 +246,7 @@ test('shows a validation-paused schedule and resumes it after a valid draft save
   await nativeButton(page, 'save-follow-up-draft-button').click();
 
   await expect(page.getByTestId('follow-up-schedule-validation-pause')).toBeHidden();
-  await expect(page.getByTestId('follow-up-next-ping-at-value')).not.toContainText('Not scheduled');
+  await expect(page.getByTestId('follow-up-next-ping-at-value')).not.toContainText('Nincs ütemezve');
 });
 
 test('requires an explicit duplicate-risk acknowledgement after an expired delivery lease', async ({
@@ -252,7 +259,7 @@ test('requires an explicit duplicate-risk acknowledgement after an expired deliv
     referencedFollowUpId: null,
     expectedVersion: 1,
   });
-  await page.goto(`/projects/${project.id}`);
+  await page.goto(`/projects/${project.id}/customer-correspondences`);
   await nativeButton(page, 'preview-follow-up-ping-button').click();
   const preview = page.getByRole('alertdialog', { name: 'Customer follow-up ping előnézete' });
   await expect(preview).toBeVisible();
@@ -296,7 +303,7 @@ test('recovers a failed ping after reload with cancel, Escape, and deterministic
     await route.continue();
   });
 
-  await page.goto(`/projects/${project.id}`);
+  await page.goto(`/projects/${project.id}/customer-correspondences`);
   const retryTrigger = nativeButton(page, 'retry-failed-follow-up-ping-button');
   await expect(page.getByTestId('follow-up-failed-recovery')).toContainText('sikertelen');
   await retryTrigger.focus();
@@ -313,7 +320,7 @@ test('recovers a failed ping after reload with cancel, Escape, and deterministic
   await confirm.dblclick();
   await started;
   await expect(page.getByTestId('follow-up-message-draft')).toBeDisabled();
-  await expect(nativeButton(page, 'save-follow-up-settings-button')).toBeDisabled();
+  await expect(nativeButton(page, 'save-follow-up-settings-button')).toHaveCount(0);
   releaseRetry();
   await expect(page.getByTestId('follow-up-send-result')).toContainText('Átadva a levelezőrendszernek');
   await expect(page.getByTestId('follow-up-send-result')).toBeFocused();
@@ -341,7 +348,7 @@ test('requires a visible request-specific acknowledgement for an uncertain ping'
     if (outbound.url().endsWith('/follow-up/ping/retry')) retryBody = outbound.postDataJSON();
   });
 
-  await page.goto(`/projects/${project.id}`);
+  await page.goto(`/projects/${project.id}/customer-correspondences`);
   const warning = page.getByTestId('follow-up-unknown-recovery');
   await expect(warning).toContainText('bizonytalan');
   await expect(warning).toContainText('duplikált');
@@ -374,7 +381,7 @@ test('keeps uncertain recovery visible after editing and explicitly acknowledges
     if (outbound.url().endsWith('/follow-up/ping')) sendBody = outbound.postDataJSON();
   });
 
-  await page.goto(`/projects/${project.id}`);
+  await page.goto(`/projects/${project.id}/customer-correspondences`);
   const message = page.getByTestId('follow-up-message-draft');
   await message.fill('A bizonytalan küldés után javított piszkozat');
   await nativeButton(page, 'save-follow-up-draft-button').click();
@@ -393,7 +400,7 @@ test('keeps uncertain recovery visible after editing and explicitly acknowledges
   });
 });
 
-test('keeps unrelated cockpit mutations disabled while a recovered attempt is pending', async ({
+test('locks only the ping work surface while a recovered attempt is pending', async ({
   page,
   request,
 }) => {
@@ -409,20 +416,18 @@ test('keeps unrelated cockpit mutations disabled while a recovered attempt is pe
     'SENDING',
   );
 
-  await page.goto(`/projects/${project.id}`);
+  await page.goto(`/projects/${project.id}/customer-correspondences`);
   await expect(page.getByTestId('follow-up-sending-recovery')).toContainText('folyamatban');
   await expect(page.getByTestId('follow-up-message-draft')).toBeDisabled();
   await expect(nativeButton(page, 'save-follow-up-draft-button')).toBeDisabled();
-  await expect(nativeButton(page, 'save-follow-up-settings-button')).toBeDisabled();
   await expect(nativeButton(page, 'preview-follow-up-ping-button')).toBeDisabled();
-  await expect(nativeButton(page, 'save-workspace-button')).toBeDisabled();
-  await expect(nativeButton(page, 'archive-project-button')).toBeDisabled();
+  await expect(nativeButton(page, 'save-follow-up-settings-button')).toHaveCount(0);
+  await expect(nativeButton(page, 'archive-project-button')).toHaveCount(0);
 
   await transitionCustomerPingAttempt(attemptId, 'FAILED');
   await expect(page.getByTestId('follow-up-failed-recovery')).toBeVisible({ timeout: 10_000 });
   await expect(page.getByTestId('follow-up-message-draft')).toBeEnabled();
-  await expect(nativeButton(page, 'save-workspace-button')).toBeEnabled();
-  await expect(nativeButton(page, 'archive-project-button')).toBeEnabled();
+  await expect(nativeButton(page, 'preview-follow-up-ping-button')).toBeEnabled();
 });
 
 test('reconciles a recovered pending lease expiry without reloading the page', async ({
@@ -441,14 +446,13 @@ test('reconciles a recovered pending lease expiry without reloading the page', a
     'SENDING',
   );
 
-  await page.goto(`/projects/${project.id}`);
+  await page.goto(`/projects/${project.id}/customer-correspondences`);
   await expect(page.getByTestId('follow-up-sending-recovery')).toBeVisible();
   await expireCustomerPingAttempt(attemptId);
 
   await expect(page.getByTestId('follow-up-unknown-recovery')).toBeVisible({ timeout: 10_000 });
   await expect(page.getByTestId('follow-up-message-draft')).toBeEnabled();
-  await expect(nativeButton(page, 'save-workspace-button')).toBeEnabled();
-  await expect(nativeButton(page, 'archive-project-button')).toBeEnabled();
+  await expect(nativeButton(page, 'preview-follow-up-ping-button')).toBeEnabled();
 });
 
 async function createProject(

@@ -25,7 +25,7 @@ const projectContextLinks = [
   { key: 'readiness', label: 'Felkészültség', path: 'readiness' },
   { key: 'decision-review', label: 'Döntési értékelés', path: 'decision-review' },
   { key: 'markdown', label: 'Markdown terv', path: 'markdown' },
-  { key: 'settings', label: 'Projektbeállítások', path: null },
+  { key: 'settings', label: 'Projektbeállítások', path: 'settings' },
 ] as const;
 
 const contextLinkMatchOptions: IsActiveMatchOptions = {
@@ -131,10 +131,8 @@ export class ProjectContextPage implements OnInit {
       });
   }
 
-  contextRoute(path: string | null): readonly string[] {
-    return path
-      ? ['/projects', this.projectId(), path]
-      : ['/projects', this.projectId()];
+  contextRoute(path: string): readonly string[] {
+    return ['/projects', this.projectId(), path];
   }
 }
 

@@ -1,0 +1,158 @@
+@if (loading()) {
+  <div class="state-panel" data-testid="project-settings-loading" aria-live="polite">
+    <p-progress-spinner ariaLabel="Projektbeállítások betöltése" />
+    <p>A projektbeállítások betöltése…</p>
+  </div>
+} @else if (loadError(); as error) {
+  <div class="state-panel" data-testid="project-settings-error" role="alert">
+    <h1>A projektbeállítások nem tölthetők be</h1>
+    <p>{{ error }}</p>
+    <p-button label="Újrapróbálás" data-testid="retry-project-settings-button" (onClick)="loadSettings()" />
+  </div>
+} @else if (view(); as current) {
+  <section aria-labelledby="project-settings-title">
+    <div class="page-heading">
+      <span class="eyebrow">Projektadminisztráció</span>
+      <h1 id="project-settings-title">Projektbeállítások</h1>
+      <p>A projekt azonosító adatai, ügyfélkapcsolati beállításai és életciklus-műveletei.</p>
+    </div>
+
+    @if (current.project.status === 'ARCHIVED') {
+      <p-message severity="secondary" role="status">
+        Az archivált projekt beállításai olvashatók. Módosításhoz előbb állítsd vissza a projektet.
+      </p-message>
+    }
+    @if (actionError()) {
+      <p-message severity="error" role="alert" data-testid="project-settings-action-error">{{ actionError() }}</p-message>
+    }
+    @if (feedback()) {
+      <p-message severity="success" role="status" data-testid="project-settings-action-success">{{ feedback() }}</p-message>
+    }
+
+    <div class="settings-grid">
+      <p-card id="project-basics" data-testid="project-basics-editor">
+        <ng-template #title>Projekt alapadatai</ng-template>
+        <ng-template #subtitle>
+          @if (canEditBasics()) {
+            A kérdésséma elfogadásáig az alapadatok még módosíthatók.
+          } @else {
+            Az elfogadott kérdésséma után az alapadatok csak olvashatók.
+          }
+        </ng-template>
+        <form class="settings-form" [formGroup]="basicsForm" (ngSubmit)="saveProjectBasics()">
+          <fieldset data-testid="project-basics-fieldset" [disabled]="busy() || !canEditBasics()">
+            <div class="field">
+              <label for="draft-project-name">Projekt neve</label>
+              <input pInputText id="draft-project-name" formControlName="name" data-testid="draft-project-name-input" />
+            </div>
+            <div class="field">
+              <label for="draft-internal-owner-name">Belső PO/PM neve</label>
+              <input pInputText id="draft-internal-owner-name" formControlName="internalOwnerName" data-testid="draft-internal-owner-name-input" />
+            </div>
+            <div class="field" data-testid="customer-contact-settings">
+              <label for="draft-customer-contact-name">Ügyfélkapcsolattartó neve</label>
+              <input pInputText id="draft-customer-contact-name" formControlName="customerContactName" data-testid="draft-customer-contact-name-input" />
+            </div>
+            <div class="field">
+              <label for="draft-customer-contact-email">Ügyfélkapcsolattartó e-mail-címe</label>
+              <input pInputText id="draft-customer-contact-email" type="email" formControlName="customerContactEmail" data-testid="draft-customer-contact-email-input" />
+            </div>
+          </fieldset>
+          @if (basicsForm.invalid && basicsForm.touched) {
+            <p-message severity="error">Minden alapadatot érvényesen tölts ki a mentéshez.</p-message>
+          }
+          @if (basicsError()) {
+            <p-message severity="error" role="alert" data-testid="project-basics-error">{{ basicsError() }}</p-message>
+          }
+          @if (basicsFeedback()) {
+            <p-message severity="success" role="status" data-testid="project-basics-feedback">{{ basicsFeedback() }}</p-message>
+          }
+          @if (canEditBasics()) {
+            <p-button type="submit" label="Alapadatok mentése" [loading]="basicsSaving()" [disabled]="busy() || basicsForm.invalid" data-testid="save-project-basics" />
+          }
+        </form>
+      </p-card>
+
+      <app-customer-follow-up [projectId]="projectId" [archived]="isArchived()" mode="settings" />
+
+      <p-card data-testid="project-lifecycle-settings">
+        <ng-template #title>Projekt életciklusa</ng-template>
+        <ng-template #subtitle>Az adminisztratív állapot azt jelzi, hol tart vagy mire vár a projekt.</ng-template>
+        @if (isArchived()) {
+          <dl>
+            <div>
+              <dt>Jelenlegi életciklus-állapot</dt>
+              <dd data-testid="project-lifecycle-status-value">Archivált</dd>
+            </div>
+          </dl>
+        } @else {
+        <form class="settings-form" [formGroup]="lifecycleForm" (ngSubmit)="saveProjectStatus()">
+          <fieldset data-testid="project-lifecycle-fieldset" [disabled]="busy()">
+            <div class="field">
+              <label for="project-lifecycle-status">Életciklus-állapot</label>
+              <p-select
+                inputId="project-lifecycle-status"
+                styleClass="full-width"
+                formControlName="status"
+                [options]="statusOptions"
+                optionLabel="label"
+                optionValue="value"
+                data-testid="project-lifecycle-status-select"
+              />
+            </div>
+          </fieldset>
+          @if (lifecycleError()) {
+            <p-message severity="error" role="alert" data-testid="project-lifecycle-error">{{ lifecycleError() }}</p-message>
+          }
+          @if (lifecycleFeedback()) {
+            <p-message severity="success" role="status" data-testid="project-lifecycle-feedback">{{ lifecycleFeedback() }}</p-message>
+          }
+          <p-button type="submit" label="Életciklus-állapot mentése" [loading]="lifecycleSaving()" [disabled]="busy() || lifecycleForm.invalid" data-testid="save-project-lifecycle-status" />
+        </form>
+        }
+      </p-card>
+    </div>
+
+    <p-card styleClass="danger-zone" data-testid="project-danger-zone">
+      <ng-template #title>Veszélyzóna</ng-template>
+      <ng-template #subtitle>Életciklus-műveletek, amelyek kiveszik a projektet az aktív munkából vagy végleg törlik.</ng-template>
+
+      @if (isArchived()) {
+        <div class="danger-action">
+          <div><h2>Projekt visszaállítása</h2><p>A napi munka és a módosítások ismét elérhetővé válnak.</p></div>
+          <p-button label="Projekt visszaállítása" [loading]="transitioning()" [disabled]="busy()" data-testid="restore-project-button" (onClick)="restoreProject()" />
+        </div>
+      } @else {
+        <div class="danger-action">
+          <div><h2>Projekt archiválása</h2><p>Az adatok megmaradnak, de a projekt kikerül az aktív munkából és csak olvasható lesz.</p></div>
+          <p-button label="Projekt archiválása" severity="danger" [outlined]="true" [loading]="transitioning()" [disabled]="busy()" data-testid="archive-project-button" (onClick)="requestProjectArchive()" />
+        </div>
+      }
+
+      @if (isDeletableDraft()) {
+        <div class="danger-action">
+          <div><h2>Projekt végleges törlése</h2><p>Csak mentett projektmunka nélküli piszkozat törölhető. A művelet nem vonható vissza.</p></div>
+          <p-button label="Projekt végleges törlése" severity="danger" [outlined]="true" [loading]="deleting()" [disabled]="busy()" data-testid="delete-project-button" (onClick)="requestProjectDeletion()" />
+        </div>
+      }
+    </p-card>
+
+    <p-confirmdialog #archiveDialog key="project-archive" [defaultFocus]="'none'">
+      <ng-template #footer>
+        <div class="confirmation-actions" data-testid="project-archive-confirmation">
+          <p-button label="Mégse" [autofocus]="true" data-testid="cancel-project-archive-button" (onClick)="archiveDialog.onReject()" />
+          <p-button label="Projekt archiválása" severity="danger" data-testid="confirm-project-archive-button" (onClick)="archiveDialog.onAccept()" />
+        </div>
+      </ng-template>
+    </p-confirmdialog>
+
+    <p-confirmdialog #deleteDialog key="project-delete" [defaultFocus]="'none'">
+      <ng-template #footer>
+        <div class="confirmation-actions" data-testid="project-delete-confirmation">
+          <p-button label="Mégse" [autofocus]="true" data-testid="cancel-project-delete-button" (onClick)="deleteDialog.onReject()" />
+          <p-button label="Projekt végleges törlése" severity="danger" data-testid="confirm-project-delete-button" (onClick)="deleteDialog.onAccept()" />
+        </div>
+      </ng-template>
+    </p-confirmdialog>
+  </section>
+}

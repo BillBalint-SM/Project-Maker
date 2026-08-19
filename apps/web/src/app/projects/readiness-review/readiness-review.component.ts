@@ -58,7 +58,7 @@ export class ReadinessReviewComponent {
 
   scrollToWorkspace(): void {
     if (this.dedicatedPage()) {
-      void this.router.navigate(['/projects', this.projectId()], {
+      void this.router.navigate(['/projects', this.projectId(), 'status'], {
         queryParamsHandling: 'preserve',
         fragment: 'workspace',
       });
@@ -82,13 +82,6 @@ export class ReadinessReviewComponent {
   }
 
   scrollToDiscoveryFollowUps(): void {
-    if (this.dedicatedPage()) {
-      void this.router.navigate(['/projects', this.projectId()], {
-        queryParamsHandling: 'preserve',
-        fragment: 'discovery-follow-ups',
-      });
-      return;
-    }
     this.viewportScroller.scrollToAnchor('discovery-follow-ups');
   }
 
