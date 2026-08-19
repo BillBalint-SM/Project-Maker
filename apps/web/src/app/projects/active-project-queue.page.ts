@@ -13,7 +13,7 @@ import type {
 import { ButtonModule } from 'primeng/button';
 import { ProgressSpinnerModule } from 'primeng/progressspinner';
 import { TagModule } from 'primeng/tag';
-import { catchError, combineLatest, debounce, distinctUntilChanged, EMPTY, map, of, startWith, Subject, switchMap, tap, timer } from 'rxjs';
+import { catchError, debounce, distinctUntilChanged, EMPTY, map, merge, of, Subject, switchMap, tap, timer } from 'rxjs';
 
 import {
   ActiveProjectQueueApiService,
@@ -57,6 +57,13 @@ interface QueueGroup {
   readonly items: readonly ActiveProjectQueueItem[];
 }
 
+type QueueLoadKind = 'ROUTE' | 'REFRESH' | 'RETRY';
+
+interface QueueLoadRequest {
+  readonly query: ActiveProjectQueueQuery;
+  readonly kind: QueueLoadKind;
+}
+
 @Component({
   selector: 'app-active-project-queue-page',
   imports: [ButtonModule, DatePipe, ProgressSpinnerModule, ReactiveFormsModule, RouterLink, TagModule],
@@ -68,8 +75,10 @@ export class ActiveProjectQueuePageComponent implements OnInit {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
-  private readonly reload = new Subject<void>();
+  private readonly requestedLoads = new Subject<QueueLoadRequest>();
   private preserveRecoveryNoticeForNextPage = false;
+  private nextRouteLoadKind: QueueLoadKind | null = null;
+  private failedRequest: QueueLoadRequest | null = null;
 
   readonly search = new FormControl('', { nonNullable: true });
   readonly selectedUrgencies = signal<readonly ActiveProjectUrgency[]>([]);
@@ -80,7 +89,11 @@ export class ActiveProjectQueuePageComponent implements OnInit {
   readonly page = signal<ActiveProjectQueuePage | null>(null);
   readonly activeQuery = signal<ActiveProjectQueueQuery>({});
   readonly loading = signal(true);
+  readonly updating = signal(false);
   readonly loadError = signal<string | null>(null);
+  readonly updateError = signal<string | null>(null);
+  readonly stale = signal(false);
+  readonly liveStatus = signal<string | null>(null);
   readonly cursorRecoveryNotice = signal<string | null>(null);
   readonly hasActiveFilters = computed(() => {
     const query = this.activeQuery();
@@ -109,39 +122,68 @@ export class ActiveProjectQueuePageComponent implements OnInit {
         this.selectedPreparationStates.set(query.preparationStates ?? []);
       }),
     );
-    combineLatest([routeQuery, this.reload.pipe(startWith(undefined))]).pipe(
-      map(([query]) => query),
-      tap(() => {
-        this.loading.set(true);
+    const routeLoads = routeQuery.pipe(map((query): QueueLoadRequest => {
+      const kind = this.nextRouteLoadKind ?? 'ROUTE';
+      this.nextRouteLoadKind = null;
+      return { query, kind };
+    }));
+
+    merge(routeLoads, this.requestedLoads).pipe(
+      tap((request) => {
+        const hasPage = this.page() !== null;
+        this.loading.set(!hasPage);
+        this.updating.set(hasPage);
         this.loadError.set(null);
+        if (request.kind !== 'RETRY') {
+          this.failedRequest = null;
+          this.stale.set(false);
+          this.updateError.set(null);
+        }
       }),
-      switchMap((query) => this.api.getPage(query).pipe(
-        map((page) => ({ page, error: null })),
+      switchMap((request) => this.api.getPage(request.query).pipe(
+        map((page) => ({ request, page, error: null })),
         catchError((error: unknown) => {
           if (error instanceof ActiveProjectQueueCursorRequestError) {
             this.cursorRecoveryNotice.set(
               'A korábbi oldal már nem állítható helyre. Az első oldalt mutatjuk.',
             );
             this.preserveRecoveryNoticeForNextPage = true;
-            void this.navigateToFirstPage(query);
+            void this.navigateToFirstPage(request.query);
             return EMPTY;
           }
           const message = error instanceof Error ? error.message : 'Ismeretlen betöltési hiba.';
-          return of({ page: null, error: message });
+          return of({ request, page: null, error: message });
         }),
       )),
       takeUntilDestroyed(this.destroyRef),
-    ).subscribe(({ page, error }) => {
+    ).subscribe(({ request, page, error }) => {
       if (page) {
         if (this.preserveRecoveryNoticeForNextPage) {
           this.preserveRecoveryNoticeForNextPage = false;
         } else {
           this.cursorRecoveryNotice.set(null);
         }
+        this.page.set(page);
+        this.failedRequest = null;
+        this.stale.set(false);
+        this.updateError.set(null);
+        if (request.kind === 'REFRESH') {
+          this.liveStatus.set('A munkasor frissítve.');
+        } else if (request.kind === 'RETRY') {
+          this.liveStatus.set('A munkasor ismét elérhető.');
+        }
+      } else if (error) {
+        this.failedRequest = request;
+        if (this.page()) {
+          this.stale.set(true);
+          this.updateError.set(error);
+          this.liveStatus.set('A munkasor frissítése nem sikerült. A korábbi lista maradt látható.');
+        } else {
+          this.loadError.set(error);
+        }
       }
-      this.page.set(page);
-      this.loadError.set(error);
       this.loading.set(false);
+      this.updating.set(false);
     });
 
     this.search.valueChanges.pipe(
@@ -151,8 +193,32 @@ export class ActiveProjectQueuePageComponent implements OnInit {
     ).subscribe(() => void this.updateUrl());
   }
 
-  load(): void {
-    this.reload.next();
+  refresh(): void {
+    const query = { ...this.activeQuery(), cursor: undefined };
+    this.liveStatus.set(null);
+    if (this.activeQuery().cursor) {
+      this.nextRouteLoadKind = 'REFRESH';
+      void this.navigateToFirstPage(query);
+      return;
+    }
+    this.requestedLoads.next({ query, kind: 'REFRESH' });
+  }
+
+  retry(): void {
+    if (!this.failedRequest) return;
+    this.liveStatus.set(null);
+    this.requestedLoads.next({ query: this.failedRequest.query, kind: 'RETRY' });
+  }
+
+  clearFilters(): void {
+    this.search.setValue('', { emitEvent: false });
+    this.selectedUrgencies.set([]);
+    this.selectedPreparationStates.set([]);
+    void this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: { q: null, urgency: null, preparation: null, cursor: null },
+      replaceUrl: true,
+    });
   }
 
   toggleUrgency(urgency: ActiveProjectUrgency): void {
