@@ -15,7 +15,7 @@ npx --yes pnpm@11.20.0 verify
 Eredmény: sikeres.
 
 - COMM határvédelem: 17 production fájl és 5 aktuális dokumentum ellenőrizve.
-- UI-szöveg inventory: 972 forrástétel, eltérés nélkül; az interpolált technikai útvonalakat a generátor kizárja.
+- UI-szöveg inventory: 944 forrástétel, eltérés nélkül; az interpolált technikai útvonalakat, Angular stílusmetaadatokat és theme/config értékeket a generátor kizárja.
 - Operációs tesztek: 5/5 sikeres.
 - Contracts tesztek: 17/17 sikeres.
 - Angular tesztek: 68/68 sikeres.
