@@ -209,6 +209,7 @@ describe('Graph customer mail boundary', () => {
     assert.deepEqual(first, {
       changes: [{
         changeType: 'UPSERTED',
+        automationKind: 'HUMAN',
         messageReference: 'message-1',
         internetMessageId: '<reply@example.test>',
         inReplyTo: '<original@example.test>',
@@ -228,6 +229,37 @@ describe('Graph customer mail boundary', () => {
       nextPageCheckpoint: { value: 'page-2' },
       completedCheckpoint: null,
     });
+  });
+
+  it('classifies delivery reports, automatic replies, and uncertain automation from headers', async () => {
+    const client = new ControlledGraphMailClient();
+    client.pages.set('initial', {
+      value: [
+        {
+          id: 'delivery-report',
+          internetMessageHeaders: [
+            { name: 'Content-Type', value: 'multipart/report; report-type=delivery-status' },
+          ],
+        },
+        {
+          id: 'out-of-office',
+          internetMessageHeaders: [{ name: 'Auto-Submitted', value: 'auto-replied' }],
+        },
+        {
+          id: 'unknown-automation',
+          internetMessageHeaders: [{ name: 'Auto-Submitted', value: 'auto-generated' }],
+        },
+      ],
+      nextCheckpoint: null,
+      completedCheckpoint: 'done',
+    });
+
+    const page = await new GraphCustomerMailBoundary(client).readChanges(null);
+
+    assert.deepEqual(
+      page.changes.map((change) => change.automationKind),
+      ['DELIVERY_REPORT', 'OUT_OF_OFFICE', 'UNKNOWN_AUTOMATION'],
+    );
   });
 
   it('converts untrusted Graph HTML bodies to safe plain text', async () => {
@@ -276,10 +308,17 @@ describe('Graph customer mail boundary', () => {
   it('maps throttled and invalid mailbox checkpoints without leaking provider details', async () => {
     const client = new ControlledGraphMailClient();
     const boundary = new GraphCustomerMailBoundary(client);
-    client.readFailure.set('throttled', new GraphMailClientError('THROTTLED', 'Bearer secret-token'));
+    client.readFailure.set(
+      'throttled',
+      new GraphMailClientError('THROTTLED', 'Bearer secret-token', 1_200),
+    );
     client.readFailure.set('expired', new GraphMailClientError('INVALID_CURSOR', 'https://graph.example/delta?secret=1'));
 
-    await assert.rejects(boundary.readChanges({ value: 'throttled' }), (error) => isSafeBoundaryError(error, 'THROTTLED'));
+    await assert.rejects(
+      boundary.readChanges({ value: 'throttled' }),
+      (error) => isSafeBoundaryError(error, 'THROTTLED')
+        && (error as CustomerMailBoundaryError).retryAfterMs === 1_200,
+    );
     await assert.rejects(boundary.readChanges({ value: 'expired' }), (error) => isSafeBoundaryError(error, 'INVALID_CURSOR'));
   });
 });

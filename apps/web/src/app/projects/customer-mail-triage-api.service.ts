@@ -1,0 +1,35 @@
+import { HttpClient } from '@angular/common/http';
+import { inject, Injectable } from '@angular/core';
+import type {
+  CustomerMailTriageCommand,
+  CustomerMailTriageCommandResult,
+  CustomerMailTriageView,
+} from '@project-maker/contracts';
+import { catchError, Observable, throwError } from 'rxjs';
+
+@Injectable({ providedIn: 'root' })
+export class CustomerMailTriageApiService {
+  private readonly http = inject(HttpClient);
+
+  view(): Observable<CustomerMailTriageView> {
+    return this.http.get<CustomerMailTriageView>('/api/customer-mail-triage').pipe(
+      catchError(() => throwError(() => new Error(
+        'A nem társított ügyfélüzenetek most nem tölthetők be.',
+      ))),
+    );
+  }
+
+  command(
+    messageId: string,
+    command: CustomerMailTriageCommand,
+  ): Observable<CustomerMailTriageCommandResult> {
+    return this.http.post<CustomerMailTriageCommandResult>(
+      `/api/customer-mail-triage/${messageId}/commands`,
+      command,
+    ).pipe(
+      catchError(() => throwError(() => new Error(
+        'Az üzenet feldolgozása nem sikerült. Frissítsd a listát, majd próbáld újra.',
+      ))),
+    );
+  }
+}

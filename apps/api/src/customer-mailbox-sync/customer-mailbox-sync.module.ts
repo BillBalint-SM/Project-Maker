@@ -5,7 +5,10 @@ import { CustomerRepliesModule } from '../customer-replies/customer-replies.modu
 import { CustomerMailboxSyncController } from './customer-mailbox-sync.controller';
 import { CustomerMailboxSyncEntity } from './customer-mailbox-sync.entity';
 import { CustomerMailboxSyncService } from './customer-mailbox-sync.service';
-import { customerMailboxClockToken } from './customer-mailbox-sync.service';
+import {
+  customerMailboxClockToken,
+  customerMailboxRetryRuntimeToken,
+} from './customer-mailbox-sync.service';
 
 @Module({
   imports: [TypeOrmModule.forFeature([CustomerMailboxSyncEntity]), CustomerRepliesModule],
@@ -13,6 +16,15 @@ import { customerMailboxClockToken } from './customer-mailbox-sync.service';
   providers: [
     CustomerMailboxSyncService,
     { provide: customerMailboxClockToken, useValue: { now: () => new Date() } },
+    {
+      provide: customerMailboxRetryRuntimeToken,
+      useValue: {
+        random: () => Math.random(),
+        wait: async (delayMs: number) => {
+          await new Promise((resolve) => setTimeout(resolve, delayMs));
+        },
+      },
+    },
   ],
   exports: [CustomerMailboxSyncService],
 })

@@ -6,6 +6,12 @@ export const exactPteCustomerSenderAddressPattern = /^[^@\s]+@pte\.hu$/i;
 export const mailboxChangeTypes = ['UPSERTED', 'DELETED'] as const;
 export type MailboxChangeType = (typeof mailboxChangeTypes)[number];
 
+export type CustomerMailboxAutomationKind =
+  | 'HUMAN'
+  | 'DELIVERY_REPORT'
+  | 'OUT_OF_OFFICE'
+  | 'UNKNOWN_AUTOMATION';
+
 export const customerCorrespondenceStatuses = [
   'Válaszra vár',
   'Új válasz',
@@ -42,6 +48,7 @@ export interface MailSubmissionResult {
 
 export interface CustomerMailboxChange {
   readonly changeType: MailboxChangeType;
+  readonly automationKind: CustomerMailboxAutomationKind;
   readonly messageReference: string;
   readonly internetMessageId: string | null;
   readonly inReplyTo: string | null;
@@ -85,7 +92,7 @@ export interface CustomerInboundMessageView {
   readonly quotedText: string | null;
   readonly attachmentCount: number;
   readonly attachments: readonly CustomerMailboxAttachmentMetadata[];
-  readonly correlationEvidence: 'TOKENIZED_REPLY_TO';
+  readonly correlationEvidence: 'TOKENIZED_REPLY_TO' | 'MANUAL_TRIAGE';
   readonly classification: CustomerInboundMessageClassification | null;
 }
 
@@ -141,6 +148,58 @@ export interface CustomerReplySummary {
   readonly newReplyCount: number;
   readonly projectCount: number;
   readonly projects: readonly { readonly projectId: string; readonly newReplyCount: number }[];
+}
+
+export interface UnmatchedCustomerMessageView {
+  readonly kind: 'UNMATCHED_CUSTOMER_MESSAGE' | 'UNKNOWN_AUTOMATION';
+  readonly id: string;
+  readonly providerMessageReference: string;
+  readonly receivedAt: string;
+  readonly senderAddress: string | null;
+  readonly subject: string | null;
+  readonly visibleText: string;
+  readonly quotedText: string | null;
+  readonly attachmentCount: number;
+  readonly attachments: readonly CustomerMailboxAttachmentMetadata[];
+  readonly version: number;
+}
+
+export interface CustomerMailTriageView {
+  readonly unmatchedMessages: readonly UnmatchedCustomerMessageView[];
+  readonly mailSystemEvents: readonly MailSystemEventView[];
+  readonly eligibleCorrespondences: readonly CustomerMailTriageTargetView[];
+}
+
+export interface CustomerMailTriageTargetView {
+  readonly projectId: string;
+  readonly projectName: string;
+  readonly correspondenceId: string;
+  readonly createdAt: string;
+}
+
+export interface MailSystemEventView {
+  readonly id: string;
+  readonly providerMessageReference: string;
+  readonly type: 'DELIVERY_REPORT' | 'OUT_OF_OFFICE';
+  readonly occurredAt: string;
+  readonly projectId: string | null;
+  readonly correspondenceId: string | null;
+}
+
+export type CustomerMailTriageCommand =
+  | {
+      readonly command: 'LINK';
+      readonly expectedVersion: number;
+      readonly correspondenceId: string;
+    }
+  | { readonly command: 'DISMISS'; readonly expectedVersion: number };
+
+export interface CustomerMailTriageCommandResult {
+  readonly messageId: string;
+  readonly state: 'LINKED' | 'DISMISSED';
+  readonly version: number;
+  readonly projectId: string | null;
+  readonly correspondenceId: string | null;
 }
 
 export interface CustomerMailboxChangePage {

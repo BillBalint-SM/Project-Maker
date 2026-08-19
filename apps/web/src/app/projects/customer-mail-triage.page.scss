@@ -1,0 +1,22 @@
+:host { display: block; }
+section { max-width: 72rem; margin: 0 auto; }
+header { margin: 1.5rem 0 2rem; }
+.message-list { display: grid; gap: 1rem; }
+.message-card { border: 1px solid var(--p-surface-300); border-radius: .75rem; padding: 1rem; background: var(--p-surface-0); }
+.message-heading { display: flex; gap: 1rem; justify-content: space-between; align-items: start; }
+.message-heading h3 { margin: .25rem 0; }
+.kind, .sender, time { color: var(--p-text-muted-color); }
+.message-text { white-space: pre-wrap; }
+.message-actions { display: flex; flex-wrap: wrap; gap: .75rem; align-items: center; }
+select, button { min-height: 2.75rem; padding: .5rem .75rem; }
+select { min-width: min(100%, 22rem); }
+button { cursor: pointer; }
+button:disabled { cursor: wait; opacity: .65; }
+.secondary { background: transparent; }
+.error { color: var(--p-red-700); }
+.event-list { display: grid; gap: .5rem; padding: 0; list-style: none; }
+.event-list li { display: flex; justify-content: space-between; gap: 1rem; border-bottom: 1px solid var(--p-surface-200); padding: .75rem 0; }
+@media (max-width: 40rem) {
+  .message-heading, .event-list li { flex-direction: column; }
+  .message-actions, .message-actions select, .message-actions button { width: 100%; }
+}

@@ -140,11 +140,91 @@ test('opens the exact ping source without resolving it and retains UNKNOWN evide
   await expect(page.getByTestId('unknown-delivery-receipt-evidence')).toBeVisible();
 });
 
+test('triages unmatched mail and separates automated mailbox events without creating false replies', async ({ page, request }) => {
+  const setup = await createSentHandoff(request);
+  const sent = await request.get(`${graphBaseUrl}/__test/messages`).then((response) => response.json()) as Array<{
+    message: { replyTo: Array<{ emailAddress: { address: string } }> };
+  }>;
+  const replyToAddress = sent.at(-1)?.message.replyTo[0]?.emailAddress.address;
+  expect(replyToAddress).toBeTruthy();
+  const suffix = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  const messages = [
+    {
+      id: `unmatched-${suffix}`,
+      from: { emailAddress: { address: setup.customerEmail } },
+      toRecipients: [{ emailAddress: { address: 'project-maker@pte.hu' } }],
+      subject: 'Kézzel társítandó levél',
+      body: { contentType: 'text', content: 'Ezt a levelet a megfelelő projekthez kell kapcsolni.' },
+      receivedDateTime: '2026-08-18T19:00:00.000Z',
+    },
+    {
+      id: `unknown-automation-${suffix}`,
+      from: { emailAddress: { address: 'automation@example.test' } },
+      toRecipients: [{ emailAddress: { address: replyToAddress } }],
+      subject: 'Ellenőrzendő automatikus levél',
+      body: { contentType: 'text', content: 'Bizonytalan automatikus tartalom.' },
+      receivedDateTime: '2026-08-18T19:01:00.000Z',
+      internetMessageHeaders: [{ name: 'Auto-Submitted', value: 'auto-generated' }],
+    },
+    {
+      id: `dsn-${suffix}`,
+      from: { emailAddress: { address: 'mailer-daemon@example.test' } },
+      toRecipients: [{ emailAddress: { address: replyToAddress } }],
+      subject: 'Delivery status',
+      body: { contentType: 'text', content: 'Nem kézbesített belső részlet.' },
+      receivedDateTime: '2026-08-18T19:02:00.000Z',
+      internetMessageHeaders: [{ name: 'Content-Type', value: 'multipart/report; report-type=delivery-status' }],
+    },
+    {
+      id: `ooo-${suffix}`,
+      from: { emailAddress: { address: setup.customerEmail } },
+      toRecipients: [{ emailAddress: { address: replyToAddress } }],
+      subject: 'Out of office',
+      body: { contentType: 'text', content: 'Távolléti belső részlet.' },
+      receivedDateTime: '2026-08-18T19:03:00.000Z',
+      internetMessageHeaders: [{ name: 'Auto-Submitted', value: 'auto-replied' }],
+    },
+    {
+      id: `loop-${suffix}`,
+      from: { emailAddress: { address: 'PROJECT-MAKER@PTE.HU' } },
+      toRecipients: [{ emailAddress: { address: replyToAddress } }],
+      subject: 'Saját levél',
+      body: { contentType: 'text', content: 'Ezt nem szabad megjeleníteni.' },
+      receivedDateTime: '2026-08-18T19:04:00.000Z',
+    },
+  ];
+  for (const message of messages) {
+    await request.post(`${graphBaseUrl}/__test/queue-mailbox-message`, { data: message });
+  }
+  await request.post('/api/customer-mailbox-sync/refresh');
+
+  await page.goto('/');
+  await page.getByTestId('customer-mail-triage-link').click();
+  await expect(page).toHaveURL(/\/customer-mail-triage$/);
+  await expect(page.getByText('Kézbesítési jelentés')).toBeVisible();
+  await expect(page.getByText('Automatikus távolléti válasz')).toBeVisible();
+  await expect(page.getByText('Ezt nem szabad megjeleníteni.')).toHaveCount(0);
+
+  const humanMessage = page.locator('article').filter({ hasText: 'Ezt a levelet a megfelelő projekthez kell kapcsolni.' });
+  await humanMessage.getByLabel('Customer levelezés').selectOption(setup.correspondenceId);
+  await humanMessage.getByRole('button', { name: 'Társítás' }).click();
+  await expect(humanMessage).toHaveCount(0);
+
+  const automatedMessage = page.locator('article').filter({ hasText: 'Bizonytalan automatikus tartalom.' });
+  await automatedMessage.getByRole('button', { name: 'Elvetés' }).click();
+  await expect(automatedMessage).toHaveCount(0);
+
+  await page.goto(`/projects/${setup.projectId}/customer-correspondences`);
+  await expect(page.getByText('Ezt a levelet a megfelelő projekthez kell kapcsolni.')).toBeVisible();
+  await expect(page.getByText('1 olvasatlan üzenet')).toBeVisible();
+});
+
 async function createSentHandoff(request: APIRequestContext) {
   const suffix = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  const projectName = `Customer reply ${suffix}`;
   const customerEmail = `customer-${suffix}@example.test`;
   const project = await request.post('/api/projects', { data: {
-    name: `Customer reply ${suffix}`,
+    name: projectName,
     customerContactName: 'Ügyfél Anna',
     customerContactEmail: customerEmail,
     internalOwnerName: 'PO Péter',
@@ -166,7 +246,14 @@ async function createSentHandoff(request: APIRequestContext) {
     senderAddress: preview.senderAddress,
   } });
   expect(sent.ok()).toBe(true);
-  return { projectId: project.id, roundId: round.id, customerEmail };
+  const sentBody = await sent.json() as { correspondenceId: string };
+  return {
+    projectId: project.id,
+    projectName,
+    roundId: round.id,
+    customerEmail,
+    correspondenceId: sentBody.correspondenceId,
+  };
 }
 
 async function queueReply(
