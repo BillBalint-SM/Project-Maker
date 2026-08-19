@@ -71,6 +71,9 @@ or bounded configuration/authentication failure retains the immutable outbound
 communication, correspondence identity, and append-only attempt result. A retry
 uses the same Reply-To identity; a new logical version creates a successor
 correspondence. `ACCEPTED` means only that the mail system accepted submission.
+Provisioning, mailbox-scoped Exchange Application RBAC, plus-address rollout
+gating, controlled tenant smoke, recovery, and certificate rotation are defined
+in the [Microsoft 365 channel runbook](microsoft-365-channel.md).
 
 ## Database migrations and recovery
 
@@ -98,6 +101,9 @@ ordered TypeORM migrations registered in
 18. `0018-m365-customer-follow-up-ping.ts` — Microsoft 365 correspondence identities and acceptance results for Customer follow-up pings.
 19. `0019-customer-mailbox-sync.ts` — durable dedicated-mailbox identity, completed Graph delta checkpoint, bounded freshness/failure state, synchronization timestamps, lease ownership, and retained post-baseline mailbox changes.
 20. `0020-correlated-customer-replies.ts` — append-only normalized inbound Customer messages, token-only correlation evidence, bounded attachment metadata, correspondence ordering indexes, and rollback protection for retained messages.
+21. `0021-customer-correspondence-processing.ts` — explicit correspondence status, unread state, per-message classification, redacted processing audit, and guarded rollback while processing history exists.
+22. `0022-receipt-proven-handoff-revision.ts` — allows a receipt-proven `UNKNOWN` handoff to keep its immutable outcome while a successor handoff draft is created; rollback refuses an incompatible superseded state.
+23. `0023-customer-mail-triage.ts` — unmatched-message link/dismiss decisions, mail-system event retention, supporting Internet Message-ID lookup, and guarded rollback for retained triage history.
 
 The deployed API image contains the compiled migration classes, but not the
 TypeScript migration source tree used by the development-only
@@ -148,7 +154,7 @@ docker compose --env-file .env exec -T api node -e $migrationStatusScript
 
 `pending: false` means that all migration classes in the running image are
 recorded in the database. The `applied` array is the database's migration
-history; the twenty expected names are listed above.
+history; the twenty-three expected names are listed above.
 
 There is no safe arbitrary migration selector in the runtime image. A
 controlled revert can undo only the latest applied migration through a
@@ -191,6 +197,15 @@ Migration `0015` locks the affected tables and refuses rollback before DDL when
 a non-empty ping draft, Discovery reference, advanced draft version, preview,
 or delivery attempt is retained. Existing empty schedule rows can roll back
 without fabricating message content.
+Migrations `0017` and `0018` refuse rollback when retained handoff or ping
+correspondence would be lost. Migration `0019` refuses to remove an established
+mailbox delta baseline. Migration `0020` refuses to remove retained inbound
+messages, and `0021` separately protects retained correspondence processing and
+classification history. Migration `0022` refuses to restore the earlier active-
+handoff uniqueness rule after an `UNKNOWN` handoff has been superseded.
+Migration `0023` protects retained mail-system events and explicit unmatched-
+message triage actions. These guards are recovery signals, not invitations to
+delete evidence until a rollback succeeds.
 Before any revert, inspect the migration and choose the rollback procedure
 appropriate to the affected objects.
 
@@ -497,10 +512,13 @@ The separate CI container-smoke gate builds the API image, proves the packaged
 contracts runtime import, starts PostgreSQL and the migration-gated API, and
 invokes the canonical discovery/readiness consumers. OUTPUT-01 closeout also
 proves in the built image that the published Default template can generate a
-canonical revision with immutable template provenance. Markdown download and
-Microsoft Graph failure/acceptance behavior remains an endpoint/integration
-check; the controlled local Graph fake verifies handoff and ping submission
-without production credentials.
+canonical revision with immutable template provenance. The complete Playwright
+suite uses the controlled local Graph fake to verify Project-start, handoff,
+ping, archive/restore, late-reply, UNKNOWN, classification, no-Markdown, and
+mailbox-recovery behavior without tenant credentials. This evidence does not
+prove production readiness. A separately authorized non-CI tenant run must
+follow the [Microsoft 365 channel runbook](microsoft-365-channel.md), and its
+bounded evidence must pass `pnpm verify:m365-tenant-smoke`.
 
 The declared SCORE-01.1 browser evidence is:
 

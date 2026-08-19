@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "environment": "CONTROLLED_NON_CI_TENANT",
+  "executedAt": null,
+  "commit": null,
+  "result": "NOT_RUN",
+  "sentItemsOutcome": "NOT_RUN",
+  "checks": {
+    "dedicatedMailboxSubmissionAccepted": false,
+    "alternatePteSenderSubmissionAccepted": false,
+    "fromIdentityPreserved": false,
+    "centralReplyToPreserved": false,
+    "plusAddressAccepted": false,
+    "inboundDeltaDetected": false,
+    "exactCorrelationRetained": false,
+    "replyRetentionVerified": false,
+    "duplicateSafeRetryVerified": false,
+    "boundedRedactedFailureVerified": false,
+    "fakeGraphInsufficientAcknowledged": true
+  }
+}
