@@ -50,6 +50,60 @@ test('searches and filters the Active project queue with reload-safe replace-his
   await expect(page).toHaveURL('/');
 });
 
+test('completes the keyboard employee journey and restores the paged queue URL after browser return', async ({ page }) => {
+  const uniquePart = `journey-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  for (let index = 0; index < 11; index += 1) {
+    const created = await page.request.post('/api/projects', {
+      data: {
+        name: `${uniquePart} ${String(index).padStart(2, '0')}`,
+        customerContactName: 'Teszt Kapcsolattartó',
+        customerContactEmail: `${uniquePart}-${index}@example.test`,
+        internalOwnerName: 'Kovács Anna',
+        nextActionOwnerRole: 'INTERNAL_OWNER',
+        nextAction: 'Folytasd a projekt felmérését.',
+        dueAt: '2000-01-01T00:00:00.000Z',
+      },
+    });
+    expect(created.status()).toBe(201);
+  }
+
+  await page.goto('/');
+  const queueLink = page.getByTestId('active-project-queue-link');
+  await queueLink.focus();
+  await queueLink.press('Enter');
+  await expect(page).toHaveURL('/projects/active');
+
+  await page.getByTestId('queue-search').fill(uniquePart);
+  const overdueFilter = page.getByLabel('Lejárt', { exact: true });
+  await overdueFilter.focus();
+  await overdueFilter.press('Space');
+  await expect(overdueFilter).toBeChecked();
+  await expect(page.getByRole('region', { name: 'Lejárt a következő lépés' })).toBeVisible();
+  await expect(page.locator('.queue-row')).toHaveCount(10);
+
+  const nextPage = page.getByTestId('queue-next-page');
+  await nextPage.focus();
+  await nextPage.press('Enter');
+  await expect(page.locator('.queue-row')).toHaveCount(1);
+  const queueUrl = page.url();
+  expect(queueUrl).toContain(`q=${uniquePart}`);
+  expect(queueUrl).toContain('urgency=OVERDUE');
+  expect(queueUrl).toContain('cursor=');
+
+  const primaryAction = page.locator('[data-testid^="queue-action-"]').first();
+  const primaryActionUrl = await primaryAction.getAttribute('href');
+  expect(primaryActionUrl).toMatch(/^\/projects\/[0-9a-f-]+\/interview$/);
+  await primaryAction.focus();
+  await primaryAction.press('Enter');
+  await expect(page).toHaveURL(primaryActionUrl!);
+
+  await page.goBack();
+  await expect(page).toHaveURL(queueUrl);
+  await expect(page.getByTestId('queue-search')).toHaveValue(uniquePart);
+  await expect(page.getByLabel('Lejárt', { exact: true })).toBeChecked();
+  await expect(page.locator('.queue-row')).toHaveCount(1);
+});
+
 test('pages through one urgency group with history and recovers an obsolete cursor URL', async ({ page }) => {
   const uniquePart = `cursor-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
   for (let index = 0; index < 11; index += 1) {
@@ -155,4 +209,46 @@ test('offers filter reset and portfolio actions for the two empty queue states',
   await expect(page.getByRole('heading', { name: 'Nincs aktív projekt' })).toBeVisible();
   await expect(page.getByRole('link', { name: 'Portfólió áttekintése' })).toHaveAttribute('href', '/');
   await expect(page.getByRole('link', { name: 'Új projekt létrehozása' })).toHaveAttribute('href', '/projects/new');
+});
+
+test('reflows ordered semantic work groups without losing row content on a narrow viewport', async ({ page }) => {
+  const uniquePart = `narrow-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  const overdue = await page.request.post('/api/projects', {
+    data: {
+      name: `${uniquePart} lejárt`,
+      customerContactName: 'Teszt Kapcsolattartó',
+      customerContactEmail: `${uniquePart}-overdue@example.test`,
+      internalOwnerName: 'Kovács Anna',
+      nextActionOwnerRole: 'INTERNAL_OWNER',
+      nextAction: 'Egyeztesd a következő workshopot.',
+      dueAt: '2000-01-01T00:00:00.000Z',
+    },
+  });
+  const ordinary = await page.request.post('/api/projects', {
+    data: {
+      name: `${uniquePart} folyamatban`,
+      customerContactName: 'Teszt Kapcsolattartó',
+      customerContactEmail: `${uniquePart}-ordinary@example.test`,
+      internalOwnerName: 'Nagy Bence',
+      nextActionOwnerRole: 'INTERNAL_OWNER',
+      nextAction: 'Készítsd elő a kérdéssémát.',
+    },
+  });
+  expect(overdue.status()).toBe(201);
+  expect(ordinary.status()).toBe(201);
+  const overdueProject = (await overdue.json()) as { readonly id: string };
+  const ordinaryProject = (await ordinary.json()) as { readonly id: string };
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto(`/projects/active?q=${encodeURIComponent(uniquePart)}`);
+
+  const groups = page.getByTestId('active-queue-group');
+  await expect(groups).toHaveCount(2);
+  await expect(groups.nth(0).getByRole('heading')).toHaveText('Lejárt a következő lépés');
+  await expect(groups.nth(1).getByRole('heading')).toHaveText('Folyamatban');
+  await expect(groups.nth(0).getByRole('listitem')).toContainText('Egyeztesd a következő workshopot.');
+  await expect(groups.nth(0).getByRole('listitem')).toContainText('Kovács Anna');
+  await expect(page.getByTestId(`queue-action-${overdueProject.id}`)).toBeVisible();
+  await expect(page.getByTestId(`queue-action-${ordinaryProject.id}`)).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
 });
