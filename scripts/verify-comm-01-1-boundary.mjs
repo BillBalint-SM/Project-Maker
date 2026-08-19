@@ -13,6 +13,18 @@ const productionBoundaryFiles = [
   'packages/contracts/src/follow-ups.ts',
 ];
 
+const approvedCustomerSmtpBoundaryFiles = new Set([
+  'apps/api/src/follow-ups/follow-up.service.ts',
+  'apps/api/src/interview-customer-handoffs/interview-customer-handoff.service.ts',
+  'apps/api/src/mail-delivery/customer-mail-boundary.ts',
+  'apps/api/src/mail-delivery/graph-customer-mail-boundary.ts',
+  'apps/api/src/mail-delivery/mail-delivery.module.ts',
+  'apps/api/src/mail-delivery/smtp-mailer.service.ts',
+]);
+
+const customerSmtpBoundaryReference =
+  /\b(?:customerOutboundMailToken|customerMailerToken|CustomerOutboundMail|OutboundCustomerMessage)\b/;
+
 const forbiddenProductionConcepts = [
   { label: 'Markdown dependency', pattern: /(?:from\s+|import\s*\()(['"])[^'"]*markdown[^'"]*\1/i },
   { label: 'Markdown revision identifier', pattern: /\brevisionId\b/ },
@@ -50,6 +62,7 @@ const currentDocumentationExpectations = [
 
 const failures = [];
 let verifiedProductionFileCount = 0;
+const verifiedProductionFiles = new Set();
 
 for (const relativeRoot of productionBoundaryRoots) {
   const absoluteRoot = path.join(repositoryRoot, relativeRoot);
@@ -59,6 +72,21 @@ for (const relativeRoot of productionBoundaryRoots) {
 }
 for (const relativeFile of productionBoundaryFiles) {
   await verifyProductionFile(path.join(repositoryRoot, relativeFile));
+}
+for (const relativeFile of approvedCustomerSmtpBoundaryFiles) {
+  await verifyProductionFile(path.join(repositoryRoot, relativeFile));
+}
+
+for (const absoluteFile of await listTypeScriptFiles(path.join(repositoryRoot, 'apps/api/src'))) {
+  const content = await readFile(absoluteFile, 'utf8');
+  if (!customerSmtpBoundaryReference.test(content)) continue;
+
+  const relativeFile = toRepositoryPath(absoluteFile);
+  if (!approvedCustomerSmtpBoundaryFiles.has(relativeFile)) {
+    failures.push(
+      `${relativeFile}: references the Customer SMTP boundary outside its producer allowlist`,
+    );
+  }
 }
 
 for (const expectation of currentDocumentationExpectations) {
@@ -90,14 +118,20 @@ if (failures.length > 0) {
 }
 
 async function verifyProductionFile(absoluteFile) {
+  const relativeFile = toRepositoryPath(absoluteFile);
+  if (verifiedProductionFiles.has(relativeFile)) return;
+  verifiedProductionFiles.add(relativeFile);
   verifiedProductionFileCount += 1;
   const content = await readFile(absoluteFile, 'utf8');
-  const relativeFile = path.relative(repositoryRoot, absoluteFile).replaceAll('\\', '/');
   for (const forbidden of forbiddenProductionConcepts) {
     if (forbidden.pattern.test(content)) {
       failures.push(`${relativeFile}: exposes forbidden ${forbidden.label}`);
     }
   }
+}
+
+function toRepositoryPath(absoluteFile) {
+  return path.relative(repositoryRoot, absoluteFile).replaceAll('\\', '/');
 }
 
 async function listTypeScriptFiles(directory) {
