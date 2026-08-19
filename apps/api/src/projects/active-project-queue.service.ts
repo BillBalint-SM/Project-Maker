@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import type {
   ActiveProjectQueueItem,
   ActiveProjectQueuePage,
+  ActiveProjectQueueQuery,
   ActiveProjectUrgency,
 } from '@project-maker/contracts';
 import { Repository } from 'typeorm';
@@ -52,7 +53,7 @@ export class ActiveProjectQueueService {
     private readonly clock: ActiveProjectQueueClock,
   ) {}
 
-  async firstPage(): Promise<ActiveProjectQueuePage> {
+  async firstPage(query: ActiveProjectQueueQuery = {}): Promise<ActiveProjectQueuePage> {
     const retrievedAt = this.clock.now();
     const [projects, replyAggregates] = await Promise.all([
       this.projectRepository
@@ -69,7 +70,8 @@ export class ActiveProjectQueueService {
     const repliesByProjectId = new Map(
       replyAggregates.map((aggregate) => [aggregate.project_id, aggregate]),
     );
-    const candidates = projects
+    const statusesByProjectId = await this.preparationStatusService.getStatuses(projects);
+    const searchedCandidates = projects
       .map((project): QueueCandidate => {
         const aggregate = repliesByProjectId.get(project.id);
         const newReplyCount = Number(aggregate?.new_reply_count ?? 0);
@@ -79,26 +81,31 @@ export class ActiveProjectQueueService {
           newReplyCount,
         };
       })
-      .sort(compareCandidates);
-    const firstCandidates = candidates.slice(0, pageSize);
-    const statusesByProjectId = await this.preparationStatusService.getStatuses(
-      firstCandidates.map(({ project }) => project),
-    );
+      .filter(({ project }) => matchesSearch(project.name, query.search))
+      .filter(({ project }) => {
+        const states = query.preparationStates ?? [];
+        return states.length === 0 || states.includes(requiredStatus(statusesByProjectId, project.id).state);
+      });
     const groupCounts = {
       CUSTOMER_REPLY: 0,
       OVERDUE: 0,
       DUE_SOON: 0,
       IN_PROGRESS: 0,
     } satisfies Record<ActiveProjectUrgency, number>;
-    for (const candidate of candidates) {
+    for (const candidate of searchedCandidates) {
       groupCounts[candidate.urgency] += 1;
     }
 
+    const candidates = searchedCandidates
+      .filter(({ urgency }) => {
+        const urgencies = query.urgencies ?? [];
+        return urgencies.length === 0 || urgencies.includes(urgency);
+      })
+      .sort(compareCandidates);
+    const firstCandidates = candidates.slice(0, pageSize);
+
     const items = firstCandidates.map(({ project, urgency, newReplyCount }): ActiveProjectQueueItem => {
-      const preparationStatus = statusesByProjectId.get(project.id);
-      if (!preparationStatus) {
-        throw new TypeError(`Missing preparation status for Project ${project.id}.`);
-      }
+      const preparationStatus = requiredStatus(statusesByProjectId, project.id);
       return {
         projectId: project.id,
         projectName: project.name,
@@ -186,6 +193,20 @@ function compareNullableDates(left: Date | null, right: Date | null): number {
 
 function normalizeProjectName(name: string): string {
   return name.normalize('NFD').replace(/\p{M}/gu, '').toLocaleLowerCase('hu-HU');
+}
+
+function matchesSearch(projectName: string, search: string | undefined): boolean {
+  const normalizedSearch = normalizeProjectName(search?.trim() ?? '');
+  return normalizedSearch.length === 0 || normalizeProjectName(projectName).includes(normalizedSearch);
+}
+
+function requiredStatus(
+  statuses: ReadonlyMap<string, import('@project-maker/contracts').ProjectPreparationStatus>,
+  projectId: string,
+): import('@project-maker/contracts').ProjectPreparationStatus {
+  const status = statuses.get(projectId);
+  if (!status) throw new TypeError(`Missing preparation status for Project ${projectId}.`);
+  return status;
 }
 
 function endOfSeventhBudapestDay(now: Date): Date {

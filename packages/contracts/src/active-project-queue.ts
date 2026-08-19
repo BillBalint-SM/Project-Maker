@@ -39,6 +39,12 @@ export interface ActiveProjectQueueItem {
 
 export type ActiveProjectQueueGroupCounts = Readonly<Record<ActiveProjectUrgency, number>>;
 
+export interface ActiveProjectQueueQuery {
+  readonly search?: string;
+  readonly urgencies?: readonly ActiveProjectUrgency[];
+  readonly preparationStates?: readonly ProjectPreparationStatus['state'][];
+}
+
 export interface ActiveProjectQueuePage {
   readonly items: readonly ActiveProjectQueueItem[];
   readonly totalCount: number;

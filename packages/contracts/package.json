@@ -15,6 +15,16 @@
       "import": "./dist/projects.js",
       "require": "./dist/runtime-cjs/projects.js"
     },
+    "./active-project-queue": {
+      "types": "./dist/active-project-queue.d.ts",
+      "import": "./dist/active-project-queue.js",
+      "require": "./dist/runtime-cjs/active-project-queue.js"
+    },
+    "./project-preparation-status": {
+      "types": "./dist/project-preparation-status.d.ts",
+      "import": "./dist/project-preparation-status.js",
+      "require": "./dist/runtime-cjs/project-preparation-status.js"
+    },
     "./discovery-follow-ups": {
       "types": "./dist/discovery-follow-ups.d.ts",
       "import": "./dist/discovery-follow-ups.js",
