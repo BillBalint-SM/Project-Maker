@@ -18,6 +18,14 @@ export const routes: Routes = [
     title: 'Új projekt | Project Maker',
   },
   {
+    path: 'projects/active',
+    loadComponent: () =>
+      import('./projects/active-project-queue.page').then(
+        (module) => module.ActiveProjectQueuePageComponent,
+      ),
+    title: 'Aktív munkasor | Project Maker',
+  },
+  {
     path: 'projects/:projectId/interview',
     loadComponent: () =>
       import('./interviews/interview.page').then(

@@ -5,7 +5,10 @@
       <h1 id="projects-title">Projektek</h1>
       <p>Az aktív projektek és a következő feladatok áttekintése.</p>
     </div>
-    <a pButton routerLink="/projects/new" data-testid="new-project-button">Új projekt</a>
+    <div class="heading-actions">
+      <a pButton routerLink="/projects/active" data-testid="active-project-queue-link">Aktív munkasor</a>
+      <a pButton routerLink="/projects/new" severity="secondary" data-testid="new-project-button">Új projekt</a>
+    </div>
   </div>
 
   <aside class="mailbox-sync-panel" aria-labelledby="mailbox-sync-title">
