@@ -7,7 +7,7 @@ export const routes: Routes = [
       import('./projects/project-list.page').then(
         (module) => module.ProjectListPage,
       ),
-    title: 'Projects | Project Maker',
+    title: 'Áttekintő | Project Maker',
   },
   {
     path: 'projects/new',
@@ -23,7 +23,15 @@ export const routes: Routes = [
       import('./projects/active-project-queue.page').then(
         (module) => module.ActiveProjectQueuePageComponent,
       ),
-    title: 'Aktív munkasor | Project Maker',
+    title: 'Folyamatban lévő ügyek | Project Maker',
+  },
+  {
+    path: 'follow-ups',
+    loadComponent: () =>
+      import('./projects/open-discovery-follow-ups.page').then(
+        (module) => module.OpenDiscoveryFollowUpsPage,
+      ),
+    title: 'Utánkövetések | Project Maker',
   },
   {
     path: 'customer-mail-triage',
@@ -54,7 +62,7 @@ export const routes: Routes = [
           import('./interviews/interview.page').then(
             (module) => module.InterviewPage,
           ),
-        title: 'Project interview | Project Maker',
+        title: 'Felmérés | Project Maker',
       },
       {
         path: 'readiness',
@@ -78,7 +86,7 @@ export const routes: Routes = [
           import('./markdown/markdown.page').then(
             (module) => module.MarkdownPage,
           ),
-        title: 'Markdown specifikáció | Project Maker',
+        title: 'Markdown terv | Project Maker',
       },
       {
         path: 'customer-correspondences',
@@ -86,7 +94,7 @@ export const routes: Routes = [
           import('./projects/customer-correspondences.page').then(
             (module) => module.CustomerCorrespondencesPage,
           ),
-        title: 'Customer válaszok | Project Maker',
+        title: 'Ügyféllevelezés | Project Maker',
       },
       {
         path: 'settings',
@@ -109,7 +117,7 @@ export const routes: Routes = [
       import('./settings/question-bank.page').then(
         (module) => module.QuestionBankPage,
       ),
-    title: 'Question bank settings | Project Maker',
+    title: 'Kérdésbank beállítások | Project Maker',
   },
   {
     path: 'settings/markdown-templates',

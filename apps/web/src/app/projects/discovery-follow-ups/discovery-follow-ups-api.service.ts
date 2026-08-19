@@ -9,6 +9,7 @@ import type {
   CreateDiscoveryFollowUpInput,
   DiscoveryFollowUp,
   DiscoveryFollowUpSourceOption,
+  OpenDiscoveryFollowUpQueueItem,
   ResolveDiscoveryFollowUpInput,
   SetDiscoveryFollowUpSourceLinkInput,
   UpdateDiscoveryFollowUpInput,
@@ -23,12 +24,12 @@ export type DiscoveryOperation =
   | 'resolve';
 
 const discoveryActions: Readonly<Record<DiscoveryOperation, string>> = {
-  load: 'load discovery follow-ups',
-  'load-source-options': 'load Initial Intake source options',
-  create: 'create a discovery follow-up',
-  update: 'update a discovery follow-up',
-  'set-source-link': 'change the discovery follow-up source',
-  resolve: 'resolve a discovery follow-up',
+  load: 'betölteni az utánkövetéseket',
+  'load-source-options': 'betölteni a kezdő felmérés forrásait',
+  create: 'létrehozni az utánkövetést',
+  update: 'menteni az utánkövetés módosításait',
+  'set-source-link': 'módosítani az utánkövetés forrását',
+  resolve: 'lezárni az utánkövetést',
 };
 
 export class DiscoveryFollowUpsApiError extends Error {
@@ -42,9 +43,17 @@ export class DiscoveryFollowUpsApiError extends Error {
   }
 }
 
-@Injectable()
+@Injectable({ providedIn: 'root' })
 export class DiscoveryFollowUpsApiService {
   private readonly http = inject(HttpClient);
+
+  listOpen(): Observable<readonly OpenDiscoveryFollowUpQueueItem[]> {
+    return this.http
+      .get<readonly OpenDiscoveryFollowUpQueueItem[]>(
+        '/api/discovery-follow-ups/open',
+      )
+      .pipe(catchError((error: unknown) => this.fail(error, 'load')));
+  }
 
   list(projectId: string): Observable<readonly DiscoveryFollowUp[]> {
     return this.http
@@ -153,7 +162,7 @@ export class DiscoveryFollowUpsApiService {
       return throwError(
         () =>
           new DiscoveryFollowUpsApiError(
-            'Could not ' + action + '. Refresh the page and try again.',
+            'Nem sikerült ' + action + '. Frissítsd az oldalt, majd próbáld újra.',
             operation,
             null,
           ),
@@ -170,9 +179,9 @@ export class DiscoveryFollowUpsApiService {
       return throwError(
         () =>
           new DiscoveryFollowUpsApiError(
-            'Could not ' +
+            'Nem sikerült ' +
               action +
-              ' because the API is unreachable. Check that the server is running, then try again.',
+              ', mert a szolgáltatás nem érhető el. Ellenőrizd a kapcsolatot, majd próbáld újra.',
             operation,
             error.status,
           ),
@@ -182,11 +191,9 @@ export class DiscoveryFollowUpsApiService {
     return throwError(
       () =>
         new DiscoveryFollowUpsApiError(
-          'Could not ' +
+          'Nem sikerült ' +
             action +
-            ' (HTTP ' +
-            error.status +
-            '). ' +
+            '. ' +
             discoveryNextStep(error.status, operation),
           operation,
           error.status,
@@ -200,25 +207,25 @@ function discoveryNextStep(
   operation: DiscoveryOperation,
 ): string {
   if (status === 404) {
-    return 'Return to the project list and confirm that the project still exists.';
+    return 'Térj vissza az Áttekintőre, és ellenőrizd, hogy a projekt még létezik-e.';
   }
   if (status === 409 && operation === 'create') {
     return 'A projekt archiválva lett vagy időközben megváltozott. Töltsd újra az oldalt, majd próbáld meg ismét.';
   }
   if (status === 409 && operation === 'update') {
-    return 'The discovery follow-up may have changed. Refresh its current version and try again.';
+    return 'Az utánkövetés időközben megváltozhatott. Töltsd be az aktuális verziót, majd próbáld újra.';
   }
   if (status === 409 && operation === 'set-source-link') {
-    return 'Initial Intake source candidates were refreshed. Choose again.';
+    return 'A kezdő felmérés forráslistája frissült. Válassz újra.';
   }
   if (status === 409) {
-    return 'Refresh the project to see its latest lifecycle state.';
+    return 'Frissítsd a projektet a legújabb életciklus-állapot megjelenítéséhez.';
   }
   if (status === 400 && operation === 'create') {
-    return 'Choose a category, enter the required text, and use a real due date, then try again.';
+    return 'Válassz kategóriát, töltsd ki a kötelező mezőket és adj meg valós határidőt.';
   }
   if (status === 400 && operation === 'resolve') {
-    return 'Review the entered values and try again.';
+    return 'Ellenőrizd a megadott értékeket, majd próbáld újra.';
   }
-  return 'Refresh the Discovery follow-ups and try again.';
+  return 'Frissítsd az utánkövetéseket, majd próbáld újra.';
 }

@@ -15,13 +15,13 @@
       } @else if (projectContext.loadError(); as error) {
         <div class="card-state" role="alert">
           <p>{{ error }}</p>
-          <p-button label="Újrapróbálás" (onClick)="projectContext.reload()" />
+          <p-button label="Projektállapot újratöltése" (onClick)="projectContext.reload()" />
         </div>
       } @else if (projectContext.workState(); as currentProject) {
         <dl class="status-details">
           <div><dt>Következő lépés felelőse</dt><dd>{{ currentProject.nextActionOwner.displayName ?? 'Még nincs kijelölve.' }}</dd></div>
           <div><dt>Következő lépés</dt><dd>{{ currentProject.nextAction ?? 'Még nincs rögzítve.' }}</dd></div>
-          <div><dt>Határidő</dt><dd>{{ currentProject.dueAt ? (currentProject.dueAt | date: 'medium') : 'Még nincs rögzítve.' }}</dd></div>
+          <div><dt>Határidő</dt><dd>{{ currentProject.dueAt ? (currentProject.dueAt | date: 'yyyy. MM. dd. HH:mm') : 'Még nincs rögzítve.' }}</dd></div>
         </dl>
       }
 
@@ -94,14 +94,14 @@
       @if (activityLoading()) {
         <p class="card-state" aria-live="polite">Az aktivitás betöltése folyamatban van…</p>
       } @else if (activityError(); as error) {
-        <div class="card-state" role="alert"><p>{{ error }}</p><p-button label="Újrapróbálás" (onClick)="loadActivity()" /></div>
+        <div class="card-state" role="alert"><p>{{ error }}</p><p-button label="Aktivitás újratöltése" (onClick)="loadActivity()" /></div>
       } @else if (activity(); as currentActivity) {
         @if (currentActivity.events.length === 0) {
           <p class="card-state">Még nincs megjeleníthető projektaktivitás.</p>
         } @else {
           <ol class="activity-list">
             @for (item of currentActivity.events; track item.occurredAt + item.summary) {
-              <li><strong>{{ item.summary }}</strong><time [attr.datetime]="item.occurredAt">{{ item.occurredAt | date: 'medium' }}</time></li>
+              <li><strong>{{ item.summary }}</strong><time [attr.datetime]="item.occurredAt">{{ item.occurredAt | date: 'yyyy. MM. dd. HH:mm' }}</time></li>
             }
           </ol>
         }

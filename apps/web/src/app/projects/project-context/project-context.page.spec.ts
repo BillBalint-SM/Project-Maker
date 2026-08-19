@@ -87,7 +87,7 @@ describe('ProjectContextPage', () => {
     expect(root.textContent).toContain('Alfa átállás');
     expect(root.textContent).toContain('Felmérés folyamatban');
     expect(backLink?.getAttribute('href')).toBe(queueUrl);
-    expect(backLink?.textContent).toContain('Vissza az aktív munkasorhoz');
+    expect(backLink?.textContent).toContain('Vissza a folyamatban lévő ügyekhez');
     expect(statusLink?.getAttribute('aria-current')).toBe('page');
     expect(interviewLink?.getAttribute('aria-current')).toBeNull();
     expect(projectReturnTarget(primaryAction)).toBe(queueUrl);
@@ -131,7 +131,7 @@ describe('ProjectContextPage', () => {
       '[data-testid="project-context-nav-interview"]',
     ) as HTMLAnchorElement | null;
     expect(backLink?.getAttribute('href')).toBe('/');
-    expect(backLink?.textContent).toContain('Vissza a portfólióhoz');
+    expect(backLink?.textContent).toContain('Vissza az Áttekintőre');
     expect(projectReturnTarget(interviewLink)).toBe('/');
   });
 

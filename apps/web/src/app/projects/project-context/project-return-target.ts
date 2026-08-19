@@ -38,6 +38,9 @@ export function validatedProjectReturnTarget(candidate: string | null): string {
     if (path === '') {
       return '/';
     }
+    if (path === 'follow-ups' && tree.queryParamMap.keys.length === 0) {
+      return '/follow-ups';
+    }
     if (path !== 'projects/active' || !hasValidQueueQuery(tree.queryParamMap)) {
       return '/';
     }

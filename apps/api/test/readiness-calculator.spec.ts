@@ -168,7 +168,7 @@ describe('calculateProjectReadiness', () => {
         {
           id: 'follow-up-follow-up-blocked',
           severity: policy.statuses.readinessGapSeverity[0],
-          category: 'Discovery utánkövetés',
+          category: 'Tisztázási utánkövetés',
           target: 'follow-ups',
           snapshotId: null,
           followUpId: 'follow-up-blocked',
@@ -192,7 +192,7 @@ describe('calculateProjectReadiness', () => {
         {
           id: 'follow-up-follow-up-open',
           severity: policy.statuses.readinessGapSeverity[1],
-          category: 'Discovery utánkövetés',
+          category: 'Tisztázási utánkövetés',
           target: 'follow-ups',
           snapshotId: null,
           followUpId: 'follow-up-open',

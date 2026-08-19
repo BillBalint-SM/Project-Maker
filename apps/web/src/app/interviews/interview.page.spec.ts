@@ -665,7 +665,7 @@ describe('InterviewPage', () => {
     expect(answerInput.value).toBe('Még nincs mentve, de fontos válasz');
     expect(completeButton?.disabled).toBe(true);
     expect(blockedMessage?.textContent?.trim()).toBe(
-      'Az interjúkör nem zárható le, amíg van sikertelen válaszmentés. Mentsd újra a hibás válaszokat, majd próbáld újra.',
+      'A felmérési kör nem zárható le, amíg van sikertelen válaszmentés. Mentsd újra a hibás válaszokat, majd próbáld újra.',
     );
 
     page.fixture.componentInstance.finishRound(false);
@@ -676,7 +676,7 @@ describe('InterviewPage', () => {
     ) as HTMLElement | null;
     expect(finishRound).not.toHaveBeenCalled();
     expect(actionError?.textContent?.trim()).toBe(
-      'Az interjúkör nem zárható le, amíg van sikertelen válaszmentés. Mentsd újra a hibás válaszokat, majd próbáld újra.',
+      'A felmérési kör nem zárható le, amíg van sikertelen válaszmentés. Mentsd újra a hibás válaszokat, majd próbáld újra.',
     );
     expect(answerInput.value).toBe('Még nincs mentve, de fontos válasz');
     expect(
@@ -754,7 +754,7 @@ describe('InterviewPage', () => {
     expect(
       page.nativeElement.querySelector('[data-testid="interview-question-selection"]'),
     ).not.toBeNull();
-    expect(page.nativeElement.textContent).not.toContain('Kezdő interjúkör');
+    expect(page.nativeElement.textContent).not.toContain('Kezdő felmérési kör');
     expect(
       page.nativeElement.querySelector('[data-testid="round-type-select"]'),
     ).toBeNull();
@@ -770,7 +770,7 @@ describe('InterviewPage', () => {
     ) as HTMLElement | null;
 
     expect(loadError?.textContent?.trim()).toBe(
-      'Nem támogatott aktív interjúkör érkezett a szervertől. Frissítsd az oldalt, és ha a hiba megmarad, ellenőrizd a projekt interjúállapotát.',
+      'Nem támogatott aktív felmérési kör érkezett. Frissítsd az oldalt, és ha a hiba megmarad, ellenőrizd a projekt felmérési állapotát.',
     );
     expect(
       page.nativeElement.querySelector('[data-testid="active-round-resume-state"]'),
@@ -779,7 +779,7 @@ describe('InterviewPage', () => {
 
   it('preserves the specific Hungarian service error during initial load', async () => {
     const userMessage =
-      'Nem sikerült betölteni az aktív kezdő interjúkört (HTTP 404). Ellenőrizd, hogy a projekt, az interjúkör vagy a kérdés még létezik-e.';
+      'Nem sikerült betölteni az aktív kezdő felmérési kört. Ellenőrizd, hogy a projekt, a felmérési kör vagy a kérdés még létezik-e.';
     const questionBankApi = createQuestionBankApi(null, null);
     const interviewApi = {
       ...createInterviewApi(null, null),
@@ -821,7 +821,7 @@ describe('InterviewPage', () => {
     ) as HTMLElement | null;
 
     expect(loadError?.textContent?.trim()).toBe(
-      'Nem sikerült betölteni az interjú adatait. Frissítsd az oldalt, majd próbáld újra.',
+      'A felmérési oldal nem tölthető be. Frissítsd az oldalt, majd próbáld újra.',
     );
   });
 });

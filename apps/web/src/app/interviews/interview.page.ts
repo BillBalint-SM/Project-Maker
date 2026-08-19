@@ -1,6 +1,6 @@
 import { DOCUMENT } from '@angular/common';
 import { afterNextRender, Component, Injector, OnDestroy, OnInit, inject, signal } from '@angular/core';
-import { ActivatedRoute, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { forkJoin } from 'rxjs';
 import { ButtonModule } from 'primeng/button';
 import { CardModule } from 'primeng/card';
@@ -22,17 +22,18 @@ import { InterviewApiService, isInterviewApiError } from './interview-api.servic
 import { InterviewHandoffComponent } from './interview-handoff/interview-handoff.component';
 import { ProjectApiService } from '../projects/project-api.service';
 import { QuestionBankApiService } from '../settings/question-bank-api.service';
+import { baseQuestionTypeLabel } from '../base-question-type-label';
 
 const supportedRoundType = 'INITIAL_INTAKE';
 const textAutosaveDelayMs = 750;
 const completionBlockedByAnswerErrorMessage =
-  'Az interjúkör nem zárható le, amíg van sikertelen válaszmentés. Mentsd újra a hibás válaszokat, majd próbáld újra.';
+  'A felmérési kör nem zárható le, amíg van sikertelen válaszmentés. Mentsd újra a hibás válaszokat, majd próbáld újra.';
 const completionBlockedByPendingSaveMessage =
-  'Az interjúkör lezárása előtt várd meg, amíg minden automatikus mentés befejeződik.';
+  'A felmérési kör lezárása előtt várd meg, amíg minden automatikus mentés befejeződik.';
 const completionBlockedByAssessmentErrorMessage =
-  'Az interjúkör nem zárható le, amíg van sikertelen értékelésmentés. Mentsd újra a hibás értékeléseket, majd próbáld újra.';
+  'A felmérési kör nem zárható le, amíg van sikertelen értékelésmentés. Mentsd újra a hibás értékeléseket, majd próbáld újra.';
 const completionBlockedByPendingAssessmentMessage =
-  'Az interjúkör lezárása előtt várd meg, amíg minden értékelés mentése befejeződik.';
+  'A felmérési kör lezárása előtt várd meg, amíg minden értékelés mentése befejeződik.';
 
 type QuestionSaveStatus = 'idle' | 'saving' | 'saved' | 'error';
 type AssessmentMode = 'automatic' | 'partial' | 'not-relevant';
@@ -72,6 +73,7 @@ export class InterviewPage implements OnInit, OnDestroy {
   private readonly document = inject(DOCUMENT);
   private readonly injector = inject(Injector);
   private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
   private readonly questionBankApi = inject(QuestionBankApiService);
   private readonly interviewApi = inject(InterviewApiService);
   private readonly projectApi = inject(ProjectApiService);
@@ -111,7 +113,7 @@ export class InterviewPage implements OnInit, OnDestroy {
   loadInterviewData(): void {
     if (!this.projectId) {
       this.loadError.set(
-        'Hiányzik a projektazonosító az interjú URL-jéből. Menj vissza a projekt áttekintő oldalára, és nyisd meg újra az interjút.',
+        'Hiányzik a projektazonosító a felmérés URL-jéből. Menj vissza az Áttekintőre, és nyisd meg újra a felmérést.',
       );
       this.loading.set(false);
       return;
@@ -137,7 +139,7 @@ export class InterviewPage implements OnInit, OnDestroy {
       next: ({ bank, schema, activeRound, project }) => {
         if (activeRound && activeRound.type !== supportedRoundType) {
           this.loadError.set(
-            'Nem támogatott aktív interjúkör érkezett a szervertől. Frissítsd az oldalt, és ha a hiba megmarad, ellenőrizd a projekt interjúállapotát.',
+            'Nem támogatott aktív felmérési kör érkezett. Frissítsd az oldalt, és ha a hiba megmarad, ellenőrizd a projekt felmérési állapotát.',
           );
           this.loading.set(false);
           return;
@@ -192,7 +194,7 @@ export class InterviewPage implements OnInit, OnDestroy {
     }
     if (this.hasOpenRound()) {
       this.actionError.set(
-        'A kérdésséma nem módosítható, amíg van nyitott kezdő interjúkör.',
+        'A kérdésséma nem módosítható, amíg van nyitott kezdő felmérési kör.',
       );
       return;
     }
@@ -237,8 +239,8 @@ export class InterviewPage implements OnInit, OnDestroy {
         }
         this.feedback.set(
           this.schema()?.schemaVersion === 1
-            ? 'A projekt interjúsémája elkészült.'
-            : 'A projekt interjúsémája frissült.',
+            ? 'A projekt kérdéssémája elkészült.'
+            : 'A projekt kérdéssémája frissült.',
         );
       },
       error: () => {
@@ -255,7 +257,7 @@ export class InterviewPage implements OnInit, OnDestroy {
   private startInitialRound(reconcileExistingRound = false): void {
     if (this.roundSaving() || this.schema() === null || this.projectArchived()) {
       if (this.schema() === null) {
-        this.actionError.set('Az interjúkör indítása előtt fogadd el a projekt kérdéssémáját.');
+        this.actionError.set('A felmérési kör indítása előtt fogadd el a projekt kérdéssémáját.');
       }
       return;
     }
@@ -295,12 +297,12 @@ export class InterviewPage implements OnInit, OnDestroy {
     this.answerStates.set(buildAnswerStates(round));
     this.assessmentStates.set(buildAssessmentStates(round));
     this.roundSaving.set(false);
-    this.feedback.set('A kezdő interjúkör elindult.');
+    this.feedback.set('A kezdő felmérési kör elindult.');
   }
 
   private showInitialRoundStartFailure(): void {
     this.actionError.set(
-      'A kérdésséma elfogadva van, de a kezdő interjúkör nem indult el. Próbáld újra az interjú indítását.',
+      'A kérdésséma elfogadva van, de a kezdő felmérési kör nem indult el. Próbáld újra a felmérés indítását.',
     );
     this.roundSaving.set(false);
   }
@@ -585,6 +587,13 @@ export class InterviewPage implements OnInit, OnDestroy {
         this.endedEditable.set(true);
         this.previewAfterFinish.set(sendNow);
         this.completing.set(false);
+        if (!sendNow) {
+          const returnTo = this.route.snapshot.queryParamMap.get('returnTo');
+          void this.router.navigate(
+            ['/projects', this.projectId, 'readiness'],
+            { queryParams: returnTo ? { returnTo } : undefined },
+          );
+        }
       },
       error: (error: Error) => {
         this.actionError.set(error.message);
@@ -668,27 +677,10 @@ export class InterviewPage implements OnInit, OnDestroy {
   }
 
   roundTypeLabel(): string {
-    return 'Kezdő interjú';
+    return 'Kezdő felmérés';
   }
 
-  questionTypeLabel(type: BaseQuestionType): string {
-    switch (type) {
-      case 'TEXT':
-        return 'Rövid szöveg';
-      case 'LONG_TEXT':
-        return 'Hosszú szöveg';
-      case 'SINGLE_SELECT':
-        return 'Egyszeres választás';
-      case 'MULTI_SELECT':
-        return 'Többszörös választás';
-      case 'BOOLEAN':
-        return 'Igen / nem';
-      case 'NUMBER':
-        return 'Szám';
-      case 'DATE':
-        return 'Dátum';
-    }
-  }
+  readonly questionTypeLabel = baseQuestionTypeLabel;
 
   questionTypeGuidance(question: RoundQuestionSnapshot): string {
     switch (question.type) {
@@ -1209,7 +1201,7 @@ function resolveLoadError(error: unknown): string {
     return error.message;
   }
 
-  return 'Nem sikerült betölteni az interjú adatait. Frissítsd az oldalt, majd próbáld újra.';
+  return 'A felmérési oldal nem tölthető be. Frissítsd az oldalt, majd próbáld újra.';
 }
 
 function resolveSchemaPublishError(hasExistingSchema: boolean): string {

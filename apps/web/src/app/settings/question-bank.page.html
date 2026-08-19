@@ -1,13 +1,13 @@
 <section aria-labelledby="question-bank-title">
   <div class="heading-row">
     <div class="page-heading">
-      <span class="eyebrow">Settings</span>
-      <h1 id="question-bank-title">Base question bank</h1>
-      <p>Maintain the active question set used by new project interview schemas.</p>
+      <span class="eyebrow">Szervezeti beállítás</span>
+      <h1 id="question-bank-title">Kérdésbank beállítások</h1>
+      <p>Az új projektek felmérési kérdéssémájához használható alapkérdések kezelése.</p>
     </div>
     @if (!showForm() && !loading() && !loadError()) {
       <p-button
-        label="New base question"
+        label="Új alapkérdés"
         data-testid="new-base-question-button"
         (onClick)="openCreateForm()"
       />
@@ -27,9 +27,9 @@
 
   @if (showForm()) {
     <p-card styleClass="question-form-card">
-      <ng-template #title>{{ isEditing() ? 'Edit base question' : 'New base question' }}</ng-template>
+      <ng-template #title>{{ isEditing() ? 'Alapkérdés szerkesztése' : 'Új alapkérdés' }}</ng-template>
       <ng-template #subtitle>
-        Every field is saved into a new immutable bank version.
+        Minden mentés új, megváltoztathatatlan kérdésbankverziót hoz létre.
       </ng-template>
       <form
         class="question-form"
@@ -40,7 +40,7 @@
         <fieldset class="form-fields" [disabled]="saving()">
         <div class="form-grid">
           <div class="field">
-            <label for="question-stable-key">Stable key</label>
+            <label for="question-stable-key">Kérdésazonosító</label>
             <input
               id="question-stable-key"
               class="full-width"
@@ -51,20 +51,20 @@
               [attr.aria-invalid]="questionForm.controls.stableKey.invalid && questionForm.controls.stableKey.touched"
               [attr.aria-describedby]="questionForm.controls.stableKey.invalid && questionForm.controls.stableKey.touched ? 'question-stable-key-error' : null"
             />
-            <small>Lowercase letters, numbers, and hyphens only.</small>
+            <small>Csak kisbetű, szám és kötőjel használható.</small>
             @if (questionForm.controls.stableKey.invalid && questionForm.controls.stableKey.touched) {
               <small class="field-error" id="question-stable-key-error">
                 @if (questionForm.controls.stableKey.hasError('nonBlank')) {
-                  Enter a stable key.
+                  Add meg a kérdésazonosítót.
                 } @else {
-                  Use lowercase letters, numbers, and hyphens only (up to 100 characters).
+                  Legfeljebb 100 kisbetűt, számot vagy kötőjelet használj.
                 }
               </small>
             }
           </div>
 
           <div class="field">
-            <label for="question-topic">Topic</label>
+            <label for="question-topic">Témakör</label>
             <input
               id="question-topic"
               class="full-width"
@@ -77,16 +77,16 @@
             @if (questionForm.controls.topic.invalid && questionForm.controls.topic.touched) {
               <small class="field-error" id="question-topic-error">
                 @if (questionForm.controls.topic.hasError('nonBlank')) {
-                  Enter a topic.
+                  Add meg a témakört.
                 } @else {
-                  Topic must be 255 characters or fewer.
+                  A témakör legfeljebb 255 karakter lehet.
                 }
               </small>
             }
           </div>
 
           <div class="field">
-            <label for="question-control-point">Control point</label>
+            <label for="question-control-point">Ellenőrzési pont</label>
             <input
               id="question-control-point"
               class="full-width"
@@ -97,17 +97,19 @@
               [attr.aria-describedby]="questionForm.controls.controlPoint.invalid && questionForm.controls.controlPoint.touched ? 'question-control-point-error' : null"
             />
             @if (questionForm.controls.controlPoint.invalid && questionForm.controls.controlPoint.touched) {
-              <small class="field-error" id="question-control-point-error">Enter a control point.</small>
+              <small class="field-error" id="question-control-point-error">Add meg az ellenőrzési pontot.</small>
             }
           </div>
 
           <div class="field">
-            <label for="question-type">Question type</label>
+            <label for="question-type">Választípus</label>
             <p-select
               inputId="question-type"
               styleClass="full-width"
               formControlName="type"
               [options]="questionTypes"
+              optionLabel="label"
+              optionValue="value"
               required
               data-testid="base-question-type"
               (onChange)="handleTypeChange()"
@@ -115,7 +117,7 @@
           </div>
 
           <div class="field field-wide">
-            <label for="question-text">Question text</label>
+            <label for="question-text">Kérdés szövege</label>
             <textarea
               id="question-text"
               class="full-width"
@@ -127,12 +129,12 @@
               [attr.aria-describedby]="questionForm.controls.text.invalid && questionForm.controls.text.touched ? 'question-text-error' : null"
             ></textarea>
             @if (questionForm.controls.text.invalid && questionForm.controls.text.touched) {
-              <small class="field-error" id="question-text-error">Enter question text.</small>
+              <small class="field-error" id="question-text-error">Add meg a kérdés szövegét.</small>
             }
           </div>
 
           <div class="field">
-            <label for="question-order">Order</label>
+            <label for="question-order">Sorrend</label>
             <input
               id="question-order"
               type="number"
@@ -146,12 +148,12 @@
               [attr.aria-describedby]="questionForm.controls.order.invalid && questionForm.controls.order.touched ? 'question-order-error' : null"
             />
             @if (questionForm.controls.order.invalid && questionForm.controls.order.touched) {
-              <small class="field-error" id="question-order-error">Order must be a whole number greater than zero.</small>
+              <small class="field-error" id="question-order-error">A sorrend nullánál nagyobb egész szám legyen.</small>
             }
           </div>
 
           <div class="field field-wide">
-            <label for="question-hint">Hint (optional)</label>
+            <label for="question-hint">Kitöltési segítség (opcionális)</label>
             <textarea
               id="question-hint"
               class="full-width"
@@ -163,7 +165,7 @@
 
           @if (isSelectType()) {
             <div class="field field-wide">
-              <label for="question-options">Options</label>
+              <label for="question-options">Válaszlehetőségek</label>
               <textarea
                 id="question-options"
                 class="full-width"
@@ -172,28 +174,28 @@
                 data-testid="base-question-options"
                 aria-describedby="question-options-help"
               ></textarea>
-              <small id="question-options-help">One option per line. Blank lines are ignored.</small>
+              <small id="question-options-help">Soronként egy lehetőséget adj meg. Az üres sorokat a rendszer kihagyja.</small>
             </div>
           }
         </div>
 
         <fieldset class="checkbox-grid">
-          <legend>Question behavior</legend>
+          <legend>A kérdés használata</legend>
           <label>
             <input type="checkbox" formControlName="required" data-testid="base-question-required" />
-            Required
+            Kötelező
           </label>
           <label>
             <input type="checkbox" formControlName="requiredForEstimate" data-testid="base-question-required-estimate" />
-            Required for estimate
+            Becsléshez kötelező
           </label>
           <label>
             <input type="checkbox" formControlName="blocking" data-testid="base-question-blocking" />
-            Blocking
+            Hiánya blokkol
           </label>
           <label>
             <input type="checkbox" formControlName="active" data-testid="base-question-active" />
-            Active
+            Aktív
           </label>
         </fieldset>
         </fieldset>
@@ -201,14 +203,14 @@
         <div class="form-actions">
           <p-button
             type="submit"
-            [label]="isEditing() ? 'Save changes' : 'Create question'"
+            [label]="isEditing() ? 'Módosítások mentése' : 'Alapkérdés létrehozása'"
             [loading]="saving()"
             [disabled]="saving()"
             data-testid="save-base-question-button"
           />
           <p-button
             type="button"
-            label="Cancel"
+            label="Mégse"
             severity="secondary"
             [text]="true"
             [disabled]="saving()"
@@ -222,15 +224,15 @@
 
   @if (loading()) {
     <div class="state-panel" data-testid="question-bank-loading" aria-live="polite">
-      <p-progress-spinner ariaLabel="Loading base question bank" />
-      <p>Loading question bank…</p>
+      <p-progress-spinner ariaLabel="A kérdésbank betöltése" />
+      <p>A kérdésbank betöltése…</p>
     </div>
   } @else if (loadError()) {
     <div class="state-panel" data-testid="question-bank-error" role="alert">
-      <h2>Question bank could not be loaded</h2>
+      <h2>A kérdésbank nem tölthető be</h2>
       <p>{{ loadError() }}</p>
       <p-button
-        label="Try again"
+        label="Kérdésbank újratöltése"
         severity="secondary"
         data-testid="retry-question-bank-button"
         (onClick)="loadBank()"
@@ -238,16 +240,16 @@
     </div>
   } @else if (bank(); as currentBank) {
     <div class="bank-meta" data-testid="question-bank-meta">
-      <span>Published version <strong>{{ currentBank.version }}</strong></span>
-      <span>{{ currentBank.questions.length }} questions</span>
+      <span>Publikált verzió: <strong>{{ currentBank.version }}</strong></span>
+      <span>{{ currentBank.questions.length }} kérdés</span>
     </div>
 
     @if (currentBank.questions.length === 0) {
       <div class="state-panel" data-testid="question-bank-empty">
-        <h2>No base questions yet</h2>
-        <p>Add the first question to make a project interview schema possible.</p>
+        <h2>Még nincs alapkérdés</h2>
+        <p>Adj hozzá egy kérdést, hogy létrehozható legyen a projektek felmérési kérdéssémája.</p>
         @if (!showForm()) {
-          <p-button label="Create a question" (onClick)="openCreateForm()" />
+          <p-button label="Alapkérdés létrehozása" (onClick)="openCreateForm()" />
         }
       </div>
     } @else {
@@ -260,25 +262,25 @@
                 <h2>{{ question.text }}</h2>
               </div>
               <div class="question-tags">
-                <p-tag [value]="question.type" />
-                <p-tag [value]="question.active ? 'ACTIVE' : 'ARCHIVED'" [severity]="question.active ? 'success' : 'secondary'" />
+                <p-tag [value]="questionTypeLabel(question.type)" />
+                <p-tag [value]="question.active ? 'Aktív' : 'Archivált'" [severity]="question.active ? 'success' : 'secondary'" />
               </div>
             </div>
             <dl class="question-details">
-              <div><dt>Topic</dt><dd>{{ question.topic }}</dd></div>
-              <div><dt>Control point</dt><dd>{{ question.controlPoint }}</dd></div>
-              <div><dt>Order</dt><dd>{{ question.order }}</dd></div>
-              <div><dt>Required</dt><dd>{{ question.required ? 'Yes' : 'No' }}</dd></div>
+              <div><dt>Témakör</dt><dd>{{ question.topic }}</dd></div>
+              <div><dt>Ellenőrzési pont</dt><dd>{{ question.controlPoint }}</dd></div>
+              <div><dt>Sorrend</dt><dd>{{ question.order }}</dd></div>
+              <div><dt>Kötelező</dt><dd>{{ question.required ? 'Igen' : 'Nem' }}</dd></div>
               @if (question.options?.length) {
-                <div class="detail-wide"><dt>Options</dt><dd>{{ question.options.join(' · ') }}</dd></div>
+                <div class="detail-wide"><dt>Válaszlehetőségek</dt><dd>{{ question.options.join(' · ') }}</dd></div>
               }
             </dl>
             @if (question.hint) {
-              <p class="question-hint"><strong>Hint:</strong> {{ question.hint }}</p>
+              <p class="question-hint"><strong>Kitöltési segítség:</strong> {{ question.hint }}</p>
             }
             <div class="item-actions">
               <p-button
-                label="Edit"
+                label="Szerkesztés"
                 severity="secondary"
                 [outlined]="true"
                 [attr.data-testid]="'edit-base-question-' + question.id"

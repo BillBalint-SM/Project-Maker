@@ -21,6 +21,7 @@ import type {
   CustomerFollowUpManualAttempt,
   CustomerFollowUpReferenceOption,
   CustomerFollowUpState,
+  FollowUpDeliveryStatus,
   UpdateCustomerFollowUpInput,
   InterviewHandoffSenderOptions,
 } from '@project-maker/contracts';
@@ -435,6 +436,22 @@ export class CustomerFollowUpComponent implements OnInit {
     return this.operationPolicy.busy()
       || this.archived()
       || this.state()?.latestManualAttempt?.state === 'SENDING';
+  }
+
+  deliveryStatusLabel(status: FollowUpDeliveryStatus): string {
+    return {
+      NEVER: 'Még nem történt küldés',
+      SENT: 'Sikeresen elküldve',
+      FAILED: 'Sikertelen küldés',
+    }[status];
+  }
+
+  deliveryErrorLabel(code: string | null): string {
+    if (!code) return 'Nincs jelzett hiba';
+    if (code === 'SMTP_DELIVERY_UNKNOWN') {
+      return 'A kézbesítés eredménye bizonytalan.';
+    }
+    return 'A levelezőrendszer elutasította a küldést.';
   }
 
   reloadState(focusSelector?: string, preserveActionError = false): void {

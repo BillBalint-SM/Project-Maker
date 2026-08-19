@@ -29,7 +29,7 @@ test('searches and filters the Active project queue with reload-safe replace-his
   await page.goto('/');
   await page.getByTestId('active-project-queue-link').click();
   await expect(page).toHaveURL('/projects/active');
-  await expect(page.getByRole('heading', { name: 'Aktív munkasor' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Folyamatban lévő ügyek' })).toBeVisible();
   await page.getByTestId('queue-search').fill(`  ARVIZTURO MUNKASOR ${uniquePart.toUpperCase()}  `);
 
   const projectLink = page.getByTestId(`queue-project-${project.id}`);
@@ -242,13 +242,13 @@ test('keeps queue context through a failed refresh and announces recovery', asyn
   await expect(projectLink).toBeVisible();
   await expect(refresh).toBeFocused();
   await expect(page.getByTestId('queue-live-status')).toContainText(
-    'A munkasor frissítése nem sikerült. A korábbi lista maradt látható.',
+    'A lista frissítése nem sikerült. A korábbi adatok maradtak láthatók.',
   );
 
   await page.getByTestId('queue-update-retry').click();
   await expect(page.getByTestId('active-queue-stale')).toHaveCount(0);
   await expect(projectLink).toBeVisible();
-  await expect(page.getByTestId('queue-live-status')).toContainText('A munkasor ismét elérhető.');
+  await expect(page.getByTestId('queue-live-status')).toContainText('A lista ismét elérhető.');
 });
 
 test('offers filter reset and portfolio actions for the two empty queue states', async ({ page }) => {
@@ -273,7 +273,7 @@ test('offers filter reset and portfolio actions for the two empty queue states',
 
   await expect(page).toHaveURL('/projects/active');
   await expect(page.getByRole('heading', { name: 'Nincs aktív projekt' })).toBeVisible();
-  await expect(page.getByRole('link', { name: 'Portfólió áttekintése' })).toHaveAttribute('href', '/');
+  await expect(page.getByRole('link', { name: 'Áttekintő megnyitása' })).toHaveAttribute('href', '/');
   await expect(page.getByRole('link', { name: 'Új projekt létrehozása' })).toHaveAttribute('href', '/projects/new');
 });
 

@@ -12,6 +12,7 @@ import type {
   DiscoveryFollowUp,
   DiscoveryFollowUpSourceOption,
   DiscoveryFollowUpSourceReference,
+  OpenDiscoveryFollowUpQueueItem,
   ResolveDiscoveryFollowUpInput,
   SetDiscoveryFollowUpSourceLinkInput,
   UpdateDiscoveryFollowUpInput,
@@ -44,6 +45,32 @@ type DiscoveryFollowUpSourceAuditReference = Pick<
 @Injectable()
 export class DiscoveryFollowUpsService {
   constructor(private readonly dataSource: DataSource) {}
+
+  async listOpen(): Promise<readonly OpenDiscoveryFollowUpQueueItem[]> {
+    const openStatus = await initialDiscoveryFollowUpStatus();
+    const rows = await this.dataSource
+      .getRepository(DiscoveryFollowUpEntity)
+      .createQueryBuilder('followUp')
+      .innerJoin(Project, 'project', 'project.id = followUp.projectId')
+      .select('followUp.id', 'id')
+      .addSelect('followUp.projectId', 'projectId')
+      .addSelect('project.name', 'projectName')
+      .addSelect('followUp.category', 'category')
+      .addSelect('followUp.question', 'question')
+      .addSelect('followUp.owner', 'owner')
+      .addSelect("to_char(followUp.dueDate, 'YYYY-MM-DD')", 'dueDate')
+      .addSelect('followUp.nextStep', 'nextStep')
+      .where('followUp.status = :openStatus', { openStatus })
+      .andWhere('project.status <> :archivedStatus', {
+        archivedStatus: 'ARCHIVED',
+      })
+      .orderBy('followUp.dueDate', 'ASC')
+      .addOrderBy('followUp.createdAt', 'ASC')
+      .addOrderBy('followUp.id', 'ASC')
+      .getRawMany<OpenDiscoveryFollowUpQueueItem>();
+
+    return rows;
+  }
 
   async list(projectId: string): Promise<readonly DiscoveryFollowUp[]> {
     await findProject(this.dataSource, projectId);

@@ -348,7 +348,7 @@ describe('ActiveProjectQueuePageComponent', () => {
     expect(api.getPage).toHaveBeenCalledTimes(2);
     expect(fixture.nativeElement.textContent).toContain('Utolsó lekérés: 2026. 08. 19. 09:15');
     expect(fixture.nativeElement.querySelector('[data-testid="queue-live-status"]')?.textContent)
-      .toContain('A munkasor frissítve.');
+      .toContain('A lista frissítve.');
     expect(document.activeElement).toBe(refreshButton);
   });
 

@@ -737,7 +737,7 @@ describe('Customer follow-up ping draft and manual delivery', () => {
     assert.equal(
       unknownActivity.body.events.some(
         (event: { summary: string }) => event.summary ===
-          'Az ügyfél-ping küldési eredménye bizonytalan; kézi ellenőrzés szükséges.',
+          'Az ügyfél-emlékeztető küldési eredménye bizonytalan; kézi ellenőrzés szükséges.',
       ),
       true,
     );
@@ -822,10 +822,10 @@ describe('Customer follow-up ping draft and manual delivery', () => {
     assert.deepEqual(
       activity.body.events.map((event: { summary: string }) => event.summary),
       [
-        'Az ügyfél-ping küldése sikertelen; újrapróbálható.',
-        'Az ügyfél-ping piszkozata frissítve lett.',
-        'Az ügyfél-ping elküldve az ügyfélnek.',
-        'Az ügyfél-ping piszkozata frissítve lett.',
+        'Az ügyfél-emlékeztető küldése sikertelen; újrapróbálható.',
+        'Az ügyfél-emlékeztető piszkozata frissítve lett.',
+        'Az ügyfél-emlékeztető elküldve az ügyfélnek.',
+        'Az ügyfél-emlékeztető piszkozata frissítve lett.',
       ],
     );
   });

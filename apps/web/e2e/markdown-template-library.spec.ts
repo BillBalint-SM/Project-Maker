@@ -28,7 +28,7 @@ test.describe.serial('OUTPUT-01 Markdown template library employee workflow', ()
       .getByTestId('markdown-template-content-input')
       .fill('# Átadási terv — {{project.name}}\n\n{{revision.metadata}}\n\n{{project.context}}');
     await page.getByTestId('save-markdown-template-button').click();
-    await expect(page.getByTestId('markdown-template-feedback')).toContainText('Draft mentve');
+    await expect(page.getByTestId('markdown-template-feedback')).toContainText('Piszkozat mentve');
 
     await page
       .getByTestId('markdown-template-content-input')
@@ -50,10 +50,11 @@ test.describe.serial('OUTPUT-01 Markdown template library employee workflow', ()
     await page.getByTestId('markdown-template-name-input').fill(`Hibás sablon ${suffix}`);
     await page.getByTestId('markdown-template-content-input').fill('# {{process.env}}');
     await page.getByTestId('save-markdown-template-button').click();
-    await expect(page.getByRole('alert')).toContainText('Nem támogatott Markdown-sablon placeholder');
+    await expect(page.getByRole('alert')).toContainText('nem támogatott vagy hibás helyőrzőt');
+    await expect(page.getByRole('alert')).not.toContainText('process.env');
 
     await page.goto(`/projects/${project.id}/markdown`);
-    await expect(page.getByRole('heading', { name: 'Markdown specifikáció' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Markdown terv' })).toBeVisible();
     const templateSelect = page.getByTestId('markdown-template-select');
     const templateOption = templateSelect.locator('option').filter({ hasText: templateName });
     const templateId = await templateOption.getAttribute('value');
@@ -111,7 +112,9 @@ test.describe.serial('OUTPUT-01 Markdown template library employee workflow', ()
     );
     await page.getByTestId('markdown-template-select').selectOption(required.id);
     await page.getByTestId('generate-markdown-button').click();
-    await expect(page.getByTestId('markdown-action-error')).toContainText('Elfogadott projekt-kérdésséma');
+    await expect(page.getByTestId('markdown-action-error')).toContainText(
+      'Elfogadott projekt-kérdésséma',
+    );
 
     await page.getByTestId('markdown-template-select').selectOption(optional.id);
     await page.getByTestId('generate-markdown-button').click();

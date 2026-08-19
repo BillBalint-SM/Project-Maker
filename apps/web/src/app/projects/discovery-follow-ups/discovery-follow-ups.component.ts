@@ -33,7 +33,6 @@ import { TagModule } from 'primeng/tag';
 import { TextareaModule } from 'primeng/textarea';
 import { ZIndexUtils } from 'primeng/utils';
 import {
-  discoveryFollowUpCategories,
   generalPlaybookV1,
   resolvedDiscoveryFollowUpStatuses,
   type CreateDiscoveryFollowUpInput,
@@ -54,6 +53,10 @@ import {
   DiscoveryFollowUpsApiError,
   DiscoveryFollowUpsApiService,
 } from './discovery-follow-ups-api.service';
+import {
+  discoveryFollowUpCategoryLabel,
+  discoveryFollowUpCategoryOptions,
+} from './discovery-follow-up-label';
 
 interface EditConflictRefreshSnapshot {
   readonly followUpId: string;
@@ -127,9 +130,8 @@ export class DiscoveryFollowUpsComponent implements OnInit {
   private sourceRemovalTrigger: HTMLButtonElement | null = null;
   private sourceRemovalRow: HTMLElement | null = null;
 
-  readonly categoryOptions = discoveryFollowUpCategories.map(
-    (value) => ({ label: value, value }),
-  );
+  readonly categoryOptions = discoveryFollowUpCategoryOptions;
+  readonly categoryLabel = discoveryFollowUpCategoryLabel;
   readonly resolvedStatusOptions = resolvedDiscoveryFollowUpStatuses.map(
     (value) => ({ label: value, value }),
   );
@@ -369,7 +371,7 @@ export class DiscoveryFollowUpsComponent implements OnInit {
             sortDiscoveryFollowUps([...current, created]),
           );
           this.resetCreationForm();
-          this.feedback.set('Discovery follow-up created.');
+          this.feedback.set('Az utánkövetés létrejött.');
           this.committedChange.emit();
         },
         error: (error: Error) => {
@@ -441,7 +443,7 @@ export class DiscoveryFollowUpsComponent implements OnInit {
             ),
           );
           this.clearSourceLinkState();
-          this.feedback.set('Discovery follow-up source updated.');
+          this.feedback.set('Az utánkövetés forrása frissült.');
           this.committedChange.emit();
         },
         error: (error: Error) => {
@@ -530,7 +532,7 @@ export class DiscoveryFollowUpsComponent implements OnInit {
       current.source === null
     ) {
       this.actionError.set(
-        'Could not remove the discovery follow-up source because the follow-up is no longer open and linked. Refresh Discovery follow-ups and try again.',
+        'A forráshivatkozás nem törölhető, mert az utánkövetés már nem nyitott vagy nincs hozzárendelt forrása. Frissítsd az utánkövetéseket, majd próbáld újra.',
       );
       return;
     }
@@ -568,7 +570,7 @@ export class DiscoveryFollowUpsComponent implements OnInit {
               ),
             ),
           );
-          this.feedback.set('Discovery follow-up source removed.');
+          this.feedback.set('Az utánkövetés forráshivatkozása törölve.');
           this.committedChange.emit();
         },
         error: (error: Error) => this.actionError.set(error.message),
@@ -692,7 +694,7 @@ export class DiscoveryFollowUpsComponent implements OnInit {
             ),
           );
           this.clearEditState();
-          this.feedback.set('Discovery follow-up updated.');
+          this.feedback.set('Az utánkövetés módosításai mentve.');
           this.committedChange.emit();
         },
         error: (error: Error) => {
@@ -703,7 +705,7 @@ export class DiscoveryFollowUpsComponent implements OnInit {
           ) {
             this.editConflictId.set(followUpId);
             this.actionError.set(
-              'This discovery follow-up changed on the server. Your draft is kept and reload is required before saving.',
+              'Az utánkövetés időközben megváltozott. A piszkozat megmaradt; mentés előtt töltsd be az aktuális verziót.',
             );
             this.refreshAfterEditConflict(followUpId);
             return;
@@ -749,14 +751,14 @@ export class DiscoveryFollowUpsComponent implements OnInit {
           this.followUps.set(sortDiscoveryFollowUps(followUps));
           if (!refreshedFollowUp) {
             this.actionError.set(
-              'The current discovery follow-up could not be found after refresh. Retry the refresh before saving.',
+              'Az utánkövetés frissítés után nem található. Mentés előtt próbáld újra a frissítést.',
             );
             return;
           }
 
           if (!this.isCanonicalOpen(refreshedFollowUp)) {
             this.actionError.set(
-              'This discovery follow-up cannot be edited because it is terminal. Cancel this draft.',
+              'A lezárt utánkövetés már nem szerkeszthető. Vesd el ezt a piszkozatot.',
             );
           }
 
@@ -879,7 +881,7 @@ export class DiscoveryFollowUpsComponent implements OnInit {
           );
           this.openedResolutionId.set(null);
           this.resetResolutionForm();
-          this.feedback.set('Discovery follow-up resolved.');
+          this.feedback.set('Az utánkövetés lezárva.');
           this.committedChange.emit();
         },
         error: (error: Error) => {

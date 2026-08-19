@@ -68,14 +68,14 @@ describe('CustomerCorrespondencesPage', () => {
     expect(fixture.nativeElement.querySelector('.message-text')?.textContent).toContain('<img src=x onerror=steal()>');
     expect(fixture.nativeElement.querySelector('.message-text img')).toBeNull();
     expect((fixture.nativeElement.querySelector('details') as HTMLDetailsElement).open).toBe(false);
-    expect(fixture.nativeElement.textContent).toContain('Nem felismert Customer válaszfeladó');
+    expect(fixture.nativeElement.textContent).toContain('Az ügyfélkapcsolatok között nem szereplő válaszfeladó');
     const close = Array.from(fixture.nativeElement.querySelectorAll('button'))
       .find((button) => (button as HTMLButtonElement).textContent?.trim() === 'Lezárás') as HTMLButtonElement;
     close.click();
     await fixture.whenStable();
     expect(fixture.nativeElement.querySelector('[role="alert"]')?.textContent).toContain('Töltsd újra az adatokat');
     expect(fixture.nativeElement.querySelector('.message-text')?.textContent).toContain('<img src=x onerror=steal()>');
-    expect(fixture.nativeElement.textContent).toContain('Adatok újratöltése');
+    expect(fixture.nativeElement.textContent).toContain('Ügyféllevelezés újratöltése');
     const reviewed = fixture.nativeElement.querySelector('[data-testid="mark-reviewed-correspondence-1"]') as HTMLButtonElement;
     expect(reviewed).not.toBeNull();
     reviewed.click();

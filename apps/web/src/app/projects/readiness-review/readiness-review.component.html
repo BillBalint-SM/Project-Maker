@@ -1,7 +1,7 @@
 <p-card data-testid="readiness-review-card">
   <ng-template #title>Felkészültségi értékelés</ng-template>
   <ng-template #subtitle>
-    Az értékelés a kezdő interjú, az ellenőrzőlista és a discovery utánkövetések aktuális állapotát foglalja össze.
+    Az értékelés a kezdő felmérés, az ellenőrzőlista és a tisztázási utánkövetések aktuális állapotát foglalja össze.
   </ng-template>
 
   @if (loading()) {
@@ -21,7 +21,7 @@
     >
       <p>{{ error }}</p>
       <p-button
-        label="Újrapróbálás"
+        label="Felkészültségi értékelés újratöltése"
         data-testid="retry-readiness-review-button"
         (onClick)="retry()"
       />
@@ -32,23 +32,23 @@
         class="readiness-review-state"
         data-testid="readiness-review-unavailable-no-initial-intake"
       >
-        <h2>Még nincs kezdő interjú</h2>
-        <p>Indíts kezdő interjút a felkészültségi értékelés elkészítéséhez.</p>
+        <h2>Még nincs kezdő felmérés</h2>
+        <p>Indíts kezdő felmérést a felkészültségi értékelés elkészítéséhez.</p>
       </div>
     } @else {
       <div
         class="readiness-review-state"
         data-testid="readiness-review-unavailable-unsupported-schema"
       >
-        <h2>Az értékeléshez frissített interjúséma szükséges</h2>
-        <p>Frissítsd a projektsémát, majd indíts új kezdő interjút.</p>
+        <h2>Az értékeléshez frissített kérdésséma szükséges</h2>
+        <p>Frissítsd a projekt kérdéssémáját, majd indíts új kezdő felmérést.</p>
       </div>
     }
   } @else if (available(); as readiness) {
     <div data-testid="readiness-review-available">
       <dl class="readiness-review-summary" data-testid="readiness-review-summary">
         <div>
-          <dt>Interjú kitöltöttsége</dt>
+          <dt>Felmérés kitöltöttsége</dt>
           <dd>{{ readiness.completionPercentage }}% · {{ readiness.completionLabel }}</dd>
         </div>
         <div>
@@ -70,7 +70,7 @@
       </section>
 
       <section aria-labelledby="readiness-review-gaps-title">
-        <h2 id="readiness-review-gaps-title">Rendezett hiányok</h2>
+        <h2 id="readiness-review-gaps-title">Rendezendő hiányok</h2>
         @if (readiness.gaps.length === 0) {
           <p data-testid="readiness-review-gaps-empty">Nincs azonosított hiány.</p>
         } @else {
@@ -83,7 +83,7 @@
                 @switch (gap.target) {
                   @case ('overview') {
                     <p-button
-                      label="Workspace megnyitása"
+                      label="Projektállapot megnyitása"
                       [attr.data-testid]="'readiness-review-gap-action-' + gap.id"
                       (onClick)="scrollToWorkspace()"
                     />
@@ -97,7 +97,7 @@
                   }
                   @case ('follow-ups') {
                     <p-button
-                      label="Discovery utánkövetések megnyitása"
+                      label="Utánkövetések megnyitása"
                       [attr.data-testid]="'readiness-review-gap-action-' + gap.id"
                       (onClick)="scrollToDiscoveryFollowUps()"
                     />

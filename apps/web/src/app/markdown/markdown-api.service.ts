@@ -87,15 +87,7 @@ function mapApiError(error: unknown, action: string): ActionableApiError {
 
   if (error.status === 0) {
     return {
-      userMessage: `Nem sikerült ${action}, mert az API nem érhető el. Ellenőrizd, hogy fut-e a szerver, majd próbáld újra.`,
-      diagnostics: { action, status: error.status, statusText: error.statusText },
-    };
-  }
-
-  const serverMessage = safeServerMessage(error);
-  if ((error.status === 400 || error.status === 409) && serverMessage) {
-    return {
-      userMessage: serverMessage,
+      userMessage: `Nem sikerült ${action}, mert a szolgáltatás nem érhető el. Ellenőrizd a kapcsolatot, majd próbáld újra.`,
       diagnostics: { action, status: error.status, statusText: error.statusText },
     };
   }
@@ -104,20 +96,27 @@ function mapApiError(error: unknown, action: string): ActionableApiError {
     error.status === 404
       ? 'Ellenőrizd, hogy a projekt vagy a revízió még létezik-e.'
       : error.status === 409
-        ? 'Frissítsd a projektet a legújabb revízióállapotért, majd próbáld újra.'
+        ? safeMarkdownConflictMessage(error) ??
+          'Frissítsd a projektet a legújabb revízióállapotért, majd próbáld újra.'
         : 'Ellenőrizd a kiválasztott létrehozási okot, majd próbáld újra.';
   return {
-    userMessage: `Nem sikerült ${action} (HTTP ${error.status}). ${nextStep}`,
+    userMessage: `Nem sikerült ${action}. ${nextStep}`,
     diagnostics: { action, status: error.status, statusText: error.statusText },
   };
 }
 
-function safeServerMessage(error: HttpErrorResponse): string | null {
-  const payload: unknown = error.error;
-  if (!payload || typeof payload !== 'object' || !('message' in payload)) {
-    return null;
+function safeMarkdownConflictMessage(error: HttpErrorResponse): string | null {
+  if (!isRecord(error.error) || typeof error.error['message'] !== 'string') return null;
+  const message = error.error['message'];
+  if (message.startsWith('A kötelező sablonblokk nem áll rendelkezésre:')) {
+    return `${message} Pótold a megnevezett projektadatot, majd próbáld újra.`;
   }
+  if (message.startsWith('Archivált projekthez nem generálható Markdown-revízió')) {
+    return 'Archivált projekthez nem generálható Markdown-revízió. Előbb állítsd vissza a projektet a Projektbeállításokban.';
+  }
+  return null;
+}
 
-  const message = payload.message;
-  return typeof message === 'string' && message.trim().length > 0 ? message : null;
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
 }

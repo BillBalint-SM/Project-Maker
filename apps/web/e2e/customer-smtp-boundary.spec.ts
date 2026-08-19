@@ -68,7 +68,7 @@ test('explains that an open Initial Intake must be ended before customer handoff
 
   await expect(page).toHaveURL(`/projects/${project.id}/interview#customer-handoff`);
   await expect(page.getByTestId('interview-handoff-prerequisite')).toContainText(
-    'Előbb zárd le az Initial Intake meetinget',
+    'Előbb zárd le a kezdő felmérési kört ezen az oldalon.',
   );
   await expect(page.getByTestId('interview-handoff')).toHaveCount(0);
 });
@@ -86,7 +86,7 @@ test('explains the Felmérés prerequisite when no Initial Intake exists', async
 
   await expect(page).toHaveURL(`/projects/${project.id}/interview#customer-handoff`);
   await expect(page.getByTestId('interview-handoff-prerequisite')).toContainText(
-    'Előbb fogadd el a kérdéssémát és indítsd el az Initial Intake felmérést',
+    'Előbb fogadd el a kérdéssémát és indítsd el a kezdő felmérést ezen az oldalon.',
   );
   await expect(page.getByTestId('project-schema-status')).toBeVisible();
 });
