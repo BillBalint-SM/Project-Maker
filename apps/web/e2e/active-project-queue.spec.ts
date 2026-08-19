@@ -125,6 +125,29 @@ test('completes the keyboard employee journey and restores the paged queue URL a
   );
   await expect(page.getByTestId('project-status-card')).toHaveCount(0);
 
+  const interviewContext = page.getByTestId('project-context-nav-interview');
+  await interviewContext.focus();
+  await interviewContext.press('Enter');
+  await expect(page.getByTestId('project-context-nav-interview')).toHaveAttribute(
+    'aria-current',
+    'page',
+  );
+  expect(new URL(page.url()).searchParams.get('returnTo')).toBe(
+    `${queueReturn.pathname}${queueReturn.search}`,
+  );
+  await expect(page.getByTestId('project-context-return')).toHaveAttribute(
+    'href',
+    `${queueReturn.pathname}${queueReturn.search}`,
+  );
+
+  const statusContext = page.getByTestId('project-context-nav-status');
+  await statusContext.focus();
+  await statusContext.press('Enter');
+  await expect(page.getByTestId('project-context-nav-status')).toHaveAttribute(
+    'aria-current',
+    'page',
+  );
+
   const primaryAction = page.getByTestId('project-context-primary-action');
   await expect(primaryAction).toHaveText('Következő lépés kezelése');
   await primaryAction.focus();
