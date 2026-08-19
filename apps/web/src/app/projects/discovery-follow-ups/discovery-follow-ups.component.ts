@@ -520,7 +520,7 @@ export class DiscoveryFollowUpsComponent implements OnInit {
       this.savingSourceLinkId() !== null
     ) {
       this.actionError.set(
-        'Could not remove the discovery follow-up source while another Cockpit operation is in progress. Wait for it to finish and try again.',
+        'A forrás nem távolítható el, amíg egy másik projektművelet folyamatban van. Várd meg a befejezését, majd próbáld meg ismét.',
       );
       return;
     }
@@ -538,7 +538,7 @@ export class DiscoveryFollowUpsComponent implements OnInit {
     const lease = this.operationPolicy.tryAcquire('discovery-source-link');
     if (!lease) {
       this.actionError.set(
-        'Could not remove the discovery follow-up source while another Cockpit operation is in progress. Wait for it to finish and try again.',
+        'A forrás nem távolítható el, amíg egy másik projektművelet folyamatban van. Várd meg a befejezését, majd próbáld meg ismét.',
       );
       return;
     }

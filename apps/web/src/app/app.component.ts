@@ -13,7 +13,7 @@ import { CustomerRepliesApiService } from './projects/customer-replies-api.servi
           <span class="brand-mark" aria-hidden="true">PM</span>
           <span>
             <strong>Project Maker</strong>
-            <small>Project delivery cockpit</small>
+            <small>Napi projektmunka egy helyen</small>
           </span>
         </a>
         <nav class="app-nav" aria-label="Application navigation">

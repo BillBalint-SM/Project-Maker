@@ -61,7 +61,10 @@ describe('ProjectStatusPage', () => {
         provideRouter([]),
         {
           provide: ActivatedRoute,
-          useValue: { snapshot: { paramMap: convertToParamMap({ projectId }) } },
+          useValue: {
+            fragment: of(null),
+            snapshot: { fragment: null, paramMap: convertToParamMap({ projectId }) },
+          },
         },
         { provide: ProjectApiService, useValue: api },
         { provide: ProjectContextState, useValue: context },
@@ -79,9 +82,14 @@ describe('ProjectStatusPage', () => {
     expect(coordination?.textContent).toContain('PO Péter');
     expect(coordination?.textContent).toContain('Dolgozd fel az ügyfél pontosítását.');
     expect(fixture.nativeElement.querySelector('[data-testid="project-status-card"]')).toBeNull();
+    expect(fixture.nativeElement.querySelector('[data-testid="project-basics-editor"]')).toBeNull();
+    expect(fixture.nativeElement.querySelector('[data-testid="follow-up-settings-form"]')).toBeNull();
+    expect(fixture.nativeElement.querySelector('[data-testid="audit-history-card"]')).toBeNull();
+    expect(fixture.nativeElement.querySelector('[data-testid="archive-project-button"]')).toBeNull();
+    expect(fixture.nativeElement.querySelector('[data-testid="delete-project-button"]')).toBeNull();
   });
 
-  it('keeps canonical coordination visible when customer metadata cannot be loaded', async () => {
+  it('keeps canonical daily work visible when coordination editor metadata cannot be loaded', async () => {
     const workState: ProjectWorkState = {
       projectId,
       projectName: 'Koordinálandó projekt',
@@ -114,7 +122,10 @@ describe('ProjectStatusPage', () => {
         provideRouter([]),
         {
           provide: ActivatedRoute,
-          useValue: { snapshot: { paramMap: convertToParamMap({ projectId }) } },
+          useValue: {
+            fragment: of(null),
+            snapshot: { fragment: null, paramMap: convertToParamMap({ projectId }) },
+          },
         },
         { provide: ProjectApiService, useValue: api },
         { provide: ProjectContextState, useValue: projectContextWith(workState) },
@@ -132,9 +143,92 @@ describe('ProjectStatusPage', () => {
     ) as HTMLElement | null;
     expect(coordination?.textContent).toContain('PO Péter');
     expect(coordination?.textContent).toContain('Egyeztesd az átadási időpontot.');
-    expect(customerCommunication?.textContent).toContain(
+    expect(coordination?.textContent).toContain(
       'Az ügyféladatok átmenetileg nem érhetők el.',
     );
+    expect(customerCommunication?.textContent).toContain('Nincs feldolgozatlan új ügyfélválasz.');
+  });
+
+  it('updates only daily coordination fields and refreshes the canonical work state', async () => {
+    const workState: ProjectWorkState = {
+      projectId,
+      projectName: 'Koordinálandó projekt',
+      urgency: 'OVERDUE',
+      urgencyLabel: 'Lejárt a következő lépés',
+      preparationStatus: {
+        projectId,
+        state: 'INTAKE_IN_PROGRESS',
+        label: 'Felmérés folyamatban',
+        primaryAction: { target: 'INTERVIEW', label: 'Felmérés megnyitása' },
+      },
+      nextAction: 'Régi következő lépés',
+      nextActionOwner: { role: 'INTERNAL_OWNER', displayName: 'PO Péter', complete: true },
+      dueAt: null,
+      newReplyCount: 0,
+      primaryAction: { target: 'PROJECT_COORDINATION', label: 'Következő lépés kezelése' },
+    };
+    const project: ProjectWorkspace = {
+      id: projectId,
+      name: workState.projectName,
+      customerContactName: 'Ügyfél Anna',
+      customerContactEmail: 'anna@example.test',
+      status: 'WAITING_CUSTOMER',
+      internalOwnerName: 'PO Péter',
+      nextActionOwnerRole: 'INTERNAL_OWNER',
+      nextActionOwner: workState.nextActionOwner,
+      nextAction: workState.nextAction,
+      dueAt: null,
+      createdAt: '2026-08-18T08:00:00.000Z',
+      updatedAt: '2026-08-19T08:00:00.000Z',
+    };
+    const updatedProject: ProjectWorkspace = {
+      ...project,
+      nextActionOwnerRole: 'CUSTOMER_CONTACT',
+      nextActionOwner: { role: 'CUSTOMER_CONTACT', displayName: 'Ügyfél Anna', complete: true },
+      nextAction: 'Erősítsd meg az átadás időpontját.',
+      dueAt: '2026-08-22T10:30:00.000Z',
+    };
+    const updateWorkspace = vi.fn().mockReturnValue(of(updatedProject));
+    const context = projectContextWith(workState);
+    const api = {
+      loadProjectWorkspace: vi.fn().mockReturnValue(of(project)),
+      loadProjectActivity: vi.fn().mockReturnValue(of({ projectId, events: [] })),
+      updateWorkspace,
+    };
+    await TestBed.configureTestingModule({
+      imports: [ProjectStatusPage],
+      providers: [
+        provideRouter([]),
+        {
+          provide: ActivatedRoute,
+          useValue: {
+            fragment: of(null),
+            snapshot: { fragment: null, paramMap: convertToParamMap({ projectId }) },
+          },
+        },
+        { provide: ProjectApiService, useValue: api },
+        { provide: ProjectContextState, useValue: context },
+      ],
+    }).compileComponents();
+
+    const fixture = TestBed.createComponent(ProjectStatusPage);
+    await fixture.whenStable();
+    fixture.componentInstance.coordinationForm.setValue({
+      nextActionOwnerRole: 'CUSTOMER_CONTACT',
+      nextAction: 'Erősítsd meg az átadás időpontját.',
+      dueAt: new Date('2026-08-22T10:30:00.000Z'),
+    });
+    fixture.componentInstance.saveCoordination();
+    await fixture.whenStable();
+
+    expect(updateWorkspace).toHaveBeenCalledWith(projectId, {
+      nextActionOwnerRole: 'CUSTOMER_CONTACT',
+      nextAction: 'Erősítsd meg az átadás időpontját.',
+      dueAt: '2026-08-22T10:30:00.000Z',
+    });
+    expect(updateWorkspace.mock.calls[0]?.[1]).not.toHaveProperty('status');
+    expect(updateWorkspace.mock.calls[0]?.[1]).not.toHaveProperty('internalOwnerName');
+    expect(context.reload).toHaveBeenCalledTimes(1);
   });
 });
 

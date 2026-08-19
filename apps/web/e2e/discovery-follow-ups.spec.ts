@@ -3,7 +3,6 @@ import {
   test,
   type APIRequestContext,
   type APIResponse,
-  type ConsoleMessage,
   type Locator,
   type Page,
 } from '@playwright/test';
@@ -247,6 +246,32 @@ function nativeButton(page: Page, testId: string): Locator {
   return page.getByTestId(testId).locator('button');
 }
 
+async function archiveProjectFromSettings(page: Page, projectId: string): Promise<void> {
+  await page.goto(`/projects/${projectId}/settings`);
+  const response = page.waitForResponse(
+    (candidate) =>
+      candidate.request().method() === 'POST' &&
+      candidate.url().endsWith(`/api/projects/${projectId}/archive`),
+  );
+  await nativeButton(page, 'archive-project-button').click();
+  await expect(page.getByTestId('project-archive-confirmation')).toBeVisible();
+  await nativeButton(page, 'confirm-project-archive-button').click();
+  expect((await response).status()).toBe(201);
+  await page.goto(`/projects/${projectId}/readiness`);
+}
+
+async function restoreProjectFromSettings(page: Page, projectId: string): Promise<void> {
+  await page.goto(`/projects/${projectId}/settings`);
+  const response = page.waitForResponse(
+    (candidate) =>
+      candidate.request().method() === 'POST' &&
+      candidate.url().endsWith(`/api/projects/${projectId}/restore`),
+  );
+  await nativeButton(page, 'restore-project-button').click();
+  expect((await response).status()).toBe(201);
+  await page.goto(`/projects/${projectId}/readiness`);
+}
+
 test('edits an open discovery follow-up through the real API while keeping row actions exclusive', async ({
   page,
   request,
@@ -254,7 +279,7 @@ test('edits an open discovery follow-up through the real API while keeping row a
   const project = await createProject(request, 'Discovery follow-up edit flow');
   const firstFollowUp = await createDiscoveryFollowUp(request, project.id);
   const secondFollowUp = await createDiscoveryFollowUp(request, project.id);
-  await page.goto('/projects/' + project.id);
+  await page.goto('/projects/' + project.id + '/readiness');
 
   const editButtons = nativeButton(page, 'edit-discovery-follow-up-button');
   const resolveButtons = nativeButton(page, 'resolve-discovery-follow-up-button');
@@ -369,7 +394,7 @@ test('keeps the browser edit draft after a real version conflict until the curre
 }) => {
   const project = await createProject(request, 'Discovery follow-up edit conflict');
   const followUp = await createDiscoveryFollowUp(request, project.id);
-  await page.goto('/projects/' + project.id);
+  await page.goto('/projects/' + project.id + '/readiness');
 
   await nativeButton(page, 'edit-discovery-follow-up-button').click();
   await page
@@ -494,7 +519,7 @@ test('keeps only cancel available when a conflict refresh finds a terminal disco
     'Discovery follow-up terminal conflict refresh',
   );
   const followUp = await createDiscoveryFollowUp(request, project.id);
-  await page.goto('/projects/' + project.id);
+  await page.goto('/projects/' + project.id + '/readiness');
 
   await nativeButton(page, 'edit-discovery-follow-up-button').click();
   await page
@@ -558,7 +583,7 @@ test('keeps a conflicted edit unavailable for reload until a failed refresh is r
     'Discovery follow-up conflict refresh retry',
   );
   const followUp = await createDiscoveryFollowUp(request, project.id);
-  await page.goto('/projects/' + project.id);
+  await page.goto('/projects/' + project.id + '/readiness');
 
   await nativeButton(page, 'edit-discovery-follow-up-button').click();
   await page
@@ -700,7 +725,7 @@ test('ignores a delayed conflict refresh after cancellation opens another editor
   const secondFollowUp =
     (await secondFollowUpResponse.json()) as DiscoveryFollowUp;
 
-  await page.goto('/projects/' + project.id);
+  await page.goto('/projects/' + project.id + '/readiness');
   const conflictedFollowUpItem = page.locator(
     '[data-testid="discovery-follow-up-item"][data-follow-up-id="' +
       conflictedFollowUp.id +
@@ -854,39 +879,27 @@ test('ignores a delayed conflict refresh after cancellation opens another editor
   }
 });
 
-test('clears an open discovery follow-up edit draft across cockpit archive and restore', async ({
+test('clears an open discovery follow-up edit draft across settings archive and restore', async ({
   page,
   request,
 }) => {
   const project = await createProject(request, 'Discovery follow-up edit archive flow');
   await createDiscoveryFollowUp(request, project.id);
-  await page.goto('/projects/' + project.id);
+  await page.goto('/projects/' + project.id + '/readiness');
 
   await nativeButton(page, 'edit-discovery-follow-up-button').click();
   await page
     .getByTestId('discovery-follow-up-edit-question-input')
     .fill('Browser archive draft that must be cleared.');
 
-  const archiveResponse = page.waitForResponse(
-    (response) =>
-      response.request().method() === 'POST' &&
-      response.url().endsWith('/api/projects/' + project.id + '/archive'),
-  );
-  await nativeButton(page, 'archive-project-button').click();
-  expect((await archiveResponse).status()).toBe(201);
+  await archiveProjectFromSettings(page, project.id);
 
   await expect(page.getByTestId('discovery-follow-up-edit-form')).toHaveCount(0);
   await expect(
     nativeButton(page, 'edit-discovery-follow-up-button'),
   ).toBeDisabled();
 
-  const restoreResponse = page.waitForResponse(
-    (response) =>
-      response.request().method() === 'POST' &&
-      response.url().endsWith('/api/projects/' + project.id + '/restore'),
-  );
-  await nativeButton(page, 'restore-project-button').click();
-  expect((await restoreResponse).status()).toBe(201);
+  await restoreProjectFromSettings(page, project.id);
 
   await page.reload();
   const restoredEditButton = nativeButton(
@@ -907,7 +920,7 @@ test('disables every unresolved Resolve control while one resolution form is ope
   const project = await createProject(request, 'Discovery follow-up resolution exclusivity');
   await createDiscoveryFollowUp(request, project.id);
   await createDiscoveryFollowUp(request, project.id);
-  await page.goto('/projects/' + project.id);
+  await page.goto('/projects/' + project.id + '/readiness');
 
   const resolveButtons = nativeButton(page, 'resolve-discovery-follow-up-button');
   await expect(resolveButtons).toHaveCount(2);
@@ -923,13 +936,13 @@ test('disables every unresolved Resolve control while one resolution form is ope
   await expect(resolveButtons.nth(1)).toBeDisabled();
 });
 
-test('resolves a discovery follow-up in the cockpit and persists its decision after reload', async ({
+test('resolves a discovery follow-up in the readiness context and persists its decision after reload', async ({
   page,
   request,
 }) => {
   const project = await createProject(request, 'Discovery follow-up resolution flow');
   const followUp = await createDiscoveryFollowUp(request, project.id);
-  await page.goto('/projects/' + project.id);
+  await page.goto('/projects/' + project.id + '/readiness');
 
   await nativeButton(page, 'resolve-discovery-follow-up-button').click();
   const resolutionStatusCombobox = page
@@ -980,13 +993,13 @@ test('resolves a discovery follow-up in the cockpit and persists its decision af
   ).toContainText('The sponsor approved the scope.');
 });
 
-test('clears an open discovery follow-up resolution draft across cockpit archive and restore', async ({
+test('clears an open discovery follow-up resolution draft across settings archive and restore', async ({
   page,
   request,
 }) => {
   const project = await createProject(request, 'Discovery follow-up resolution archive flow');
   await createDiscoveryFollowUp(request, project.id);
-  await page.goto('/projects/' + project.id);
+  await page.goto('/projects/' + project.id + '/readiness');
 
   await nativeButton(page, 'resolve-discovery-follow-up-button').click();
   const resolutionStatusCombobox = page
@@ -999,15 +1012,7 @@ test('clears an open discovery follow-up resolution draft across cockpit archive
     .getByTestId('discovery-follow-up-decision-or-answer-input')
     .fill('This draft must be cleared.');
 
-  const archiveResponse = page.waitForResponse(
-    (response) =>
-      response.request().method() === 'POST' &&
-      response
-        .url()
-        .endsWith('/api/projects/' + project.id + '/archive'),
-  );
-  await nativeButton(page, 'archive-project-button').click();
-  expect((await archiveResponse).status()).toBe(201);
+  await archiveProjectFromSettings(page, project.id);
 
   await expect(page.getByTestId('discovery-follow-up-item')).toHaveCount(1);
   await expect(
@@ -1018,15 +1023,7 @@ test('clears an open discovery follow-up resolution draft across cockpit archive
   ).toHaveCount(0);
   await expect(nativeButton(page, 'resolve-discovery-follow-up-button')).toBeDisabled();
 
-  const restoreResponse = page.waitForResponse(
-    (response) =>
-      response.request().method() === 'POST' &&
-      response
-        .url()
-        .endsWith('/api/projects/' + project.id + '/restore'),
-  );
-  await nativeButton(page, 'restore-project-button').click();
-  expect((await restoreResponse).status()).toBe(201);
+  await restoreProjectFromSettings(page, project.id);
 
   await expect(nativeButton(page, 'resolve-discovery-follow-up-button')).toBeEnabled();
   await nativeButton(page, 'resolve-discovery-follow-up-button').click();
@@ -1045,7 +1042,7 @@ test('creates a discovery follow-up, preserves its local date after reload, and 
   request,
 }) => {
   const project = await createProject(request, 'Discovery follow-up browser flow');
-  await page.goto('/projects/' + project.id);
+  await page.goto('/projects/' + project.id + '/readiness');
 
   await page.getByTestId('discovery-follow-up-category-select').click();
   await page.getByRole('option', { name: 'BUSINESS', exact: true }).click();
@@ -1116,7 +1113,7 @@ test('keeps the discovery list visible while archived and re-enables creation af
     ).status(),
   ).toBe(201);
 
-  await page.goto('/projects/' + project.id);
+  await page.goto('/projects/' + project.id + '/readiness');
   await expect(page.getByTestId('discovery-follow-up-item')).toHaveCount(1);
   await expect(page.getByTestId('discovery-follow-up-question-input')).toBeDisabled();
   await expect(page.getByTestId('discovery-follow-up-owner-input')).toBeDisabled();
@@ -1134,7 +1131,7 @@ test('keeps the discovery list visible while archived and re-enables creation af
   await expect(nativeButton(page, 'create-discovery-follow-up-button')).toBeEnabled();
 });
 
-test('keeps the cockpit usable when Discovery loading fails and retries the real request', async ({
+test('keeps the Project context usable when Discovery loading fails and retries the real request', async ({
   page,
   request,
 }) => {
@@ -1160,10 +1157,10 @@ test('keeps the cockpit usable when Discovery loading fails and retries the real
     },
   );
 
-  await page.goto('/projects/' + project.id);
+  await page.goto('/projects/' + project.id + '/readiness');
 
-  await expect(page.getByTestId('workspace-form')).toBeVisible();
-  await expect(page.getByTestId('cockpit-error')).toHaveCount(0);
+  await expect(page.getByTestId('project-context-shell')).toBeVisible();
+  await expect(page.getByTestId('readiness-review-card')).toBeVisible();
   await expect(page.getByTestId('discovery-follow-ups-error')).toBeVisible();
 
   const retryResponse = page.waitForResponse(
@@ -1180,7 +1177,7 @@ test('keeps the cockpit usable when Discovery loading fails and retries the real
   expect((await retryResponse).status()).toBe(200);
   await expect(page.getByTestId('discovery-follow-ups-error')).toHaveCount(0);
   await expect(page.getByTestId('discovery-follow-up-item')).toHaveCount(1);
-  await expect(page.getByTestId('workspace-form')).toBeVisible();
+  await expect(page.getByTestId('project-context-shell')).toBeVisible();
 });
 
 test('creates a linked discovery follow-up with full selection text and compact persisted provenance', async ({
@@ -1188,7 +1185,7 @@ test('creates a linked discovery follow-up with full selection text and compact 
   request,
 }) => {
   const fixture = await createSourceLinkageFixture(request);
-  await page.goto('/projects/' + fixture.project.id);
+  await page.goto('/projects/' + fixture.project.id + '/readiness');
 
   await selectSource(
     page,
@@ -1245,7 +1242,7 @@ test('opens one source-link form and disables every discovery row action', async
     linkedFollowUp,
     fixture.source,
   );
-  await page.goto('/projects/' + fixture.project.id);
+  await page.goto('/projects/' + fixture.project.id + '/readiness');
 
   const firstUnlinkedItem = discoveryFollowUpItem(
     page,
@@ -1301,7 +1298,7 @@ test('adds a source through the row link form and persists its compact reference
 }) => {
   const fixture = await createSourceLinkageFixture(request);
   const followUp = await createDiscoveryFollowUp(request, fixture.project.id);
-  await page.goto('/projects/' + fixture.project.id);
+  await page.goto('/projects/' + fixture.project.id + '/readiness');
 
   const item = discoveryFollowUpItem(page, followUp.id);
   await expect(item).toHaveCount(1);
@@ -1359,7 +1356,7 @@ test('refreshes source candidates after a stale source-link conflict', async ({
 }) => {
   const fixture = await createSourceLinkageFixture(request);
   const followUp = await createDiscoveryFollowUp(request, fixture.project.id);
-  await page.goto('/projects/' + fixture.project.id);
+  await page.goto('/projects/' + fixture.project.id + '/readiness');
 
   const item = discoveryFollowUpItem(page, followUp.id);
   await itemButton(item, 'link-discovery-follow-up-source-button').click();
@@ -1460,7 +1457,7 @@ test('replaces and removes a discovery source only after explicit confirmation w
     request,
     fixture.project.id,
   );
-  await page.goto('/projects/' + fixture.project.id);
+  await page.goto('/projects/' + fixture.project.id + '/readiness');
 
   const item = discoveryFollowUpItem(page, followUp.id);
   await expect(item).toHaveCount(1);
@@ -1658,7 +1655,7 @@ test('disables discovery mutations while source removal is pending and restores 
     linkedFollowUp,
     fixture.source,
   );
-  await page.goto('/projects/' + fixture.project.id);
+  await page.goto('/projects/' + fixture.project.id + '/readiness');
 
   const linkedItem = discoveryFollowUpItem(page, linkedFollowUp.id);
   const unlinkedItem = discoveryFollowUpItem(page, unlinkedFollowUp.id);
@@ -1701,7 +1698,7 @@ test('disables discovery mutations while source removal is pending and restores 
   await expect(removeSource).toBeFocused();
 });
 
-test('keeps source removal non-modal and closes it with Escape from the focused archive control', async ({
+test('keeps source removal non-modal and closes it with Escape from a focused background control', async ({
   page,
   request,
 }) => {
@@ -1713,7 +1710,7 @@ test('keeps source removal non-modal and closes it with Escape from the focused 
     followUp,
     fixture.source,
   );
-  await page.goto('/projects/' + fixture.project.id);
+  await page.goto('/projects/' + fixture.project.id + '/readiness');
 
   const item = discoveryFollowUpItem(page, followUp.id);
   const removeSource = itemButton(
@@ -1728,19 +1725,19 @@ test('keeps source removal non-modal and closes it with Escape from the focused 
     page,
     'cancel-discovery-follow-up-source-remove-button',
   );
-  const archive = nativeButton(page, 'archive-project-button');
+  const settingsNavigation = page.getByTestId('project-context-nav-settings');
   await expect(confirmation).toBeVisible();
   await expect(cancel).toBeFocused();
 
-  let reachedArchive = false;
+  let reachedBackgroundControl = false;
   for (let attempt = 0; attempt < 20; attempt += 1) {
     await page.keyboard.press('Shift+Tab');
-    if (await archive.evaluate((element) => element === document.activeElement)) {
-      reachedArchive = true;
+    if (await settingsNavigation.evaluate((element) => element === document.activeElement)) {
+      reachedBackgroundControl = true;
       break;
     }
   }
-  expect(reachedArchive).toBe(true);
+  expect(reachedBackgroundControl).toBe(true);
   await expect(confirmation).toBeVisible();
   await expect(confirmation).toHaveAttribute('role', 'alertdialog');
   await expect(confirmation).not.toHaveAttribute('aria-modal');
@@ -1751,14 +1748,14 @@ test('keeps source removal non-modal and closes it with Escape from the focused 
   await expect(confirmation).toHaveAccessibleDescription(
     'This removes the recorded origin. A later intake round may make the old source unavailable for reattachment.',
   );
-  await expect(archive).toBeFocused();
+  await expect(settingsNavigation).toBeFocused();
   await page.keyboard.press('Escape');
   await expect(confirmation).toHaveCount(0);
   await expect(removeSource).toBeEnabled();
   await expect(removeSource).toBeFocused();
 });
 
-test('routes Escape to the topmost Cockpit confirmation without closing source removal below it', async ({
+test('keeps Discovery confirmation state out of Project settings', async ({
   page,
   request,
 }) => {
@@ -1770,7 +1767,7 @@ test('routes Escape to the topmost Cockpit confirmation without closing source r
     followUp,
     fixture.source,
   );
-  await page.goto('/projects/' + fixture.project.id);
+  await page.goto('/projects/' + fixture.project.id + '/readiness');
 
   const item = discoveryFollowUpItem(page, followUp.id);
   await itemButton(item, 'remove-discovery-follow-up-source-button').click();
@@ -1779,8 +1776,9 @@ test('routes Escape to the topmost Cockpit confirmation without closing source r
   );
   await expect(sourceConfirmation).toBeVisible();
 
-  const deleteProject = nativeButton(page, 'delete-project-button');
-  await deleteProject.click();
+  await page.goto(`/projects/${fixture.project.id}/settings`);
+  await expect(sourceConfirmation).toHaveCount(0);
+  await nativeButton(page, 'delete-project-button').click();
   const projectConfirmation = page.getByTestId('project-delete-confirmation');
   await expect(projectConfirmation).toBeVisible();
   await expect(
@@ -1789,147 +1787,8 @@ test('routes Escape to the topmost Cockpit confirmation without closing source r
 
   await page.keyboard.press('Escape');
   await expect(projectConfirmation).toHaveCount(0);
-  await expect(sourceConfirmation).toBeVisible();
-
-  await page.keyboard.press('Escape');
-  await expect(sourceConfirmation).toHaveCount(0);
-});
-
-test('keeps source removal pending when a cockpit operation blocks acceptance', async ({
-  page,
-  request,
-}) => {
-  const fixture = await createSourceLinkageFixture(request);
-  const followUp = await createDiscoveryFollowUp(request, fixture.project.id);
-  await addSourceLinkFixture(
-    request,
-    fixture.project.id,
-    followUp,
-    fixture.source,
-  );
-  let releaseArchive: (() => void) | null = null;
-  let notifyArchiveStarted: (() => void) | null = null;
-  const archiveStarted = new Promise<void>((resolve) => {
-    notifyArchiveStarted = resolve;
-  });
-  const pageErrors: string[] = [];
-  const recordPageError = (error: Error): void => {
-    pageErrors.push(error.message);
-  };
-  const consoleErrors: string[] = [];
-  const recordConsoleError = (message: ConsoleMessage): void => {
-    if (message.type() === 'error') {
-      consoleErrors.push(message.text());
-    }
-  };
-  page.on('pageerror', recordPageError);
-  page.on('console', recordConsoleError);
-  let sourceLinkCommandCount = 0;
-  page.on('request', (requestEvent) => {
-    if (
-      requestEvent.method() === 'PUT' &&
-      requestEvent
-        .url()
-        .endsWith(
-          '/api/projects/' +
-            fixture.project.id +
-            '/discovery-follow-ups/' +
-            followUp.id +
-            '/source-link',
-        )
-    ) {
-      sourceLinkCommandCount += 1;
-    }
-  });
-  await page.route(
-    '**/api/projects/' + fixture.project.id + '/archive',
-    async (route) => {
-      if (route.request().method() !== 'POST') {
-        await route.continue();
-        return;
-      }
-      if (notifyArchiveStarted === null) {
-        throw new Error('Archive request was intercepted more than once.');
-      }
-      notifyArchiveStarted();
-      notifyArchiveStarted = null;
-      await new Promise<void>((resolve) => {
-        releaseArchive = resolve;
-      });
-      await route.continue();
-    },
-  );
-  await page.goto('/projects/' + fixture.project.id);
-  let archiveResponse: Promise<APIResponse> | null = null;
-
-  try {
-    const item = discoveryFollowUpItem(page, followUp.id);
-    const removeSource = itemButton(
-      item,
-      'remove-discovery-follow-up-source-button',
-    );
-    await removeSource.click();
-    const confirmation = page.getByTestId(
-      'discovery-follow-up-source-remove-confirmation',
-    );
-    await expect(confirmation).toBeVisible();
-
-    archiveResponse = page.waitForResponse(
-      (response) =>
-        response.request().method() === 'POST' &&
-        response
-          .url()
-          .endsWith('/api/projects/' + fixture.project.id + '/archive'),
-    );
-    await nativeButton(page, 'archive-project-button').click();
-    await archiveStarted;
-    await expect(removeSource).toBeDisabled();
-    await nativeButton(
-      page,
-      'confirm-discovery-follow-up-source-remove-button',
-    ).click();
-
-    await expect(confirmation).toBeVisible();
-    await expect(
-      page.getByTestId('discovery-follow-up-action-error'),
-    ).toBeVisible();
-    expect(sourceLinkCommandCount).toBe(0);
-
-    await nativeButton(
-      page,
-      'cancel-discovery-follow-up-source-remove-button',
-    ).click();
-    await expect(confirmation).toHaveCount(0);
-    await page.evaluate(
-      () =>
-        new Promise<void>((resolve) => {
-          requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
-        }),
-    );
-    const cancellationOutcome = {
-      consoleErrors,
-      pageErrors,
-      rowFocused: await item.evaluate(
-        (element) => element === document.activeElement,
-      ),
-    };
-
-    if (releaseArchive === null) {
-      throw new Error('Archive release was not initialized.');
-    }
-    releaseArchive();
-    expect((await archiveResponse).status()).toBe(201);
-    expect(cancellationOutcome).toEqual({
-      consoleErrors: [],
-      pageErrors: [],
-      rowFocused: true,
-    });
-  } finally {
-    releaseArchive?.();
-    await archiveResponse?.catch(() => undefined);
-    page.off('console', recordConsoleError);
-    page.off('pageerror', recordPageError);
-  }
+  await page.goto(`/projects/${fixture.project.id}/readiness`);
+  await expect(page.getByTestId('discovery-follow-up-source-remove-confirmation')).toHaveCount(0);
 });
 
 test('keeps compact linked provenance after a real discovery resolution without source actions', async ({
@@ -1944,7 +1803,7 @@ test('keeps compact linked provenance after a real discovery resolution without 
     followUp,
     fixture.source,
   );
-  await page.goto('/projects/' + fixture.project.id);
+  await page.goto('/projects/' + fixture.project.id + '/readiness');
 
   const item = discoveryFollowUpItem(page, followUp.id);
   await itemButton(item, 'resolve-discovery-follow-up-button').click();
@@ -2014,7 +1873,7 @@ test('keeps unlinked discovery creation available when source options fail and r
       await route.continue();
     },
   );
-  await page.goto('/projects/' + fixture.project.id);
+  await page.goto('/projects/' + fixture.project.id + '/readiness');
 
   await expect(
     page.getByTestId('discovery-follow-up-source-options-error'),
@@ -2067,7 +1926,7 @@ test('keeps unlinked discovery creation available when source options fail and r
   );
 });
 
-test('clears source drafts and removal confirmation when the cockpit archives', async ({
+test('clears source drafts and removal confirmation when the project is archived from settings', async ({
   page,
   request,
 }) => {
@@ -2087,7 +1946,7 @@ test('clears source drafts and removal confirmation when the cockpit archives', 
     request,
     fixture.project.id,
   );
-  await page.goto('/projects/' + fixture.project.id);
+  await page.goto('/projects/' + fixture.project.id + '/readiness');
 
   const item = discoveryFollowUpItem(page, followUp.id);
   const unlinkedItem = discoveryFollowUpItem(page, unlinkedFollowUp.id);
@@ -2101,13 +1960,7 @@ test('clears source drafts and removal confirmation when the cockpit archives', 
     sourceLinkForm.getByTestId('discovery-follow-up-source-link-select'),
     replacementSource,
   );
-  const firstArchiveResponse = page.waitForResponse(
-    (response) =>
-      response.request().method() === 'POST' &&
-      response.url().endsWith('/api/projects/' + fixture.project.id + '/archive'),
-  );
-  await nativeButton(page, 'archive-project-button').click();
-  expect((await firstArchiveResponse).status()).toBe(201);
+  await archiveProjectFromSettings(page, fixture.project.id);
   await expect(sourceLinkForm).toHaveCount(0);
   await expect(
     page.getByTestId('discovery-follow-up-source-remove-confirmation'),
@@ -2122,13 +1975,7 @@ test('clears source drafts and removal confirmation when the cockpit archives', 
     itemButton(item, 'remove-discovery-follow-up-source-button'),
   ).toBeDisabled();
 
-  const firstRestoreResponse = page.waitForResponse(
-    (response) =>
-      response.request().method() === 'POST' &&
-      response.url().endsWith('/api/projects/' + fixture.project.id + '/restore'),
-  );
-  await nativeButton(page, 'restore-project-button').click();
-  expect((await firstRestoreResponse).status()).toBe(201);
+  await restoreProjectFromSettings(page, fixture.project.id);
   await expect(sourceLinkForm).toHaveCount(0);
   await expect(
     page.getByTestId('discovery-follow-up-source-remove-confirmation'),
@@ -2153,13 +2000,7 @@ test('clears source drafts and removal confirmation when the cockpit archives', 
   await expect(
     page.getByTestId('discovery-follow-up-source-remove-confirmation'),
   ).toBeVisible();
-  const secondArchiveResponse = page.waitForResponse(
-    (response) =>
-      response.request().method() === 'POST' &&
-      response.url().endsWith('/api/projects/' + fixture.project.id + '/archive'),
-  );
-  await nativeButton(page, 'archive-project-button').click();
-  expect((await secondArchiveResponse).status()).toBe(201);
+  await archiveProjectFromSettings(page, fixture.project.id);
   await expect(
     page.getByTestId('discovery-follow-up-source-remove-confirmation'),
   ).toHaveCount(0);
@@ -2174,13 +2015,7 @@ test('clears source drafts and removal confirmation when the cockpit archives', 
     itemButton(item, 'remove-discovery-follow-up-source-button'),
   ).toBeDisabled();
 
-  const secondRestoreResponse = page.waitForResponse(
-    (response) =>
-      response.request().method() === 'POST' &&
-      response.url().endsWith('/api/projects/' + fixture.project.id + '/restore'),
-  );
-  await nativeButton(page, 'restore-project-button').click();
-  expect((await secondRestoreResponse).status()).toBe(201);
+  await restoreProjectFromSettings(page, fixture.project.id);
   await expect(sourceLinkForm).toHaveCount(0);
   await expect(
     page.getByTestId('discovery-follow-up-source-remove-confirmation'),

@@ -89,13 +89,17 @@ export const routes: Routes = [
         title: 'Customer válaszok | Project Maker',
       },
       {
+        path: 'settings',
+        loadComponent: () =>
+          import('./projects/project-settings.page').then(
+            (module) => module.ProjectSettingsPage,
+          ),
+        title: 'Projektbeállítások | Project Maker',
+      },
+      {
         path: '',
         pathMatch: 'full',
-        loadComponent: () =>
-          import('./projects/project-cockpit.page').then(
-            (module) => module.ProjectCockpitPage,
-          ),
-        title: 'Project cockpit | Project Maker',
+        redirectTo: 'status',
       },
     ],
   },

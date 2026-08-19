@@ -7,7 +7,7 @@ import type { CustomerCorrespondenceView } from '@project-maker/contracts';
   imports: [RouterLink],
   template: `
     @if (sourceFollowUp(); as source) {
-      <a [routerLink]="['/projects', projectId()]"
+      <a [routerLink]="['/projects', projectId(), 'readiness']"
         [queryParams]="{
           reviewFollowUpId: source.followUpId,
           reviewFollowUpVersion: source.followUpVersion,

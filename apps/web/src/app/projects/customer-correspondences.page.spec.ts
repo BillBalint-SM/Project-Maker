@@ -4,6 +4,7 @@ import { of, throwError } from 'rxjs';
 import { describe, expect, it, vi } from 'vitest';
 
 import { CustomerCorrespondencesPage } from './customer-correspondences.page';
+import { CustomerFollowUpApiService } from './customer-follow-up/customer-follow-up-api.service';
 import { CustomerRepliesApiService } from './customer-replies-api.service';
 
 describe('CustomerCorrespondencesPage', () => {
@@ -43,12 +44,26 @@ describe('CustomerCorrespondencesPage', () => {
           provide: CustomerRepliesApiService,
           useValue: { command, summary, forProject: () => of(work) },
         },
+        {
+          provide: CustomerFollowUpApiService,
+          useValue: {
+            load: () => of({
+              projectId: 'project-1', messageDraft: 'Emlékeztető', referencedFollowUpId: null,
+              draftVersion: 1, enabled: false, intervalMinutes: 10_080, expiresAt: null,
+              lastPingAt: null, nextPingAt: null, lastDeliveryStatus: 'NEVER',
+              lastDeliveryError: null, latestManualAttempt: null,
+            }),
+            listReferenceOptions: () => of([]),
+            senderOptions: () => of({
+              dedicatedName: 'Project Maker', dedicatedAddress: 'project-maker@pte.hu',
+              lastUsedName: null, lastUsedAddress: null,
+            }),
+          },
+        },
       ],
     }).compileComponents();
     const fixture = TestBed.createComponent(CustomerCorrespondencesPage);
-    fixture.detectChanges();
     await fixture.whenStable();
-    fixture.detectChanges();
 
     expect(fixture.nativeElement.querySelector('.message-text')?.textContent).toContain('<img src=x onerror=steal()>');
     expect(fixture.nativeElement.querySelector('.message-text img')).toBeNull();
@@ -57,7 +72,7 @@ describe('CustomerCorrespondencesPage', () => {
     const close = Array.from(fixture.nativeElement.querySelectorAll('button'))
       .find((button) => (button as HTMLButtonElement).textContent?.trim() === 'Lezárás') as HTMLButtonElement;
     close.click();
-    fixture.detectChanges();
+    await fixture.whenStable();
     expect(fixture.nativeElement.querySelector('[role="alert"]')?.textContent).toContain('Töltsd újra az adatokat');
     expect(fixture.nativeElement.querySelector('.message-text')?.textContent).toContain('<img src=x onerror=steal()>');
     expect(fixture.nativeElement.textContent).toContain('Adatok újratöltése');
@@ -72,5 +87,7 @@ describe('CustomerCorrespondencesPage', () => {
     expect(Array.from(classification.options).map((option) => option.text)).toEqual([
       'Válassz besorolást', 'Elfogadva', 'Módosítást kér', 'Kérdés vagy válasz', 'Egyéb',
     ]);
+    expect(fixture.nativeElement.querySelector('[data-testid="follow-up-draft-form"]')).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('[data-testid="follow-up-settings-form"]')).toBeNull();
   });
 });

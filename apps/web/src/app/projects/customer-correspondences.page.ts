@@ -11,12 +11,20 @@ import type {
 import { customerInboundMessageClassifications } from '@project-maker/contracts/customer-mail';
 
 import { CustomerRepliesApiService } from './customer-replies-api.service';
+import { provideCockpitOperationPolicy } from './cockpit-operation-policy';
+import { CustomerFollowUpComponent } from './customer-follow-up/customer-follow-up.component';
 import { InterviewReplyOutcomeComponent } from '../interviews/interview-handoff/interview-reply-outcome.component';
 import { DiscoveryReplyOutcomeComponent } from './discovery-follow-ups/discovery-reply-outcome.component';
 
 @Component({
   selector: 'app-customer-correspondences-page',
-  imports: [DatePipe, DiscoveryReplyOutcomeComponent, InterviewReplyOutcomeComponent],
+  imports: [
+    CustomerFollowUpComponent,
+    DatePipe,
+    DiscoveryReplyOutcomeComponent,
+    InterviewReplyOutcomeComponent,
+  ],
+  providers: [provideCockpitOperationPolicy()],
   template: `
     <section aria-labelledby="customer-replies-title">
       <span class="eyebrow">Customer kommunikáció</span>
@@ -27,6 +35,11 @@ import { DiscoveryReplyOutcomeComponent } from './discovery-follow-ups/discovery
         @if (current.projectArchived) {
           <p role="status">Az archivált projekt levelezése olvasható. A feldolgozáshoz vagy a forrásfolyamat módosításához előbb állítsd vissza a projektet.</p>
         }
+        <app-customer-follow-up
+          [projectId]="projectId"
+          [archived]="current.projectArchived"
+          mode="work"
+        />
         @if (commandError()) {
           <div class="command-error" role="alert">
             <p>{{ commandError() }}</p>
