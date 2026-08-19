@@ -44,6 +44,33 @@
     </fieldset>
   </section>
 
+  <div class="queue-toolbar">
+    <button
+      pButton
+      type="button"
+      severity="secondary"
+      data-testid="queue-refresh"
+      (click)="refresh()"
+    >Munkasor frissítése</button>
+    @if (page(); as loadedPage) {
+      <span>Utolsó lekérés: {{ loadedPage.retrievedAt | date: 'yyyy. MM. dd. HH:mm' }}</span>
+    }
+  </div>
+
+  <div class="visually-hidden" data-testid="queue-live-status" role="status" aria-live="polite" aria-atomic="true">
+    {{ liveStatus() }}
+  </div>
+
+  @if (stale()) {
+    <div class="state-panel queue-stale" data-testid="active-queue-stale">
+      <h2>A lista elavult lehet.</h2>
+      <p>{{ updateError() }}</p>
+      <button pButton type="button" severity="secondary" data-testid="queue-update-retry" (click)="retry()">
+        Sikertelen lekérés újrapróbálása
+      </button>
+    </div>
+  }
+
   @if (loading()) {
     <div class="state-panel" data-testid="active-queue-loading" aria-live="polite">
       <p-progress-spinner ariaLabel="Az aktív munkasor betöltése" />
@@ -53,7 +80,9 @@
     <div class="state-panel" data-testid="active-queue-error" role="alert">
       <h2>Az aktív munkasor nem tölthető be</h2>
       <p>{{ loadError() }}</p>
-      <p-button label="Újrapróbálás" severity="secondary" (onClick)="load()" />
+      <button pButton type="button" severity="secondary" data-testid="queue-initial-retry" (click)="retry()">
+        Újrapróbálás
+      </button>
     </div>
   } @else if (page(); as queuePage) {
     @if (queuePage.totalCount === 0) {
@@ -61,9 +90,13 @@
         @if (hasActiveFilters()) {
           <h2>Nincs találat</h2>
           <p>Nincs a keresésnek és a kiválasztott szűrőknek megfelelő aktív projekt.</p>
+          <button pButton type="button" severity="secondary" data-testid="queue-clear-filters" (click)="clearFilters()">
+            Szűrők törlése
+          </button>
         } @else {
           <h2>Nincs aktív projekt</h2>
           <p>A munkasorban minden nem archivált projekt megjelenik.</p>
+          <a pButton severity="secondary" routerLink="/">Portfólió áttekintése</a>
           <a pButton routerLink="/projects/new">Új projekt létrehozása</a>
         }
       </div>
@@ -72,7 +105,9 @@
         <strong>
           {{ queuePage.items.length }} projekt látható az összesen {{ queuePage.totalCount }} aktív projektből
         </strong>
-        <span>Betöltve: {{ queuePage.retrievedAt | date: 'yyyy. MM. dd. HH:mm' }}</span>
+        @if (updating()) {
+          <span>Frissítés folyamatban…</span>
+        }
       </div>
 
       <div class="queue-groups">

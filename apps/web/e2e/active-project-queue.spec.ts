@@ -87,3 +87,72 @@ test('pages through one urgency group with history and recovers an obsolete curs
   );
   await expect(page.locator('.queue-row')).toHaveCount(10);
 });
+
+test('keeps queue context through a failed refresh and announces recovery', async ({ page }) => {
+  const uniquePart = `refresh-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  const created = await page.request.post('/api/projects', {
+    data: {
+      name: uniquePart,
+      customerContactName: 'Munkasor Kapcsolattartó',
+      customerContactEmail: `${uniquePart}@example.test`,
+      internalOwnerName: 'Kovács Anna',
+    },
+  });
+  expect(created.status()).toBe(201);
+  const project = (await created.json()) as { readonly id: string };
+  let failNextQueueRequest = false;
+  await page.route('**/api/projects/active-queue**', async (route) => {
+    if (failNextQueueRequest) {
+      failNextQueueRequest = false;
+      await route.abort('failed');
+      return;
+    }
+    await route.continue();
+  });
+
+  await page.goto(`/projects/active?q=${encodeURIComponent(uniquePart)}`);
+  const projectLink = page.getByTestId(`queue-project-${project.id}`);
+  await expect(projectLink).toBeVisible();
+  const refresh = page.getByTestId('queue-refresh');
+  await refresh.focus();
+  failNextQueueRequest = true;
+  await refresh.click();
+
+  await expect(page.getByTestId('active-queue-stale')).toContainText('A lista elavult lehet.');
+  await expect(projectLink).toBeVisible();
+  await expect(refresh).toBeFocused();
+  await expect(page.getByTestId('queue-live-status')).toContainText(
+    'A munkasor frissítése nem sikerült. A korábbi lista maradt látható.',
+  );
+
+  await page.getByTestId('queue-update-retry').click();
+  await expect(page.getByTestId('active-queue-stale')).toHaveCount(0);
+  await expect(projectLink).toBeVisible();
+  await expect(page.getByTestId('queue-live-status')).toContainText('A munkasor ismét elérhető.');
+});
+
+test('offers filter reset and portfolio actions for the two empty queue states', async ({ page }) => {
+  await page.route('**/api/projects/active-queue**', async (route) => {
+    await route.fulfill({
+      contentType: 'application/json',
+      json: {
+        retrievedAt: '2026-08-19T08:00:00.000Z',
+        totalCount: 0,
+        groupCounts: { CUSTOMER_REPLY: 0, OVERDUE: 0, DUE_SOON: 0, IN_PROGRESS: 0 },
+        previousCursor: null,
+        nextCursor: null,
+        items: [],
+      },
+    });
+  });
+
+  await page.goto('/projects/active?q=nincs-ilyen-projekt&urgency=OVERDUE');
+  await expect(page.getByRole('heading', { name: 'Nincs találat' })).toBeVisible();
+  await expect(page.getByTestId('queue-search')).toHaveValue('nincs-ilyen-projekt');
+  await page.getByTestId('queue-clear-filters').click();
+
+  await expect(page).toHaveURL('/projects/active');
+  await expect(page.getByRole('heading', { name: 'Nincs aktív projekt' })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Portfólió áttekintése' })).toHaveAttribute('href', '/');
+  await expect(page.getByRole('link', { name: 'Új projekt létrehozása' })).toHaveAttribute('href', '/projects/new');
+});
