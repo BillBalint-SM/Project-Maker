@@ -166,6 +166,8 @@ describe('Correlated Customer replies', () => {
 
     graph.queue(reply);
     await request(app.getHttpServer()).post('/customer-mailbox-sync/refresh').send({}).expect(201);
+    graph.queue({ ...reply, id: `${providerMessageReference}-reissued` });
+    await request(app.getHttpServer()).post('/customer-mailbox-sync/refresh').send({}).expect(201);
     const replayed = await request(app.getHttpServer())
       .get(`/projects/${projectId}/customer-correspondences`)
       .expect(200);
@@ -215,6 +217,14 @@ describe('Correlated Customer replies', () => {
     graph.queue(
       {
         ...inboundMessage(`dsn-${suffix}`, target.replyToAddress, '2026-08-18T17:05:00.000Z'),
+        internetMessageId: `<dsn-${suffix}@example.test>`,
+        internetMessageHeaders: [
+          { name: 'Content-Type', value: 'multipart/report; report-type=delivery-status' },
+        ],
+      },
+      {
+        ...inboundMessage(`dsn-${suffix}-reissued`, target.replyToAddress, '2026-08-18T17:05:00.000Z'),
+        internetMessageId: `<dsn-${suffix}@example.test>`,
         internetMessageHeaders: [
           { name: 'Content-Type', value: 'multipart/report; report-type=delivery-status' },
         ],
@@ -243,7 +253,7 @@ describe('Correlated Customer replies', () => {
     const triage = await request(app.getHttpServer()).get('/customer-mail-triage').expect(200);
     assert.deepEqual(
       triage.body.mailSystemEvents
-        .filter((event: { providerMessageReference: string }) => event.providerMessageReference.endsWith(suffix))
+        .filter((event: { providerMessageReference: string }) => event.providerMessageReference.includes(suffix))
         .map((event: { type: string }) => event.type)
         .sort(),
       ['DELIVERY_REPORT', 'OUT_OF_OFFICE'],
@@ -320,6 +330,27 @@ describe('Correlated Customer replies', () => {
         message.providerMessageReference === messageId,
     );
     assert.equal(linkedMessage.correlationEvidence, 'MANUAL_TRIAGE');
+    await request(app.getHttpServer())
+      .post(`/projects/${target.projectId}/customer-correspondences/${correspondenceId}/commands`)
+      .send({
+        command: 'SET_STATUS',
+        expectedVersion: updated.body.correspondences[0].processingVersion,
+        status: 'Lezárva',
+      })
+      .expect(409);
+
+    const classified = await request(app.getHttpServer())
+      .post(`/projects/${target.projectId}/customer-correspondences/${correspondenceId}/commands`)
+      .send({
+        command: 'CLASSIFY_MESSAGE',
+        expectedVersion: updated.body.correspondences[0].processingVersion,
+        messageId: unmatched.id,
+        classification: 'Elfogadva',
+        closeCorrespondence: true,
+      })
+      .expect(201);
+    assert.equal(classified.body.status, 'Lezárva');
+    assert.equal(classified.body.messages[0].classification, 'Elfogadva');
 
     const audit = await request(app.getHttpServer())
       .get(`/projects/${target.projectId}/audit-events`)
