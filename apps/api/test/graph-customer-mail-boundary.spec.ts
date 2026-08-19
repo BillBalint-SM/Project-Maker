@@ -209,6 +209,7 @@ describe('Graph customer mail boundary', () => {
     assert.deepEqual(first, {
       changes: [{
         changeType: 'UPSERTED',
+        automationKind: 'HUMAN',
         messageReference: 'message-1',
         internetMessageId: '<reply@example.test>',
         inReplyTo: '<original@example.test>',
@@ -228,6 +229,37 @@ describe('Graph customer mail boundary', () => {
       nextPageCheckpoint: { value: 'page-2' },
       completedCheckpoint: null,
     });
+  });
+
+  it('classifies delivery reports, automatic replies, and uncertain automation from headers', async () => {
+    const client = new ControlledGraphMailClient();
+    client.pages.set('initial', {
+      value: [
+        {
+          id: 'delivery-report',
+          internetMessageHeaders: [
+            { name: 'Content-Type', value: 'multipart/report; report-type=delivery-status' },
+          ],
+        },
+        {
+          id: 'out-of-office',
+          internetMessageHeaders: [{ name: 'Auto-Submitted', value: 'auto-replied' }],
+        },
+        {
+          id: 'unknown-automation',
+          internetMessageHeaders: [{ name: 'Auto-Submitted', value: 'auto-generated' }],
+        },
+      ],
+      nextCheckpoint: null,
+      completedCheckpoint: 'done',
+    });
+
+    const page = await new GraphCustomerMailBoundary(client).readChanges(null);
+
+    assert.deepEqual(
+      page.changes.map((change) => change.automationKind),
+      ['DELIVERY_REPORT', 'OUT_OF_OFFICE', 'UNKNOWN_AUTOMATION'],
+    );
   });
 
   it('converts untrusted Graph HTML bodies to safe plain text', async () => {
