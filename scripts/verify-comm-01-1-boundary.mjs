@@ -37,6 +37,10 @@ const currentDocumentationExpectations = [
   {
     file: 'docs/user-guide.md',
     required: ['egyetlen teljes ügyfél-összefoglaló'],
+    forbidden: [
+      /Külső e-mail-hibánál[^\n]*Markdown/i,
+      /Claude Code átadás előtt/i,
+    ],
   },
   {
     file: 'docs/operations-handoff.md',
@@ -63,6 +67,11 @@ for (const expectation of currentDocumentationExpectations) {
   for (const requiredText of expectation.required) {
     if (!content.includes(requiredText)) {
       failures.push(`${expectation.file}: missing current-delivery evidence: ${requiredText}`);
+    }
+  }
+  for (const forbiddenPattern of expectation.forbidden ?? []) {
+    if (forbiddenPattern.test(content)) {
+      failures.push(`${expectation.file}: contains stale current-workflow guidance: ${forbiddenPattern}`);
     }
   }
   if (content.includes('SMTP_SEND_FAILED')) {

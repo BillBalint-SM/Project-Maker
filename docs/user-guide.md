@@ -166,7 +166,7 @@ Az interjú értékelése után nyisd meg a cockpit `Felkészültségi értékel
 
 ### 5. Pillanatkép és kommunikáció
 
-Claude Code átadás előtt generálj friss Markdown-revíziót, majd nézd meg a forráspillanatképet és az előnézetet. Ez a `.md` fájl nem ügyfélkommunikáció. Ügyfélnek az interjú összegzését vagy a külön megírt follow-up pinget küldd; egyik levél sem csatolja és nem másolja be a Markdown-revíziót.
+Belső, kézi munkához generálhatsz friss Markdown-revíziót, majd megnézheted a forráspillanatképet és az előnézetet. A Project Makerben automatizált Claude Code átadás még nem érhető el, és a `.md` fájl nem ügyfélkommunikáció. Ügyfélnek az interjú összegzését vagy a külön megírt follow-up pinget küldd; egyik levél sem csatolja és nem másolja be a Markdown-revíziót.
 
 ### 6. Megőrzés
 
@@ -1062,7 +1062,7 @@ A Project Maker gyorsan jelez, ha egy kérés nem hajtható végre. A hibaüzene
 3. Ne indíts ugyanabból a műveletből több párhuzamos példányt.
 4. Ha mentés folyik, várd meg. Ha betöltési hiba van, használd az oldal saját retry műveletét.
 5. Ütközésnél töltsd újra az oldalt, és hasonlítsd össze a friss szerverállapotot a szándékoddal.
-6. Külső e-mail-hibánál ne kattints ismét automatikusan; előbb ellenőrizd a címzettet, a Markdown-verziót és a levélküldés elérhetőségét.
+6. Külső e-mail-hibánál ne kattints ismét automatikusan. Ellenőrizd a feladót, a címzettet, a handoff vagy ping pontos előnézetét és az attempt `FAILED` vagy `UNKNOWN` állapotát. `UNKNOWN` esetén a kimenő postafiókot is ellenőrizd, és csak a felület külön kockázatelfogadó műveletével próbáld újra.
 7. Ismétlődő elérhetőségi vagy szolgáltatási hibát a projekt nevével, az oldal nevével, az időponttal és a látható hibaszöveggel jelezz az üzemeltetőnek. Titkot vagy teljes ügyféladatot ne másolj hibajegybe.
 
 ### Hiba- és helyreállítási mátrix
