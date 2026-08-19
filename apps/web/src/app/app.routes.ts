@@ -26,6 +26,14 @@ export const routes: Routes = [
     title: 'Aktív munkasor | Project Maker',
   },
   {
+    path: 'customer-mail-triage',
+    loadComponent: () =>
+      import('./projects/customer-mail-triage.page').then(
+        (module) => module.CustomerMailTriagePage,
+      ),
+    title: 'Nem társított ügyfélüzenetek | Project Maker',
+  },
+  {
     path: 'projects/:projectId/interview',
     loadComponent: () =>
       import('./interviews/interview.page').then(

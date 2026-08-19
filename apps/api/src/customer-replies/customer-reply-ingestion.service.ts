@@ -20,6 +20,11 @@ export class CustomerReplyIngestionService {
     for (const change of changes) {
       if (change.changeType !== 'UPSERTED') continue;
       await retainMailboxChange(manager, mailboxAddress, change, observedAt);
+      if (change.senderAddress?.toLowerCase() === mailboxAddress.toLowerCase()) continue;
+      if (change.automationKind === 'DELIVERY_REPORT' || change.automationKind === 'OUT_OF_OFFICE') {
+        await retainMailSystemEvent(manager, mailboxAddress, change, observedAt);
+        continue;
+      }
       await retainInboundMessage(manager, mailboxAddress, change, observedAt);
     }
   }
@@ -61,7 +66,9 @@ async function retainInboundMessage(
   change: CustomerMailboxChange,
   observedAt: Date,
 ): Promise<void> {
-  const correlation = await correlate(manager, mailboxAddress, change.recipientAddresses);
+  const correlation = change.automationKind === 'UNKNOWN_AUTOMATION'
+    ? null
+    : await correlate(manager, mailboxAddress, change.recipientAddresses);
   const text = normalizeText(change.textContent);
   const { visibleText, quotedText } = splitQuotedHistory(text);
   const senderClassification = correlation && change.senderAddress?.toLowerCase() === correlation.customer_contact_email.toLowerCase()
@@ -101,7 +108,20 @@ async function retainInboundMessage(
       JSON.stringify(change.attachments),
     ],
   ) as Array<{ id: string }>;
-  if (inserted.length === 0 || !correlation) return;
+  if (inserted.length === 0) return;
+  if (!correlation) {
+    await manager.query(
+      `INSERT INTO "customer_mail_triage" ("message_id", "kind") VALUES ($1, $2)
+       ON CONFLICT ("message_id") DO NOTHING`,
+      [
+        inserted[0]?.id,
+        change.automationKind === 'UNKNOWN_AUTOMATION'
+          ? 'UNKNOWN_AUTOMATION'
+          : 'UNMATCHED_CUSTOMER_MESSAGE',
+      ],
+    );
+    return;
+  }
   await manager.query(
     `UPDATE "customer_correspondences"
           SET "status" = 'Új válasz',
@@ -109,6 +129,32 @@ async function retainInboundMessage(
               "processing_version" = "processing_version" + 1
      WHERE "id" = $1`,
     [correlation.correspondence_id],
+  );
+}
+
+async function retainMailSystemEvent(
+  manager: EntityManager,
+  mailboxAddress: string,
+  change: CustomerMailboxChange,
+  observedAt: Date,
+): Promise<void> {
+  const correlation = await correlate(manager, mailboxAddress, change.recipientAddresses);
+  await manager.query(
+    `INSERT INTO "customer_mail_system_events" (
+       "id", "mailbox_address", "provider_message_reference", "internet_message_id",
+       "type", "project_id", "correspondence_id", "occurred_at"
+     ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+     ON CONFLICT ("mailbox_address", "provider_message_reference") DO NOTHING`,
+    [
+      randomUUID(),
+      mailboxAddress,
+      change.messageReference,
+      change.internetMessageId,
+      change.automationKind,
+      correlation?.project_id ?? null,
+      correlation?.correspondence_id ?? null,
+      parseReceivedAt(change.receivedAt, observedAt),
+    ],
   );
 }
 

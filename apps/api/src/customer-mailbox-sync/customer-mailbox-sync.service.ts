@@ -25,8 +25,13 @@ import { CustomerMailboxSyncEntity } from './customer-mailbox-sync.entity';
 import { CustomerReplyIngestionService } from '../customer-replies/customer-reply-ingestion.service';
 
 export const customerMailboxClockToken = 'CUSTOMER_MAILBOX_CLOCK';
+export const customerMailboxRetryRuntimeToken = 'CUSTOMER_MAILBOX_RETRY_RUNTIME';
 export interface CustomerMailboxClock {
   now(): Date;
+}
+export interface CustomerMailboxRetryRuntime {
+  random(): number;
+  wait(delayMs: number): Promise<void>;
 }
 @Injectable()
 export class CustomerMailboxSyncService implements OnModuleInit, OnModuleDestroy {
@@ -44,6 +49,8 @@ export class CustomerMailboxSyncService implements OnModuleInit, OnModuleDestroy
     private readonly mailbox: CustomerMailboxChanges,
     @Inject(customerMailboxClockToken)
     private readonly clock: CustomerMailboxClock,
+    @Inject(customerMailboxRetryRuntimeToken)
+    private readonly retryRuntime: CustomerMailboxRetryRuntime,
     private readonly config: ConfigService,
     private readonly replyIngestion: CustomerReplyIngestionService,
   ) {
@@ -136,7 +143,7 @@ export class CustomerMailboxSyncService implements OnModuleInit, OnModuleDestroy
         ? { value: state.deltaCheckpoint }
         : null;
       for (;;) {
-        const page = await this.mailbox.readChanges(checkpoint);
+        const page = await this.readPageWithRetry(checkpoint);
         if (state.baselineEstablished) changes.push(...page.changes);
         if (page.nextPageCheckpoint) {
           checkpoint = page.nextPageCheckpoint;
@@ -154,7 +161,10 @@ export class CustomerMailboxSyncService implements OnModuleInit, OnModuleDestroy
       state.failureCode = null;
     } catch (error) {
       const failure = error instanceof CustomerMailBoundaryError ? error.code : 'TEMPORARY_FAILURE';
-      if (failure === 'INVALID_CURSOR') state.deltaCheckpoint = null;
+      if (failure === 'INVALID_CURSOR') {
+        state.deltaCheckpoint = null;
+        state.baselineEstablished = false;
+      }
       state.state = failureState(failure);
       state.failureCode = failure;
     }
@@ -192,6 +202,25 @@ export class CustomerMailboxSyncService implements OnModuleInit, OnModuleDestroy
 
   private mailboxAddress(): string | null {
     return this.config.get<string>('CUSTOMER_MAILBOX_ADDRESS')?.trim() || null;
+  }
+
+  private async readPageWithRetry(
+    checkpoint: CustomerMailboxCheckpoint | null,
+  ): Promise<Awaited<ReturnType<CustomerMailboxChanges['readChanges']>>> {
+    for (let attempt = 0; ; attempt += 1) {
+      try {
+        return await this.mailbox.readChanges(checkpoint);
+      } catch (error) {
+        const code = error instanceof CustomerMailBoundaryError
+          ? error.code
+          : 'TEMPORARY_FAILURE';
+        const retryable = code === 'THROTTLED' || code === 'TEMPORARY_FAILURE';
+        if (!retryable || attempt >= 2) throw error;
+        const exponentialMs = Math.min(2_000, 250 * (2 ** attempt));
+        const jitteredMs = Math.round(exponentialMs * (0.5 + this.retryRuntime.random()));
+        await this.retryRuntime.wait(jitteredMs);
+      }
+    }
   }
 
   private async waitForActiveRefresh(mailboxAddress: string): Promise<CustomerMailboxSyncStatus> {

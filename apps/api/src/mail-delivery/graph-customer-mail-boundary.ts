@@ -158,6 +158,7 @@ function toGraphMessage(message: OutboundCustomerMessage, defaultMailbox?: strin
 }
 
 function normalizeMailboxChange(message: GraphMailboxMessage): CustomerMailboxChange {
+  const automationKind = classifyAutomation(message.internetMessageHeaders ?? []);
   const inReplyTo = message.internetMessageHeaders?.find(
     ({ name }) => name.toLowerCase() === 'in-reply-to',
   )?.value ?? null;
@@ -176,6 +177,7 @@ function normalizeMailboxChange(message: GraphMailboxMessage): CustomerMailboxCh
   }));
   return Object.freeze({
     changeType: message['@removed'] === undefined ? 'UPSERTED' : 'DELETED',
+    automationKind,
     messageReference: message.id,
     internetMessageId: message.internetMessageId ?? null,
     inReplyTo,
@@ -187,6 +189,27 @@ function normalizeMailboxChange(message: GraphMailboxMessage): CustomerMailboxCh
     attachmentCount,
     attachments: Object.freeze(attachments.map((attachment) => Object.freeze(attachment))),
   });
+}
+
+function classifyAutomation(
+  headers: readonly { readonly name: string; readonly value: string }[],
+): CustomerMailboxChange['automationKind'] {
+  const values = new Map(headers.map(({ name, value }) => [name.toLowerCase(), value.toLowerCase()]));
+  const contentType = values.get('content-type') ?? '';
+  if (
+    contentType.includes('delivery-status')
+    || contentType.includes('report-type=delivery-status')
+    || values.has('x-failed-recipients')
+  ) return 'DELIVERY_REPORT';
+
+  const autoSubmitted = values.get('auto-submitted')?.trim();
+  if (
+    autoSubmitted === 'auto-replied'
+    || values.has('x-autoreply')
+    || values.has('x-autorespond')
+  ) return 'OUT_OF_OFFICE';
+  if (autoSubmitted && autoSubmitted !== 'no') return 'UNKNOWN_AUTOMATION';
+  return 'HUMAN';
 }
 
 function uniqueAddresses(recipients: readonly GraphMailboxRecipient[]): string[] {

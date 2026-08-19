@@ -28,15 +28,20 @@
         <p class="mailbox-sync-error" role="alert">{{ mailboxError() }}</p>
       }
     </div>
-    <p-button
-      label="Üzenetek frissítése"
-      icon="pi pi-refresh"
-      severity="secondary"
-      data-testid="refresh-customer-mailbox"
-      [loading]="mailboxRefreshing()"
-      [disabled]="mailboxLoading() || mailboxRefreshing()"
-      (onClick)="refreshMailbox()"
-    />
+    <div class="mailbox-actions">
+      <a pButton routerLink="/customer-mail-triage" severity="secondary" data-testid="customer-mail-triage-link">
+        Nem társított üzenetek
+      </a>
+      <p-button
+        label="Üzenetek frissítése"
+        icon="pi pi-refresh"
+        severity="secondary"
+        data-testid="refresh-customer-mailbox"
+        [loading]="mailboxRefreshing()"
+        [disabled]="mailboxLoading() || mailboxRefreshing()"
+        (onClick)="refreshMailbox()"
+      />
+    </div>
   </aside>
 
   @if (loading()) {

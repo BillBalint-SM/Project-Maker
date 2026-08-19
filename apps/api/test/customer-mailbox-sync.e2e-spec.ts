@@ -13,6 +13,7 @@ import { AppModule } from '../src/app.module';
 import {
   CustomerMailboxSyncService,
   customerMailboxClockToken,
+  customerMailboxRetryRuntimeToken,
 } from '../src/customer-mailbox-sync/customer-mailbox-sync.service';
 import {
   CustomerMailBoundaryError,
@@ -30,6 +31,10 @@ describe('Customer mailbox synchronization', () => {
   let readStarted: (() => void) | null = null;
   let currentTime = new Date('2026-08-18T12:00:00.000Z');
   let mailboxFailure: CustomerMailBoundaryError | null = null;
+  let mailboxFailures: CustomerMailBoundaryError[] = [];
+  const retryDelays: number[] = [];
+  let releaseRetryWait: (() => void) | null = null;
+  let retryWaitStarted: (() => void) | null = null;
   let mailboxConfigured = true;
   let allowExpiredLeaseTakeover = false;
   let mailboxSequence = 0;
@@ -43,6 +48,8 @@ describe('Customer mailbox synchronization', () => {
         if (requestedCheckpoints.length > 1 && releaseRead && !allowExpiredLeaseTakeover) {
           throw new Error('A concurrent refresh reached the mailbox adapter.');
         }
+        const sequencedFailure = mailboxFailures.shift();
+        if (sequencedFailure) throw sequencedFailure;
         if (mailboxFailure) throw mailboxFailure;
         const page = pages.shift();
         assert.ok(page, 'The fake mailbox needs one page per expected read.');
@@ -65,6 +72,19 @@ describe('Customer mailbox synchronization', () => {
         .useValue(mailbox)
         .overrideProvider(customerMailboxClockToken)
         .useValue({ now: () => new Date(currentTime) })
+        .overrideProvider(customerMailboxRetryRuntimeToken)
+        .useValue({
+          random: () => 0.5,
+          wait: async (delayMs: number) => {
+            retryDelays.push(delayMs);
+            retryWaitStarted?.();
+            if (releaseRetryWait) {
+              await new Promise<void>((resolve) => {
+                releaseRetryWait = resolve;
+              });
+            }
+          },
+        })
         .compile();
       const app = module.createNestApplication({ logger: false });
       await app.init();
@@ -82,6 +102,10 @@ describe('Customer mailbox synchronization', () => {
     readStarted = null;
     currentTime = new Date('2026-08-18T12:00:00.000Z');
     mailboxFailure = null;
+    mailboxFailures = [];
+    retryDelays.length = 0;
+    releaseRetryWait = null;
+    retryWaitStarted = null;
     mailboxConfigured = true;
     allowExpiredLeaseTakeover = false;
   });
@@ -295,12 +319,71 @@ describe('Customer mailbox synchronization', () => {
     }
   });
 
-  it('discards an expired delta checkpoint before rebuilding the current mailbox view', async () => {
+  it('retries transient mailbox failures with bounded backoff while concurrent manual refresh joins', async () => {
     pages.push({
       changes: [],
       nextPageCheckpoint: null,
-      completedCheckpoint: { value: 'delta-before-expiry' },
+      completedCheckpoint: { value: 'delta-after-retry' },
     });
+    mailboxFailures = [new CustomerMailBoundaryError('TEMPORARY_FAILURE')];
+    const retryStarted = new Promise<void>((resolve) => {
+      retryWaitStarted = resolve;
+    });
+    releaseRetryWait = () => undefined;
+
+    const first = request(apps[0].getHttpServer())
+      .post('/customer-mailbox-sync/refresh')
+      .send({})
+      .expect(201)
+      .then((response) => response);
+    await retryStarted;
+    const joined = request(apps[0].getHttpServer())
+      .post('/customer-mailbox-sync/refresh')
+      .send({})
+      .expect(201)
+      .then((response) => response);
+    await new Promise((resolve) => setTimeout(resolve, 30));
+    const release = releaseRetryWait;
+    releaseRetryWait = null;
+    release?.();
+
+    const [completed, joinedResult] = await Promise.all([first, joined]);
+    assert.equal(completed.body.state, 'CURRENT');
+    assert.equal(joinedResult.body.state, 'CURRENT');
+    assert.deepEqual(retryDelays, [250]);
+    assert.equal(requestedCheckpoints.length, 2);
+  });
+
+  it('does not retry permanent mailbox configuration or authorization failures', async () => {
+    mailboxFailure = new CustomerMailBoundaryError('AUTHENTICATION_ERROR');
+
+    const response = await request(apps[0].getHttpServer())
+      .post('/customer-mailbox-sync/refresh')
+      .send({})
+      .expect(201);
+
+    assert.equal(response.body.state, 'AUTHORIZATION_ERROR');
+    assert.equal(requestedCheckpoints.length, 1);
+    assert.deepEqual(retryDelays, []);
+  });
+
+  it('discards an expired delta checkpoint before rebuilding the current mailbox view', async () => {
+    pages.push(
+      {
+        changes: [],
+        nextPageCheckpoint: null,
+        completedCheckpoint: { value: 'delta-before-expiry' },
+      },
+      {
+        changes: [mailboxChange('preserved-before-expiry')],
+        nextPageCheckpoint: null,
+        completedCheckpoint: { value: 'delta-with-preserved-message' },
+      },
+    );
+    await request(apps[0].getHttpServer())
+      .post('/customer-mailbox-sync/refresh')
+      .send({})
+      .expect(201);
     await request(apps[0].getHttpServer())
       .post('/customer-mailbox-sync/refresh')
       .send({})
@@ -314,10 +397,18 @@ describe('Customer mailbox synchronization', () => {
     assert.equal(unavailable.body.state, 'UNAVAILABLE');
 
     mailboxFailure = null;
+    mailboxFailures = [];
+    retryDelays.length = 0;
+    releaseRetryWait = null;
+    retryWaitStarted = null;
     pages.push({
-      changes: [],
+      changes: [mailboxChange('historical-during-recovery')],
       nextPageCheckpoint: null,
       completedCheckpoint: { value: 'delta-after-recovery' },
+    }, {
+      changes: [mailboxChange('new-after-recovery')],
+      nextPageCheckpoint: null,
+      completedCheckpoint: { value: 'delta-after-new-message' },
     });
     const recovered = await request(apps[0].getHttpServer())
       .post('/customer-mailbox-sync/refresh')
@@ -326,10 +417,25 @@ describe('Customer mailbox synchronization', () => {
 
     assert.equal(recovered.body.state, 'CURRENT');
     assert.equal(recovered.body.baselineEstablished, true);
+    await request(apps[0].getHttpServer())
+      .post('/customer-mailbox-sync/refresh')
+      .send({})
+      .expect(201);
+    const retained = await dataSource.query<Array<{ message_reference: string }>>(
+      `SELECT "message_reference" FROM "customer_mailbox_change_inbox"
+       WHERE "mailbox_address" = $1 ORDER BY "message_reference"`,
+      [process.env['CUSTOMER_MAILBOX_ADDRESS']],
+    );
+    assert.deepEqual(retained, [
+      { message_reference: 'new-after-recovery' },
+      { message_reference: 'preserved-before-expiry' },
+    ]);
     assert.deepEqual(requestedCheckpoints, [
       null,
       { value: 'delta-before-expiry' },
+      { value: 'delta-with-preserved-message' },
       null,
+      { value: 'delta-after-recovery' },
     ]);
   });
 
@@ -405,6 +511,7 @@ describe('Customer mailbox synchronization', () => {
 function mailboxChange(messageReference: string) {
   return {
     changeType: 'UPSERTED' as const,
+    automationKind: 'HUMAN' as const,
     messageReference,
     internetMessageId: `<${messageReference}@pte.hu>`,
     inReplyTo: '<outbound-message@project-maker.local>',
