@@ -519,6 +519,57 @@ describe('ProjectsController (e2e)', () => {
     assert.equal('payload' in response.body.events[0], false);
   });
 
+  it('selects the latest five allow-listed business events before applying the activity limit', async () => {
+    const projectId = await createProject('allow-listed-project-activity');
+    const allowedEvents = [
+      ['PROJECT_ARCHIVED', 'A projekt archiválva lett.'],
+      ['PROJECT_RESTORED', 'A projekt visszaállítva lett.'],
+      ['DISCOVERY_FOLLOW_UP_CREATED', 'Új discovery utánkövetés jött létre.'],
+      ['DISCOVERY_FOLLOW_UP_UPDATED', 'Egy discovery utánkövetés frissítve lett.'],
+      ['DISCOVERY_FOLLOW_UP_RESOLVED', 'Egy discovery utánkövetés lezárva lett.'],
+      ['PROJECT_DECISION_INPUTS_UPDATED', 'A döntési értékelés frissítve lett.'],
+    ] as const;
+
+    for (const [index, [eventType]] of allowedEvents.entries()) {
+      await dataSource.query(
+        `INSERT INTO audit_events (id, project_id, event_type, payload, created_at)
+         VALUES ($1, $2, $3, $4::jsonb, $5)`,
+        [
+          randomUUID(),
+          projectId,
+          eventType,
+          JSON.stringify({ internalSecret: `must-not-leak-${index}` }),
+          new Date(Date.UTC(2026, 7, 19, 8, index)).toISOString(),
+        ],
+      );
+    }
+
+    for (let index = 0; index < 7; index += 1) {
+      await dataSource.query(
+        `INSERT INTO audit_events (id, project_id, event_type, payload, created_at)
+         VALUES ($1, $2, $3, $4::jsonb, $5)`,
+        [
+          randomUUID(),
+          projectId,
+          `INTERNAL_TECHNICAL_DIAGNOSTIC_${index}`,
+          JSON.stringify({ customerContent: `must-not-leak-${index}` }),
+          new Date(Date.UTC(2026, 7, 19, 9, index)).toISOString(),
+        ],
+      );
+    }
+
+    const response = await request(app.getHttpServer())
+      .get(`/projects/${projectId}/activity`)
+      .expect(200);
+
+    assert.deepEqual(
+      response.body.events.map((event: { summary: string }) => event.summary),
+      allowedEvents.slice(1).reverse().map(([, summary]) => summary),
+    );
+    assert.equal(JSON.stringify(response.body).includes('INTERNAL_TECHNICAL'), false);
+    assert.equal(JSON.stringify(response.body).includes('must-not-leak'), false);
+  });
+
   it('keeps an open Initial Intake in the interview preparation state', async () => {
     const projectId = await createProject('preparation-status-intake-in-progress');
     await createCanonicalDecisionReviewRound(projectId);
@@ -1113,6 +1164,32 @@ describe('ProjectsController (e2e)', () => {
       },
     ]);
     assert.doesNotMatch(JSON.stringify(auditEvents), /Ada Lovelace|ada@example\.test/);
+  });
+
+  it('updates only supplied coordination fields and rejects an empty workspace update', async () => {
+    const projectId = await createProject('partial-coordination');
+
+    const workspaceResponse = await request(app.getHttpServer())
+      .patch(`/projects/${projectId}/workspace`)
+      .send({
+        nextActionOwnerRole: 'INTERNAL_OWNER',
+        nextAction: null,
+        dueAt: null,
+      })
+      .expect(200);
+
+    assertProjectResponse(workspaceResponse.body, 'DRAFT');
+    assert.equal(workspaceResponse.body.nextActionOwnerRole, 'INTERNAL_OWNER');
+    assert.equal(workspaceResponse.body.nextAction, null);
+    assert.equal(workspaceResponse.body.dueAt, null);
+
+    await request(app.getHttpServer())
+      .patch(`/projects/${projectId}/workspace`)
+      .send({})
+      .expect(400)
+      .expect(({ body }) => {
+        assert.equal(body.message, 'Workspace update must include at least one field.');
+      });
   });
 
   it('rejects invalid email, dueAt, and status without echoing submitted values', async () => {

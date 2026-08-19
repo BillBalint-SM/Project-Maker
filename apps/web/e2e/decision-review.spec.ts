@@ -24,7 +24,7 @@ test.describe.serial('SCORE-01.2 Decision Review employee workflow', () => {
   }) => {
     const project = await createReadyProject(request);
 
-    await page.goto(`/projects/${project.id}`);
+    await page.goto(`/projects/${project.id}/decision-review`);
     await expect(page.getByTestId('decision-review-card')).toBeVisible();
     await expect(page.getByTestId('decision-review-unavailable')).toContainText(
       'Adj meg mind a hat értékelési szempontot',
@@ -79,7 +79,7 @@ test.describe.serial('SCORE-01.2 Decision Review employee workflow', () => {
   }) => {
     const project = await createProject(request, 'SCORE-01.2 decision review lifecycle');
 
-    await page.goto(`/projects/${project.id}`);
+    await page.goto(`/projects/${project.id}/decision-review`);
     await expect(page.getByTestId('decision-review-unavailable')).toBeVisible();
     await setRating(page, 'businessValue', '3');
     const decisionRoute = `**/api/projects/${project.id}/decision-review`;
@@ -93,8 +93,8 @@ test.describe.serial('SCORE-01.2 Decision Review employee workflow', () => {
 
     await page.getByTestId('save-decision-review-button').locator('button').click();
     await expect(page.getByTestId('decision-review-save-error')).toBeVisible();
-    await expect(page.getByTestId('workspace-form')).toBeVisible();
-    await expect(page.getByTestId('save-workspace-button').locator('button')).toBeEnabled();
+    await expect(page.getByTestId('project-context-shell')).toBeVisible();
+    await expect(page.getByTestId('project-context-nav-status')).toBeVisible();
     await page.unroute(decisionRoute);
 
     const savedResponse = page.waitForResponse(
@@ -111,13 +111,16 @@ test.describe.serial('SCORE-01.2 Decision Review employee workflow', () => {
         response.request().method() === 'POST' &&
         response.url().endsWith(`/api/projects/${project.id}/archive`),
     );
+    await page.goto(`/projects/${project.id}/settings`);
+    await page.getByTestId('archive-project-button').locator('button').click();
+    await page.getByTestId('confirm-project-archive-button').locator('button').click();
+    expect((await archiveResponse).status()).toBe(201);
     const archivedReviewResponse = page.waitForResponse(
       (response) =>
         response.request().method() === 'GET' &&
         response.url().endsWith(`/api/projects/${project.id}/decision-review`),
     );
-    await page.getByTestId('archive-project-button').locator('button').click();
-    expect((await archiveResponse).status()).toBe(201);
+    await page.goto(`/projects/${project.id}/decision-review`);
     expect((await archivedReviewResponse).status()).toBe(200);
     await expect(page.getByTestId('decision-review-read-only')).toBeVisible();
     await expect(page.getByTestId('decision-rating-businessValue')).toBeDisabled();

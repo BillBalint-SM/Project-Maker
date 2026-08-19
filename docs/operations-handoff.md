@@ -241,7 +241,10 @@ perform the health/smoke gates before allowing normal users back in.
 
 ### Project and interview flow
 
-- `/` lists projects; `/projects/:projectId` is the project cockpit.
+- `/` lists projects; the legacy `/projects/:projectId` bookmark intentionally redirects to `/projects/:projectId/status` while preserving return context.
+- `/projects/:projectId/status` is the daily work hub: canonical work state, one primary task, coordination, Customer communication entry, and five allow-listed human-readable activities.
+- `/projects/:projectId/settings` owns basics, Customer follow-up scheduling, manual lifecycle state, archive/restore, and guarded deletion.
+- `/projects/:projectId/readiness` owns readiness and Discovery follow-up work; Decision Review, Interview, Markdown, and Customer correspondence keep their dedicated child routes.
 - `/settings/questions` maintains the editable base question bank.
 - `/projects/:projectId/interview` publishes a project question-schema snapshot,
   creates an interview meeting, records answers, ends the meeting, and manages
@@ -252,14 +255,14 @@ perform the health/smoke gates before allowing normal users back in.
 - Project creation requires a named internal owner. The next-action owner is a
   role selecting either that concrete internal owner or the concrete customer
   contact; the legacy free-form `ball_owner` value is compatibility storage only.
-- The cockpit can archive and restore a project. It exposes permanent deletion
+- Project settings can archive and restore a project. It exposes permanent deletion
   only for an eligible bare `DRAFT`; a project with persisted activity is
   retained and must be archived.
 
 ### Discovery follow-up semantics
 
 Discovery follow-ups are project-owned work items, not customer email schedules.
-The cockpit lists them in deterministic due-date order and can create one with a
+The Readiness page lists them in deterministic due-date order and can create one with a
 closed category, question, owner, date-only due date, and next step. The API
 assigns the canonical initial status `Nyitott` and writes one creation audit event
 with only `followUpId`, category, due date, and status; question, owner, and
@@ -305,7 +308,7 @@ and the database foreign key also restricts a late deletion race.
 
 ### Canonical Markdown specification revisions
 
-The cockpit’s **Markdown** page (`/projects/:projectId/markdown`) supports a
+The dedicated **Markdown** page (`/projects/:projectId/markdown`) supports a
 manual **Create .md** action and a `MANUAL` or `MILESTONE` reason. Each stored
 revision contains:
 
@@ -326,13 +329,14 @@ GET /api/projects/{projectId}/markdown-revisions/{revisionId}/download
 
 Entering the selected `READY_FOR_PLANNING` project milestone automatically
 creates a `MILESTONE` revision in the same database transaction as the
-workspace status update. Saving the project while it is already at that status
+administrative lifecycle-status update. Saving the project while it is already at that status
 does not create a duplicate; leaving and entering the milestone again creates
 the next version. The manual button remains available for any other snapshot.
 
-The project cockpit also shows a bounded, paginated audit history with event
-type, timestamp, and payload. Audit loading is independent from the core
-cockpit load and has its own retry state.
+The employee UI does not expose the raw audit feed or payload. Project status
+selects the latest five allow-listed business events before limiting and maps
+them to specific Hungarian summaries. The bounded technical audit API and its
+redacted persistence remain available for protected operational evidence.
 
 ### Customer SMTP boundary and delivery semantics
 
@@ -359,7 +363,8 @@ These are intentionally separate flows:
   explicitly acknowledged retry after checking external delivery evidence and
   accepting the possible duplicate-delivery risk.
 
-- **Follow-up ping:** can be sent manually from the cockpit or automatically by
+- **Follow-up ping:** can be authored, previewed, and sent manually from the
+  Customer correspondence page or scheduled from Project settings; automatic delivery is run by
   the due-state timer. One trimmed, nonblank draft of at most 10,000 characters
   is stored per project with a positive optimistic version. It may reference one
   open Discovery follow-up from the same project. Manual send requires a
@@ -381,7 +386,7 @@ These are intentionally separate flows:
   bound to the latest uncertain attempt. Retry revalidates the current recipient,
   draft version, and referenced follow-up; it never runs automatically. A stale
   `SENDING` attempt reconciles once to `UNKNOWN`, while a visible pending attempt
-  holds the cockpit mutation lease and the client polls until a terminal state
+  holds the ping work-surface mutation lease and the client polls until a terminal state
   or lease expiry releases it. Durable attempts and redacted audit metadata are
   retained. The message
   contains no Markdown, Claude instruction, interview package, follow-up owner,
@@ -439,7 +444,7 @@ It selects the most recently created `OPEN` or `ENDED` `INITIAL_INTAKE` round,
 without giving an older open round precedence over a newer ended round. The result is available only for the exact current
 30-key canonical `general` v1 source. Otherwise it returns a typed unavailable
 state: `NO_INITIAL_INTAKE` or `UNSUPPORTED_SCHEMA`. An unavailable result is not
-a score and does not disable Workspace or discovery-follow-up operations.
+a score and does not disable Project coordination or discovery-follow-up operations.
 
 The only assessment mutation routes are scoped to one project, round, and
 snapshot:
@@ -454,7 +459,7 @@ returns the answer-derived automatic state. Completed rounds reject both
 mutations. Operators should treat a guarded `0009` rollback as a data-change
 decision, not as an API recovery action.
 
-Readiness responses and Cockpit gaps intentionally omit source answers,
+Readiness responses and remediation gaps intentionally omit source answers,
 assessment rationales, contact values, owner values, follow-up content,
 decisions, and next-step values. Assessment audit events contain only the
 round/snapshot identifiers and canonical status, or identifiers for a reset;

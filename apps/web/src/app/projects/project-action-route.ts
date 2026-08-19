@@ -8,7 +8,7 @@ export function projectActionRoute(
     case 'CUSTOMER_CORRESPONDENCE':
       return ['/projects', projectId, 'customer-correspondences'];
     case 'PROJECT_COORDINATION':
-      return ['/projects', projectId];
+      return ['/projects', projectId, 'status'];
     case 'INTERVIEW':
       return ['/projects', projectId, 'interview'];
     case 'READINESS':

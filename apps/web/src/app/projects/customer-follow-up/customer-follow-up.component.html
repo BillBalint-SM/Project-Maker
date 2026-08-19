@@ -9,10 +9,13 @@
   </div>
 } @else if (state(); as current) {
 <p-card id="customer-communication" data-testid="follow-up-card">
-  <ng-template #title>Customer follow-up</ng-template>
-  <ng-template #subtitle>
-    PO/PM cadence and delivery controls for a short customer reminder.
-  </ng-template>
+  @if (mode() === 'settings') {
+    <ng-template #title>Automatikus ügyfél-utánkövetés</ng-template>
+    <ng-template #subtitle>Az emlékeztetők ütemezésének projektbeállításai.</ng-template>
+  } @else {
+    <ng-template #title>Ügyfél-ping</ng-template>
+    <ng-template #subtitle>Rövid emlékeztető előkészítése, ellenőrzése és küldése.</ng-template>
+  }
 
   @if (actionError()) {
     <p-message severity="error" role="alert" data-testid="follow-up-action-error">
@@ -20,7 +23,7 @@
     </p-message>
     <p-button
       type="button"
-      label="Aktuális piszkozat újratöltése"
+      [label]="mode() === 'work' ? 'Aktuális piszkozat újratöltése' : 'Beállítások újratöltése'"
       [outlined]="true"
       data-testid="reload-follow-up-draft-button"
       (onClick)="reloadState()"
@@ -31,6 +34,7 @@
       {{ draftFeedback() }}
     </p-message>
   }
+  @if (mode() === 'work') {
   @if (sendResult()) {
     <p
       class="follow-up-result"
@@ -283,7 +287,9 @@
       </div>
     </section>
   }
+  }
 
+  @if (mode() === 'settings') {
   <form
     class="follow-up-form"
     [formGroup]="settingsForm"
@@ -294,8 +300,9 @@
       class="follow-up-fields"
       [disabled]="controlsDisabled()"
       aria-describedby="follow-up-settings-help"
+      data-testid="follow-up-settings-fieldset"
     >
-      <legend class="sr-only">Customer follow-up settings</legend>
+      <legend class="sr-only">Automatikus ügyfél-utánkövetés beállításai</legend>
 
       <div class="follow-up-toggle">
         <input
@@ -304,11 +311,11 @@
           formControlName="enabled"
           data-testid="follow-up-enabled-input"
         />
-        <label for="follow-up-enabled">Enable automatic follow-up pings</label>
+        <label for="follow-up-enabled">Automatikus ügyfél-pingek engedélyezése</label>
       </div>
 
       <div class="field">
-        <label for="follow-up-interval">Cadence (minutes)</label>
+        <label for="follow-up-interval">Küldési időköz percben</label>
         <input
           pInputText
           id="follow-up-interval"
@@ -322,14 +329,14 @@
           [attr.aria-invalid]="settingsForm.controls.intervalMinutes.invalid && settingsForm.controls.intervalMinutes.touched"
           [attr.aria-describedby]="settingsForm.controls.intervalMinutes.invalid && settingsForm.controls.intervalMinutes.touched ? 'follow-up-interval-help follow-up-interval-error' : 'follow-up-interval-help'"
         />
-        <small id="follow-up-interval-help">Use a whole number from 1 to 525,600 minutes.</small>
+        <small id="follow-up-interval-help">Adj meg 1 és 525 600 közötti egész percértéket.</small>
         @if (settingsForm.controls.intervalMinutes.invalid && settingsForm.controls.intervalMinutes.touched) {
-          <small class="field-error" id="follow-up-interval-error">Cadence must be a whole number from 1 to 525,600 minutes.</small>
+          <small class="field-error" id="follow-up-interval-error">Az időköz 1 és 525 600 közötti egész szám legyen.</small>
         }
       </div>
 
       <div class="field">
-        <label for="follow-up-expires-at">Stop after</label>
+        <label for="follow-up-expires-at">Automatikus küldés vége</label>
         <p-datepicker
           inputId="follow-up-expires-at"
           styleClass="full-width"
@@ -341,56 +348,61 @@
           [appendTo]="'body'"
           data-testid="follow-up-expires-at-input"
         />
-        <small id="follow-up-settings-help">Leave blank for no expiry. The selected local time is saved as UTC.</small>
+        <small id="follow-up-settings-help">Határozatlan időhöz hagyd üresen. A helyi időpont pontos időbélyegként lesz mentve.</small>
       </div>
     </fieldset>
 
     <p-button
       type="submit"
-      label="Save follow-up settings"
+      label="Utánkövetési beállítások mentése"
       [loading]="saving()"
       [disabled]="controlsDisabled()"
       data-testid="save-follow-up-settings-button"
     />
   </form>
+  }
 
-  <dl class="follow-up-status" aria-label="Customer follow-up status">
+  <dl class="follow-up-status" aria-label="Ügyfél-utánkövetés állapota">
+    @if (mode() === 'settings') {
     <div>
-      <dt>Automatic pings</dt>
-      <dd data-testid="follow-up-enabled-value">{{ current.enabled ? 'Enabled' : 'Disabled' }}</dd>
+      <dt>Automatikus pingek</dt>
+      <dd data-testid="follow-up-enabled-value">{{ current.enabled ? 'Engedélyezve' : 'Kikapcsolva' }}</dd>
     </div>
     <div>
-      <dt>Cadence</dt>
-      <dd data-testid="follow-up-interval-value">{{ current.intervalMinutes }} minutes</dd>
+      <dt>Küldési időköz</dt>
+      <dd data-testid="follow-up-interval-value">{{ current.intervalMinutes }} perc</dd>
     </div>
     <div>
-      <dt>Expires</dt>
+      <dt>Automatikus küldés vége</dt>
       <dd data-testid="follow-up-expires-at-value">
-        {{ current.expiresAt ? (current.expiresAt | date: 'medium') : 'No expiry' }}
+        {{ current.expiresAt ? (current.expiresAt | date: 'medium') : 'Nincs végdátum' }}
       </dd>
     </div>
+    } @else {
     <div>
-      <dt>Last ping</dt>
+      <dt>Legutóbbi ping</dt>
       <dd data-testid="follow-up-last-ping-at-value">
-        {{ current.lastPingAt ? (current.lastPingAt | date: 'medium') : 'Never' }}
+        {{ current.lastPingAt ? (current.lastPingAt | date: 'medium') : 'Még nem volt küldés' }}
       </dd>
     </div>
     <div>
-      <dt>Next ping</dt>
+      <dt>Következő automatikus ping</dt>
       <dd data-testid="follow-up-next-ping-at-value">
-        {{ current.nextPingAt ? (current.nextPingAt | date: 'medium') : 'Not scheduled' }}
+        {{ current.nextPingAt ? (current.nextPingAt | date: 'medium') : 'Nincs ütemezve' }}
       </dd>
     </div>
     <div>
-      <dt>Last delivery</dt>
+      <dt>Legutóbbi kézbesítés</dt>
       <dd data-testid="follow-up-last-delivery-status-value">{{ current.lastDeliveryStatus }}</dd>
     </div>
     <div>
-      <dt>Delivery error</dt>
-      <dd data-testid="follow-up-last-delivery-error-value">{{ current.lastDeliveryError || 'None reported' }}</dd>
+      <dt>Kézbesítési hiba</dt>
+      <dd data-testid="follow-up-last-delivery-error-value">{{ current.lastDeliveryError || 'Nincs jelzett hiba' }}</dd>
     </div>
+    }
   </dl>
 
+  @if (mode() === 'work') {
   <div class="follow-up-actions" aria-label="Customer email actions">
     <a
       pButton
@@ -404,5 +416,6 @@
       <span>Interjúösszegzés megnyitása</span>
     </a>
   </div>
+  }
 </p-card>
 }

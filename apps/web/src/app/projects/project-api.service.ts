@@ -1,11 +1,9 @@
-import { HttpClient, HttpErrorResponse, HttpParams } from '@angular/common/http';
+import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { forkJoin, map, Observable, throwError } from 'rxjs';
 import { catchError } from 'rxjs/operators';
 import type {
-  AuditEventPage,
   CreateProjectInput,
-  ProjectCockpit,
   ProjectActivityFeed,
   ProjectPortfolioEntry,
   ProjectPreparationStatus,
@@ -17,40 +15,28 @@ import type {
 import {
   UpdateProjectWorkspaceInput,
 } from './project-api.models';
-import type { CockpitView } from './project-api.models';
+import type { ProjectSettingsView } from './project-api.models';
 
 @Injectable({ providedIn: 'root' })
 export class ProjectApiService {
   private readonly http = inject(HttpClient);
 
-  loadAuditEvents(projectId: string, offset: number): Observable<AuditEventPage> {
-    const params = new HttpParams()
-      .set('offset', String(offset))
-      .set('limit', '10');
-    return this.http
-      .get<AuditEventPage>(
-        `/api/projects/${encodeURIComponent(projectId)}/audit-events`,
-        { params },
-      )
-      .pipe(catchError((error: unknown) => this.fail(error, 'load audit history')));
-  }
-
   listProjects(): Observable<readonly ProjectWorkspace[]> {
     return this.http
       .get<readonly ProjectWorkspace[]>('/api/projects')
-      .pipe(catchError((error: unknown) => this.fail(error, 'load projects')));
+      .pipe(catchError((error: unknown) => this.fail(error, 'betölteni a projekteket')));
   }
 
   loadPortfolio(): Observable<readonly ProjectPortfolioEntry[]> {
     return this.http
       .get<readonly ProjectPortfolioEntry[]>('/api/projects/portfolio')
-      .pipe(catchError((error: unknown) => this.fail(error, 'load the project portfolio')));
+      .pipe(catchError((error: unknown) => this.fail(error, 'betölteni a projektportfóliót')));
   }
 
   createProject(input: CreateProjectInput): Observable<ProjectWorkspace> {
     return this.http
       .post<ProjectWorkspace>('/api/projects', input)
-      .pipe(catchError((error: unknown) => this.fail(error, 'create the project')));
+      .pipe(catchError((error: unknown) => this.fail(error, 'létrehozni a projektet')));
   }
 
   updateProjectBasics(
@@ -62,30 +48,15 @@ export class ProjectApiService {
         `/api/projects/${encodeURIComponent(projectId)}/basics`,
         input,
       )
-      .pipe(catchError((error: unknown) => this.fail(error, 'save the project basics')));
+      .pipe(catchError((error: unknown) => this.fail(error, 'menteni a projekt alapadatait')));
   }
 
-  loadCockpit(projectId: string): Observable<CockpitView> {
-    const encodedProjectId = encodeURIComponent(projectId);
+  loadProjectSettings(projectId: string): Observable<ProjectSettingsView> {
     return forkJoin({
-      cockpit: this.http.get<ProjectCockpit>(
-        `/api/projects/${encodedProjectId}/cockpit`,
-      ),
-      projects: this.http.get<readonly ProjectWorkspace[]>('/api/projects'),
-      preparationStatus: this.http.get<ProjectPreparationStatus>(
-        `/api/projects/${encodedProjectId}/preparation-status`,
-      ),
+      project: this.loadProjectWorkspace(projectId),
+      preparationStatus: this.loadPreparationStatus(projectId),
     }).pipe(
-      map(({ cockpit, projects, preparationStatus }) => {
-        const project = projects.find((candidate) => candidate.id === projectId);
-        if (!project) {
-          throw new Error(
-            'The cockpit loaded, but its project is missing from the project list. Refresh the page; if the problem continues, check the API data.',
-          );
-        }
-        return { cockpit, project, preparationStatus };
-      }),
-      catchError((error: unknown) => this.fail(error, 'load the project cockpit')),
+      catchError((error: unknown) => this.fail(error, 'betölteni a projektbeállításokat')),
     );
   }
 
@@ -96,7 +67,7 @@ export class ProjectApiService {
       )
       .pipe(
         catchError((error: unknown) =>
-          this.fail(error, 'load the project preparation status'),
+          this.fail(error, 'betölteni a projekt felkészültségi állapotát'),
         ),
       );
   }
@@ -104,13 +75,13 @@ export class ProjectApiService {
   loadWorkState(projectId: string): Observable<ProjectWorkState> {
     return this.http
       .get<ProjectWorkState>(`/api/projects/${encodeURIComponent(projectId)}/work-state`)
-      .pipe(catchError((error: unknown) => this.fail(error, 'load the current project task')));
+      .pipe(catchError((error: unknown) => this.fail(error, 'betölteni a projekt aktuális feladatát')));
   }
 
   loadProjectActivity(projectId: string): Observable<ProjectActivityFeed> {
     return this.http
       .get<ProjectActivityFeed>(`/api/projects/${encodeURIComponent(projectId)}/activity`)
-      .pipe(catchError((error: unknown) => this.fail(error, 'load recent project activity')));
+      .pipe(catchError((error: unknown) => this.fail(error, 'betölteni a legutóbbi projektaktivitást')));
   }
 
   loadProjectWorkspace(projectId: string): Observable<ProjectWorkspace> {
@@ -122,7 +93,9 @@ export class ProjectApiService {
         }
         return project;
       }),
-      catchError((error: unknown) => this.fail(error, 'load the project coordination details')),
+      catchError((error: unknown) =>
+        this.fail(error, 'betölteni a projektkoordináció szerkesztési adatait'),
+      ),
     );
   }
 
@@ -135,13 +108,13 @@ export class ProjectApiService {
         `/api/projects/${encodeURIComponent(projectId)}/workspace`,
         input,
       )
-      .pipe(catchError((error: unknown) => this.fail(error, 'save the workspace')));
+      .pipe(catchError((error: unknown) => this.fail(error, 'menteni a projektkoordinációt')));
   }
 
   deleteProject(projectId: string): Observable<void> {
     return this.http
       .delete<void>(`/api/projects/${encodeURIComponent(projectId)}`)
-      .pipe(catchError((error: unknown) => this.fail(error, 'delete the project')));
+      .pipe(catchError((error: unknown) => this.fail(error, deleteProjectAction)));
   }
 
   archiveProject(projectId: string): Observable<ProjectWorkspace> {
@@ -150,7 +123,7 @@ export class ProjectApiService {
         `/api/projects/${encodeURIComponent(projectId)}/archive`,
         {},
       )
-      .pipe(catchError((error: unknown) => this.fail(error, 'archive the project')));
+      .pipe(catchError((error: unknown) => this.fail(error, 'archiválni a projektet')));
   }
 
   restoreProject(projectId: string): Observable<ProjectWorkspace> {
@@ -159,7 +132,7 @@ export class ProjectApiService {
         `/api/projects/${encodeURIComponent(projectId)}/restore`,
         {},
       )
-      .pipe(catchError((error: unknown) => this.fail(error, 'restore the project')));
+      .pipe(catchError((error: unknown) => this.fail(error, 'visszaállítani a projektet')));
   }
 
   private fail(error: unknown, action: string): Observable<never> {
@@ -176,46 +149,49 @@ interface ActionableError {
   readonly diagnostics: { readonly action: string; readonly status: number; readonly statusText: string } | null;
 }
 
+const deleteProjectAction = 'végleg törölni a projektet';
+
 function toActionableError(error: unknown, action: string): ActionableError {
   if (!(error instanceof HttpErrorResponse)) {
-    if (error instanceof Error) {
-      return { userMessage: error.message, diagnostics: null };
-    }
     return {
-      userMessage: `Could not ${action}. Refresh the page and try again.`,
+      userMessage: `Nem sikerült ${action}. Frissítsd az oldalt, majd próbáld újra.`,
       diagnostics: null,
     };
   }
 
   if (error.status === 0) {
     return {
-      userMessage: `Could not ${action} because the API is unreachable. Check that the server is running, then try again.`,
+      userMessage: `Nem sikerült ${action}, mert a szolgáltatás nem érhető el. Ellenőrizd a hálózati kapcsolatot, majd próbáld újra.`,
       diagnostics: { action, status: error.status, statusText: error.statusText },
     };
   }
 
   const nextStep = projectErrorNextStep(error.status, action);
   return {
-    userMessage: `Could not ${action} (HTTP ${error.status}). ${nextStep}`,
+    userMessage: `Nem sikerült ${action}. ${nextStep}`,
     diagnostics: { action, status: error.status, statusText: error.statusText },
   };
 }
 
 function projectErrorNextStep(status: number, action: string): string {
   if (status === 409) {
-    if (action === 'delete the project') {
-      return 'The project now has persisted activity and cannot be deleted. Archive it instead.';
+    if (action === deleteProjectAction) {
+      return 'A projekt már tartalmaz megőrzendő munkát, ezért nem törölhető. Archiváld inkább.';
     }
-    return 'Refresh the project to see its latest lifecycle state.';
+    return 'Töltsd újra a projektet, ellenőrizd a legfrissebb állapotát, majd ismételd meg a műveletet.';
   }
 
   if (status === 503) {
-    return 'Review the entered values and try again.';
+    return 'A szolgáltatás átmenetileg nem érhető el. Várj röviden, majd próbáld újra.';
   }
 
   if (status === 404) {
-    return 'Return to the project list and confirm that the project still exists.';
+    return 'Térj vissza a projektlistához, és ellenőrizd, hogy a projekt még létezik-e.';
   }
 
-  return 'Review the entered values and try again.';
+  if (status === 400 || status === 422) {
+    return 'Ellenőrizd a megadott értékeket, majd próbáld újra.';
+  }
+
+  return 'Frissítsd az oldalt, majd próbáld újra. Ha a hiba megmarad, jelezd az üzemeltetőnek.';
 }

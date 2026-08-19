@@ -69,6 +69,7 @@ export class CustomerFollowUpComponent implements OnInit {
 
   readonly projectId = input.required<string>();
   readonly archived = input.required<boolean>();
+  readonly mode = input<'work' | 'settings'>('work');
   readonly committedChange = output<void>();
   readonly state = signal<CustomerFollowUpState | null>(null);
   readonly loading = signal(true);
@@ -171,8 +172,10 @@ export class CustomerFollowUpComponent implements OnInit {
         next: (state) => {
           this.applyState(state);
           this.loading.set(false);
-          this.loadReferenceOptions();
-          this.loadSenderOptions();
+          if (this.mode() === 'work') {
+            this.loadReferenceOptions();
+            this.loadSenderOptions();
+          }
         },
         error: (error: Error) => {
           this.loadError.set(error.message);
@@ -206,7 +209,7 @@ export class CustomerFollowUpComponent implements OnInit {
       .subscribe({
         next: (state) => {
           this.applyState(state, { preserveDraft: this.draftForm.dirty });
-          this.draftFeedback.set('Customer follow-up settings saved.');
+          this.draftFeedback.set('Az automatikus ügyfél-utánkövetés beállításai mentve lettek.');
           this.committedChange.emit();
         },
         error: (error: Error) => this.actionError.set(error.message),
@@ -442,8 +445,10 @@ export class CustomerFollowUpComponent implements OnInit {
         next: (state) => {
           this.applyState(state);
           if (!preserveActionError) this.actionError.set(null);
-          this.loadReferenceOptions();
-          this.loadSenderOptions();
+          if (this.mode() === 'work') {
+            this.loadReferenceOptions();
+            this.loadSenderOptions();
+          }
           if (focusSelector) this.focusAfterNextRender(focusSelector);
         },
         error: (error: Error) => this.actionError.set(error.message),
