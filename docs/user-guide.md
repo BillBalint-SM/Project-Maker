@@ -791,6 +791,8 @@ A cockpit `Customer follow-up` része két összetartozó műveletet fog össze:
 
 Mindkettő a projekt létrehozásakor rögzített `Customer contact email` címre küld. A címzett nem írható felül. A kézi küldés előtt a rendszer pontos előnézetben mutatja a címzettet, a tárgyat és a teljes egyszerű szöveges levelet. A Claude Code-nak szánt Markdown és az interjúcsomag nem része ennek a levélnek.
 
+Az Interview customer handoff az egyetlen teljes ügyfél-összefoglaló küldési folyamat. A Customer follow-up ping rövid, célzott emlékeztető: nem alternatív ügyfélcsomag, nem csatol Markdown-revíziót vagy `.md` fájlt, és nem továbbít belső Claude-instrukciót.
+
 ### Automatikus follow-up beállítása
 
 **Mikor használd?** Ha előre meghatározott időközönként ugyanannak a kapcsolattartónak emlékeztetőt kell kapnia a nyitott discovery-válaszokról.
@@ -827,7 +829,7 @@ Ha az esedékességkor a piszkozat vagy a hivatkozás már nem érvényes, az au
 | `Last delivery` = `NEVER` | Még nem volt pingkézbesítési kísérlet |
 | `Last delivery` = `SENT` | A legutóbbi ping küldése sikeres volt |
 | `Last delivery` = `FAILED` | A legutóbbi ping küldése nem sikerült |
-| `Delivery error` | Biztonságos hibakód, például `SMTP_SEND_FAILED`; nem tartalmaz levél- vagy hitelesítési titkot |
+| `Delivery error` | Biztonságos hibakód, például `SUBMISSION_REJECTED` vagy `TEMPORARY_FAILURE`; nem tartalmaz levél- vagy hitelesítési titkot |
 
 A `SENT` azt igazolja, hogy a levelezési szolgáltatás elfogadta a küldést. Nem bizonyítja, hogy a címzett elolvasta, jóváhagyta vagy válaszolt rá.
 

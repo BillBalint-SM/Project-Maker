@@ -319,7 +319,15 @@ The project cockpit also shows a bounded, paginated audit history with event
 type, timestamp, and payload. Audit loading is independent from the core
 cockpit load and has its own retry state.
 
-### Customer email and follow-up semantics
+### Customer SMTP boundary and delivery semantics
+
+`COMM-01.1` is a hard production boundary. Customer follow-up contracts,
+module wiring, service behavior, manual delivery, and the due-state worker do
+not accept or import a Markdown revision, `.md` attachment, Claude instruction,
+or full Interview customer handoff. The removed legacy customer-review route
+stays absent; historical audit rows remain readable but cannot create a new
+delivery. `OUTPUT-01.1` is still planned and must deliver its internal Claude
+Code handoff without crossing this Customer SMTP boundary.
 
 These are intentionally separate flows:
 
