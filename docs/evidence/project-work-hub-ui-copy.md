@@ -160,7 +160,6 @@ Ez a leltár a munkavállalói felületen megjelenő kanonikus navigációs neve
 | Megosztott felületi szöveg | Címke | Igen vagy nem | apps/web/src/app/base-question-type-label.ts:11 |
 | Megosztott felületi szöveg | Címke | Szám | apps/web/src/app/base-question-type-label.ts:12 |
 | Megosztott felületi szöveg | Címke | Dátum | apps/web/src/app/base-question-type-label.ts:13 |
-| Megosztott felületi szöveg | Hiba és helyreállítás | InterviewApiError | apps/web/src/app/interviews/interview-api.service.ts:20 |
 | Megosztott felületi szöveg | Futásidejű UI-szöveg | betölteni az aktív kezdő felmérési kört | apps/web/src/app/interviews/interview-api.service.ts:43 |
 | Megosztott felületi szöveg | Futásidejű UI-szöveg | betölteni a kiválasztott felmérési kört | apps/web/src/app/interviews/interview-api.service.ts:53 |
 | Megosztott felületi szöveg | Futásidejű UI-szöveg | elindítani a felmérési kört | apps/web/src/app/interviews/interview-api.service.ts:64 |
@@ -225,7 +224,6 @@ Ez a leltár a munkavállalói felületen megjelenő kanonikus navigációs neve
 | Felmérési összefoglaló | Hiba és helyreállítás | Sikertelen | apps/web/src/app/interviews/interview-handoff/interview-handoff.component.ts:74 |
 | Felmérési összefoglaló | Címke | Ellenőrzést igényel | apps/web/src/app/interviews/interview-handoff/interview-handoff.component.ts:74 |
 | Felmérési összefoglaló | Művelet | Új összefoglaló-verzió készítése | apps/web/src/app/interviews/interview-handoff/interview-reply-outcome.component.ts |
-| Felmérési összefoglaló | Futásidejű UI-szöveg | Módosítást kér | apps/web/src/app/interviews/interview-handoff/interview-reply-outcome.component.ts:35 |
 | Felmérési összefoglaló | Hiba és helyreállítás | Az új összefoglaló-verzió nem indítható. Töltsd újra az adatokat, és ellenőrizd a projekt állapotát. | apps/web/src/app/interviews/interview-handoff/interview-reply-outcome.component.ts:54 |
 | Felmérés | Művelet | Felmérési oldal újratöltése | apps/web/src/app/interviews/interview.page.html |
 | Felmérés | Művelet | Felmérés indításának újrapróbálása | apps/web/src/app/interviews/interview.page.html |
@@ -444,7 +442,6 @@ Ez a leltár a munkavállalói felületen megjelenő kanonikus navigációs neve
 | Ügyféllevelezés | Látható szöveg | {érték} melléklet | apps/web/src/app/projects/customer-correspondences.page.ts |
 | Ügyféllevelezés | Látható szöveg | {érték} — {érték} — {érték} byte | apps/web/src/app/projects/customer-correspondences.page.ts |
 | Ügyféllevelezés | Hiba és helyreállítás | A művelet nem hajtható végre a jelenlegi adatokkal. Töltsd újra az adatokat, majd próbáld meg ismét. | apps/web/src/app/projects/customer-correspondences.page.ts:232 |
-| Ügyfél-emlékeztető | Hiba és helyreállítás | CustomerFollowUpApiError | apps/web/src/app/projects/customer-follow-up/customer-follow-up-api.service.ts:23 |
 | Ügyfél-emlékeztető | Futásidejű UI-szöveg | betölteni az ügyfél-emlékeztetőt | apps/web/src/app/projects/customer-follow-up/customer-follow-up-api.service.ts:34 |
 | Ügyfél-emlékeztető | Futásidejű UI-szöveg | betölteni a hivatkozható tisztázási tételeket | apps/web/src/app/projects/customer-follow-up/customer-follow-up-api.service.ts:45 |
 | Ügyfél-emlékeztető | Futásidejű UI-szöveg | betölteni az ügyfél-emlékeztető feladóit | apps/web/src/app/projects/customer-follow-up/customer-follow-up-api.service.ts:52 |
@@ -593,7 +590,6 @@ Ez a leltár a munkavállalói felületen megjelenő kanonikus navigációs neve
 | Felkészültség | Futásidejű UI-szöveg | menteni az utánkövetés módosításait | apps/web/src/app/projects/discovery-follow-ups/discovery-follow-ups-api.service.ts:30 |
 | Felkészültség | Futásidejű UI-szöveg | módosítani az utánkövetés forrását | apps/web/src/app/projects/discovery-follow-ups/discovery-follow-ups-api.service.ts:31 |
 | Felkészültség | Futásidejű UI-szöveg | lezárni az utánkövetést | apps/web/src/app/projects/discovery-follow-ups/discovery-follow-ups-api.service.ts:32 |
-| Felkészültség | Hiba és helyreállítás | DiscoveryFollowUpsApiError | apps/web/src/app/projects/discovery-follow-ups/discovery-follow-ups-api.service.ts:42 |
 | Felkészültség | Hiba és helyreállítás | Nem sikerült {érték}. Frissítsd az oldalt, majd próbáld újra. | apps/web/src/app/projects/discovery-follow-ups/discovery-follow-ups-api.service.ts:165 |
 | Felkészültség | Hiba és helyreállítás | Nem sikerült {érték}, mert a szolgáltatás nem érhető el. Ellenőrizd a kapcsolatot, majd próbáld újra. | apps/web/src/app/projects/discovery-follow-ups/discovery-follow-ups-api.service.ts:182 |
 | Felkészültség | Hiba és helyreállítás | Nem sikerült {érték}. {érték} | apps/web/src/app/projects/discovery-follow-ups/discovery-follow-ups-api.service.ts:194 |
@@ -661,14 +657,12 @@ Ez a leltár a munkavállalói felületen megjelenő kanonikus navigációs neve
 | Felkészültség | Futásidejű UI-szöveg | Az utánkövetés forrása frissült. | apps/web/src/app/projects/discovery-follow-ups/discovery-follow-ups.component.ts:446 |
 | Felkészültség | Futásidejű UI-szöveg | A forrás nem távolítható el, amíg egy másik projektművelet folyamatban van. Várd meg a befejezését, majd próbáld meg ismét. | apps/web/src/app/projects/discovery-follow-ups/discovery-follow-ups.component.ts:525 |
 | Felkészültség | Futásidejű UI-szöveg | A forráshivatkozás nem törölhető, mert az utánkövetés már nem nyitott vagy nincs hozzárendelt forrása. Frissítsd az utánkövetéseket, majd próbáld újra. | apps/web/src/app/projects/discovery-follow-ups/discovery-follow-ups.component.ts:535 |
-| Felkészültség | Futásidejű UI-szöveg | discovery follow-up row | apps/web/src/app/projects/discovery-follow-ups/discovery-follow-ups.component.ts:550 |
 | Felkészültség | Futásidejű UI-szöveg | Az utánkövetés forráshivatkozása törölve. | apps/web/src/app/projects/discovery-follow-ups/discovery-follow-ups.component.ts:573 |
 | Felkészültség | Futásidejű UI-szöveg | Az utánkövetés módosításai mentve. | apps/web/src/app/projects/discovery-follow-ups/discovery-follow-ups.component.ts:697 |
 | Felkészültség | Hiba és helyreállítás | Az utánkövetés időközben megváltozott. A piszkozat megmaradt; mentés előtt töltsd be az aktuális verziót. | apps/web/src/app/projects/discovery-follow-ups/discovery-follow-ups.component.ts:708 |
 | Felkészültség | Futásidejű UI-szöveg | Az utánkövetés frissítés után nem található. Mentés előtt próbáld újra a frissítést. | apps/web/src/app/projects/discovery-follow-ups/discovery-follow-ups.component.ts:754 |
 | Felkészültség | Futásidejű UI-szöveg | A lezárt utánkövetés már nem szerkeszthető. Vesd el ezt a piszkozatot. | apps/web/src/app/projects/discovery-follow-ups/discovery-follow-ups.component.ts:761 |
 | Felkészültség | Futásidejű UI-szöveg | Az utánkövetés lezárva. | apps/web/src/app/projects/discovery-follow-ups/discovery-follow-ups.component.ts:884 |
-| Felkészültség | Futásidejű UI-szöveg | Escape | apps/web/src/app/projects/discovery-follow-ups/discovery-follow-ups.component.ts:1079 |
 | Felkészültség | Művelet | Kapcsolódó tisztázási tétel áttekintése | apps/web/src/app/projects/discovery-follow-ups/discovery-reply-outcome.component.ts |
 | Utánkövetések | Látható szöveg | Portfólió | apps/web/src/app/projects/open-discovery-follow-ups.page.html |
 | Utánkövetések | Látható szöveg | A nyitott tisztázási tételek az összes aktív projektből, határidő szerint rendezve. | apps/web/src/app/projects/open-discovery-follow-ups.page.html |
@@ -951,4 +945,4 @@ Ez a leltár a munkavállalói felületen megjelenő kanonikus navigációs neve
 | Kérdésbank beállítások | Futásidejű UI-szöveg | Az alapkérdés módosításai mentve. | apps/web/src/app/settings/question-bank.page.ts:226 |
 | Kérdésbank beállítások | Futásidejű UI-szöveg | Az alapkérdés létrejött. | apps/web/src/app/settings/question-bank.page.ts:226 |
 
-Összesen: **944** leltárelem.
+Összesen: **938** leltárelem.
