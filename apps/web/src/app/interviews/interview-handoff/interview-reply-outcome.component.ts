@@ -40,6 +40,7 @@ export class InterviewReplyOutcomeComponent {
       next: () => {
         void this.router.navigate(['/projects', this.projectId(), 'interview'], {
           queryParams: { roundId: correspondence.source.type === 'INTERVIEW_HANDOFF' ? correspondence.source.roundId : null },
+          queryParamsHandling: 'merge',
           fragment: 'customer-handoff',
         });
       },

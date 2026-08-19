@@ -1598,7 +1598,7 @@ test('replaces and removes a discovery source only after explicit confirmation w
     await removalStarted;
     await expect(item).toHaveAttribute('tabindex', '-1');
     await expect(item).toBeFocused();
-    const unrelatedControl = page.getByTestId('back-to-projects-link');
+    const unrelatedControl = page.getByTestId('project-context-return');
     await unrelatedControl.focus();
     await expect(unrelatedControl).toBeFocused();
     if (releaseRemoval === null) {
@@ -1625,7 +1625,7 @@ test('replaces and removes a discovery source only after explicit confirmation w
         requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
       }),
   );
-  await expect(page.getByTestId('back-to-projects-link')).toBeFocused();
+  await expect(page.getByTestId('project-context-return')).toBeFocused();
 
   await page.reload();
   await expect(

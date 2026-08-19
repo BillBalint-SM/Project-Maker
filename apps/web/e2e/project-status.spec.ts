@@ -15,15 +15,20 @@ test('resumes schema-required projects directly and keeps the server-derived sta
 
   await page.goto('/');
   await page.getByTestId(`project-card-${project.id}`).click();
-  await expect(page).toHaveURL(`/projects/${project.id}/interview`);
+  await expect(page).toHaveURL(
+    new RegExp(`/projects/${project.id}/interview\\?returnTo=`),
+  );
 
   await page.goto(`/projects/${project.id}/status`);
 
   await expect(page.getByRole('heading', { name: 'Projektállapot' })).toBeVisible();
-  await expect(page.getByTestId('project-work-reason')).toHaveText('Folyamatban');
-  await expect(page.getByTestId('project-status-card')).toContainText('Kérdésséma szükséges');
-  await page.getByTestId('project-work-primary-action').click();
-  await expect(page).toHaveURL(`/projects/${project.id}/interview`);
+  await expect(page.getByTestId('project-context-shell')).toContainText(
+    'Kérdésséma szükséges',
+  );
+  await page.getByTestId('project-context-primary-action').click();
+  await expect(page).toHaveURL(
+    new RegExp(`/projects/${project.id}/interview\\?returnTo=`),
+  );
 
   await page.goto(`/projects/${project.id}/readiness`);
   await expect(page.getByRole('heading', { name: 'Felkészültség', exact: true })).toBeVisible();

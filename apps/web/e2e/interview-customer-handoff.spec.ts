@@ -170,7 +170,7 @@ test.describe.serial('interview customer handoff browser journey', () => {
     const fixture = await createOpenInterview(request, testInfo);
     await page.goto('/');
     const projectCard = page.getByTestId(`project-card-${fixture.projectId}`);
-    await expect(projectCard).toContainText('Előkészítés alatt');
+    await expect(projectCard).toContainText('Felmérés folyamatban');
     await expect(projectCard).not.toContainText('DRAFT');
 
     await apiJson(request, 'POST', `/projects/${fixture.projectId}/archive`);

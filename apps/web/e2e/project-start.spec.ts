@@ -67,7 +67,11 @@ test.describe('project start journey', () => {
     const projectCard = page.getByRole('link', { name: new RegExp(projectName) });
     await expect(projectCard).toContainText('Kérdésséma szükséges');
     await projectCard.click();
-    await expect(page).toHaveURL(/\/projects\/[^/]+\/interview$/);
+    await expect(page).toHaveURL(
+      (url) =>
+        /\/projects\/[^/]+\/interview$/.test(url.pathname) &&
+        url.searchParams.get('returnTo') === '/',
+    );
     await expect(page.getByTestId('project-schema-status')).toBeVisible();
   });
 

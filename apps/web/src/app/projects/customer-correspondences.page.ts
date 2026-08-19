@@ -1,6 +1,6 @@
 import { DatePipe } from '@angular/common';
 import { Component, inject, OnInit, signal } from '@angular/core';
-import { ActivatedRoute, RouterLink } from '@angular/router';
+import { ActivatedRoute } from '@angular/router';
 import type {
   CustomerCorrespondenceCommand,
   CustomerCorrespondenceStatus,
@@ -16,9 +16,8 @@ import { DiscoveryReplyOutcomeComponent } from './discovery-follow-ups/discovery
 
 @Component({
   selector: 'app-customer-correspondences-page',
-  imports: [DatePipe, DiscoveryReplyOutcomeComponent, InterviewReplyOutcomeComponent, RouterLink],
+  imports: [DatePipe, DiscoveryReplyOutcomeComponent, InterviewReplyOutcomeComponent],
   template: `
-    <a class="back-link" [routerLink]="['/projects', projectId, 'status']">← Projektállapot</a>
     <section aria-labelledby="customer-replies-title">
       <span class="eyebrow">Customer kommunikáció</span>
       <h1 id="customer-replies-title">Customer válaszok</h1>
