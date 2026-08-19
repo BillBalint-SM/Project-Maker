@@ -1,7 +1,7 @@
 import { TestBed } from '@angular/core/testing';
-import { provideRouter } from '@angular/router';
+import { provideRouter, Router } from '@angular/router';
 import type { ActiveProjectQueuePage } from '@project-maker/contracts';
-import { of } from 'rxjs';
+import { of, Subject } from 'rxjs';
 import { describe, expect, it, vi } from 'vitest';
 
 import { ActiveProjectQueueApiService } from './active-project-queue-api.service';
@@ -66,7 +66,11 @@ describe('ActiveProjectQueuePageComponent', () => {
     fixture.detectChanges();
 
     const element = fixture.nativeElement as HTMLElement;
-    expect(api.firstPage).toHaveBeenCalledTimes(1);
+    expect(api.firstPage).toHaveBeenCalledWith({
+      search: undefined,
+      urgencies: [],
+      preparationStates: [],
+    });
     expect(element.querySelectorAll('[data-testid="active-queue-group"]')).toHaveLength(2);
     expect(element.textContent).toContain('Új ügyfélválasz');
     expect(element.textContent).toContain('Folyamatban');
@@ -78,5 +82,121 @@ describe('ActiveProjectQueuePageComponent', () => {
       .toBe('/projects/11111111-1111-4111-8111-111111111111/customer-correspondences');
     expect(element.querySelector('[data-testid="queue-action-22222222-2222-4222-8222-222222222222"]')?.getAttribute('href'))
       .toBe('/projects/22222222-2222-4222-8222-222222222222/interview');
+  });
+
+  it('restores known URL filters and debounces a trimmed search into replace-navigation', async () => {
+    vi.useFakeTimers();
+    try {
+      const api = { firstPage: vi.fn().mockReturnValue(of(page)) };
+      await TestBed.configureTestingModule({
+        imports: [ActiveProjectQueuePageComponent],
+        providers: [
+          provideRouter([]),
+          { provide: ActiveProjectQueueApiService, useValue: api },
+        ],
+      }).compileComponents();
+      const router = TestBed.inject(Router);
+      await router.navigateByUrl('/?q=%20%C3%81rv%C3%ADz%20&urgency=OVERDUE&urgency=UNKNOWN&preparation=SCHEMA_REQUIRED');
+      const navigate = vi.spyOn(router, 'navigate').mockResolvedValue(true);
+
+      const fixture = TestBed.createComponent(ActiveProjectQueuePageComponent);
+      fixture.detectChanges();
+      await vi.runAllTimersAsync();
+      fixture.detectChanges();
+
+      expect(api.firstPage).toHaveBeenCalledWith({
+        search: 'Árvíz',
+        urgencies: ['OVERDUE'],
+        preparationStates: ['SCHEMA_REQUIRED'],
+      });
+      const input = fixture.nativeElement.querySelector('[data-testid="queue-search"]') as HTMLInputElement;
+      expect(input.value).toBe('Árvíz');
+      input.value = '  új keresés  ';
+      input.dispatchEvent(new Event('input'));
+      fixture.detectChanges();
+      await vi.advanceTimersByTimeAsync(299);
+      expect(navigate).not.toHaveBeenCalled();
+      await vi.advanceTimersByTimeAsync(1);
+      expect(navigate).toHaveBeenCalledWith([], expect.objectContaining({
+        queryParams: {
+          q: 'új keresés',
+          urgency: ['OVERDUE'],
+          preparation: ['SCHEMA_REQUIRED'],
+        },
+        replaceUrl: true,
+      }));
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('keeps the newest URL intent when an older request completes later', async () => {
+    const first = new Subject<ActiveProjectQueuePage>();
+    const second = new Subject<ActiveProjectQueuePage>();
+    const api = {
+      firstPage: vi.fn().mockImplementation((query: { search?: string }) =>
+        query.search === 'első' ? first : second),
+    };
+    await TestBed.configureTestingModule({
+      imports: [ActiveProjectQueuePageComponent],
+      providers: [
+        provideRouter([]),
+        { provide: ActiveProjectQueueApiService, useValue: api },
+      ],
+    }).compileComponents();
+    const router = TestBed.inject(Router);
+    await router.navigateByUrl('/?q=els%C5%91');
+    const fixture = TestBed.createComponent(ActiveProjectQueuePageComponent);
+    fixture.detectChanges();
+    await router.navigateByUrl('/?q=m%C3%A1sodik');
+    fixture.detectChanges();
+
+    const newestPage = { ...page, items: [{ ...page.items[0], projectName: 'Második eredmény' }] };
+    second.next(newestPage);
+    fixture.detectChanges();
+    first.next({ ...page, items: [{ ...page.items[0], projectName: 'Elavult eredmény' }] });
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).toContain('Második eredmény');
+    expect(fixture.nativeElement.textContent).not.toContain('Elavult eredmény');
+  });
+
+  it('preserves the genuine empty-portfolio state when no filters are active', async () => {
+    const api = { firstPage: vi.fn().mockReturnValue(of({ ...page, totalCount: 0, items: [] })) };
+    await TestBed.configureTestingModule({
+      imports: [ActiveProjectQueuePageComponent],
+      providers: [
+        provideRouter([]),
+        { provide: ActiveProjectQueueApiService, useValue: api },
+      ],
+    }).compileComponents();
+
+    const fixture = TestBed.createComponent(ActiveProjectQueuePageComponent);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).toContain('Nincs aktív projekt');
+    expect(fixture.nativeElement.textContent).not.toContain('Nincs találat');
+  });
+
+  it('distinguishes a filtered queue with no matching projects', async () => {
+    const api = { firstPage: vi.fn().mockReturnValue(of({ ...page, totalCount: 0, items: [] })) };
+    await TestBed.configureTestingModule({
+      imports: [ActiveProjectQueuePageComponent],
+      providers: [
+        provideRouter([]),
+        { provide: ActiveProjectQueueApiService, useValue: api },
+      ],
+    }).compileComponents();
+    await TestBed.inject(Router).navigateByUrl('/?q=nincs-ilyen-projekt');
+
+    const fixture = TestBed.createComponent(ActiveProjectQueuePageComponent);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).toContain('Nincs találat');
+    expect(fixture.nativeElement.textContent).not.toContain('Nincs aktív projekt');
   });
 });

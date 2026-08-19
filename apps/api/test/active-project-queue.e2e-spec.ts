@@ -12,6 +12,7 @@ import {
   classifyActiveProjectUrgency,
   compareActiveProjectQueueOrder,
 } from '../src/projects/active-project-queue.service';
+import { Project } from '../src/projects/project.entity';
 
 const urgencyOrder = ['CUSTOMER_REPLY', 'OVERDUE', 'DUE_SOON', 'IN_PROGRESS'] as const;
 const fixedNow = new Date('2026-03-22T11:00:00.000Z');
@@ -182,6 +183,39 @@ describe('Active project queue (e2e)', () => {
     assert.deepEqual(sorted.map(({ projectId }) => projectId), ['5', '1', '2', '3', '4']);
   });
 
+  it('combines normalized name, multi-value urgency and preparation filters with stable facet counts', async () => {
+    const token = randomUUID().slice(0, 8);
+    const overdue = await createQueueProject(app, `Árvíztűrő ${token} lejárt`, '1800-01-01T00:00:00.000Z');
+    await createQueueProject(app, `Árvíztűrő ${token} folyamatban`);
+    const intake = await createQueueProject(app, `Árvíztűrő ${token} felmérés`, '1801-01-01T00:00:00.000Z');
+    const bank = await request(app.getHttpServer()).get('/settings/base-questions').expect(200);
+    const stableKey = bank.body.questions[0].stableKey as string;
+    await request(app.getHttpServer()).post(`/projects/${intake.id}/question-schema`).send({
+      questions: [{ stableKey, required: true, blocking: true }],
+    }).expect(201);
+    await request(app.getHttpServer()).post(`/projects/${intake.id}/rounds`).send({
+      type: 'INITIAL_INTAKE',
+    }).expect(201);
+
+    const response = await request(app.getHttpServer())
+      .get('/projects/active-queue')
+      .query({
+        q: `  ARVIZTURO ${token.toUpperCase()}  `,
+        urgency: ['OVERDUE', 'DUE_SOON'],
+        preparation: ['SCHEMA_REQUIRED', 'ESTIMATE_READY'],
+      })
+      .expect(200);
+
+    assert.deepEqual(response.body.items.map((item: { projectId: string }) => item.projectId), [overdue.id]);
+    assert.equal(response.body.totalCount, 1);
+    assert.deepEqual(response.body.groupCounts, {
+      CUSTOMER_REPLY: 0,
+      OVERDUE: 1,
+      DUE_SOON: 0,
+      IN_PROGRESS: 1,
+    });
+  });
+
   it('keeps the database read count fixed as the active portfolio grows', async () => {
     const bank = await request(app.getHttpServer()).get('/settings/base-questions').expect(200);
     const stableKey = bank.body.questions[0].stableKey as string;
@@ -214,7 +248,11 @@ interface QueueTestItem {
 }
 
 async function queueItem(app: INestApplication, projectId: string): Promise<QueueTestItem> {
-  const response = await request(app.getHttpServer()).get('/projects/active-queue').expect(200);
+  const project = await app.get(DataSource).getRepository(Project).findOneByOrFail({ id: projectId });
+  const response = await request(app.getHttpServer())
+    .get('/projects/active-queue')
+    .query({ q: project.name })
+    .expect(200);
   const item = (response.body.items as Array<QueueTestItem & { projectId: string }>)
     .find((candidate) => candidate.projectId === projectId);
   assert.ok(item, `Expected Project ${projectId} on the first Active project queue page.`);
@@ -252,6 +290,21 @@ async function createEndedQueueProject(
     .get(`/projects/${project.body.id as string}/rounds/${round.body.id as string}/customer-handoffs`)
     .expect(200);
   return { projectId: project.body.id as string, handoffId: handoffs.body[0].id as string };
+}
+
+async function createQueueProject(
+  app: INestApplication,
+  name: string,
+  dueAt?: string,
+): Promise<{ readonly id: string }> {
+  const response = await request(app.getHttpServer()).post('/projects').send({
+    name,
+    customerContactName: 'Queue Customer',
+    customerContactEmail: `queue-${Date.now()}-${Math.random()}@example.test`,
+    internalOwnerName: 'Queue PO/PM',
+    ...(dueAt ? { dueAt } : {}),
+  }).expect(201);
+  return { id: response.body.id as string };
 }
 
 async function countQueueReadQueries(app: INestApplication): Promise<number> {

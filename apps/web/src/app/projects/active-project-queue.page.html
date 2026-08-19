@@ -7,6 +7,37 @@
     <p>Az aktív projektek következő teendői sürgősség szerint rendezve.</p>
   </div>
 
+  <section class="queue-filters" aria-labelledby="queue-filter-title">
+    <h2 id="queue-filter-title">Munkasor szűrése</h2>
+    <label class="search-field">
+      <span>Projektnév</span>
+      <input type="search" [formControl]="search" placeholder="Keresés projektnévben" data-testid="queue-search" />
+    </label>
+    <fieldset>
+      <legend>Sürgősség</legend>
+      @for (option of urgencyOptions; track option[0]) {
+        <label>
+          <input
+            type="checkbox"
+            [attr.aria-label]="option[1]"
+            [checked]="selectedUrgencies().includes(option[0])"
+            (change)="toggleUrgency(option[0])"
+          />
+          <span>{{ option[1] }} ({{ page()?.groupCounts?.[option[0]] ?? 0 }})</span>
+        </label>
+      }
+    </fieldset>
+    <fieldset>
+      <legend>Felkészültség</legend>
+      @for (option of preparationOptions; track option[0]) {
+        <label>
+          <input type="checkbox" [checked]="selectedPreparationStates().includes(option[0])" (change)="togglePreparationState(option[0])" />
+          <span>{{ option[1] }}</span>
+        </label>
+      }
+    </fieldset>
+  </section>
+
   @if (loading()) {
     <div class="state-panel" data-testid="active-queue-loading" aria-live="polite">
       <p-progress-spinner ariaLabel="Az aktív munkasor betöltése" />
@@ -21,9 +52,14 @@
   } @else if (page(); as queuePage) {
     @if (queuePage.totalCount === 0) {
       <div class="state-panel" data-testid="active-queue-empty">
-        <h2>Nincs aktív projekt</h2>
-        <p>A munkasorban minden nem archivált projekt megjelenik.</p>
-        <a pButton routerLink="/projects/new">Új projekt létrehozása</a>
+        @if (hasActiveFilters()) {
+          <h2>Nincs találat</h2>
+          <p>Nincs a keresésnek és a kiválasztott szűrőknek megfelelő aktív projekt.</p>
+        } @else {
+          <h2>Nincs aktív projekt</h2>
+          <p>A munkasorban minden nem archivált projekt megjelenik.</p>
+          <a pButton routerLink="/projects/new">Új projekt létrehozása</a>
+        }
       </div>
     } @else {
       <div class="queue-summary" aria-live="polite">
