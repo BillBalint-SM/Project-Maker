@@ -171,16 +171,16 @@ export class ActiveProjectQueuePageComponent implements OnInit {
         this.stale.set(false);
         this.updateError.set(null);
         if (request.kind === 'REFRESH') {
-          this.liveStatus.set('A munkasor frissítve.');
+          this.liveStatus.set('A lista frissítve.');
         } else if (request.kind === 'RETRY') {
-          this.liveStatus.set('A munkasor ismét elérhető.');
+          this.liveStatus.set('A lista ismét elérhető.');
         }
       } else if (error) {
         this.failedRequest = request;
         if (this.page()) {
           this.stale.set(true);
           this.updateError.set(error);
-          this.liveStatus.set('A munkasor frissítése nem sikerült. A korábbi lista maradt látható.');
+          this.liveStatus.set('A lista frissítése nem sikerült. A korábbi adatok maradtak láthatók.');
         } else {
           this.loadError.set(error);
         }

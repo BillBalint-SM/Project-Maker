@@ -54,7 +54,7 @@ test('authors, previews, cancels, and explicitly sends one referenced customer p
   const previewTrigger = nativeButton(page, 'preview-follow-up-ping-button');
   await previewTrigger.focus();
   await previewTrigger.click();
-  const preview = page.getByRole('alertdialog', { name: 'Customer follow-up ping előnézete' });
+  const preview = page.getByRole('alertdialog', { name: 'Ügyfél-emlékeztető előnézete' });
   await expect(preview).toContainText(project.customerContactEmail);
   await expect(preview).toContainText('PO Ping <po.ping@pte.hu>');
   await expect(preview).toContainText(message);
@@ -74,7 +74,9 @@ test('authors, previews, cancels, and explicitly sends one referenced customer p
     'Átadva a levelezőrendszernek',
   );
   await expect(page.getByTestId('follow-up-send-result')).toBeFocused();
-  await expect(page.getByTestId('follow-up-last-delivery-status-value')).toContainText('SENT');
+  await expect(page.getByTestId('follow-up-last-delivery-status-value')).toContainText(
+    'Sikeresen elküldve',
+  );
   const graphMessages = await graphMessagesFor(request);
   const graphRequest = graphMessages[0] as {
     saveToSentItems?: unknown;
@@ -111,7 +113,7 @@ test('preserves the local draft after a stale preview and reloads only on explic
   );
   await page.goto(`/projects/${project.id}/customer-correspondences`);
   await nativeButton(page, 'preview-follow-up-ping-button').click();
-  await expect(page.getByRole('alertdialog', { name: 'Customer follow-up ping előnézete' })).toBeVisible();
+  await expect(page.getByRole('alertdialog', { name: 'Ügyfél-emlékeztető előnézete' })).toBeVisible();
 
   await apiJson(request, 'PATCH', `/projects/${project.id}/follow-up/draft`, {
     messageDraft: 'Szerveren időközben mentett ügyfélüzenet',
@@ -199,7 +201,7 @@ test('requires a saved valid draft before automatic scheduling can be enabled', 
   await nativeButton(page, 'save-follow-up-settings-button').click();
 
   await expect(page.getByTestId('follow-up-action-error')).toContainText(
-    'Előbb ments egy nem üres Customer follow-up ping üzenetet.',
+    'Előbb ments egy nem üres ügyfél-emlékeztetőt.',
   );
   await expect(page.getByTestId('follow-up-enabled-value')).toContainText('Kikapcsolva');
 });
@@ -240,7 +242,7 @@ test('shows a validation-paused schedule and resumes it after a valid draft save
 
   await page.goto(`/projects/${project.id}/customer-correspondences`);
   await expect(page.getByTestId('follow-up-schedule-validation-pause')).toContainText(
-    'Az automatikus ügyfél-ping szünetel',
+    'Az automatikus ügyfél-emlékeztető szünetel',
   );
   await page.getByTestId('follow-up-reference-select').selectOption('');
   await nativeButton(page, 'save-follow-up-draft-button').click();
@@ -261,7 +263,7 @@ test('requires an explicit duplicate-risk acknowledgement after an expired deliv
   });
   await page.goto(`/projects/${project.id}/customer-correspondences`);
   await nativeButton(page, 'preview-follow-up-ping-button').click();
-  const preview = page.getByRole('alertdialog', { name: 'Customer follow-up ping előnézete' });
+  const preview = page.getByRole('alertdialog', { name: 'Ügyfél-emlékeztető előnézete' });
   await expect(preview).toBeVisible();
   await forceExpiredCustomerPingAttempt(project.id, project.customerContactEmail);
 
@@ -308,7 +310,9 @@ test('recovers a failed ping after reload with cancel, Escape, and deterministic
   await expect(page.getByTestId('follow-up-failed-recovery')).toContainText('sikertelen');
   await retryTrigger.focus();
   await retryTrigger.click();
-  const confirmation = page.getByRole('alertdialog', { name: 'Ügyfél-ping újraküldése' });
+  const confirmation = page.getByRole('alertdialog', {
+    name: 'Ügyfél-emlékeztető újraküldése',
+  });
   await expect(nativeButton(page, 'cancel-follow-up-retry-button')).toBeFocused();
   await page.keyboard.press('Escape');
   await expect(confirmation).toBeHidden();
@@ -353,9 +357,9 @@ test('requires a visible request-specific acknowledgement for an uncertain ping'
   await expect(warning).toContainText('bizonytalan');
   await expect(warning).toContainText('duplikált');
   await nativeButton(page, 'retry-unknown-follow-up-ping-button').click();
-  await expect(page.getByRole('alertdialog', { name: 'Ügyfél-ping újraküldése' })).toContainText(
-    'duplikált levelet',
-  );
+  await expect(
+    page.getByRole('alertdialog', { name: 'Ügyfél-emlékeztető újraküldése' }),
+  ).toContainText('duplikált levelet');
   await nativeButton(page, 'confirm-follow-up-retry-button').click();
   await expect(page.getByTestId('follow-up-send-result')).toContainText('Átadva a levelezőrendszernek');
   expect(retryBody).toEqual({ attemptId, acknowledgeDuplicateRisk: true });
@@ -389,7 +393,7 @@ test('keeps uncertain recovery visible after editing and explicitly acknowledges
 
   await nativeButton(page, 'preview-follow-up-ping-button').click();
   const confirmation = page.getByRole('alertdialog', {
-    name: 'Customer follow-up ping előnézete',
+    name: 'Ügyfél-emlékeztető előnézete',
   });
   await expect(confirmation).toContainText('duplikált levelet');
   await nativeButton(page, 'acknowledge-fresh-follow-up-ping-button').click();

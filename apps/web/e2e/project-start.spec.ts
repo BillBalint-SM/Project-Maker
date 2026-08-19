@@ -82,7 +82,7 @@ test.describe('project start journey', () => {
     await expect(page.getByTestId('project-schema-status')).toBeVisible();
     await expect(page.getByTestId('interview-question-selection')).toBeVisible();
     await expect(page.getByText(/aktív kérdés kiválasztva/)).toBeVisible();
-    await expect(page.getByRole('heading', { name: 'Kezdő interjúkör' })).toHaveCount(0);
+    await expect(page.getByRole('heading', { name: 'Kezdő felmérési kör' })).toHaveCount(0);
     await expect(page.getByTestId('create-interview-round-button')).toHaveCount(0);
     await expect(page.getByText(/pillanatkép-kérdés/)).toHaveCount(0);
   });
@@ -333,7 +333,7 @@ test.describe('project start journey', () => {
         'legalább egy alapkérdést aktiváljon',
       );
       await expect(page.getByTestId('publish-project-schema-button')).toHaveCount(0);
-      await expect(page.getByRole('heading', { name: 'Kezdő interjúkör' })).toHaveCount(0);
+      await expect(page.getByRole('heading', { name: 'Kezdő felmérési kör' })).toHaveCount(0);
 
       await page.reload();
       await expect(page.getByTestId('interview-no-active-questions')).toBeVisible();

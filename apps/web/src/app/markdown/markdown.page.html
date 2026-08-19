@@ -1,7 +1,7 @@
 <section aria-labelledby="markdown-title">
   <div class="page-heading markdown-heading">
     <span class="eyebrow">Generált dokumentum</span>
-    <h1 id="markdown-title">Markdown specifikáció</h1>
+    <h1 id="markdown-title">Markdown terv</h1>
     <p>Hozz létre változatlan, kanonikus Markdown-specifikációt a projekt aktuális előkészítési adataiból, és tekintsd át a történetét.</p>
   </div>
 
@@ -26,7 +26,7 @@
       <h2>A Markdown-revíziók nem tölthetők be</h2>
       <p>{{ loadError() }}</p>
       <p-button
-        label="Újra"
+        label="Revíziók újratöltése"
         severity="secondary"
         data-testid="retry-markdown-button"
         (onClick)="loadRevisions()"
@@ -37,7 +37,7 @@
       <p-card>
         <ng-template #title>Új revízió generálása</ng-template>
         <ng-template #subtitle>
-          A projekt- és interjúadatok változatlan forráspillanatképként kerülnek a revízióba.
+          A projekt- és felmérési adatok változatlan forráspillanatképként kerülnek a revízióba.
         </ng-template>
         <form
           class="generation-form"
@@ -137,7 +137,7 @@
                     <strong>Revízió v{{ revision.version }}</strong>
                     <small>{{ reasonLabel(revision.reason) }}{{ revision.milestone ? ' · ' + revision.milestone : '' }}</small>
                   </span>
-                  <time [attr.datetime]="revision.createdAt">{{ revision.createdAt | date: 'medium' }}</time>
+                  <time [attr.datetime]="revision.createdAt">{{ revision.createdAt | date: 'yyyy. MM. dd. HH:mm' }}</time>
                 </a>
               </li>
             }
@@ -157,7 +157,7 @@
             <h2>A revízió részletei nem tölthetők be</h2>
             <p>{{ detailError() }}</p>
             <p-button
-              label="Újra"
+              label="Revízió részleteinek újratöltése"
               severity="secondary"
               data-testid="retry-markdown-detail-button"
               (onClick)="retryRevision()"
@@ -176,7 +176,7 @@
             <dl class="revision-metadata" data-testid="markdown-revision-metadata">
               <div>
                 <dt>Létrehozva</dt>
-                <dd><time [attr.datetime]="current.createdAt">{{ current.createdAt | date: 'medium' }}</time></dd>
+                <dd><time [attr.datetime]="current.createdAt">{{ current.createdAt | date: 'yyyy. MM. dd. HH:mm' }}</time></dd>
               </div>
               <div>
                 <dt>Mérföldkő</dt>
@@ -189,7 +189,7 @@
               <div>
                 <dt>Sablon</dt>
                 <dd data-testid="markdown-revision-template">
-                  @if (current.template; as template) { {{ template.name }} · v{{ template.version }} } @else { Korábbi, provenance nélküli revízió }
+                  @if (current.template; as template) { {{ template.name }} · v{{ template.version }} } @else { Korábbi, eredethivatkozás nélküli revízió }
                 </dd>
               </div>
               <div>

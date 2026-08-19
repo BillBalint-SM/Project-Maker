@@ -94,7 +94,7 @@ export class MarkdownTemplatePage implements OnInit {
     request.subscribe({
       next: (template) => {
         this.working.set(false);
-        this.feedback.set('Draft mentve. Az előnézet után publikálhatod.');
+        this.feedback.set('Piszkozat mentve. Az előnézet után publikálhatod.');
         this.upsert(template);
         this.selected.set(template);
         this.form.reset({ name: template.name, draftContent: template.draftContent });

@@ -40,7 +40,7 @@ export class InterviewApiService {
       .get<InterviewRound | null>(`/api/projects/${encodedProjectId}/rounds/active`)
       .pipe(
         catchError((error: unknown) =>
-          failApiRequest(error, 'betölteni az aktív kezdő interjúkört'),
+          failApiRequest(error, 'betölteni az aktív kezdő felmérési kört'),
         ),
       );
   }
@@ -50,7 +50,7 @@ export class InterviewApiService {
     const encodedRoundId = encodeURIComponent(roundId);
     return this.http
       .get<InterviewRound>(`/api/projects/${encodedProjectId}/rounds/${encodedRoundId}`)
-      .pipe(catchError((error: unknown) => failApiRequest(error, 'betölteni a kiválasztott interjúkört')));
+      .pipe(catchError((error: unknown) => failApiRequest(error, 'betölteni a kiválasztott felmérési kört')));
   }
 
   createRound(
@@ -61,7 +61,7 @@ export class InterviewApiService {
     return this.http
       .post<InterviewRound>(`/api/projects/${encodedProjectId}/rounds`, input)
       .pipe(
-        catchError((error: unknown) => failApiRequest(error, 'elindítani az interjúkört')),
+        catchError((error: unknown) => failApiRequest(error, 'elindítani a felmérési kört')),
       );
   }
 
@@ -123,7 +123,7 @@ export class InterviewApiService {
         {},
       )
       .pipe(
-        catchError((error: unknown) => failApiRequest(error, 'lezárni az interjúkört')),
+        catchError((error: unknown) => failApiRequest(error, 'lezárni a felmérési kört')),
       );
   }
 }
@@ -161,19 +161,19 @@ function mapApiError(error: unknown, action: string): ActionableApiError {
 
   if (error.status === 0) {
     return {
-      userMessage: `Nem sikerült ${action}, mert az API nem érhető el. Ellenőrizd, hogy fut-e a szerver, majd próbáld újra.`,
+      userMessage: `Nem sikerült ${action}, mert a szolgáltatás nem érhető el. Ellenőrizd a kapcsolatot, majd próbáld újra.`,
       diagnostics: { action, status: error.status, statusText: error.statusText },
     };
   }
 
   const nextStep =
     error.status === 404
-      ? 'Ellenőrizd, hogy a projekt, az interjúkör vagy a kérdés még létezik-e.'
+      ? 'Ellenőrizd, hogy a projekt, a felmérési kör vagy a kérdés még létezik-e.'
       : error.status === 409
-        ? 'Frissítsd az oldalt, hogy a legfrissebb interjúállapotot lásd, majd próbáld újra.'
+        ? 'Frissítsd az oldalt, hogy a legfrissebb felmérési állapotot lásd, majd próbáld újra.'
         : 'Ellenőrizd az adatokat, majd próbáld újra.';
   return {
-    userMessage: `Nem sikerült ${action} (HTTP ${error.status}). ${nextStep}`,
+    userMessage: `Nem sikerült ${action}. ${nextStep}`,
     diagnostics: { action, status: error.status, statusText: error.statusText },
   };
 }

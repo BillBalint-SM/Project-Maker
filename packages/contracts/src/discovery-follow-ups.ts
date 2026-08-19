@@ -70,3 +70,14 @@ export interface DiscoveryFollowUp {
   readonly version: number;
   readonly source: DiscoveryFollowUpSourceReference | null;
 }
+
+export interface OpenDiscoveryFollowUpQueueItem {
+  readonly id: string;
+  readonly projectId: string;
+  readonly projectName: string;
+  readonly category: DiscoveryFollowUpCategory;
+  readonly question: string;
+  readonly owner: string;
+  readonly dueDate: string;
+  readonly nextStep: string;
+}

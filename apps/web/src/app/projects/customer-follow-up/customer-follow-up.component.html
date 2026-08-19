@@ -1,11 +1,11 @@
 @if (loading()) {
   <div class="state-panel" aria-live="polite" data-testid="follow-up-loading">
-    <p-progress-spinner ariaLabel="Ügyfél-ping betöltése" />
+    <p-progress-spinner ariaLabel="Ügyfél-emlékeztető betöltése" />
   </div>
 } @else if (loadError()) {
   <div class="state-panel" role="alert" data-testid="follow-up-load-error">
     <p>{{ loadError() }}</p>
-    <p-button label="Újrapróbálás" (onClick)="reload()" />
+    <p-button label="Ügyfél-emlékeztető újratöltése" (onClick)="reload()" />
   </div>
 } @else if (state(); as current) {
 <p-card id="customer-communication" data-testid="follow-up-card">
@@ -13,7 +13,7 @@
     <ng-template #title>Automatikus ügyfél-utánkövetés</ng-template>
     <ng-template #subtitle>Az emlékeztetők ütemezésének projektbeállításai.</ng-template>
   } @else {
-    <ng-template #title>Ügyfél-ping</ng-template>
+    <ng-template #title>Ügyfél-emlékeztető</ng-template>
     <ng-template #subtitle>Rövid emlékeztető előkészítése, ellenőrzése és küldése.</ng-template>
   }
 
@@ -48,12 +48,12 @@
 
   @if (current.latestManualAttempt?.state === 'SENDING') {
     <section class="follow-up-recovery" aria-live="polite" data-testid="follow-up-sending-recovery">
-      <h3>Az ügyfél-ping küldése folyamatban van</h3>
+      <h3>Az ügyfél-emlékeztető küldése folyamatban van</h3>
       <p>A kézbesítési eredményig a projekt többi művelete nem indítható el.</p>
     </section>
   } @else if (current.latestManualAttempt?.state === 'FAILED') {
     <section class="follow-up-recovery" data-testid="follow-up-failed-recovery">
-      <h3>Az ügyfél-ping küldése sikertelen</h3>
+      <h3>Az ügyfél-emlékeztető küldése sikertelen</h3>
       <p>A rendszer bizonyított kézbesítési hibát kapott. A küldést csak kézzel lehet újrapróbálni.</p>
       <p-button
         type="button"
@@ -65,9 +65,9 @@
     </section>
   } @else if (current.latestManualAttempt?.state === 'UNKNOWN') {
     <section class="follow-up-recovery follow-up-recovery--warning" data-testid="follow-up-unknown-recovery">
-      <h3>Az ügyfél-ping eredménye bizonytalan</h3>
+      <h3>Az ügyfél-emlékeztető eredménye bizonytalan</h3>
       @if (current.latestManualAttempt.receiptEvidence) {
-        <p data-testid="follow-up-receipt-evidence">A Customer válasza igazolja az átvételt. Az eredeti ismeretlen eredmény megmarad, újraküldés nem szükséges.</p>
+        <p data-testid="follow-up-receipt-evidence">Az ügyfél válasza igazolja az átvételt. Az eredeti bizonytalan eredmény megmarad; újraküldés nem szükséges.</p>
       } @else {
         <p>Ellenőrizd a kimenő postafiókot. Az újraküldés duplikált levelet eredményezhet.</p>
         <p-button
@@ -84,8 +84,8 @@
 
   @if (scheduleValidationPaused()) {
     <section class="follow-up-recovery follow-up-recovery--warning" data-testid="follow-up-schedule-validation-pause">
-      <h3>Az automatikus ügyfél-ping szünetel</h3>
-      <p>A mentett piszkozat vagy a kapcsolódó Discovery follow-up már nem érvényes. Frissítsd és mentsd a piszkozatot az újraütemezéshez.</p>
+      <h3>Az automatikus ügyfél-emlékeztető szünetel</h3>
+      <p>A mentett piszkozat vagy a kapcsolódó tisztázási tétel már nem érvényes. Frissítsd és mentsd a piszkozatot az újraütemezéshez.</p>
     </section>
   }
 
@@ -97,7 +97,7 @@
       aria-describedby="follow-up-retry-description"
       (keydown.escape)="cancelRetry($event)"
     >
-      <h3 id="follow-up-retry-title">Ügyfél-ping újraküldése</h3>
+      <h3 id="follow-up-retry-title">Ügyfél-emlékeztető újraküldése</h3>
       <p id="follow-up-retry-description">
         @if (attempt.state === 'UNKNOWN') {
           A korábbi kézbesítés eredménye bizonytalan; az újraküldés duplikált levelet eredményezhet.
@@ -133,7 +133,7 @@
     data-testid="follow-up-draft-form"
   >
     <fieldset class="follow-up-fields" [disabled]="controlsDisabled()">
-      <legend>Ügyfél-ping piszkozat</legend>
+      <legend>Ügyfél-emlékeztető piszkozata</legend>
       <div class="field">
         <label for="follow-up-message-draft">Üzenet az ügyfélnek</label>
         <textarea
@@ -147,7 +147,7 @@
         <small>A szöveg egyszerű szövegként kerül az e-mailbe, legfeljebb 10 000 karakterben.</small>
       </div>
       <div class="field">
-        <label for="follow-up-reference-select">Kapcsolódó nyitott Discovery follow-up (opcionális)</label>
+        <label for="follow-up-reference-select">Kapcsolódó nyitott tisztázási tétel (nem kötelező)</label>
         <select
           id="follow-up-reference-select"
           formControlName="referencedFollowUpId"
@@ -241,7 +241,7 @@
       aria-labelledby="follow-up-preview-title"
       aria-describedby="follow-up-preview-description"
     >
-      <h3 id="follow-up-preview-title">Customer follow-up ping előnézete</h3>
+      <h3 id="follow-up-preview-title">Ügyfél-emlékeztető előnézete</h3>
       <p id="follow-up-preview-description">Ezt a pontos címzettet és tartalmat küldi el a rendszer.</p>
       <dl>
         <div><dt>Címzett</dt><dd>{{ preview.recipientName }} &lt;{{ preview.recipientEmail }}&gt;</dd></div>
@@ -311,7 +311,7 @@
           formControlName="enabled"
           data-testid="follow-up-enabled-input"
         />
-        <label for="follow-up-enabled">Automatikus ügyfél-pingek engedélyezése</label>
+        <label for="follow-up-enabled">Automatikus ügyfél-emlékeztetők engedélyezése</label>
       </div>
 
       <div class="field">
@@ -365,7 +365,7 @@
   <dl class="follow-up-status" aria-label="Ügyfél-utánkövetés állapota">
     @if (mode() === 'settings') {
     <div>
-      <dt>Automatikus pingek</dt>
+      <dt>Automatikus emlékeztetők</dt>
       <dd data-testid="follow-up-enabled-value">{{ current.enabled ? 'Engedélyezve' : 'Kikapcsolva' }}</dd>
     </div>
     <div>
@@ -375,35 +375,35 @@
     <div>
       <dt>Automatikus küldés vége</dt>
       <dd data-testid="follow-up-expires-at-value">
-        {{ current.expiresAt ? (current.expiresAt | date: 'medium') : 'Nincs végdátum' }}
+        {{ current.expiresAt ? (current.expiresAt | date: 'yyyy. MM. dd. HH:mm') : 'Nincs végdátum' }}
       </dd>
     </div>
     } @else {
     <div>
-      <dt>Legutóbbi ping</dt>
+      <dt>Legutóbbi emlékeztető</dt>
       <dd data-testid="follow-up-last-ping-at-value">
-        {{ current.lastPingAt ? (current.lastPingAt | date: 'medium') : 'Még nem volt küldés' }}
+        {{ current.lastPingAt ? (current.lastPingAt | date: 'yyyy. MM. dd. HH:mm') : 'Még nem volt küldés' }}
       </dd>
     </div>
     <div>
-      <dt>Következő automatikus ping</dt>
+      <dt>Következő automatikus emlékeztető</dt>
       <dd data-testid="follow-up-next-ping-at-value">
-        {{ current.nextPingAt ? (current.nextPingAt | date: 'medium') : 'Nincs ütemezve' }}
+        {{ current.nextPingAt ? (current.nextPingAt | date: 'yyyy. MM. dd. HH:mm') : 'Nincs ütemezve' }}
       </dd>
     </div>
     <div>
       <dt>Legutóbbi kézbesítés</dt>
-      <dd data-testid="follow-up-last-delivery-status-value">{{ current.lastDeliveryStatus }}</dd>
+      <dd data-testid="follow-up-last-delivery-status-value">{{ deliveryStatusLabel(current.lastDeliveryStatus) }}</dd>
     </div>
     <div>
       <dt>Kézbesítési hiba</dt>
-      <dd data-testid="follow-up-last-delivery-error-value">{{ current.lastDeliveryError || 'Nincs jelzett hiba' }}</dd>
+      <dd data-testid="follow-up-last-delivery-error-value">{{ deliveryErrorLabel(current.lastDeliveryError) }}</dd>
     </div>
     }
   </dl>
 
   @if (mode() === 'work') {
-  <div class="follow-up-actions" aria-label="Customer email actions">
+  <div class="follow-up-actions" aria-label="Ügyféllevelezési műveletek">
     <a
       pButton
       [routerLink]="['/projects', projectId(), 'interview']"
@@ -413,7 +413,7 @@
       data-testid="open-interview-handoff-button"
     >
       <i class="pi pi-file" aria-hidden="true"></i>
-      <span>Interjúösszegzés megnyitása</span>
+      <span>Felmérési összefoglaló megnyitása</span>
     </a>
   </div>
   }

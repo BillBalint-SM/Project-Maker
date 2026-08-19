@@ -524,9 +524,9 @@ describe('ProjectsController (e2e)', () => {
     const allowedEvents = [
       ['PROJECT_ARCHIVED', 'A projekt archiválva lett.'],
       ['PROJECT_RESTORED', 'A projekt visszaállítva lett.'],
-      ['DISCOVERY_FOLLOW_UP_CREATED', 'Új discovery utánkövetés jött létre.'],
-      ['DISCOVERY_FOLLOW_UP_UPDATED', 'Egy discovery utánkövetés frissítve lett.'],
-      ['DISCOVERY_FOLLOW_UP_RESOLVED', 'Egy discovery utánkövetés lezárva lett.'],
+      ['DISCOVERY_FOLLOW_UP_CREATED', 'Új tisztázási utánkövetés jött létre.'],
+      ['DISCOVERY_FOLLOW_UP_UPDATED', 'Egy tisztázási utánkövetés frissítve lett.'],
+      ['DISCOVERY_FOLLOW_UP_RESOLVED', 'Egy tisztázási utánkövetés lezárva lett.'],
       ['PROJECT_DECISION_INPUTS_UPDATED', 'A döntési értékelés frissítve lett.'],
     ] as const;
 
@@ -2006,6 +2006,111 @@ describe('ProjectsController (e2e)', () => {
       },
     ]);
     assert.doesNotMatch(JSON.stringify(auditRows), /API team|vendor contract|approval decision/);
+  });
+
+  it('returns one safe, deterministic queue of open discovery follow-ups from active projects', async () => {
+    const firstProjectId = await createProject('open-follow-up-queue-first');
+    const secondProjectId = await createProject('open-follow-up-queue-second');
+    const archivedProjectId = await createProject('open-follow-up-queue-archived');
+    await dataSource.query('UPDATE "projects" SET "name" = $2 WHERE "id" = $1', [
+      firstProjectId,
+      'Alfa bevezetés',
+    ]);
+    await dataSource.query('UPDATE "projects" SET "name" = $2 WHERE "id" = $1', [
+      secondProjectId,
+      'Béta átállás',
+    ]);
+
+    const later = await request(app.getHttpServer())
+      .post(`/projects/${firstProjectId}/discovery-follow-ups`)
+      .send({
+        category: 'INTEGRATION',
+        question: 'Melyik rendszer adja át az ügyfélazonosítót?',
+        owner: 'Integrációs felelős',
+        dueDate: '2026-09-12',
+        nextStep: 'Egyeztetés az integrációs csapattal.',
+      })
+      .expect(201);
+    const earlier = await request(app.getHttpServer())
+      .post(`/projects/${secondProjectId}/discovery-follow-ups`)
+      .send({
+        category: 'BUSINESS',
+        question: 'Ki hagyja jóvá az üzleti szabályt?',
+        owner: 'Termékgazda',
+        dueDate: '2026-09-10',
+        nextStep: 'Jóváhagyó kijelölése.',
+      })
+      .expect(201);
+    const resolved = await createDiscoveryFollowUp(
+      firstProjectId,
+      'open-follow-up-queue-resolved',
+    );
+    await request(app.getHttpServer())
+      .post(`/projects/${firstProjectId}/discovery-follow-ups/${resolved.id}/resolve`)
+      .send({
+        status: 'Megválaszolva',
+        decisionOrAnswer: 'A kérdés lezárva.',
+      })
+      .expect(200);
+    const archived = await createDiscoveryFollowUp(
+      archivedProjectId,
+      'open-follow-up-queue-archived',
+    );
+    await request(app.getHttpServer())
+      .post(`/projects/${archivedProjectId}/archive`)
+      .expect(201);
+
+    const queue = await request(app.getHttpServer())
+      .get('/discovery-follow-ups/open')
+      .expect(200);
+
+    const ownOpenItems = queue.body.filter(
+      (item: { projectId: string }) =>
+        item.projectId === firstProjectId || item.projectId === secondProjectId,
+    );
+    assert.deepEqual(ownOpenItems, [
+      {
+        id: earlier.body.id,
+        projectId: secondProjectId,
+        projectName: 'Béta átállás',
+        category: 'BUSINESS',
+        question: 'Ki hagyja jóvá az üzleti szabályt?',
+        owner: 'Termékgazda',
+        dueDate: '2026-09-10',
+        nextStep: 'Jóváhagyó kijelölése.',
+      },
+      {
+        id: later.body.id,
+        projectId: firstProjectId,
+        projectName: 'Alfa bevezetés',
+        category: 'INTEGRATION',
+        question: 'Melyik rendszer adja át az ügyfélazonosítót?',
+        owner: 'Integrációs felelős',
+        dueDate: '2026-09-12',
+        nextStep: 'Egyeztetés az integrációs csapattal.',
+      },
+    ]);
+    assert.equal(
+      queue.body.some((item: { id: string }) => item.id === resolved.id),
+      false,
+    );
+    assert.equal(
+      queue.body.some((item: { id: string }) => item.id === archived.id),
+      false,
+    );
+    const expectedFields = [
+      'category',
+      'dueDate',
+      'id',
+      'nextStep',
+      'owner',
+      'projectId',
+      'projectName',
+      'question',
+    ];
+    for (const item of queue.body as Array<Record<string, unknown>>) {
+      assert.deepEqual(Object.keys(item).sort(), expectedFields);
+    }
   });
 
   it('edits an open discovery follow-up with normalization, fixed-order audit data, and a safe no-op', async () => {

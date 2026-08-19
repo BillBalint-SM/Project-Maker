@@ -20,8 +20,11 @@ import type {
   CreateBaseQuestionInput,
   UpdateBaseQuestionInput,
 } from '@project-maker/contracts';
-import { baseQuestionTypes } from '@project-maker/contracts';
 
+import {
+  baseQuestionTypeLabel,
+  baseQuestionTypeOptions,
+} from '../base-question-type-label';
 import { QuestionBankApiService } from './question-bank-api.service';
 
 type QuestionFormControls = {
@@ -56,7 +59,8 @@ type QuestionFormControls = {
 export class QuestionBankPage implements OnInit {
   private readonly api = inject(QuestionBankApiService);
 
-  readonly questionTypes = [...baseQuestionTypes];
+  readonly questionTypes = baseQuestionTypeOptions;
+  readonly questionTypeLabel = baseQuestionTypeLabel;
   readonly bank = signal<BaseQuestionBank | null>(null);
   readonly loading = signal(true);
   readonly loadError = signal<string | null>(null);
@@ -173,11 +177,11 @@ export class QuestionBankPage implements OnInit {
     const value = this.questionForm.getRawValue();
     const options = parseOptions(value.options);
     if (isSelectType(value.type) && options.length === 0) {
-      this.actionError.set('Select questions need at least one non-empty option.');
+      this.actionError.set('A választós kérdéshez legalább egy válaszlehetőség szükséges.');
       return;
     }
     if (new Set(options).size !== options.length) {
-      this.actionError.set('Question options must be unique.');
+      this.actionError.set('Egy válaszlehetőség csak egyszer szerepelhet.');
       return;
     }
 
@@ -219,7 +223,7 @@ export class QuestionBankPage implements OnInit {
       next: (bank) => {
         this.bank.set(bank);
         this.saving.set(false);
-        this.feedback.set(editingId ? 'Base question updated.' : 'Base question created.');
+        this.feedback.set(editingId ? 'Az alapkérdés módosításai mentve.' : 'Az alapkérdés létrejött.');
         this.showForm.set(false);
         this.editingId.set(null);
         this.resetForm(null, bank.questions.length + 1);

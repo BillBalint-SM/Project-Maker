@@ -311,7 +311,7 @@ test('edits an open discovery follow-up through the real API while keeping row a
     .getByTestId('discovery-follow-up-edit-category-select')
     .getByRole('combobox');
   await editCategory.click();
-  await page.getByRole('option', { name: 'TECHNICAL', exact: true }).click();
+  await page.getByRole('option', { name: 'Technikai', exact: true }).click();
   await page
     .getByTestId('discovery-follow-up-edit-question-input')
     .fill('Edited browser question.');
@@ -345,7 +345,7 @@ test('edits an open discovery follow-up through the real API while keeping row a
   expect((await editResponse).status()).toBe(200);
 
   const editedItem = page.getByTestId('discovery-follow-up-item').first();
-  await expect(editedItem).toContainText('TECHNICAL');
+  await expect(editedItem).toContainText('Technikai');
   await expect(editedItem).toContainText('Edited browser question.');
   await expect(editedItem).toContainText('Edited browser owner');
   await expect(editedItem).toContainText('Edited browser next step.');
@@ -355,7 +355,7 @@ test('edits an open discovery follow-up through the real API while keeping row a
 
   await page.reload();
   const persistedEditedItem = page.getByTestId('discovery-follow-up-item').first();
-  await expect(persistedEditedItem).toContainText('TECHNICAL');
+  await expect(persistedEditedItem).toContainText('Technikai');
   await expect(persistedEditedItem).toContainText('Edited browser question.');
   await expect(persistedEditedItem).toContainText('Edited browser owner');
   await expect(
@@ -455,7 +455,7 @@ test('keeps the browser edit draft after a real version conflict until the curre
     page
       .getByTestId('discovery-follow-up-edit-category-select')
       .getByRole('combobox'),
-  ).toHaveText('TECHNICAL');
+  ).toHaveText('Technikai');
   await expect(
     page.getByTestId('discovery-follow-up-edit-question-input'),
   ).toHaveValue('Server question after concurrent update.');
@@ -495,7 +495,7 @@ test('keeps the browser edit draft after a real version conflict until the curre
 
   await page.reload();
   const persistedConflictItem = page.getByTestId('discovery-follow-up-item');
-  await expect(persistedConflictItem).toContainText('TECHNICAL');
+  await expect(persistedConflictItem).toContainText('Technikai');
   await expect(persistedConflictItem).toContainText(
     'Server question after concurrent update.',
   );
@@ -567,7 +567,7 @@ test('keeps only cancel available when a conflict refresh finds a terminal disco
     nativeButton(page, 'retry-discovery-follow-up-edit-refresh-button'),
   ).toHaveCount(0);
   await expect(page.getByTestId('discovery-follow-up-edit-conflict')).toContainText(
-    'cannot be edited because it is terminal',
+    'A lezárt utánkövetés már nem szerkeszthető.',
   );
   await expect(
     nativeButton(page, 'cancel-discovery-follow-up-edit-button'),
@@ -1045,7 +1045,7 @@ test('creates a discovery follow-up, preserves its local date after reload, and 
   await page.goto('/projects/' + project.id + '/readiness');
 
   await page.getByTestId('discovery-follow-up-category-select').click();
-  await page.getByRole('option', { name: 'BUSINESS', exact: true }).click();
+  await page.getByRole('option', { name: 'Üzleti', exact: true }).click();
   await page.getByTestId('discovery-follow-up-question-input').fill(
     'Which approval is needed?',
   );
@@ -1406,7 +1406,7 @@ test('refreshes source candidates after a stale source-link conflict', async ({
   expect((await refreshedCandidatesResponse).status()).toBe(200);
   await expect(
     page.getByTestId('discovery-follow-up-action-error'),
-  ).toContainText('Initial Intake source candidates were refreshed. Choose again.');
+  ).toContainText('A kezdő felmérés forráslistája frissült. Válassz újra.');
   await expect(
     itemButton(item, 'save-discovery-follow-up-source-link-button'),
   ).toBeDisabled();
@@ -1744,9 +1744,9 @@ test('keeps source removal non-modal and closes it with Escape from a focused ba
   await expect(
     page.locator('[aria-modal="true"]').filter({ has: confirmation }),
   ).toHaveCount(0);
-  await expect(confirmation).toHaveAccessibleName('Remove source link?');
+  await expect(confirmation).toHaveAccessibleName('Törlöd a forráshivatkozást?');
   await expect(confirmation).toHaveAccessibleDescription(
-    'This removes the recorded origin. A later intake round may make the old source unavailable for reattachment.',
+    'A rögzített eredet megszűnik. Egy későbbi felmérési kör után előfordulhat, hogy a régi forrás már nem rendelhető vissza.',
   );
   await expect(settingsNavigation).toBeFocused();
   await page.keyboard.press('Escape');

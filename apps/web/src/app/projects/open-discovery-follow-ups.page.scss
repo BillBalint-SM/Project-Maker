@@ -1,0 +1,94 @@
+.follow-ups-heading {
+  align-items: flex-start;
+  display: flex;
+  gap: 1rem;
+  justify-content: space-between;
+}
+
+.queue-summary {
+  color: var(--p-text-muted-color);
+  margin: 0 0 1rem;
+}
+
+.follow-up-list {
+  display: grid;
+  gap: 1rem;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.follow-up-row {
+  align-items: center;
+  background: var(--p-content-background);
+  border: 1px solid var(--p-content-border-color);
+  border-radius: 0.9rem;
+  display: grid;
+  gap: 1.25rem;
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) auto;
+  padding: 1.25rem;
+}
+
+.follow-up-identity,
+.follow-up-row dl,
+.follow-up-row dl div {
+  min-width: 0;
+}
+
+.project-name {
+  display: inline-block;
+  font-weight: 700;
+  margin-bottom: 0.55rem;
+}
+
+.follow-up-identity h2 {
+  font-size: 1.05rem;
+  margin: 0.75rem 0 0;
+  overflow-wrap: anywhere;
+}
+
+.follow-up-row dl {
+  display: grid;
+  gap: 0.75rem;
+  margin: 0;
+}
+
+.follow-up-row dt {
+  color: var(--p-text-muted-color);
+  font-size: 0.78rem;
+  font-weight: 700;
+  margin-bottom: 0.15rem;
+}
+
+.follow-up-row dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 55rem) {
+  .follow-up-row {
+    align-items: stretch;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .follow-up-row > a[pButton] {
+    justify-self: start;
+  }
+}
+
+@media (max-width: 30rem) {
+  .follow-ups-heading {
+    display: grid;
+  }
+
+  .follow-up-row,
+  .state-panel {
+    padding: 1rem;
+  }
+
+  .follow-up-row > a[pButton],
+  .follow-ups-heading > a[pButton] {
+    justify-content: center;
+    width: 100%;
+  }
+}
