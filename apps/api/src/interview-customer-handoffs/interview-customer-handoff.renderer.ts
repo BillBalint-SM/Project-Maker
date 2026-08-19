@@ -36,7 +36,7 @@ export function renderHandoff(projection: HandoffProjection): RenderedHandoff {
   const header = [
     `Projekt: ${projection.projectName}`,
     `Ügyfélkapcsolattartó: ${projection.recipientName}`,
-    `Belső PO/PM: ${projection.internalOwnerName}`,
+    `Belső projektgazda: ${projection.internalOwnerName}`,
     `Interjú dátuma: ${projection.roundDate}`,
     `Verzió: ${projection.version}`,
   ];

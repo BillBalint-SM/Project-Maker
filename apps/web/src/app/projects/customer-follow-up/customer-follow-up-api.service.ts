@@ -42,7 +42,7 @@ export class CustomerFollowUpApiService {
       this.http.get<readonly CustomerFollowUpReferenceOption[]>(
         `${this.route(projectId)}/reference-options`,
       ),
-      'betölteni a hivatkozható tisztázási tételeket',
+      'betölteni a hivatkozható tisztázandó tételeket',
     );
   }
 

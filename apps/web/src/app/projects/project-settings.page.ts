@@ -187,7 +187,7 @@ export class ProjectSettingsPage implements OnInit {
     ).subscribe({
       next: (project) => {
         this.applyProject(project);
-        this.lifecycleFeedback.set('A projekt életciklus-állapota frissítve lett.');
+        this.lifecycleFeedback.set('Az adminisztratív projektfázis frissítve lett.');
         this.projectContext?.reload();
       },
       error: (error: Error) => this.lifecycleError.set(error.message),
@@ -236,7 +236,7 @@ export class ProjectSettingsPage implements OnInit {
     ).subscribe({
       next: (project) => {
         this.applyProject(project);
-        this.feedback.set('A projekt visszaállt Előkészítés alatt állapotba.');
+        this.feedback.set('A projekt visszaállt az Előkészítés alatt adminisztratív projektfázisba.');
         this.projectContext?.reload();
       },
       error: (error: Error) => this.actionError.set(error.message),

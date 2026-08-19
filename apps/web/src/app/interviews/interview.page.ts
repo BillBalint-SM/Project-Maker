@@ -113,7 +113,7 @@ export class InterviewPage implements OnInit, OnDestroy {
   loadInterviewData(): void {
     if (!this.projectId) {
       this.loadError.set(
-        'Hiányzik a projektazonosító a felmérés URL-jéből. Menj vissza az Áttekintőre, és nyisd meg újra a felmérést.',
+        'Hiányzik a projektazonosító a felmérés URL-jéből. Menj vissza a projektportfólióhoz, és nyisd meg újra a felmérést.',
       );
       this.loading.set(false);
       return;

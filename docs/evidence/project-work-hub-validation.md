@@ -15,9 +15,9 @@ npx --yes pnpm@11.20.0 verify
 Eredmény: sikeres.
 
 - COMM határvédelem: 17 production fájl és 5 aktuális dokumentum ellenőrizve.
-- UI-szöveg inventory: 938 forrástétel, eltérés nélkül; az interpolált technikai útvonalakat, Angular stílusmetaadatokat, theme/config értékeket és futásidejű diagnosztikai azonosítókat a generátor kizárja.
+- UI-szöveg inventory: 941 forrástétel, eltérés nélkül; az interpolált technikai útvonalakat, Angular stílusmetaadatokat, theme/config értékeket és futásidejű diagnosztikai azonosítókat a generátor kizárja.
 - Operációs tesztek: 5/5 sikeres.
-- Contracts tesztek: 17/17 sikeres.
+- Contracts tesztek: 18/18 sikeres.
 - Angular tesztek: 68/68 sikeres.
 - API tesztek: 228/228 sikeres.
 - Minden workspace typecheck és build sikeres.
@@ -30,6 +30,6 @@ $env:DATABASE_URL='<localhost disposable browser-e2e database>'
 npx --yes pnpm@11.20.0 --filter @project-maker/web test:e2e
 ```
 
-Eredmény: 83/83 Playwright-teszt sikeres 2,3 perc alatt.
+Eredmény: 83/83 Playwright-teszt sikeres 1,8 perc alatt.
 
 A böngészős bizonyíték lefedi a Portfolio és Aktív munkasor belépési pontokat, a Customer kommunikációt, a séma- és interjúfolyamatot, az Interjú → Felkészültség → Döntés-előkészítés → Projektállapot journey-t, a Projektbeállítások archiválási és helyreállítási útját, a pontos visszatérést, a valós Tab/Shift+Tab billentyűzetes navigációt, a kontrollált hibaállapotokat, valamint a teljes Projekt-journey 390 px széles nézetét vízszintes túlcsordulás nélkül.

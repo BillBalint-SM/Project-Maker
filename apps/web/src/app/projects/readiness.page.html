@@ -1,8 +1,8 @@
 <section aria-labelledby="readiness-page-title">
   <div class="page-heading">
-    <span class="eyebrow">Projektkörnyezet</span>
-    <h1 id="readiness-page-title">Felkészültség</h1>
-    <p>A jelenlegi hiányok, tisztázási feladatok és utánkövetések.</p>
+    <span class="eyebrow">Projekt</span>
+    <h1 id="readiness-page-title">Becslési felkészültség</h1>
+    <p>A jelenlegi hiányok, felkészültségi tényezők és tisztázandó tételek.</p>
   </div>
   <app-readiness-review
     [projectId]="projectId"
@@ -11,11 +11,11 @@
   />
 
   @if (projectStatusLoading()) {
-    <p class="discovery-state" aria-live="polite">Az utánkövetések betöltése…</p>
+    <p class="discovery-state" aria-live="polite">A tisztázandó tételek betöltése…</p>
   } @else if (projectStatusError(); as error) {
     <div class="discovery-state" role="alert">
       <p>{{ error }}</p>
-      <p-button label="Utánkövetések újratöltése" [outlined]="true" (onClick)="loadProjectStatus()" />
+      <p-button label="Tisztázandó tételek újratöltése" [outlined]="true" (onClick)="loadProjectStatus()" />
     </div>
   } @else if (projectStatus(); as status) {
     <app-discovery-follow-ups
