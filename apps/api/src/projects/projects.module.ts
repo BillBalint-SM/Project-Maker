@@ -6,6 +6,7 @@ import { DiscoveryFollowUpEntity } from '../discovery-follow-ups/discovery-follo
 import { MarkdownModule } from '../markdown/markdown.module';
 import { ProjectPreparationModule } from '../project-preparation/project-preparation.module';
 import { ActiveProjectQueueController } from './active-project-queue.controller';
+import { ActiveProjectQueueCursorCodec } from './active-project-queue-cursor';
 import {
   ActiveProjectQueueService,
   activeProjectQueueClockToken,
@@ -24,6 +25,7 @@ import { ProjectsService } from './projects.service';
   providers: [
     ProjectsService,
     ActiveProjectQueueService,
+    ActiveProjectQueueCursorCodec,
     { provide: activeProjectQueueClockToken, useValue: { now: () => new Date() } },
   ],
 })

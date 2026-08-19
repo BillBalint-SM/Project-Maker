@@ -1,4 +1,4 @@
-import { Controller, Get, Query } from '@nestjs/common';
+import { BadRequestException, Controller, Get, Query } from '@nestjs/common';
 import type {
   ActiveProjectQueuePage,
   ActiveProjectQueueQuery,
@@ -6,24 +6,34 @@ import type {
 import { activeProjectUrgencies } from '@project-maker/contracts/active-project-queue';
 import { projectPreparationStates } from '@project-maker/contracts/project-preparation-status';
 
-import { ActiveProjectQueueService } from './active-project-queue.service';
+import {
+  ActiveProjectQueueCursorError,
+  ActiveProjectQueueService,
+} from './active-project-queue.service';
 
 @Controller('projects/active-queue')
 export class ActiveProjectQueueController {
   constructor(private readonly activeProjectQueueService: ActiveProjectQueueService) {}
 
   @Get()
-  firstPage(
+  getPage(
     @Query('q') search?: string | string[],
     @Query('urgency') urgency?: string | string[],
     @Query('preparation') preparation?: string | string[],
+    @Query('cursor') cursor?: string | string[],
   ): Promise<ActiveProjectQueuePage> {
     const query: ActiveProjectQueueQuery = {
       search: Array.isArray(search) ? search[0] : search,
       urgencies: knownValues(urgency, activeProjectUrgencies),
       preparationStates: knownValues(preparation, projectPreparationStates),
+      cursor: Array.isArray(cursor) ? cursor[0] : cursor,
     };
-    return this.activeProjectQueueService.firstPage(query);
+    return this.activeProjectQueueService.getPage(query).catch((error: unknown) => {
+      if (error instanceof ActiveProjectQueueCursorError) {
+        throw new BadRequestException({ code: error.code });
+      }
+      throw error;
+    });
   }
 }
 

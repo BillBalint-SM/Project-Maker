@@ -65,6 +65,7 @@ jobs:
   container-smoke:
     runs-on: ubuntu-latest
     env:
+      ACTIVE_PROJECT_QUEUE_CURSOR_SECRET: ci-cursor-secret-with-at-least-32-characters
       COMPOSE_PROJECT_NAME: project-maker-container-smoke-${{ github.run_id }}-${{ github.run_attempt }}
       CORS_ORIGIN: http://localhost:8080
       CUSTOMER_MAILBOX_ADDRESS: project-maker-ci-placeholder@pte.hu

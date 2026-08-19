@@ -43,11 +43,23 @@ export interface ActiveProjectQueueQuery {
   readonly search?: string;
   readonly urgencies?: readonly ActiveProjectUrgency[];
   readonly preparationStates?: readonly ProjectPreparationStatus['state'][];
+  readonly cursor?: string;
 }
+
+export const activeProjectQueueCursorErrorCodes = [
+  'MALFORMED_CURSOR',
+  'MISMATCHED_CURSOR',
+  'OBSOLETE_CURSOR',
+] as const;
+
+export type ActiveProjectQueueCursorErrorCode =
+  (typeof activeProjectQueueCursorErrorCodes)[number];
 
 export interface ActiveProjectQueuePage {
   readonly items: readonly ActiveProjectQueueItem[];
   readonly totalCount: number;
   readonly groupCounts: ActiveProjectQueueGroupCounts;
   readonly retrievedAt: string;
+  readonly previousCursor: string | null;
+  readonly nextCursor: string | null;
 }

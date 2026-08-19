@@ -13,9 +13,12 @@ import type {
 import { ButtonModule } from 'primeng/button';
 import { ProgressSpinnerModule } from 'primeng/progressspinner';
 import { TagModule } from 'primeng/tag';
-import { catchError, combineLatest, debounce, distinctUntilChanged, map, of, startWith, Subject, switchMap, tap, timer } from 'rxjs';
+import { catchError, combineLatest, debounce, distinctUntilChanged, EMPTY, map, of, startWith, Subject, switchMap, tap, timer } from 'rxjs';
 
-import { ActiveProjectQueueApiService } from './active-project-queue-api.service';
+import {
+  ActiveProjectQueueApiService,
+  ActiveProjectQueueCursorRequestError,
+} from './active-project-queue-api.service';
 import { projectActionRoute } from './project-action-route';
 
 const urgencyOrder: readonly ActiveProjectUrgency[] = [
@@ -66,6 +69,7 @@ export class ActiveProjectQueuePageComponent implements OnInit {
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
   private readonly reload = new Subject<void>();
+  private preserveRecoveryNoticeForNextPage = false;
 
   readonly search = new FormControl('', { nonNullable: true });
   readonly selectedUrgencies = signal<readonly ActiveProjectUrgency[]>([]);
@@ -77,6 +81,7 @@ export class ActiveProjectQueuePageComponent implements OnInit {
   readonly activeQuery = signal<ActiveProjectQueueQuery>({});
   readonly loading = signal(true);
   readonly loadError = signal<string | null>(null);
+  readonly cursorRecoveryNotice = signal<string | null>(null);
   readonly hasActiveFilters = computed(() => {
     const query = this.activeQuery();
     return Boolean(
@@ -110,12 +115,30 @@ export class ActiveProjectQueuePageComponent implements OnInit {
         this.loading.set(true);
         this.loadError.set(null);
       }),
-      switchMap((query) => this.api.firstPage(query).pipe(
+      switchMap((query) => this.api.getPage(query).pipe(
         map((page) => ({ page, error: null })),
-        catchError((error: Error) => of({ page: null, error: error.message })),
+        catchError((error: unknown) => {
+          if (error instanceof ActiveProjectQueueCursorRequestError) {
+            this.cursorRecoveryNotice.set(
+              'A korábbi oldal már nem állítható helyre. Az első oldalt mutatjuk.',
+            );
+            this.preserveRecoveryNoticeForNextPage = true;
+            void this.navigateToFirstPage(query);
+            return EMPTY;
+          }
+          const message = error instanceof Error ? error.message : 'Ismeretlen betöltési hiba.';
+          return of({ page: null, error: message });
+        }),
       )),
       takeUntilDestroyed(this.destroyRef),
     ).subscribe(({ page, error }) => {
+      if (page) {
+        if (this.preserveRecoveryNoticeForNextPage) {
+          this.preserveRecoveryNoticeForNextPage = false;
+        } else {
+          this.cursorRecoveryNotice.set(null);
+        }
+      }
       this.page.set(page);
       this.loadError.set(error);
       this.loading.set(false);
@@ -142,6 +165,14 @@ export class ActiveProjectQueuePageComponent implements OnInit {
     void this.updateUrl();
   }
 
+  navigateToCursor(cursor: string): void {
+    void this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: queueQueryParams(this.activeQuery(), cursor),
+      replaceUrl: false,
+    });
+  }
+
   private updateUrl(): Promise<boolean> {
     const search = this.search.value.trim();
     return this.router.navigate([], {
@@ -151,6 +182,14 @@ export class ActiveProjectQueuePageComponent implements OnInit {
         urgency: this.selectedUrgencies().length ? this.selectedUrgencies() : null,
         preparation: this.selectedPreparationStates().length ? this.selectedPreparationStates() : null,
       },
+      replaceUrl: true,
+    });
+  }
+
+  private navigateToFirstPage(query: ActiveProjectQueueQuery): Promise<boolean> {
+    return this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: queueQueryParams(query, null),
       replaceUrl: true,
     });
   }
@@ -170,6 +209,16 @@ function parseQueueQuery(params: ParamMap): ActiveProjectQueueQuery {
     search,
     urgencies: knownValues(params.getAll('urgency'), urgencyOrder),
     preparationStates: knownValues(params.getAll('preparation'), preparationOrder),
+    cursor: params.get('cursor') || undefined,
+  };
+}
+
+function queueQueryParams(query: ActiveProjectQueueQuery, cursor: string | null) {
+  return {
+    q: query.search || null,
+    urgency: query.urgencies?.length ? query.urgencies : null,
+    preparation: query.preparationStates?.length ? query.preparationStates : null,
+    cursor,
   };
 }
 
