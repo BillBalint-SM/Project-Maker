@@ -203,20 +203,13 @@ Ez a leltár a munkavállalói felületen megjelenő kanonikus navigációs neve
 | Megosztott felületi szöveg | Hiba és helyreállítás | Nem sikerült {érték}. {érték} | apps/web/src/app/interviews/interview-api.service.ts:176 |
 | Megosztott felületi szöveg | Hiba és helyreállítás | Nem sikerült {érték}. Frissítsd az oldalt, majd próbáld újra. | apps/web/src/app/interviews/interview-api.service.ts:182 |
 | Felmérési összefoglaló | Futásidejű UI-szöveg | betölteni az összefoglalókat | apps/web/src/app/interviews/interview-handoff/interview-handoff-api.service.ts:12 |
-| Felmérési összefoglaló | Futásidejű UI-szöveg | {érték}/sender-options | apps/web/src/app/interviews/interview-handoff/interview-handoff-api.service.ts:13 |
 | Felmérési összefoglaló | Futásidejű UI-szöveg | betölteni a feladókat | apps/web/src/app/interviews/interview-handoff/interview-handoff-api.service.ts:13 |
-| Felmérési összefoglaló | Futásidejű UI-szöveg | {érték}/{érték} | apps/web/src/app/interviews/interview-handoff/interview-handoff-api.service.ts:14 |
 | Felmérési összefoglaló | Futásidejű UI-szöveg | betölteni az összefoglalót | apps/web/src/app/interviews/interview-handoff/interview-handoff-api.service.ts:14 |
 | Felmérési összefoglaló | Futásidejű UI-szöveg | létrehozni az új verziót | apps/web/src/app/interviews/interview-handoff/interview-handoff-api.service.ts:15 |
-| Felmérési összefoglaló | Futásidejű UI-szöveg | {érték}/{érték}/draft | apps/web/src/app/interviews/interview-handoff/interview-handoff-api.service.ts:16 |
 | Felmérési összefoglaló | Futásidejű UI-szöveg | menteni a módosítás leírását | apps/web/src/app/interviews/interview-handoff/interview-handoff-api.service.ts:16 |
-| Felmérési összefoglaló | Futásidejű UI-szöveg | {érték}/{érték}/preview | apps/web/src/app/interviews/interview-handoff/interview-handoff-api.service.ts:17 |
 | Felmérési összefoglaló | Futásidejű UI-szöveg | elkészíteni az előnézetet | apps/web/src/app/interviews/interview-handoff/interview-handoff-api.service.ts:17 |
-| Felmérési összefoglaló | Futásidejű UI-szöveg | {érték}/{érték}/send | apps/web/src/app/interviews/interview-handoff/interview-handoff-api.service.ts:18 |
 | Felmérési összefoglaló | Futásidejű UI-szöveg | elküldeni az összefoglalót | apps/web/src/app/interviews/interview-handoff/interview-handoff-api.service.ts:18 |
-| Felmérési összefoglaló | Futásidejű UI-szöveg | {érték}/{érték}/retry | apps/web/src/app/interviews/interview-handoff/interview-handoff-api.service.ts:19 |
 | Felmérési összefoglaló | Futásidejű UI-szöveg | újrapróbálni a küldést | apps/web/src/app/interviews/interview-handoff/interview-handoff-api.service.ts:19 |
-| Felmérési összefoglaló | Futásidejű UI-szöveg | {érték}/{érték}/resume-editing | apps/web/src/app/interviews/interview-handoff/interview-handoff-api.service.ts:20 |
 | Felmérési összefoglaló | Futásidejű UI-szöveg | folytatni a szerkesztést | apps/web/src/app/interviews/interview-handoff/interview-handoff-api.service.ts:20 |
 | Felmérési összefoglaló | Akadálymentes név | Aktív összefoglaló-tervezet | apps/web/src/app/interviews/interview-handoff/interview-handoff.component.html |
 | Felmérési összefoglaló | Művelet | Módosítás leírásának mentése | apps/web/src/app/interviews/interview-handoff/interview-handoff.component.html |
@@ -481,18 +474,12 @@ Ez a leltár a munkavállalói felületen megjelenő kanonikus navigációs neve
 | Ügyféllevelezés | Hiba és helyreállítás | A művelet nem hajtható végre a jelenlegi adatokkal. Töltsd újra az adatokat, majd próbáld meg ismét. | apps/web/src/app/projects/customer-correspondences.page.ts:232 |
 | Ügyfél-emlékeztető | Hiba és helyreállítás | CustomerFollowUpApiError | apps/web/src/app/projects/customer-follow-up/customer-follow-up-api.service.ts:23 |
 | Ügyfél-emlékeztető | Futásidejű UI-szöveg | betölteni az ügyfél-emlékeztetőt | apps/web/src/app/projects/customer-follow-up/customer-follow-up-api.service.ts:34 |
-| Ügyfél-emlékeztető | Futásidejű UI-szöveg | {érték}/reference-options | apps/web/src/app/projects/customer-follow-up/customer-follow-up-api.service.ts:43 |
 | Ügyfél-emlékeztető | Futásidejű UI-szöveg | betölteni a hivatkozható tisztázási tételeket | apps/web/src/app/projects/customer-follow-up/customer-follow-up-api.service.ts:45 |
-| Ügyfél-emlékeztető | Futásidejű UI-szöveg | {érték}/sender-options | apps/web/src/app/projects/customer-follow-up/customer-follow-up-api.service.ts:51 |
 | Ügyfél-emlékeztető | Futásidejű UI-szöveg | betölteni az ügyfél-emlékeztető feladóit | apps/web/src/app/projects/customer-follow-up/customer-follow-up-api.service.ts:52 |
 | Ügyfél-emlékeztető | Futásidejű UI-szöveg | menteni az automatikus emlékeztető beállításait | apps/web/src/app/projects/customer-follow-up/customer-follow-up-api.service.ts:62 |
-| Ügyfél-emlékeztető | Futásidejű UI-szöveg | {érték}/draft | apps/web/src/app/projects/customer-follow-up/customer-follow-up-api.service.ts:71 |
 | Ügyfél-emlékeztető | Futásidejű UI-szöveg | menteni az ügyfél-emlékeztető piszkozatát | apps/web/src/app/projects/customer-follow-up/customer-follow-up-api.service.ts:72 |
-| Ügyfél-emlékeztető | Futásidejű UI-szöveg | {érték}/ping/preview | apps/web/src/app/projects/customer-follow-up/customer-follow-up-api.service.ts:82 |
 | Ügyfél-emlékeztető | Futásidejű UI-szöveg | elkészíteni az ügyfél-emlékeztető előnézetét | apps/web/src/app/projects/customer-follow-up/customer-follow-up-api.service.ts:85 |
-| Ügyfél-emlékeztető | Futásidejű UI-szöveg | {érték}/ping | apps/web/src/app/projects/customer-follow-up/customer-follow-up-api.service.ts:94 |
 | Ügyfél-emlékeztető | Futásidejű UI-szöveg | elküldeni az ügyfél-emlékeztetőt | apps/web/src/app/projects/customer-follow-up/customer-follow-up-api.service.ts:95 |
-| Ügyfél-emlékeztető | Futásidejű UI-szöveg | {érték}/ping/retry | apps/web/src/app/projects/customer-follow-up/customer-follow-up-api.service.ts:105 |
 | Ügyfél-emlékeztető | Futásidejű UI-szöveg | újrapróbálni az ügyfél-emlékeztetőt | apps/web/src/app/projects/customer-follow-up/customer-follow-up-api.service.ts:108 |
 | Ügyfél-emlékeztető | Hiba és helyreállítás | Nem sikerült {érték}. Próbáld meg újra. | apps/web/src/app/projects/customer-follow-up/customer-follow-up-api.service.ts:125 |
 | Ügyfél-emlékeztető | Hiba és helyreállítás | Előbb ments egy nem üres ügyfél-emlékeztetőt. | apps/web/src/app/projects/customer-follow-up/customer-follow-up-api.service.ts:139 |
@@ -563,7 +550,6 @@ Ez a leltár a munkavállalói felületen megjelenő kanonikus navigációs neve
 | Ügyfél-emlékeztető | Futásidejű UI-szöveg | Az automatikus ügyfél-utánkövetés beállításai mentve lettek. | apps/web/src/app/projects/customer-follow-up/customer-follow-up.component.ts:213 |
 | Ügyfél-emlékeztető | Futásidejű UI-szöveg | Piszkozat mentve. | apps/web/src/app/projects/customer-follow-up/customer-follow-up.component.ts:246 |
 | Ügyfél-emlékeztető | Futásidejű UI-szöveg | Átadva a levelezőrendszernek. | apps/web/src/app/projects/customer-follow-up/customer-follow-up.component.ts:345 |
-| Ügyfél-emlékeztető | Futásidejű UI-szöveg | [data-testid="{érték}"] button | apps/web/src/app/projects/customer-follow-up/customer-follow-up.component.ts:384 |
 | Ügyfél-emlékeztető | Címke | Még nem történt küldés | apps/web/src/app/projects/customer-follow-up/customer-follow-up.component.ts:443 |
 | Ügyfél-emlékeztető | Címke | Sikeresen elküldve | apps/web/src/app/projects/customer-follow-up/customer-follow-up.component.ts:444 |
 | Ügyfél-emlékeztető | Hiba és helyreállítás | Sikertelen küldés | apps/web/src/app/projects/customer-follow-up/customer-follow-up.component.ts:445 |
@@ -993,4 +979,4 @@ Ez a leltár a munkavállalói felületen megjelenő kanonikus navigációs neve
 | Kérdésbank beállítások | Futásidejű UI-szöveg | Az alapkérdés módosításai mentve. | apps/web/src/app/settings/question-bank.page.ts:226 |
 | Kérdésbank beállítások | Futásidejű UI-szöveg | Az alapkérdés létrejött. | apps/web/src/app/settings/question-bank.page.ts:226 |
 
-Összesen: **986** leltárelem.
+Összesen: **972** leltárelem.

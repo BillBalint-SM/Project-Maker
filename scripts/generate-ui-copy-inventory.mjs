@@ -139,6 +139,12 @@ const completeInventory = deduplicateInventory([
   ...sourceInventory,
 ]);
 
+for (const [, , copy, source] of completeInventory) {
+  if (isInterpolatedTechnicalPath(copy)) {
+    throw new Error(`Technical path leaked into the UI-copy inventory: ${copy} (${source})`);
+  }
+}
+
 const requiredContexts = [
   'Navigáció',
   'Cím',
@@ -289,20 +295,22 @@ function extractTypeScriptCopy(content, screen, source) {
         normalizeCopy(node.text),
         `${source}:${sourceFile.getLineAndCharacterOfPosition(node.getStart(sourceFile)).line + 1}`,
       ]);
-    } else if (
-      ts.isTemplateExpression(node) &&
-      isUserFacingText(node.getText(sourceFile)) &&
-      !hasInternalErrorConstructorAncestor(node) &&
-      !isTechnicalSelector(node.getText(sourceFile)) &&
-      !isFormattingLiteral(node.getText(sourceFile))
-    ) {
-      entries.push([
-        screen,
-        typeScriptContext(node),
-        normalizeCopy(node.getText(sourceFile).replace(/\$\{[^}]+\}/g, '{dynamic}').slice(1, -1)),
-        `${source}:${sourceFile.getLineAndCharacterOfPosition(node.getStart(sourceFile)).line + 1}`,
-      ]);
-      return;
+    } else if (ts.isTemplateExpression(node)) {
+      const copy = normalizeCopy(renderTemplateExpression(node));
+      if (
+        isUserFacingText(copy) &&
+        !hasInternalErrorConstructorAncestor(node) &&
+        !isTechnicalSelector(copy) &&
+        !isFormattingLiteral(copy)
+      ) {
+        entries.push([
+          screen,
+          typeScriptContext(node),
+          copy,
+          `${source}:${sourceFile.getLineAndCharacterOfPosition(node.getStart(sourceFile)).line + 1}`,
+        ]);
+        return;
+      }
     }
 
     ts.forEachChild(node, visit);
@@ -334,6 +342,13 @@ function renderStringConcatenation(node) {
     return renderStringConcatenation(node.left) + renderStringConcatenation(node.right);
   }
   return '{dynamic}';
+}
+
+function renderTemplateExpression(node) {
+  return node.templateSpans.reduce(
+    (rendered, span) => `${rendered}{dynamic}${span.literal.text}`,
+    node.head.text,
+  );
 }
 
 function isUserFacingTypeScriptLiteral(node) {
@@ -410,7 +425,12 @@ function isTechnicalSelector(value) {
   return normalized.startsWith('/') || normalized.startsWith('[') ||
     normalized.startsWith('#') || normalized.startsWith('.') ||
     /^(?:data|https?|mailto):/i.test(normalized) ||
+    isInterpolatedTechnicalPath(normalized) ||
     (/^[a-z0-9-]+$/.test(normalized) && normalized.includes('-'));
+}
+
+function isInterpolatedTechnicalPath(value) {
+  return /^(?:\{(?:érték|dynamic)\}|[a-z0-9._~-]+)(?:\/(?:\{(?:érték|dynamic)\}|[a-z0-9._~-]+))+\/?$/i.test(value.trim());
 }
 
 function isFormattingLiteral(value) {
