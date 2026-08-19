@@ -2,19 +2,19 @@
   <div class="heading-row">
     <div class="page-heading">
       <span class="eyebrow">Portfólió</span>
-      <h1 id="projects-title">Projektek</h1>
+      <h1 id="projects-title">Áttekintő</h1>
       <p>Az aktív projektek és a következő feladatok áttekintése.</p>
     </div>
     <div class="heading-actions">
-      <a pButton routerLink="/projects/active" data-testid="active-project-queue-link">Aktív munkasor</a>
+      <a pButton routerLink="/projects/active" data-testid="active-project-queue-link">Folyamatban lévő ügyek</a>
       <a pButton routerLink="/projects/new" severity="secondary" data-testid="new-project-button">Új projekt</a>
     </div>
   </div>
 
   <aside class="mailbox-sync-panel" aria-labelledby="mailbox-sync-title">
     <div>
-      <span class="eyebrow">Customer kommunikáció</span>
-      <h2 id="mailbox-sync-title">Customer postafiók</h2>
+      <span class="eyebrow">Ügyfélkommunikáció</span>
+      <h2 id="mailbox-sync-title">Ügyfélpostafiók</h2>
       @if (mailboxLoading()) {
         <p data-testid="mailbox-sync-status">Postafiók állapotának betöltése…</p>
       } @else if (mailboxStatus(); as status) {
@@ -46,15 +46,15 @@
 
   @if (loading()) {
     <div class="state-panel" data-testid="projects-loading" aria-live="polite">
-      <p-progress-spinner ariaLabel="Loading projects" />
-      <p>Loading projects…</p>
+      <p-progress-spinner ariaLabel="A projektek betöltése" />
+      <p>A projektek betöltése…</p>
     </div>
   } @else if (loadError()) {
     <div class="state-panel" data-testid="projects-error" role="alert">
-      <h2>Projects could not be loaded</h2>
+      <h2>A projektek nem tölthetők be</h2>
       <p>{{ loadError() }}</p>
       <p-button
-        label="Try again"
+        label="Projektlista újratöltése"
         severity="secondary"
         data-testid="retry-projects-button"
         (onClick)="loadProjects()"
@@ -62,9 +62,9 @@
     </div>
   } @else if (projects().length === 0) {
     <div class="state-panel" data-testid="projects-empty">
-      <h2>No projects yet</h2>
-      <p>Create the first workspace to start tracking delivery.</p>
-      <a pButton routerLink="/projects/new" data-testid="empty-create-project-button">Create a project</a>
+      <h2>Még nincs projekt</h2>
+      <p>Hozd létre az első projektet a munka és a következő lépések követéséhez.</p>
+      <a pButton routerLink="/projects/new" data-testid="empty-create-project-button">Új projekt létrehozása</a>
     </div>
   } @else {
     <div class="project-grid" data-testid="project-list">

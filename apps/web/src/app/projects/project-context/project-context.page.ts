@@ -66,11 +66,16 @@ export class ProjectContextPage implements OnInit {
   readonly contextLinks = projectContextLinks;
   readonly linkMatchOptions = contextLinkMatchOptions;
   readonly returnLink = computed(() => this.router.parseUrl(this.returnTarget()));
-  readonly returnLabel = computed(() =>
-    this.returnTarget().startsWith('/projects/active')
-      ? 'Vissza az aktív munkasorhoz'
-      : 'Vissza a portfólióhoz',
-  );
+  readonly returnLabel = computed(() => {
+    const target = this.returnTarget();
+    if (target.startsWith('/projects/active')) {
+      return 'Vissza a folyamatban lévő ügyekhez';
+    }
+    if (target === '/follow-ups') {
+      return 'Vissza az utánkövetésekhez';
+    }
+    return 'Vissza az Áttekintőre';
+  });
   readonly contextQueryParams = computed(() => ({ returnTo: this.returnTarget() }));
   readonly primaryActionRoute = computed(() => {
     const workState = this.context.workState();

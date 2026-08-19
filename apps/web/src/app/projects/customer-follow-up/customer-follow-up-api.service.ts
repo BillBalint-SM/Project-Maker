@@ -31,7 +31,7 @@ export class CustomerFollowUpApiService {
   load(projectId: string): Observable<CustomerFollowUpState> {
     return this.request(
       this.http.get<CustomerFollowUpState>(this.route(projectId)),
-      'betölteni az ügyfél-pinget',
+      'betölteni az ügyfél-emlékeztetőt',
     );
   }
 
@@ -42,14 +42,14 @@ export class CustomerFollowUpApiService {
       this.http.get<readonly CustomerFollowUpReferenceOption[]>(
         `${this.route(projectId)}/reference-options`,
       ),
-      'betölteni a hivatkozható Discovery follow-upokat',
+      'betölteni a hivatkozható tisztázási tételeket',
     );
   }
 
   senderOptions(projectId: string): Observable<InterviewHandoffSenderOptions> {
     return this.request(
       this.http.get<InterviewHandoffSenderOptions>(`${this.route(projectId)}/sender-options`),
-      'betölteni az ügyfél-ping feladóit',
+      'betölteni az ügyfél-emlékeztető feladóit',
     );
   }
 
@@ -59,7 +59,7 @@ export class CustomerFollowUpApiService {
   ): Observable<CustomerFollowUpState> {
     return this.request(
       this.http.patch<CustomerFollowUpState>(this.route(projectId), input),
-      'menteni az automatikus ping beállításait',
+      'menteni az automatikus emlékeztető beállításait',
     );
   }
 
@@ -69,7 +69,7 @@ export class CustomerFollowUpApiService {
   ): Observable<CustomerFollowUpState> {
     return this.request(
       this.http.patch<CustomerFollowUpState>(`${this.route(projectId)}/draft`, input),
-      'menteni az ügyfél-ping piszkozatát',
+      'menteni az ügyfél-emlékeztető piszkozatát',
     );
   }
 
@@ -82,7 +82,7 @@ export class CustomerFollowUpApiService {
         `${this.route(projectId)}/ping/preview`,
         input,
       ),
-      'elkészíteni az ügyfél-ping előnézetét',
+      'elkészíteni az ügyfél-emlékeztető előnézetét',
     );
   }
 
@@ -92,7 +92,7 @@ export class CustomerFollowUpApiService {
   ): Observable<CustomerFollowUpPingDelivery> {
     return this.request(
       this.http.post<CustomerFollowUpPingDelivery>(`${this.route(projectId)}/ping`, input),
-      'elküldeni az ügyfél-pinget',
+      'elküldeni az ügyfél-emlékeztetőt',
     );
   }
 
@@ -105,7 +105,7 @@ export class CustomerFollowUpApiService {
         `${this.route(projectId)}/ping/retry`,
         input,
       ),
-      'újrapróbálni az ügyfél-pinget',
+      'újrapróbálni az ügyfél-emlékeztetőt',
     );
   }
 
@@ -119,9 +119,10 @@ export class CustomerFollowUpApiService {
 
   private fail(error: unknown, action: string): Observable<never> {
     if (!(error instanceof HttpErrorResponse)) {
+      console.error('Customer follow-up request failed before receiving an HTTP response.', error);
       return throwError(() =>
         new CustomerFollowUpApiError(
-          error instanceof Error ? error.message : `Nem sikerült ${action}.`,
+          `Nem sikerült ${action}. Próbáld meg újra.`,
           null,
         ),
       );
@@ -135,7 +136,7 @@ export class CustomerFollowUpApiService {
     if (error.status === 409) {
       if (code === 'FOLLOW_UP_DRAFT_REQUIRED') {
         return throwError(() => new CustomerFollowUpApiError(
-          'Előbb ments egy nem üres Customer follow-up ping üzenetet.',
+          'Előbb ments egy nem üres ügyfél-emlékeztetőt.',
           code,
         ));
       }
@@ -155,7 +156,7 @@ export class CustomerFollowUpApiService {
       }
       if (code === 'FOLLOW_UP_DELIVERY_FAILED') {
         return throwError(() => new CustomerFollowUpApiError(
-          'Az ügyfél-ping küldése sikertelen. Kézzel újrapróbálható.',
+          'Az ügyfél-emlékeztető küldése sikertelen. Kézzel újrapróbálható.',
           code,
         ));
       }
@@ -168,7 +169,7 @@ export class CustomerFollowUpApiService {
     }
     return throwError(() =>
       new CustomerFollowUpApiError(
-        `Nem sikerült ${action} (HTTP ${error.status}). Próbáld újra.`,
+        `Nem sikerült ${action}. Próbáld meg újra.`,
         code,
       ),
     );

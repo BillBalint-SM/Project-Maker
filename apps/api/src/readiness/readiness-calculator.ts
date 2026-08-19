@@ -45,8 +45,8 @@ const factorCopy: Readonly<Record<FactorId, { readonly label: string; readonly h
     helpText: 'Az aktuális intake ellenőrzőlista releváns elemeinek teljessége.',
   },
   followUpResolution: {
-    label: 'Discovery utánkövetés',
-    helpText: 'A discovery utánkövetések lezártsága.',
+    label: 'Tisztázási utánkövetés',
+    helpText: 'A tisztázási utánkövetések lezártsága.',
   },
 };
 
@@ -320,7 +320,7 @@ function createGaps(input: ReadinessCalculatorInput): readonly ReadinessGap[] {
         severity: importantSeverity,
         category: 'Felelősség',
         message: 'A következő lépés felelőse nincs megadva.',
-        nextStep: 'Jelölj ki felelőst a Workspace területen.',
+        nextStep: 'Jelölj ki felelőst a Projektállapot oldalon.',
         target: 'overview',
         snapshotId: null,
         followUpId: null,
@@ -356,13 +356,13 @@ function createGaps(input: ReadinessCalculatorInput): readonly ReadinessGap[] {
       gap: {
         id: `follow-up-${followUp.id}`,
         severity: isBlocked ? criticalSeverity : importantSeverity,
-        category: 'Discovery utánkövetés',
+        category: 'Tisztázási utánkövetés',
         message: isBlocked
-          ? 'Egy discovery utánkövetés blokkolt állapotban van.'
-          : 'Van lezáratlan discovery utánkövetés.',
+          ? 'Egy tisztázási utánkövetés blokkolt állapotban van.'
+          : 'Van lezáratlan tisztázási utánkövetés.',
         nextStep: isBlocked
-          ? 'Oldd fel a blokkoló discovery utánkövetést.'
-          : 'Dolgozd fel vagy zárd le a discovery utánkövetést.',
+          ? 'Oldd fel a blokkoló tisztázási utánkövetést.'
+          : 'Dolgozd fel vagy zárd le a tisztázási utánkövetést.',
         target: 'follow-ups',
         snapshotId: null,
         followUpId: followUp.id,

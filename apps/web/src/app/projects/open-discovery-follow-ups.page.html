@@ -1,0 +1,82 @@
+<section aria-labelledby="open-follow-ups-title">
+  <div class="page-heading follow-ups-heading">
+    <div>
+      <span class="eyebrow">Portfólió</span>
+      <h1 id="open-follow-ups-title">Utánkövetések</h1>
+      <p>A nyitott tisztázási tételek az összes aktív projektből, határidő szerint rendezve.</p>
+    </div>
+    <a pButton severity="secondary" routerLink="/">Áttekintő megnyitása</a>
+  </div>
+
+  <div class="sr-only" role="status" aria-live="polite" aria-atomic="true">
+    {{ liveStatus() }}
+  </div>
+
+  @if (loading()) {
+    <div class="state-panel" data-testid="follow-ups-loading" aria-live="polite">
+      <p-progress-spinner ariaLabel="Az utánkövetések betöltése" />
+      <p>Az utánkövetések betöltése…</p>
+    </div>
+  } @else if (loadError()) {
+    <div class="state-panel" data-testid="follow-ups-error" role="alert">
+      <h2>Az utánkövetések most nem tölthetők be</h2>
+      <p>{{ loadError() }}</p>
+      <button pButton type="button" data-testid="follow-ups-retry" (click)="retry()">
+        Utánkövetések újratöltése
+      </button>
+    </div>
+  } @else if (items(); as openItems) {
+    @if (openItems.length === 0) {
+      <div class="state-panel" data-testid="follow-ups-empty">
+        <h2>Nincs nyitott utánkövetés</h2>
+        <p>Jelenleg egyik aktív projektnél sincs tisztázásra váró kérdés.</p>
+        <a
+          pButton
+          severity="secondary"
+          routerLink="/"
+          data-testid="follow-ups-empty-portfolio"
+        >Áttekintő megnyitása</a>
+      </div>
+    } @else {
+      <p class="queue-summary" aria-live="polite">
+        <strong>{{ openItems.length }} nyitott utánkövetés</strong>
+      </p>
+      <ul class="follow-up-list">
+        @for (item of openItems; track item.id) {
+          <li class="follow-up-row" data-testid="open-follow-up-row">
+            <div class="follow-up-identity">
+              <a
+                class="project-name"
+                [routerLink]="['/projects', item.projectId, 'status']"
+                [queryParams]="projectQueryParams"
+              >{{ item.projectName }}</a>
+              <p-tag [value]="categoryLabel(item.category)" severity="secondary" />
+              <h2>{{ item.question }}</h2>
+            </div>
+            <dl>
+              <div>
+                <dt>Felelős</dt>
+                <dd>{{ item.owner }}</dd>
+              </div>
+              <div>
+                <dt>Határidő</dt>
+                <dd>{{ item.dueDate | date: 'yyyy. MM. dd.' }}</dd>
+              </div>
+              <div>
+                <dt>Következő lépés</dt>
+                <dd>{{ item.nextStep }}</dd>
+              </div>
+            </dl>
+            <a
+              pButton
+              [routerLink]="['/projects', item.projectId, 'readiness']"
+              [queryParams]="projectQueryParams"
+              fragment="discovery-follow-ups"
+              data-testid="open-follow-up-action"
+            >Utánkövetés megnyitása</a>
+          </li>
+        }
+      </ul>
+    }
+  }
+</section>

@@ -1,7 +1,7 @@
 <p-card data-testid="decision-review-card">
   <ng-template #title>Döntési értékelés</ng-template>
   <ng-template #subtitle>
-    A pontszám és az ajánlás a hat értékelésből és az aktuális felkészültségből, szerveroldalon készül.
+    A pontszám és az ajánlás a hat értékelésből és az aktuális felkészültségből készül.
   </ng-template>
 
   @if (loading()) {
@@ -12,7 +12,7 @@
   } @else if (loadError(); as error) {
     <div class="decision-review-state" data-testid="decision-review-error" role="alert">
       <p>{{ error }}</p>
-      <p-button label="Újrapróbálás" data-testid="retry-decision-review-button" (onClick)="retry()" />
+      <p-button label="Döntési értékelés újratöltése" data-testid="retry-decision-review-button" (onClick)="retry()" />
     </div>
   } @else if (review(); as decisionReview) {
     <form class="decision-review-form" [formGroup]="ratingForm" (ngSubmit)="save()">
@@ -71,21 +71,21 @@
       <section class="decision-review-state" data-testid="decision-review-unavailable">
         <h2>A pontszám még nem elérhető</h2>
         @if (decisionReview.unavailableReasons.includes('INCOMPLETE_INPUT')) {
-          <p>Adj meg mind a hat értékelési szempontot a Decision Score kiszámításához.</p>
+          <p>Adj meg mind a hat értékelési szempontot a döntési pontszám kiszámításához.</p>
         }
         @if (decisionReview.unavailableReasons.includes('NO_INITIAL_INTAKE')) {
-          <p>Indíts vagy fejezz be kanonikus kezdő interjút a felkészültségi bemenethez.</p>
+          <p>Indíts vagy fejezz be kezdő felmérést a felkészültségi adatokhoz.</p>
         }
         @if (decisionReview.unavailableReasons.includes('UNSUPPORTED_SCHEMA')) {
-          <p>Az aktuális kezdő interjú sémája nem támogatja a felkészültségi értékelést.</p>
+          <p>Az aktuális kezdő felmérés kérdéssémája nem támogatja a felkészültségi értékelést.</p>
         }
       </section>
     } @else {
       <section class="decision-review-result" data-testid="decision-review-available" aria-labelledby="decision-review-result-title">
-        <h2 id="decision-review-result-title">Szerveroldali eredmény</h2>
+        <h2 id="decision-review-result-title">Értékelés eredménye</h2>
         <dl>
           <div data-testid="decision-review-score">
-            <dt>Decision Score</dt>
+            <dt>Döntési pontszám</dt>
             <dd>{{ decisionReview.decisionScore }} · {{ decisionReview.decisionScoreLabel }}</dd>
           </div>
           <div data-testid="decision-review-recommendation">

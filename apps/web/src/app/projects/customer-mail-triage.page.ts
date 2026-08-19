@@ -1,5 +1,6 @@
 import { DatePipe } from '@angular/common';
-import { Component, inject, OnInit, signal } from '@angular/core';
+import { Component, DestroyRef, inject, OnInit, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { RouterLink } from '@angular/router';
 import type {
   CustomerMailTriageCommand,
@@ -7,17 +8,20 @@ import type {
   MailSystemEventView,
   UnmatchedCustomerMessageView,
 } from '@project-maker/contracts';
+import { ButtonModule } from 'primeng/button';
+import { ProgressSpinnerModule } from 'primeng/progressspinner';
 
 import { CustomerMailTriageApiService } from './customer-mail-triage-api.service';
 
 @Component({
   selector: 'app-customer-mail-triage-page',
-  imports: [DatePipe, RouterLink],
+  imports: [ButtonModule, DatePipe, ProgressSpinnerModule, RouterLink],
   templateUrl: './customer-mail-triage.page.html',
   styleUrl: './customer-mail-triage.page.scss',
 })
 export class CustomerMailTriagePage implements OnInit {
   private readonly api = inject(CustomerMailTriageApiService);
+  private readonly destroyRef = inject(DestroyRef);
 
   readonly view = signal<CustomerMailTriageView | null>(null);
   readonly loading = signal(true);
@@ -33,7 +37,7 @@ export class CustomerMailTriagePage implements OnInit {
   load(): void {
     this.loading.set(true);
     this.loadError.set(null);
-    this.api.view().subscribe({
+    this.api.view().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: (view) => {
         this.view.set(view);
         this.loading.set(false);
@@ -53,7 +57,7 @@ export class CustomerMailTriagePage implements OnInit {
   link(message: UnmatchedCustomerMessageView): void {
     const correspondenceId = this.selectedTargets()[message.id];
     if (!correspondenceId) {
-      this.commandError.set('A társításhoz válassz Customer levelezést.');
+      this.commandError.set('Az üzenet társításához válassz ügyféllevelezést.');
       return;
     }
     this.runCommand(message, {
@@ -78,7 +82,9 @@ export class CustomerMailTriagePage implements OnInit {
     if (this.pendingMessageId()) return;
     this.pendingMessageId.set(message.id);
     this.commandError.set(null);
-    this.api.command(message.id, command).subscribe({
+    this.api.command(message.id, command)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
       next: () => {
         this.view.update((current) => current ? {
           ...current,
@@ -90,6 +96,6 @@ export class CustomerMailTriagePage implements OnInit {
         this.commandError.set(error.message);
         this.pendingMessageId.set(null);
       },
-    });
+      });
   }
 }

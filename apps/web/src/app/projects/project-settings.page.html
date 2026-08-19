@@ -7,7 +7,7 @@
   <div class="state-panel" data-testid="project-settings-error" role="alert">
     <h1>A projektbeállítások nem tölthetők be</h1>
     <p>{{ error }}</p>
-    <p-button label="Újrapróbálás" data-testid="retry-project-settings-button" (onClick)="loadSettings()" />
+    <p-button label="Projektbeállítások újratöltése" data-testid="retry-project-settings-button" (onClick)="loadSettings()" />
   </div>
 } @else if (view(); as current) {
   <section aria-labelledby="project-settings-title">

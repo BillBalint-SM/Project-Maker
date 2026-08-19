@@ -22,6 +22,7 @@ body {
 
 button,
 input,
+select,
 textarea {
   font: inherit;
 }
@@ -29,6 +30,7 @@ textarea {
 a:focus-visible,
 button:focus-visible,
 input:focus-visible,
+select:focus-visible,
 textarea:focus-visible {
   outline: 3px solid color-mix(in srgb, var(--pm-cyan) 55%, transparent);
   outline-offset: 2px;

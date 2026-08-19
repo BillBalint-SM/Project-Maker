@@ -1782,9 +1782,9 @@ describe('Question bank and interview rounds (PostgreSQL e2e)', () => {
     assert.deepEqual(blockedGap, {
       id: `follow-up-${followUpId}`,
       severity: policy.statuses.readinessGapSeverity[0],
-      category: 'Discovery utánkövetés',
-      message: 'Egy discovery utánkövetés blokkolt állapotban van.',
-      nextStep: 'Oldd fel a blokkoló discovery utánkövetést.',
+      category: 'Tisztázási utánkövetés',
+      message: 'Egy tisztázási utánkövetés blokkolt állapotban van.',
+      nextStep: 'Oldd fel a blokkoló tisztázási utánkövetést.',
       target: 'follow-ups',
       snapshotId: null,
       followUpId,

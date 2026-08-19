@@ -99,7 +99,7 @@ test('surfaces project coordination and redacted recent activity', async ({ page
   await expect(page.getByTestId('project-status-coordination')).toContainText(
     'Egyeztesd a következő interjú időpontját.',
   );
-  await expect(page.getByTestId('project-status-coordination')).toContainText('Aug 20, 2026');
+  await expect(page.getByTestId('project-status-coordination')).toContainText('2026. 08. 20.');
   await expect(page.getByTestId('project-status-customer-communication')).toContainText(
     'Nincs feldolgozatlan új ügyfélválasz.',
   );
