@@ -200,6 +200,7 @@ async function collectSourceInventory() {
 
   for (const absolutePath of sourceFiles) {
     const relativePath = path.relative(repositoryRoot, absolutePath).replaceAll('\\', '/');
+    if (isTechnicalConfigurationSource(relativePath)) continue;
     const screen = screenFor(relativePath);
     const content = await readFile(absolutePath, 'utf8');
 
@@ -266,6 +267,8 @@ function extractTypeScriptCopy(content, screen, source) {
       return;
     }
 
+    if (hasAngularStyleMetadataAncestor(node)) return;
+
     if (isTopLevelStringConcatenation(node)) {
       const rawCopy = renderStringConcatenation(node);
       if (
@@ -324,6 +327,23 @@ function isInlineTemplate(node) {
   return ts.isPropertyAssignment(node) &&
     node.name.getText() === 'template' &&
     (ts.isStringLiteral(node.initializer) || ts.isNoSubstitutionTemplateLiteral(node.initializer));
+}
+
+function hasAngularStyleMetadataAncestor(node) {
+  const styleMetadataNames = new Set(['styleUrl', 'styleUrls', 'styles']);
+  let current = node.parent;
+  while (current && !ts.isSourceFile(current)) {
+    if (
+      ts.isPropertyAssignment(current) &&
+      styleMetadataNames.has(current.name.getText())
+    ) return true;
+    current = current.parent;
+  }
+  return false;
+}
+
+function isTechnicalConfigurationSource(source) {
+  return /(?:^|\/)[^/]+\.(?:config|theme)\.ts$/.test(source);
 }
 
 function isTopLevelStringConcatenation(node) {

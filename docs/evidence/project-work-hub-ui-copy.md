@@ -139,8 +139,6 @@ Ez a leltár a munkavállalói felületen megjelenő kanonikus navigációs neve
 | Alkalmazáskeret | Művelet | Utánkövetések | apps/web/src/app/app.component.ts |
 | Alkalmazáskeret | Művelet | Markdown beállítások | apps/web/src/app/app.component.ts |
 | Alkalmazáskeret | Művelet | Kérdésbank beállítások | apps/web/src/app/app.component.ts |
-| Alkalmazáskeret | Futásidejű UI-szöveg | :host display: block; min-height: 100vh; .app-header border-bottom: 1px solid var(--p-content-border-color); background: color-mix(in srgb, white 92%, var(--pm-cyan)); backdrop-filter: blur(0.75rem); position: sticky; top: 0; z-index: 10; .header-inner align-items: center; display: flex; gap: 1.5rem; justify-content: space-between; margin: 0 auto; max-width: 76rem; padding: 0 1.5rem; .brand align-items: center; color: var(--p-text-color); display: flex; gap: 0.75rem; padding: 0.85rem 0; text-decoration: none; .app-nav ul align-items: center; display: flex; gap: 0.35rem; list-style: none; margin: 0; padding: 0; .app-nav li align-items: center; display: flex; min-width: 0; .app-nav a border-radius: 0.55rem; color: var(--p-text-muted-color); padding: 0.55rem 0.75rem; text-decoration: none; .app-nav a:hover, .app-nav a.active background: var(--p-primary-50); color: var(--p-primary-color); .queue-nav-item background: color-mix(in srgb, var(--p-primary-50) 55%, transparent); border-radius: 0.55rem; .reply-count align-items: center; background: var(--p-primary-color); border-radius: 999px !important; color: var(--p-primary-contrast-color) !important; display: inline-flex; font-size: 0.75rem; font-weight: 800; justify-content: center; margin-right: 0.35rem; min-height: 1.55rem; min-width: 1.55rem; padding: 0.2rem 0.45rem !important; .brand-mark align-items: center; background: var(--p-primary-color); border-radius: 0.7rem; color: var(--p-primary-contrast-color); display: inline-flex; font-size: 0.78rem; font-weight: 800; height: 2.25rem; justify-content: center; letter-spacing: 0.04em; width: 2.25rem; .brand strong, .brand small display: block; .brand small color: var(--p-text-muted-color); font-size: 0.75rem; margin-top: 0.1rem; .app-main margin: 0 auto; max-width: 76rem; padding: 2.5rem 1.5rem 4rem; @media (max-width: 42rem) .header-inner align-items: flex-start; flex-direction: column; gap: 0; .app-nav, .app-nav ul flex-wrap: wrap; padding-bottom: 0.65rem; width: 100%; | apps/web/src/app/app.component.ts:57 |
-| Megosztott felületi szöveg | Futásidejű UI-szöveg | eyJpZCI6ImU4NTEzMzYyLWZmZmMtNDdkZC1iMGVhLWIyMTU0MTY4NmEzNSIsInByb2R1Y3QiOiJwcmltZXVpIiwidGllciI6ImNvbW11bml0eSIsInR5cGUiOiJkZXYiLCJpYXQiOjE3ODYwMTkwNzYsImV4cCI6MTgxNzU1NTA3Nn0.5m4EjSjYjkFbzebLQ6Gv0LkY5HirW8bj2ZuuCOt0NDJqa8RxP7pMw3VO10Wb9D0UAUeCqOU-IIa7Y9bOqyUgDQ | apps/web/src/app/app.config.ts:10 |
 | Megosztott felületi szöveg | Címke | Áttekintő \| Project Maker | apps/web/src/app/app.routes.ts:10 |
 | Megosztott felületi szöveg | Címke | Új projekt \| Project Maker | apps/web/src/app/app.routes.ts:18 |
 | Megosztott felületi szöveg | Címke | Folyamatban lévő ügyek \| Project Maker | apps/web/src/app/app.routes.ts:26 |
@@ -155,32 +153,6 @@ Ez a leltár a munkavállalói felületen megjelenő kanonikus navigációs neve
 | Megosztott felületi szöveg | Címke | Projektbeállítások \| Project Maker | apps/web/src/app/app.routes.ts:105 |
 | Megosztott felületi szöveg | Címke | Kérdésbank beállítások \| Project Maker | apps/web/src/app/app.routes.ts:120 |
 | Megosztott felületi szöveg | Címke | Markdown beállítások \| Project Maker | apps/web/src/app/app.routes.ts:128 |
-| Megosztott felületi szöveg | Futásidejű UI-szöveg | color-mix(in srgb, projectMaker.electricBlue 8%, white) | apps/web/src/app/app.theme.ts:44 |
-| Megosztott felületi szöveg | Futásidejű UI-szöveg | color-mix(in srgb, projectMaker.electricBlue 16%, white) | apps/web/src/app/app.theme.ts:45 |
-| Megosztott felületi szöveg | Futásidejű UI-szöveg | color-mix(in srgb, projectMaker.electricBlue 28%, white) | apps/web/src/app/app.theme.ts:46 |
-| Megosztott felületi szöveg | Futásidejű UI-szöveg | color-mix(in srgb, projectMaker.electricBlue 48%, white) | apps/web/src/app/app.theme.ts:47 |
-| Megosztott felületi szöveg | Futásidejű UI-szöveg | color-mix(in srgb, projectMaker.electricBlue 72%, projectMaker.cyan ) | apps/web/src/app/app.theme.ts:48 |
-| Megosztott felületi szöveg | Futásidejű UI-szöveg | projectMaker.electricBlue | apps/web/src/app/app.theme.ts:49 |
-| Megosztott felületi szöveg | Futásidejű UI-szöveg | color-mix(in srgb, projectMaker.electricBlue 88%, projectMaker.deepNavy ) | apps/web/src/app/app.theme.ts:50 |
-| Megosztott felületi szöveg | Futásidejű UI-szöveg | color-mix(in srgb, projectMaker.electricBlue 72%, projectMaker.deepNavy ) | apps/web/src/app/app.theme.ts:51 |
-| Megosztott felületi szöveg | Futásidejű UI-szöveg | color-mix(in srgb, projectMaker.electricBlue 52%, projectMaker.deepNavy ) | apps/web/src/app/app.theme.ts:52 |
-| Megosztott felületi szöveg | Futásidejű UI-szöveg | color-mix(in srgb, projectMaker.electricBlue 28%, projectMaker.deepNavy ) | apps/web/src/app/app.theme.ts:53 |
-| Megosztott felületi szöveg | Futásidejű UI-szöveg | projectMaker.deepNavy | apps/web/src/app/app.theme.ts:54 |
-| Megosztott felületi szöveg | Futásidejű UI-szöveg | primary.500 | apps/web/src/app/app.theme.ts:55 |
-| Megosztott felületi szöveg | Futásidejű UI-szöveg | primary.600 | apps/web/src/app/app.theme.ts:57 |
-| Megosztott felületi szöveg | Futásidejű UI-szöveg | primary.700 | apps/web/src/app/app.theme.ts:58 |
-| Megosztott felületi szöveg | Futásidejű UI-szöveg | color-mix(in srgb, projectMaker.steelGray 8%, white) | apps/web/src/app/app.theme.ts:64 |
-| Megosztott felületi szöveg | Futásidejű UI-szöveg | color-mix(in srgb, projectMaker.steelGray 14%, white) | apps/web/src/app/app.theme.ts:65 |
-| Megosztott felületi szöveg | Futásidejű UI-szöveg | color-mix(in srgb, projectMaker.steelGray 24%, white) | apps/web/src/app/app.theme.ts:66 |
-| Megosztott felületi szöveg | Futásidejű UI-szöveg | color-mix(in srgb, projectMaker.steelGray 42%, white) | apps/web/src/app/app.theme.ts:67 |
-| Megosztott felületi szöveg | Futásidejű UI-szöveg | projectMaker.steelGray | apps/web/src/app/app.theme.ts:68 |
-| Megosztott felületi szöveg | Futásidejű UI-szöveg | color-mix(in srgb, projectMaker.steelGray 82%, projectMaker.deepNavy ) | apps/web/src/app/app.theme.ts:69 |
-| Megosztott felületi szöveg | Futásidejű UI-szöveg | color-mix(in srgb, projectMaker.steelGray 64%, projectMaker.deepNavy ) | apps/web/src/app/app.theme.ts:70 |
-| Megosztott felületi szöveg | Futásidejű UI-szöveg | color-mix(in srgb, projectMaker.steelGray 44%, projectMaker.deepNavy ) | apps/web/src/app/app.theme.ts:71 |
-| Megosztott felületi szöveg | Futásidejű UI-szöveg | color-mix(in srgb, projectMaker.steelGray 22%, projectMaker.deepNavy ) | apps/web/src/app/app.theme.ts:72 |
-| Megosztott felületi szöveg | Futásidejű UI-szöveg | color-mix(in srgb, projectMaker.steelGray 10%, projectMaker.deepNavy ) | apps/web/src/app/app.theme.ts:73 |
-| Megosztott felületi szöveg | Futásidejű UI-szöveg | surface.600 | apps/web/src/app/app.theme.ts:82 |
-| Megosztott felületi szöveg | Futásidejű UI-szöveg | projectMaker.cyan | apps/web/src/app/app.theme.ts:85 |
 | Megosztott felületi szöveg | Címke | Rövid szöveg | apps/web/src/app/base-question-type-label.ts:7 |
 | Megosztott felületi szöveg | Címke | Hosszú szöveg | apps/web/src/app/base-question-type-label.ts:8 |
 | Megosztott felületi szöveg | Címke | Egyszeres választás | apps/web/src/app/base-question-type-label.ts:9 |
@@ -979,4 +951,4 @@ Ez a leltár a munkavállalói felületen megjelenő kanonikus navigációs neve
 | Kérdésbank beállítások | Futásidejű UI-szöveg | Az alapkérdés módosításai mentve. | apps/web/src/app/settings/question-bank.page.ts:226 |
 | Kérdésbank beállítások | Futásidejű UI-szöveg | Az alapkérdés létrejött. | apps/web/src/app/settings/question-bank.page.ts:226 |
 
-Összesen: **972** leltárelem.
+Összesen: **944** leltárelem.
