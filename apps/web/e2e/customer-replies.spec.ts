@@ -31,8 +31,11 @@ test('surfaces one safe token-correlated Customer reply across global and Portfo
 
   await page.goto('/');
   await expect(page.getByTestId('global-customer-reply-count')).toContainText('(1)');
-  await expect(page.getByTestId(`project-reply-count-${setup.projectId}`)).toContainText('1 új Customer válasz');
-  await page.getByTestId(`project-card-${setup.projectId}`).click();
+  const portfolioCard = page.getByTestId(`project-card-${setup.projectId}`);
+  await expect(page.getByTestId(`project-reply-count-${setup.projectId}`)).toContainText('1 új ügyfélválasz');
+  await expect(portfolioCard).toContainText('Új ügyfélválasz');
+  await expect(portfolioCard).toContainText('Ügyféllevelezés megnyitása');
+  await portfolioCard.click();
   await expect(page).toHaveURL(new RegExp(`/projects/${setup.projectId}/customer-correspondences$`));
   await expect(page.getByText('Mehet tovább.')).toBeVisible();
   await expect(page.locator('.inbound-message script')).toHaveCount(0);

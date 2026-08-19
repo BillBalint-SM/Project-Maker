@@ -5,6 +5,8 @@ import { randomUUID } from 'node:crypto';
 import { after, before, describe, it } from 'node:test';
 import request from 'supertest';
 import { DataSource, type QueryRunner } from 'typeorm';
+import type { AnswerValue, BaseQuestionType } from '@project-maker/contracts';
+import { loadGeneralPlaybookV1 } from '@project-maker/contracts/general-playbook-runtime';
 
 import { AppModule } from '../src/app.module';
 import {
@@ -120,7 +122,38 @@ describe('Active project queue (e2e)', () => {
     );
   });
 
-  it('keeps Customer-reply urgency until correspondence processing changes its status', async () => {
+  it('keeps overdue, due-soon and ordinary priority identical at every HTTP entry surface', async () => {
+    const overdue = await createQueueProject(
+      app,
+      `HTTP overdue boundary ${Date.now()}`,
+      '2026-03-22T10:59:59.999Z',
+    );
+    const dueSoon = await createQueueProject(
+      app,
+      `HTTP due-soon boundary ${Date.now()}`,
+      fixedNow.toISOString(),
+    );
+    const ordinary = await createQueueProject(
+      app,
+      `HTTP ordinary boundary ${Date.now()}`,
+      '2026-03-29T22:00:00.000Z',
+    );
+
+    await assertEntrySurfacePriority(app, overdue.id, 'OVERDUE', {
+      target: 'PROJECT_COORDINATION',
+      label: 'Következő lépés kezelése',
+    });
+    await assertEntrySurfacePriority(app, dueSoon.id, 'DUE_SOON', {
+      target: 'PROJECT_COORDINATION',
+      label: 'Következő lépés kezelése',
+    });
+    await assertEntrySurfacePriority(app, ordinary.id, 'IN_PROGRESS', {
+      target: 'INTERVIEW',
+      label: 'Felmérés megnyitása',
+    });
+  });
+
+  it('exposes Customer-reply work consistently until correspondence processing changes its status', async () => {
     const { projectId, handoffId } = await createEndedQueueProject(
       app,
       `Customer reply queue ${Date.now()}`,
@@ -153,6 +186,27 @@ describe('Active project queue (e2e)', () => {
       target: 'CUSTOMER_CORRESPONDENCE',
       label: 'Ügyféllevelezés megnyitása',
     });
+    let workState = await request(app.getHttpServer())
+      .get(`/projects/${projectId}/work-state`)
+      .expect(200);
+    assert.deepEqual(
+      {
+        projectId: workState.body.projectId,
+        urgency: workState.body.urgency,
+        newReplyCount: workState.body.newReplyCount,
+        primaryAction: workState.body.primaryAction,
+      },
+      {
+        projectId,
+        urgency: 'CUSTOMER_REPLY',
+        newReplyCount: 1,
+        primaryAction: {
+          target: 'CUSTOMER_CORRESPONDENCE',
+          label: 'Ügyféllevelezés megnyitása',
+        },
+      },
+    );
+    assert.deepEqual((await portfolioWorkState(app, projectId)).primaryAction, item.primaryAction);
 
     await request(app.getHttpServer())
       .post(`/projects/${projectId}/customer-correspondences/${correspondenceId}/commands`)
@@ -161,6 +215,12 @@ describe('Active project queue (e2e)', () => {
     item = await queueItem(app, projectId);
     assert.equal(item.urgency, 'CUSTOMER_REPLY');
     assert.equal(item.newReplyCount, 1);
+    workState = await request(app.getHttpServer())
+      .get(`/projects/${projectId}/work-state`)
+      .expect(200);
+    assert.equal(workState.body.urgency, 'CUSTOMER_REPLY');
+    assert.equal(workState.body.newReplyCount, 1);
+    assert.equal((await portfolioWorkState(app, projectId)).urgency, 'CUSTOMER_REPLY');
 
     await request(app.getHttpServer())
       .post(`/projects/${projectId}/customer-correspondences/${correspondenceId}/commands`)
@@ -168,7 +228,174 @@ describe('Active project queue (e2e)', () => {
       .expect(201);
     item = await queueItem(app, projectId);
     assert.equal(item.urgency, 'OVERDUE');
-    assert.notEqual(item.primaryAction.target, 'CUSTOMER_CORRESPONDENCE');
+    assert.deepEqual(item.primaryAction, {
+      target: 'PROJECT_COORDINATION',
+      label: 'Következő lépés kezelése',
+    });
+    workState = await request(app.getHttpServer())
+      .get(`/projects/${projectId}/work-state`)
+      .expect(200);
+    assert.equal(workState.body.urgency, 'OVERDUE');
+    assert.deepEqual(workState.body.primaryAction, {
+      target: 'PROJECT_COORDINATION',
+      label: 'Következő lépés kezelése',
+    });
+    assert.deepEqual((await portfolioWorkState(app, projectId)).primaryAction, item.primaryAction);
+  });
+
+  it('reports factual Initial Intake answer progress through Project work state and queue', async () => {
+    const project = await createQueueProject(app, `Intake progress ${Date.now()}`);
+    const bank = await request(app.getHttpServer()).get('/settings/base-questions').expect(200);
+    const textQuestion = (bank.body.questions as Array<{
+      stableKey: string;
+      type: string;
+    }>).find((question) => question.type === 'TEXT' || question.type === 'LONG_TEXT');
+    assert.ok(textQuestion);
+    await request(app.getHttpServer())
+      .post(`/projects/${project.id}/question-schema`)
+      .send({ questions: [{ stableKey: textQuestion.stableKey, required: true, blocking: true }] })
+      .expect(201);
+    const round = await request(app.getHttpServer())
+      .post(`/projects/${project.id}/rounds`)
+      .send({ type: 'INITIAL_INTAKE' })
+      .expect(201);
+    const snapshotId = round.body.questions[0].id as string;
+
+    const expectedEmptyProgress = {
+      kind: 'INTERVIEW_ANSWERS',
+      answeredQuestions: 0,
+      totalQuestions: 1,
+    };
+    let workState = await request(app.getHttpServer())
+      .get(`/projects/${project.id}/work-state`)
+      .expect(200);
+    assert.deepEqual(workState.body.progress, expectedEmptyProgress);
+    assert.deepEqual((await queueItem(app, project.id)).progress, expectedEmptyProgress);
+    assert.deepEqual((await portfolioWorkState(app, project.id)).progress, expectedEmptyProgress);
+
+    await request(app.getHttpServer())
+      .patch(`/projects/${project.id}/rounds/${round.body.id as string}/answers/${snapshotId}`)
+      .send({ value: 'A felmérés tényszerű előrehaladásának bizonyítéka.' })
+      .expect(200);
+
+    const expectedAnsweredProgress = {
+      kind: 'INTERVIEW_ANSWERS',
+      answeredQuestions: 1,
+      totalQuestions: 1,
+    };
+    workState = await request(app.getHttpServer())
+      .get(`/projects/${project.id}/work-state`)
+      .expect(200);
+    assert.deepEqual(workState.body.progress, expectedAnsweredProgress);
+    assert.deepEqual((await queueItem(app, project.id)).progress, expectedAnsweredProgress);
+    assert.deepEqual((await portfolioWorkState(app, project.id)).progress, expectedAnsweredProgress);
+  });
+
+  it('reports factual Decision Review input progress after the Initial Intake', async () => {
+    const project = await createQueueProject(app, `Decision progress ${Date.now()}`);
+    await createCompletedCanonicalIntake(app, project.id);
+    await request(app.getHttpServer())
+      .put(`/projects/${project.id}/decision-review`)
+      .send({
+        businessValue: 5,
+        strategicAlignment: 4,
+        urgency: null,
+        confidence: null,
+        complexity: null,
+        risk: null,
+      })
+      .expect(200);
+
+    const expectedPartialProgress = {
+      kind: 'DECISION_INPUTS',
+      completedInputs: 2,
+      totalInputs: 6,
+    };
+    let workState = await request(app.getHttpServer())
+      .get(`/projects/${project.id}/work-state`)
+      .expect(200);
+    assert.deepEqual(workState.body.progress, expectedPartialProgress);
+    assert.deepEqual((await queueItem(app, project.id)).progress, expectedPartialProgress);
+    assert.deepEqual((await portfolioWorkState(app, project.id)).progress, expectedPartialProgress);
+
+    await request(app.getHttpServer())
+      .put(`/projects/${project.id}/decision-review`)
+      .send({
+        businessValue: 5,
+        strategicAlignment: 4,
+        urgency: 3,
+        confidence: 2,
+        complexity: 4,
+        risk: 5,
+      })
+      .expect(200);
+
+    const expectedCompleteProgress = {
+      kind: 'DECISION_INPUTS',
+      completedInputs: 6,
+      totalInputs: 6,
+    };
+    workState = await request(app.getHttpServer())
+      .get(`/projects/${project.id}/work-state`)
+      .expect(200);
+    assert.deepEqual(workState.body.progress, expectedCompleteProgress);
+    assert.deepEqual((await queueItem(app, project.id)).progress, expectedCompleteProgress);
+    assert.deepEqual((await portfolioWorkState(app, project.id)).progress, expectedCompleteProgress);
+  });
+
+  it('keeps derived preparation recommendations identical at every entry surface', async () => {
+    const preparable = await createQueueProject(app, `Preparable parity ${Date.now()}`);
+    await createCompletedCanonicalIntake(app, preparable.id);
+    await request(app.getHttpServer())
+      .put(`/projects/${preparable.id}/decision-review`)
+      .send({
+        businessValue: 3,
+        strategicAlignment: 3,
+        urgency: 3,
+        confidence: 3,
+        complexity: 3,
+        risk: 3,
+      })
+      .expect(200);
+
+    const clarification = await createQueueProject(app, `Clarification parity ${Date.now()}`);
+    await createCompletedCanonicalIntake(app, clarification.id);
+    await request(app.getHttpServer())
+      .put(`/projects/${clarification.id}/decision-review`)
+      .send({
+        businessValue: 1,
+        strategicAlignment: 1,
+        urgency: 1,
+        confidence: 1,
+        complexity: 5,
+        risk: 5,
+      })
+      .expect(200);
+
+    await assertEntrySurfacePreparationState(app, preparable.id, 'ESTIMATE_PREPARABLE');
+    await assertEntrySurfacePreparationState(app, clarification.id, 'CLARIFICATION_REQUIRED');
+  });
+
+  it('routes every HTTP entry surface through the canonical database work-state projection', async () => {
+    const project = await createQueueProject(app, `Canonical projection ${Date.now()}`);
+
+    const single = await captureReads(app, () => request(app.getHttpServer())
+      .get(`/projects/${project.id}/work-state`)
+      .expect(200));
+    const portfolio = await captureReads(app, () => request(app.getHttpServer())
+      .get('/projects/portfolio')
+      .expect(200));
+    const queue = await captureReads(app, () => request(app.getHttpServer())
+      .get('/projects/active-queue')
+      .query({ q: `Canonical projection` })
+      .expect(200));
+
+    for (const reads of [single.reads, portfolio.reads, queue.reads]) {
+      assert.equal(
+        reads.filter((query) => query.includes('project_work_state_projection')).length,
+        1,
+      );
+    }
   });
 
   it('orders equal-urgency work by due time, normalized Hungarian name, then stable identity', () => {
@@ -312,11 +539,28 @@ describe('Active project queue (e2e)', () => {
     const after = await countQueueReadQueries(app);
     assert.equal(after, before);
   });
+
+  it('selects the cursor page with a hard PostgreSQL row bound', async () => {
+    const token = `Bounded page ${randomUUID().slice(0, 8)}`;
+    for (let index = 0; index < 25; index += 1) {
+      await createQueueProject(app, `${token} ${String(index).padStart(2, '0')}`);
+    }
+
+    const { response, reads } = await captureQueueReads(app, { q: token });
+
+    assert.equal(response.body.items.length, 10);
+    assert.equal(response.body.totalCount, 25);
+    const boundedPageRead = reads.find((query) => query.includes('project_work_state_page'));
+    assert.ok(boundedPageRead, 'Expected a dedicated PostgreSQL Project work-state page query.');
+    assert.match(boundedPageRead, /LIMIT\s+11\b/i);
+  });
 });
 
 interface QueueTestItem {
   readonly urgency: string;
   readonly newReplyCount: number;
+  readonly progress: unknown;
+  readonly preparationStatus: { readonly state: string };
   readonly primaryAction: { readonly target: string; readonly label: string };
 }
 
@@ -330,6 +574,51 @@ async function queueItem(app: INestApplication, projectId: string): Promise<Queu
     .find((candidate) => candidate.projectId === projectId);
   assert.ok(item, `Expected Project ${projectId} on the first Active project queue page.`);
   return item;
+}
+
+async function portfolioWorkState(
+  app: INestApplication,
+  projectId: string,
+): Promise<QueueTestItem> {
+  const response = await request(app.getHttpServer()).get('/projects/portfolio').expect(200);
+  const entry = (response.body as Array<{
+    readonly project: { readonly id: string };
+    readonly workState: QueueTestItem | null;
+  }>).find((candidate) => candidate.project.id === projectId);
+  assert.ok(entry?.workState, `Expected Project ${projectId} in the Portfolio read model.`);
+  return entry.workState;
+}
+
+async function assertEntrySurfacePriority(
+  app: INestApplication,
+  projectId: string,
+  urgency: string,
+  primaryAction: QueueTestItem['primaryAction'],
+): Promise<void> {
+  const single = await request(app.getHttpServer())
+    .get(`/projects/${projectId}/work-state`)
+    .expect(200);
+  const queue = await queueItem(app, projectId);
+  const portfolio = await portfolioWorkState(app, projectId);
+  for (const state of [single.body as QueueTestItem, queue, portfolio]) {
+    assert.equal(state.urgency, urgency);
+    assert.deepEqual(state.primaryAction, primaryAction);
+  }
+}
+
+async function assertEntrySurfacePreparationState(
+  app: INestApplication,
+  projectId: string,
+  expectedState: string,
+): Promise<void> {
+  const single = await request(app.getHttpServer())
+    .get(`/projects/${projectId}/work-state`)
+    .expect(200);
+  const queue = await queueItem(app, projectId);
+  const portfolio = await portfolioWorkState(app, projectId);
+  for (const state of [single.body as QueueTestItem, queue, portfolio]) {
+    assert.equal(state.preparationStatus.state, expectedState);
+  }
 }
 
 async function createEndedQueueProject(
@@ -380,23 +669,95 @@ async function createQueueProject(
   return { id: response.body.id as string };
 }
 
+type DecisionReviewSnapshot = {
+  readonly id: string;
+  readonly type: BaseQuestionType;
+  readonly stableKey: string;
+  readonly options: readonly string[] | null;
+};
+
+async function createCompletedCanonicalIntake(
+  app: INestApplication,
+  projectId: string,
+): Promise<void> {
+  const policy = await loadGeneralPlaybookV1();
+  await request(app.getHttpServer())
+    .post(`/projects/${projectId}/question-schema`)
+    .send({
+      questions: policy.items.map((item) => ({
+        stableKey: `${policy.id}-${String(item.id).padStart(3, '0')}`,
+        required: item.requiredForEstimate,
+        blocking: item.blockingIfMissing,
+      })),
+    })
+    .expect(201);
+  const round = await request(app.getHttpServer())
+    .post(`/projects/${projectId}/rounds`)
+    .send({ type: 'INITIAL_INTAKE' })
+    .expect(201);
+  for (const question of round.body.questions as DecisionReviewSnapshot[]) {
+    await request(app.getHttpServer())
+      .patch(`/projects/${projectId}/rounds/${round.body.id as string}/answers/${question.id}`)
+      .send({ value: decisionReviewAnswer(question) })
+      .expect(200);
+  }
+  await request(app.getHttpServer())
+    .post(`/projects/${projectId}/rounds/${round.body.id as string}/complete`)
+    .expect(201);
+}
+
+function decisionReviewAnswer(question: DecisionReviewSnapshot): AnswerValue {
+  if (question.type === 'TEXT' || question.type === 'LONG_TEXT') {
+    return `Decision Review evidence for ${question.stableKey}`;
+  }
+  if (question.type === 'BOOLEAN') return true;
+  if (question.type === 'NUMBER') return 1;
+  if (question.type === 'DATE') return '2026-08-10';
+  const option = question.options?.[0];
+  if (!option) throw new Error(`Missing option for ${question.stableKey}.`);
+  return question.type === 'SINGLE_SELECT' ? option : [option];
+}
+
 async function countQueueReadQueries(app: INestApplication): Promise<number> {
+  return (await captureQueueReads(app)).reads.length;
+}
+
+async function captureQueueReads(
+  app: INestApplication,
+  query: Readonly<Record<string, string>> = {},
+): Promise<{
+  readonly response: request.Response;
+  readonly reads: readonly string[];
+}> {
+  return captureReads(app, () => request(app.getHttpServer())
+    .get('/projects/active-queue')
+    .query(query)
+    .expect(200));
+}
+
+async function captureReads(
+  app: INestApplication,
+  run: () => PromiseLike<request.Response>,
+): Promise<{
+  readonly response: request.Response;
+  readonly reads: readonly string[];
+}> {
   const dataSource = app.get(DataSource);
   const originalLogQuery = dataSource.logger.logQuery;
-  let readCount = 0;
+  const reads: string[] = [];
   dataSource.logger.logQuery = (
     query: string,
     _parameters?: readonly unknown[],
     _queryRunner?: QueryRunner,
   ) => {
     if (/^\s*(SELECT|WITH)\b/i.test(query)) {
-      readCount += 1;
+      reads.push(query);
     }
   };
   try {
-    await request(app.getHttpServer()).get('/projects/active-queue').expect(200);
+    const response = await run();
+    return { response, reads };
   } finally {
     dataSource.logger.logQuery = originalLogQuery;
   }
-  return readCount;
 }

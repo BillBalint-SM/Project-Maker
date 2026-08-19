@@ -72,15 +72,19 @@
         <a
           class="project-card"
           [routerLink]="projectRoute(entry)"
+          [fragment]="entry.workState ? actionFragment(entry.workState.primaryAction.target) : undefined"
           [attr.data-testid]="'project-card-' + entry.project.id"
         >
           <div class="project-card-header">
             <h2>{{ entry.project.name }}</h2>
             <p-tag [value]="portfolioStatusLabel(entry)" />
           </div>
-          @if (replyCount(entry.project.id) > 0) {
+          @if (entry.workState; as workState) {
+            <p-tag [value]="workState.urgencyLabel" severity="secondary" />
+          }
+          @if (entry.workState && entry.workState.newReplyCount > 0) {
             <span class="reply-indicator" [attr.data-testid]="'project-reply-count-' + entry.project.id">
-              {{ replyCount(entry.project.id) }} új Customer válasz
+              {{ entry.workState.newReplyCount }} új ügyfélválasz
             </span>
           }
           <dl>
@@ -93,8 +97,11 @@
               <dd>{{ entry.project.nextAction || 'Nincs megadva' }}</dd>
             </div>
           </dl>
+          @if (progressLabel(entry.workState?.progress); as progress) {
+            <p class="project-progress">{{ progress }}</p>
+          }
           <span class="open-label">
-            {{ replyCount(entry.project.id) > 0 ? 'Customer válaszok megnyitása' : 'Projektállapot megnyitása' }}
+            {{ entry.workState?.primaryAction?.label ?? 'Projektállapot megnyitása' }}
             <span aria-hidden="true">→</span>
           </span>
         </a>
