@@ -10,7 +10,7 @@
     "migration:run": "typeorm-ts-node-commonjs -d src/database/migration-data-source.ts migration:run",
     "migration:revert": "typeorm-ts-node-commonjs -d src/database/migration-data-source.ts migration:revert",
     "migration:show": "typeorm-ts-node-commonjs -d src/database/migration-data-source.ts migration:show",
-    "test": "tsc --project ./test/tsconfig.json && node --test ./dist-test/test/*.spec.js ./dist-test/test/*e2e-spec.js",
+    "test": "tsc --project ./test/tsconfig.json && node --test --test-concurrency=1 ./dist-test/test/*.spec.js ./dist-test/test/*e2e-spec.js",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
