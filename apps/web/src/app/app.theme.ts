@@ -11,7 +11,8 @@ import AuraSelect from '@primeuix/themes/aura/select';
 import AuraTag from '@primeuix/themes/aura/tag';
 import AuraTextarea from '@primeuix/themes/aura/textarea';
 
-// Keep this list aligned with the PrimeNG modules imported by the application.
+// Keep this list aligned with the Aura component-theme packages used by the application.
+// PrimeNG's Overlay supplies its own structural CSS and has no Aura component preset.
 // Importing the complete Aura preset makes every component theme eager.
 const ProjectMakerAura = {
   ...AuraBase,
