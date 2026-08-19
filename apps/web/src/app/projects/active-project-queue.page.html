@@ -152,10 +152,17 @@
                         <dd>{{ item.newReplyCount }}</dd>
                       </div>
                     }
+                    @if (progressLabel(item.progress); as progress) {
+                      <div>
+                        <dt>Előrehaladás</dt>
+                        <dd>{{ progress }}</dd>
+                      </div>
+                    }
                   </dl>
                   <a
                     pButton
                     [routerLink]="actionRoute(item)"
+                    [fragment]="actionFragment(item.primaryAction.target)"
                     [attr.data-testid]="'queue-action-' + item.projectId"
                   >{{ item.primaryAction.label }}</a>
                 </li>

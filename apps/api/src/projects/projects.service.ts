@@ -357,7 +357,7 @@ function parseDueAt(value: string | null | undefined): Date | null {
   return parsed;
 }
 
-function toWorkspace(project: Project): ProjectWorkspace {
+export function toWorkspace(project: Project): ProjectWorkspace {
   return {
     id: project.id,
     name: project.name,

@@ -20,19 +20,23 @@
       <p>{{ error }}</p>
       <p-button label="Újrapróbálás" (onClick)="loadStatus()" data-testid="retry-project-status" />
     </div>
-  } @else if (preparationStatus(); as current) {
+  } @else if (workState(); as current) {
     <p-card data-testid="project-status-card">
-      <ng-template #title>Aktuális felkészültségi állapot</ng-template>
+      <ng-template #title>Most ezt intézd</ng-template>
       <ng-template #subtitle>
-        A rendszer a jelenlegi kérdésséma, felmérés és döntési értékelés alapján választja ki a következő munkát.
+        A rendszer az ügyfélválaszok, a koordinációs vállalás és a felkészültségi állapot alapján választja ki az elsődleges munkát.
       </ng-template>
 
-      <strong class="preparation-state" data-testid="project-preparation-state">{{ current.label }}</strong>
-      <p>Egyszerre egy következő feladattal haladj tovább.</p>
+      <strong class="preparation-state" data-testid="project-work-reason">{{ current.urgencyLabel }}</strong>
+      <p>{{ current.preparationStatus.label }}</p>
+      @if (progressLabel(current.progress); as progress) {
+        <p data-testid="project-work-progress">{{ progress }}</p>
+      }
       <a
         pButton
         [routerLink]="primaryActionRoute()"
-        data-testid="project-preparation-primary-action"
+        [fragment]="actionFragment(current.primaryAction.target)"
+        data-testid="project-work-primary-action"
       >{{ current.primaryAction.label }}</a>
       <a
         class="open-cockpit-link"
@@ -46,14 +50,7 @@
         <ng-template #title>Projektkoordináció</ng-template>
         <ng-template #subtitle>A jelenlegi felelős és a következő konkrét lépés.</ng-template>
 
-        @if (coordinationLoading()) {
-          <p class="card-state" aria-live="polite">A koordináció betöltése folyamatban van…</p>
-        } @else if (coordinationError(); as error) {
-          <div class="card-state" role="alert">
-            <p>{{ error }}</p>
-            <p-button label="Újrapróbálás" (onClick)="loadCoordination()" />
-          </div>
-        } @else if (project(); as currentProject) {
+        @if (workState(); as currentProject) {
           <dl class="status-details">
             <div>
               <dt>Következő lépés felelőse</dt>
@@ -81,14 +78,14 @@
         <ng-template #title>Ügyfélkommunikáció</ng-template>
         <ng-template #subtitle>Kapcsolattartó és a meglévő ügyfélműveletek belépési pontja.</ng-template>
 
-        @if (coordinationLoading()) {
+        @if (customerMetadataLoading()) {
           <p class="card-state" aria-live="polite">Az ügyféladatok betöltése folyamatban van…</p>
-        } @else if (coordinationError(); as error) {
+        } @else if (customerMetadataError(); as error) {
           <div class="card-state" role="alert">
             <p>{{ error }}</p>
-            <p-button label="Újrapróbálás" (onClick)="loadCoordination()" />
+            <p-button label="Újrapróbálás" (onClick)="loadCustomerMetadata()" />
           </div>
-        } @else if (project(); as currentProject) {
+        } @else if (customerMetadata(); as currentProject) {
           <dl class="status-details">
             <div>
               <dt>Kapcsolattartó</dt>

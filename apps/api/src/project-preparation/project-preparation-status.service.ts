@@ -1,8 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import type {
-  ProjectPreparationAction,
-  ProjectPreparationStatus,
-} from '@project-maker/contracts';
+import type { ProjectPreparationStatus } from '@project-maker/contracts';
 import { DataSource, In } from 'typeorm';
 
 import { AuditEvent } from '../audit/audit-event.entity';
@@ -10,19 +7,7 @@ import { DecisionReviewService } from '../decision-review/decision-review.servic
 import { findCurrentInitialIntakeSources } from '../interviews/current-initial-intake-source';
 import { Project } from '../projects/project.entity';
 import { ProjectQuestionSchemaEntity } from '../question-bank/project-question-schema.entity';
-
-const interviewAction: ProjectPreparationAction = {
-  label: 'Felmérés megnyitása',
-  target: 'INTERVIEW',
-};
-const readinessAction: ProjectPreparationAction = {
-  label: 'Felkészültség megnyitása',
-  target: 'READINESS',
-};
-const decisionReviewAction: ProjectPreparationAction = {
-  label: 'Döntési értékelés megnyitása',
-  target: 'DECISION_REVIEW',
-};
+import { toProjectPreparationStatus } from './project-preparation-status-value';
 
 @Injectable()
 export class ProjectPreparationStatusService {
@@ -91,7 +76,7 @@ export class ProjectPreparationStatusService {
         if (!schemaProjectIds.has(project.id)) {
           return [
             project.id,
-            status(project.id, 'SCHEMA_REQUIRED', 'Kérdésséma szükséges', interviewAction),
+            toProjectPreparationStatus(project.id, 'SCHEMA_REQUIRED'),
           ] as const;
         }
         const sourceRound = sourceRoundsByProjectId.get(project.id);
@@ -99,13 +84,13 @@ export class ProjectPreparationStatusService {
         if (latestRestoration && (!sourceRound || sourceRound.createdAt <= latestRestoration.createdAt)) {
           return [
             project.id,
-            status(project.id, 'SCHEMA_REQUIRED', 'Kérdésséma szükséges', interviewAction),
+            toProjectPreparationStatus(project.id, 'SCHEMA_REQUIRED'),
           ] as const;
         }
         if (!sourceRound || sourceRound.status === 'OPEN') {
           return [
             project.id,
-            status(project.id, 'INTAKE_IN_PROGRESS', 'Felmérés folyamatban', interviewAction),
+            toProjectPreparationStatus(project.id, 'INTAKE_IN_PROGRESS'),
           ] as const;
         }
         const review = reviewsByProjectId.get(project.id);
@@ -116,50 +101,31 @@ export class ProjectPreparationStatusService {
           return review.unavailableReasons.includes('UNSUPPORTED_SCHEMA')
             ? [
                 project.id,
-                status(project.id, 'CLARIFICATION_REQUIRED', 'Tisztázás szükséges', readinessAction),
+                toProjectPreparationStatus(project.id, 'CLARIFICATION_REQUIRED'),
               ] as const
             : [
                 project.id,
-                status(
-                  project.id,
-                  'DECISION_REVIEW_REQUIRED',
-                  'Döntési értékelés szükséges',
-                  decisionReviewAction,
-                ),
+                toProjectPreparationStatus(project.id, 'DECISION_REVIEW_REQUIRED'),
               ] as const;
         }
         switch (review.recommendation) {
           case 'CLARIFICATION_REQUIRED':
             return [
               project.id,
-              status(project.id, 'CLARIFICATION_REQUIRED', 'Tisztázás szükséges', readinessAction),
+              toProjectPreparationStatus(project.id, 'CLARIFICATION_REQUIRED'),
             ] as const;
           case 'ESTIMATE_PREPARATION_POSSIBLE':
             return [
               project.id,
-              status(
-                project.id,
-                'ESTIMATE_PREPARABLE',
-                'Becslés előkészíthető',
-                decisionReviewAction,
-              ),
+              toProjectPreparationStatus(project.id, 'ESTIMATE_PREPARABLE'),
             ] as const;
           case 'ESTIMATE_READY':
             return [
               project.id,
-              status(project.id, 'ESTIMATE_READY', 'Becslésre kész', decisionReviewAction),
+              toProjectPreparationStatus(project.id, 'ESTIMATE_READY'),
             ] as const;
         }
       }),
     );
   }
-}
-
-function status(
-  projectId: string,
-  state: ProjectPreparationStatus['state'],
-  label: string,
-  primaryAction: ProjectPreparationAction,
-): ProjectPreparationStatus {
-  return { projectId, state, label, primaryAction };
 }

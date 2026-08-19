@@ -92,10 +92,12 @@ test('completes the keyboard employee journey and restores the paged queue URL a
 
   const primaryAction = page.locator('[data-testid^="queue-action-"]').first();
   const primaryActionUrl = await primaryAction.getAttribute('href');
-  expect(primaryActionUrl).toMatch(/^\/projects\/[0-9a-f-]+\/interview$/);
+  expect(primaryActionUrl).toMatch(/^\/projects\/[0-9a-f-]+#workspace$/);
+  await expect(primaryAction).toHaveText('Következő lépés kezelése');
   await primaryAction.focus();
   await primaryAction.press('Enter');
   await expect(page).toHaveURL(primaryActionUrl!);
+  await expect(page.getByTestId('workspace-form')).toBeVisible();
 
   await page.goBack();
   await expect(page).toHaveURL(queueUrl);

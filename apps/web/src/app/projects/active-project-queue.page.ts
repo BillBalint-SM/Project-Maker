@@ -19,7 +19,8 @@ import {
   ActiveProjectQueueApiService,
   ActiveProjectQueueCursorRequestError,
 } from './active-project-queue-api.service';
-import { projectActionRoute } from './project-action-route';
+import { projectActionFragment, projectActionRoute } from './project-action-route';
+import { projectWorkProgressLabel } from './project-work-progress-label';
 
 const urgencyOrder: readonly ActiveProjectUrgency[] = [
   'CUSTOMER_REPLY',
@@ -85,6 +86,8 @@ export class ActiveProjectQueuePageComponent implements OnInit {
   readonly selectedPreparationStates = signal<readonly ProjectPreparationState[]>([]);
   readonly urgencyOptions = urgencyOptions;
   readonly preparationOptions = preparationOptions;
+  readonly progressLabel = projectWorkProgressLabel;
+  readonly actionFragment = projectActionFragment;
 
   readonly page = signal<ActiveProjectQueuePage | null>(null);
   readonly activeQuery = signal<ActiveProjectQueueQuery>({});

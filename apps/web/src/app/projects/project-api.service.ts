@@ -7,7 +7,9 @@ import type {
   CreateProjectInput,
   ProjectCockpit,
   ProjectActivityFeed,
+  ProjectPortfolioEntry,
   ProjectPreparationStatus,
+  ProjectWorkState,
   ProjectWorkspace,
   UpdateProjectBasicsInput,
 } from '@project-maker/contracts';
@@ -37,6 +39,12 @@ export class ProjectApiService {
     return this.http
       .get<readonly ProjectWorkspace[]>('/api/projects')
       .pipe(catchError((error: unknown) => this.fail(error, 'load projects')));
+  }
+
+  loadPortfolio(): Observable<readonly ProjectPortfolioEntry[]> {
+    return this.http
+      .get<readonly ProjectPortfolioEntry[]>('/api/projects/portfolio')
+      .pipe(catchError((error: unknown) => this.fail(error, 'load the project portfolio')));
   }
 
   createProject(input: CreateProjectInput): Observable<ProjectWorkspace> {
@@ -91,6 +99,12 @@ export class ProjectApiService {
           this.fail(error, 'load the project preparation status'),
         ),
       );
+  }
+
+  loadWorkState(projectId: string): Observable<ProjectWorkState> {
+    return this.http
+      .get<ProjectWorkState>(`/api/projects/${encodeURIComponent(projectId)}/work-state`)
+      .pipe(catchError((error: unknown) => this.fail(error, 'load the current project task')));
   }
 
   loadProjectActivity(projectId: string): Observable<ProjectActivityFeed> {

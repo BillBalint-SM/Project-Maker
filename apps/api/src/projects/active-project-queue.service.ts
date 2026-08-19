@@ -1,18 +1,25 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import type {
+  ActiveProjectQueueAction,
   ActiveProjectQueueCursorErrorCode,
   ActiveProjectQueueItem,
   ActiveProjectQueuePage,
   ActiveProjectQueueQuery,
   ActiveProjectUrgency,
+  ProjectPortfolioEntry,
+  ProjectWorkState,
 } from '@project-maker/contracts';
 import { Repository } from 'typeorm';
 
-import { ProjectPreparationStatusService } from '../project-preparation/project-preparation-status.service';
+import { toProjectPreparationStatus } from '../project-preparation/project-preparation-status-value';
 import { ActiveProjectQueueCursorCodec } from './active-project-queue-cursor';
 import { Project } from './project.entity';
-import { toNextActionOwner } from './projects.service';
+import {
+  ProjectWorkStateReadModel,
+  type ProjectWorkStateReadRow,
+} from './project-work-state-read-model';
+import { toWorkspace } from './projects.service';
 
 export const activeProjectQueueClockToken = 'ACTIVE_PROJECT_QUEUE_CLOCK';
 
@@ -33,17 +40,10 @@ const urgencyLabels: Readonly<Record<ActiveProjectUrgency, string>> = {
   DUE_SOON: 'Hamarosan lejár',
   IN_PROGRESS: 'Folyamatban',
 };
-
-interface ReplyAggregate {
-  readonly project_id: string;
-  readonly new_reply_count: string;
-}
-
-interface QueueCandidate {
-  readonly project: Project;
-  readonly urgency: ActiveProjectUrgency;
-  readonly newReplyCount: number;
-}
+const coordinationAction: ActiveProjectQueueAction = {
+  target: 'PROJECT_COORDINATION',
+  label: 'Következő lépés kezelése',
+};
 
 interface QueueCursor {
   readonly version: 1;
@@ -68,131 +68,160 @@ export class ActiveProjectQueueService {
   constructor(
     @InjectRepository(Project)
     private readonly projectRepository: Repository<Project>,
-    private readonly preparationStatusService: ProjectPreparationStatusService,
     private readonly cursorCodec: ActiveProjectQueueCursorCodec,
+    private readonly readModel: ProjectWorkStateReadModel,
     @Inject(activeProjectQueueClockToken)
     private readonly clock: ActiveProjectQueueClock,
   ) {}
 
+  async getWorkState(projectId: string): Promise<ActiveProjectQueueItem> {
+    const workState = (await this.getProjectedWorkStates([projectId], true)).get(projectId);
+    if (!workState) throw new NotFoundException('Project not found.');
+    return workState;
+  }
+
+  async getPortfolio(): Promise<readonly ProjectPortfolioEntry[]> {
+    const projects = await this.projectRepository.find({
+      order: { updatedAt: 'DESC', id: 'ASC' },
+    });
+    const activeProjects = projects.filter((project) => project.status !== 'ARCHIVED');
+    const workStates = await this.getProjectedWorkStates(
+      activeProjects.map((project) => project.id),
+      false,
+    );
+    return projects.map((project) => ({
+      project: toWorkspace(project),
+      workState: project.status === 'ARCHIVED'
+        ? null
+        : workStates.get(project.id) ?? null,
+    }));
+  }
+
+  private async getProjectedWorkStates(
+    projectIds: readonly string[],
+    includeArchived: boolean,
+  ): Promise<ReadonlyMap<string, ProjectWorkState>> {
+    const retrievedAt = this.clock.now();
+    const rows = await this.readModel.getWorkStates({
+      projectIds,
+      includeArchived,
+      now: retrievedAt,
+      dueSoonUntil: endOfSeventhBudapestDay(retrievedAt),
+    });
+    return new Map(rows.map((row) => [row.projectId, toProjectWorkState(row)]));
+  }
+
   async getPage(query: ActiveProjectQueueQuery = {}): Promise<ActiveProjectQueuePage> {
     const retrievedAt = this.clock.now();
-    const [projects, replyAggregates] = await Promise.all([
-      this.projectRepository
-        .createQueryBuilder('project')
-        .where('project.status <> :archived', { archived: 'ARCHIVED' })
-        .getMany(),
-      this.projectRepository.manager.query<ReplyAggregate[]>(
-        `SELECT project_id,
-                COUNT(*) FILTER (WHERE status = 'Új válasz') AS new_reply_count
-           FROM customer_correspondences
-          GROUP BY project_id`,
-      ),
-    ]);
-    const repliesByProjectId = new Map(
-      replyAggregates.map((aggregate) => [aggregate.project_id, aggregate]),
-    );
-    const statusesByProjectId = await this.preparationStatusService.getStatuses(projects);
-    const searchedCandidates = projects
-      .map((project): QueueCandidate => {
-        const aggregate = repliesByProjectId.get(project.id);
-        const newReplyCount = Number(aggregate?.new_reply_count ?? 0);
-        return {
-          project,
-          urgency: classifyActiveProjectUrgency(project.dueAt, newReplyCount > 0, retrievedAt),
-          newReplyCount,
-        };
-      })
-      .filter(({ project }) => matchesSearch(project.name, query.search))
-      .filter(({ project }) => {
-        const states = query.preparationStates ?? [];
-        return states.length === 0 || states.includes(requiredStatus(statusesByProjectId, project.id).state);
-      });
-    const groupCounts = {
-      CUSTOMER_REPLY: 0,
-      OVERDUE: 0,
-      DUE_SOON: 0,
-      IN_PROGRESS: 0,
-    } satisfies Record<ActiveProjectUrgency, number>;
-    for (const candidate of searchedCandidates) {
-      groupCounts[candidate.urgency] += 1;
-    }
-
-    const candidates = searchedCandidates
-      .filter(({ urgency }) => {
-        const urgencies = query.urgencies ?? [];
-        return urgencies.length === 0 || urgencies.includes(urgency);
-      })
-      .sort(compareCandidates);
     const cursor = query.cursor ? decodeCursor(query.cursor, this.cursorCodec) : null;
     if (cursor && cursor.filter !== cursorFilter(query)) {
       throw new ActiveProjectQueueCursorError('MISMATCHED_CURSOR');
     }
-    const anchorIndex = cursor
-      ? candidates.findIndex((candidate) => matchesAnchor(candidate, cursor.anchor))
-      : -1;
-    if (cursor && anchorIndex < 0) {
+    const readPage = await this.readModel.getPage({
+      query,
+      cursor,
+      now: retrievedAt,
+      dueSoonUntil: endOfSeventhBudapestDay(retrievedAt),
+    });
+    if (cursor && !readPage.anchorExists) {
       throw new ActiveProjectQueueCursorError('OBSOLETE_CURSOR');
     }
-    const startIndex = cursor
-      ? cursor.direction === 'NEXT'
-        ? anchorIndex + 1
-        : Math.max(0, anchorIndex - pageSize)
-      : 0;
-    const pageCandidates = candidates.slice(
-      startIndex,
-      cursor?.direction === 'PREVIOUS' ? anchorIndex : startIndex + pageSize,
-    );
-
-    const items = pageCandidates.map(({ project, urgency, newReplyCount }): ActiveProjectQueueItem => {
-      const preparationStatus = requiredStatus(statusesByProjectId, project.id);
-      return {
-        projectId: project.id,
-        projectName: project.name,
-        urgency,
-        urgencyLabel: urgencyLabels[urgency],
-        preparationStatus,
-        nextAction: project.nextAction,
-        nextActionOwner: toNextActionOwner(project),
-        dueAt: project.dueAt?.toISOString() ?? null,
-        newReplyCount,
-        primaryAction:
-          urgency === 'CUSTOMER_REPLY'
-            ? { target: 'CUSTOMER_CORRESPONDENCE', label: 'Ügyféllevelezés megnyitása' }
-            : preparationStatus.primaryAction,
-      };
-    });
+    const hasMoreInDirection = readPage.rows.length > pageSize;
+    const selectedRows = readPage.rows.slice(0, pageSize);
+    const pageRows = cursor?.direction === 'PREVIOUS'
+      ? [...selectedRows].reverse()
+      : selectedRows;
+    const items = pageRows.map(toProjectWorkState);
+    const hasPrevious = cursor
+      ? cursor.direction === 'NEXT' || hasMoreInDirection
+      : false;
+    const hasNext = cursor
+      ? cursor.direction === 'PREVIOUS' || hasMoreInDirection
+      : hasMoreInDirection;
 
     return {
       items,
-      totalCount: candidates.length,
-      groupCounts,
+      totalCount: readPage.totalCount,
+      groupCounts: readPage.groupCounts,
       retrievedAt: retrievedAt.toISOString(),
       previousCursor:
-        startIndex > 0 && pageCandidates[0]
-          ? this.cursorCodec.seal(createCursor('PREVIOUS', query, pageCandidates[0]))
+        hasPrevious && items[0]
+          ? this.cursorCodec.seal(createCursor('PREVIOUS', query, items[0]))
           : null,
       nextCursor:
-        startIndex + pageCandidates.length < candidates.length && pageCandidates.at(-1)
-          ? this.cursorCodec.seal(createCursor('NEXT', query, pageCandidates.at(-1)!))
+        hasNext && items.at(-1)
+          ? this.cursorCodec.seal(createCursor('NEXT', query, items.at(-1)!))
           : null,
     };
   }
+
+}
+
+function primaryActionFor(
+  urgency: ActiveProjectUrgency,
+  preparationAction: ActiveProjectQueueAction,
+): ActiveProjectQueueAction {
+  if (urgency === 'CUSTOMER_REPLY') {
+    return { target: 'CUSTOMER_CORRESPONDENCE', label: 'Ügyféllevelezés megnyitása' };
+  }
+  if (urgency === 'OVERDUE' || urgency === 'DUE_SOON') {
+    return coordinationAction;
+  }
+  return preparationAction;
+}
+
+function toProjectWorkState(row: ProjectWorkStateReadRow): ProjectWorkState {
+  const preparationStatus = toProjectPreparationStatus(row.projectId, row.preparationState);
+  const displayName = row.nextActionOwnerRole === 'INTERNAL_OWNER'
+    ? row.internalOwnerName
+    : row.nextActionOwnerRole === 'CUSTOMER_CONTACT'
+      ? row.customerContactName
+      : null;
+  return {
+    projectId: row.projectId,
+    projectName: row.projectName,
+    urgency: row.urgency,
+    urgencyLabel: urgencyLabels[row.urgency],
+    preparationStatus,
+    nextAction: row.nextAction,
+    nextActionOwner: {
+      role: row.nextActionOwnerRole,
+      displayName,
+      complete: row.nextActionOwnerRole !== null && displayName !== null,
+    },
+    dueAt: row.dueAt,
+    newReplyCount: row.newReplyCount,
+    progress: row.preparationState === 'INTAKE_IN_PROGRESS'
+      ? {
+          kind: 'INTERVIEW_ANSWERS',
+          answeredQuestions: row.answeredQuestions,
+          totalQuestions: row.totalQuestions,
+        }
+      : row.preparationState === 'SCHEMA_REQUIRED'
+        ? undefined
+        : {
+            kind: 'DECISION_INPUTS',
+            completedInputs: row.completedDecisionInputs,
+            totalInputs: 6,
+          },
+    primaryAction: primaryActionFor(row.urgency, preparationStatus.primaryAction),
+  };
 }
 
 function createCursor(
   direction: QueueCursor['direction'],
   query: ActiveProjectQueueQuery,
-  candidate: QueueCandidate,
+  item: ActiveProjectQueueItem,
 ): QueueCursor {
   return {
     version: 1,
     direction,
     filter: cursorFilter(query),
     anchor: {
-      urgency: candidate.urgency,
-      dueAt: candidate.project.dueAt?.toISOString() ?? null,
-      projectName: normalizeProjectName(candidate.project.name),
-      projectId: candidate.project.id,
+      urgency: item.urgency,
+      dueAt: item.dueAt,
+      projectName: normalizeProjectName(item.projectName),
+      projectId: item.projectId,
     },
   };
 }
@@ -239,16 +268,6 @@ function cursorFilter(query: ActiveProjectQueueQuery): string {
   });
 }
 
-function matchesAnchor(
-  candidate: QueueCandidate,
-  anchor: QueueCursor['anchor'],
-): boolean {
-  return candidate.urgency === anchor.urgency
-    && (candidate.project.dueAt?.toISOString() ?? null) === anchor.dueAt
-    && normalizeProjectName(candidate.project.name) === anchor.projectName
-    && candidate.project.id === anchor.projectId;
-}
-
 export function classifyActiveProjectUrgency(
   dueAt: Date | null,
   hasNewReply: boolean,
@@ -264,23 +283,6 @@ export function classifyActiveProjectUrgency(
     return 'DUE_SOON';
   }
   return 'IN_PROGRESS';
-}
-
-function compareCandidates(left: QueueCandidate, right: QueueCandidate): number {
-  return compareActiveProjectQueueOrder(
-    {
-      urgency: left.urgency,
-      dueAt: left.project.dueAt,
-      projectName: left.project.name,
-      projectId: left.project.id,
-    },
-    {
-      urgency: right.urgency,
-      dueAt: right.project.dueAt,
-      projectName: right.project.name,
-      projectId: right.project.id,
-    },
-  );
 }
 
 export interface ActiveProjectQueueOrderValue {
@@ -310,20 +312,6 @@ function compareNullableDates(left: Date | null, right: Date | null): number {
 
 function normalizeProjectName(name: string): string {
   return name.normalize('NFD').replace(/\p{M}/gu, '').toLocaleLowerCase('hu-HU');
-}
-
-function matchesSearch(projectName: string, search: string | undefined): boolean {
-  const normalizedSearch = normalizeProjectName(search?.trim() ?? '');
-  return normalizedSearch.length === 0 || normalizeProjectName(projectName).includes(normalizedSearch);
-}
-
-function requiredStatus(
-  statuses: ReadonlyMap<string, import('@project-maker/contracts').ProjectPreparationStatus>,
-  projectId: string,
-): import('@project-maker/contracts').ProjectPreparationStatus {
-  const status = statuses.get(projectId);
-  if (!status) throw new TypeError(`Missing preparation status for Project ${projectId}.`);
-  return status;
 }
 
 function endOfSeventhBudapestDay(now: Date): Date {
