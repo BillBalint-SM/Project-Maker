@@ -1,8 +1,4 @@
 <section aria-labelledby="interview-title">
-  <a class="back-link" [routerLink]="['/projects', projectId]" data-testid="back-to-cockpit-link">
-    <span aria-hidden="true">←</span> Projekt áttekintő
-  </a>
-
   <div class="page-heading interview-heading">
     <span class="eyebrow">Vezetett interjú</span>
     <h1 id="interview-title">Projektinterjú</h1>
@@ -64,6 +60,7 @@
       <a
         class="back-link"
         [routerLink]="['/projects', projectId]"
+        queryParamsHandling="preserve"
         fragment="project-basics"
         data-testid="edit-project-basics-link"
       >

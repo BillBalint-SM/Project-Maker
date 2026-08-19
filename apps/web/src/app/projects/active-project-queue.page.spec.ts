@@ -1,6 +1,7 @@
 import { DATE_PIPE_DEFAULT_OPTIONS } from '@angular/common';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
+import { RouterTestingHarness } from '@angular/router/testing';
 import type { ActiveProjectQueuePage } from '@project-maker/contracts';
 import { of, Subject, throwError } from 'rxjs';
 import { describe, expect, it, vi } from 'vitest';
@@ -57,6 +58,34 @@ const page: ActiveProjectQueuePage = {
 };
 
 describe('ActiveProjectQueuePageComponent', () => {
+  it('carries the exact filtered and paged queue URL into Project links', async () => {
+    const api = { getPage: vi.fn().mockReturnValue(of(page)) };
+    await TestBed.configureTestingModule({
+      providers: [
+        provideRouter([
+          { path: 'projects/active', component: ActiveProjectQueuePageComponent },
+        ]),
+        { provide: ActiveProjectQueueApiService, useValue: api },
+      ],
+    }).compileComponents();
+    const sourceUrl =
+      '/projects/active?q=Alfa&urgency=CUSTOMER_REPLY&preparation=INTAKE_IN_PROGRESS&cursor=opaque-page-2';
+    const harness = await RouterTestingHarness.create();
+
+    await harness.navigateByUrl(sourceUrl, ActiveProjectQueuePageComponent);
+    await harness.fixture.whenStable();
+
+    const root = harness.routeNativeElement as HTMLElement;
+    const projectLink = root.querySelector(
+      '[data-testid="queue-project-11111111-1111-4111-8111-111111111111"]',
+    ) as HTMLAnchorElement | null;
+    const actionLink = root.querySelector(
+      '[data-testid="queue-action-11111111-1111-4111-8111-111111111111"]',
+    ) as HTMLAnchorElement | null;
+    expect(returnTarget(projectLink)).toBe(sourceUrl);
+    expect(returnTarget(actionLink)).toBe(sourceUrl);
+  });
+
   it('renders semantic urgency groups and routes each public action correctly', async () => {
     const api = { getPage: vi.fn().mockReturnValue(of(page)) };
     await TestBed.configureTestingModule({
@@ -85,12 +114,27 @@ describe('ActiveProjectQueuePageComponent', () => {
     expect(element.textContent).toContain('Folyamatban');
     expect(element.textContent).toContain('2 projekt látható az összesen 12 aktív projektből');
     expect(element.textContent).toContain('1 látható, összesen 6 projekt');
-    expect(element.querySelector('[data-testid="queue-project-11111111-1111-4111-8111-111111111111"]')?.getAttribute('href'))
-      .toBe('/projects/11111111-1111-4111-8111-111111111111/status');
-    expect(element.querySelector('[data-testid="queue-action-11111111-1111-4111-8111-111111111111"]')?.getAttribute('href'))
-      .toBe('/projects/11111111-1111-4111-8111-111111111111/customer-correspondences');
-    expect(element.querySelector('[data-testid="queue-action-22222222-2222-4222-8222-222222222222"]')?.getAttribute('href'))
-      .toBe('/projects/22222222-2222-4222-8222-222222222222/interview');
+    const projectLink = element.querySelector(
+      '[data-testid="queue-project-11111111-1111-4111-8111-111111111111"]',
+    ) as HTMLAnchorElement | null;
+    const customerAction = element.querySelector(
+      '[data-testid="queue-action-11111111-1111-4111-8111-111111111111"]',
+    ) as HTMLAnchorElement | null;
+    const interviewAction = element.querySelector(
+      '[data-testid="queue-action-22222222-2222-4222-8222-222222222222"]',
+    ) as HTMLAnchorElement | null;
+    expect(linkPath(projectLink)).toBe(
+      '/projects/11111111-1111-4111-8111-111111111111/status',
+    );
+    expect(linkPath(customerAction)).toBe(
+      '/projects/11111111-1111-4111-8111-111111111111/customer-correspondences',
+    );
+    expect(linkPath(interviewAction)).toBe(
+      '/projects/22222222-2222-4222-8222-222222222222/interview',
+    );
+    expect(returnTarget(projectLink)).toBe('/');
+    expect(returnTarget(customerAction)).toBe('/');
+    expect(returnTarget(interviewAction)).toBe('/');
   });
 
   it('restores known URL filters and debounces a trimmed search into replace-navigation', async () => {
@@ -477,3 +521,13 @@ describe('ActiveProjectQueuePageComponent', () => {
     expect(fixture.nativeElement.textContent).toContain('Nincs aktív projekt');
   });
 });
+
+function returnTarget(link: HTMLAnchorElement | null): string | null {
+  const href = link?.getAttribute('href');
+  return href ? new URL(href, 'https://project-maker.test').searchParams.get('returnTo') : null;
+}
+
+function linkPath(link: HTMLAnchorElement | null): string | null {
+  const href = link?.getAttribute('href');
+  return href ? new URL(href, 'https://project-maker.test').pathname : null;
+}

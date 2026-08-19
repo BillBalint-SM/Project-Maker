@@ -270,6 +270,10 @@ export class ActiveProjectQueuePageComponent implements OnInit {
   actionRoute(item: ActiveProjectQueueItem): readonly string[] {
     return projectActionRoute(item.projectId, item.primaryAction.target);
   }
+
+  projectContextQueryParams(): { readonly returnTo: string } {
+    return { returnTo: this.router.url };
+  }
 }
 
 function parseQueueQuery(params: ParamMap): ActiveProjectQueueQuery {

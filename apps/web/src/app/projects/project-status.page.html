@@ -1,56 +1,23 @@
 <section aria-labelledby="project-status-title">
-  <a class="back-link" routerLink="/" data-testid="project-status-back-to-projects">
-    <span aria-hidden="true">←</span> Minden projekt
-  </a>
-
   <div class="page-heading">
     <span class="eyebrow">Projektkörnyezet</span>
     <h1 id="project-status-title">Projektállapot</h1>
     <p>Az aktuális felkészültségi szakasz és az egyértelmű következő feladat.</p>
   </div>
 
-  @if (loading()) {
-    <div class="state-panel" data-testid="project-status-loading" aria-live="polite">
-      <p-progress-spinner ariaLabel="Projektállapot betöltése" />
-      <p>A projektállapot betöltése folyamatban van…</p>
-    </div>
-  } @else if (loadError(); as error) {
-    <div class="state-panel" data-testid="project-status-error" role="alert">
-      <h2>A projektállapot nem tölthető be</h2>
-      <p>{{ error }}</p>
-      <p-button label="Újrapróbálás" (onClick)="loadStatus()" data-testid="retry-project-status" />
-    </div>
-  } @else if (workState(); as current) {
-    <p-card data-testid="project-status-card">
-      <ng-template #title>Most ezt intézd</ng-template>
-      <ng-template #subtitle>
-        A rendszer az ügyfélválaszok, a koordinációs vállalás és a felkészültségi állapot alapján választja ki az elsődleges munkát.
-      </ng-template>
-
-      <strong class="preparation-state" data-testid="project-work-reason">{{ current.urgencyLabel }}</strong>
-      <p>{{ current.preparationStatus.label }}</p>
-      @if (progressLabel(current.progress); as progress) {
-        <p data-testid="project-work-progress">{{ progress }}</p>
-      }
-      <a
-        pButton
-        [routerLink]="primaryActionRoute()"
-        [fragment]="actionFragment(current.primaryAction.target)"
-        data-testid="project-work-primary-action"
-      >{{ current.primaryAction.label }}</a>
-      <a
-        class="open-cockpit-link"
-        [routerLink]="['/projects', projectId]"
-        data-testid="open-project-cockpit-from-status"
-      >Projektbeállítások és korábbi cockpit megnyitása</a>
-    </p-card>
-
-    <div class="status-hub-grid">
+  <div class="status-hub-grid">
       <p-card data-testid="project-status-coordination">
         <ng-template #title>Projektkoordináció</ng-template>
         <ng-template #subtitle>A jelenlegi felelős és a következő konkrét lépés.</ng-template>
 
-        @if (workState(); as currentProject) {
+        @if (projectContext.loading()) {
+          <p class="card-state" aria-live="polite">A projektkoordináció betöltése folyamatban van…</p>
+        } @else if (projectContext.loadError(); as error) {
+          <div class="card-state" role="alert">
+            <p>{{ error }}</p>
+            <p-button label="Újrapróbálás" (onClick)="projectContext.reload()" />
+          </div>
+        } @else if (projectContext.workState(); as currentProject) {
           <dl class="status-details">
             <div>
               <dt>Következő lépés felelőse</dt>
@@ -68,6 +35,7 @@
           <a
             class="status-hub-link"
             [routerLink]="['/projects', projectId]"
+            queryParamsHandling="preserve"
             fragment="workspace"
             data-testid="project-status-edit-coordination"
           >Koordináció szerkesztése</a>
@@ -99,6 +67,7 @@
           <a
             class="status-hub-link"
             [routerLink]="['/projects', projectId]"
+            queryParamsHandling="preserve"
             fragment="customer-communication"
             data-testid="project-status-open-customer-communication"
           >Ügyfélkommunikáció megnyitása</a>
@@ -131,6 +100,5 @@
           }
         }
       </p-card>
-    </div>
-  }
+  </div>
 </section>
