@@ -12,10 +12,12 @@
     "compose:config": "docker compose --env-file .env config --quiet",
     "compose:down": "docker compose --env-file .env down",
     "compose:up": "docker compose --env-file .env up --build --wait",
-    "test": "pnpm -r --if-present test",
+    "test": "pnpm test:ops && pnpm -r --if-present test",
+    "test:ops": "node --test scripts/test/*.test.mjs",
     "test:e2e": "pnpm --filter @project-maker/web test:e2e",
     "typecheck": "pnpm --filter @project-maker/contracts build && pnpm -r --if-present typecheck",
     "verify:comm-01-1": "node scripts/verify-comm-01-1-boundary.mjs",
+    "verify:m365-tenant-smoke": "node scripts/verify-m365-tenant-smoke.mjs docs/evidence/m365-tenant-smoke.json",
     "verify": "pnpm verify:comm-01-1 && pnpm typecheck && pnpm test && pnpm build"
   }
 }
