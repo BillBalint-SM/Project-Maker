@@ -253,6 +253,7 @@ if ($certificateThumbprint -notmatch '^[0-9a-fA-F]{40}$') {
 
 Start-WizardStage -Name 'Grant send and mailbox-scoped read authority'
 Open-StepUrl -Uri 'https://entra.microsoft.com/#view/Microsoft_AAD_RegisteredApps/ApplicationsListBlade'
+Confirm-Step -Prompt 'Ready to grant tenant-wide Mail.Send and create the dedicated-mailbox Exchange RBAC assignments?'
 Write-Step -Message @"
 In the app registration grant Microsoft Graph application permission Mail.Send and tenant-admin consent.
 Do not grant organization-wide Mail.Read in Entra. Entra and Exchange grants are additive, so that would defeat mailbox scoping.
@@ -286,6 +287,7 @@ if ($mailboxAddress -notmatch '^[^@+\s]+@pte\.hu$') {
     throw 'The dedicated mailbox must be one base address at the exact pte.hu domain.'
 }
 $plusAddress = $mailboxAddress.Replace('@', '+project-maker-provisioning@')
+Confirm-Step -Prompt 'Ready to send one controlled provisioning message to the dedicated plus address?'
 Write-Step -Message "Send a controlled message to $plusAddress and verify that it arrives in the dedicated mailbox."
 Confirm-Step -Prompt 'Did the exact plus-address message arrive in the dedicated mailbox? A no answer stops rollout.'
 
