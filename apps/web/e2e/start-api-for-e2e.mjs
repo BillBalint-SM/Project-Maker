@@ -33,6 +33,7 @@ let mailboxDeltaRequests = 0;
 const mailboxDeltaPreferHeaders = [];
 let delayNextMailboxDelta = false;
 let failNextMailboxDelta = false;
+let throttleNextMailboxDelta = false;
 const mailboxPendingMessages = [];
 const graphServer = createServer((request, response) => {
   if (request.method === 'GET' && request.url === '/__test/messages') {
@@ -49,6 +50,7 @@ const graphServer = createServer((request, response) => {
     mailboxDeltaPreferHeaders.length = 0;
     delayNextMailboxDelta = false;
     failNextMailboxDelta = false;
+    throttleNextMailboxDelta = false;
     mailboxPendingMessages.length = 0;
     response.writeHead(204).end();
     return;
@@ -146,6 +148,11 @@ const graphServer = createServer((request, response) => {
     response.writeHead(204).end();
     return;
   }
+  if (request.method === 'POST' && request.url === '/__test/throttle-next-mailbox-delta') {
+    throttleNextMailboxDelta = true;
+    response.writeHead(204).end();
+    return;
+  }
   if (request.method === 'POST' && request.url === '/__test/queue-mailbox-message') {
     let body = '';
     request.setEncoding('utf8');
@@ -159,6 +166,11 @@ const graphServer = createServer((request, response) => {
   if (request.method === 'GET' && request.url?.includes('/mailFolders/inbox/messages/delta')) {
     mailboxDeltaRequests += 1;
     mailboxDeltaPreferHeaders.push(request.headers.prefer ?? null);
+    if (throttleNextMailboxDelta) {
+      throttleNextMailboxDelta = false;
+      response.writeHead(429, { 'content-type': 'application/json', 'retry-after': '0' }).end('{}');
+      return;
+    }
     if (failNextMailboxDelta) {
       failNextMailboxDelta = false;
       response.writeHead(503, { 'content-type': 'application/json' }).end('{}');

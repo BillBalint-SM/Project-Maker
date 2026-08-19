@@ -66,6 +66,8 @@ async function retainInboundMessage(
   change: CustomerMailboxChange,
   observedAt: Date,
 ): Promise<void> {
+  const receivedAt = parseReceivedAt(change.receivedAt, observedAt);
+  if (await isInboundSupportingIdentityReplay(manager, mailboxAddress, change, receivedAt)) return;
   const correlation = change.automationKind === 'UNKNOWN_AUTOMATION'
     ? null
     : await correlate(manager, mailboxAddress, change.recipientAddresses);
@@ -103,7 +105,7 @@ async function retainInboundMessage(
       text,
       visibleText,
       quotedText,
-      parseReceivedAt(change.receivedAt, observedAt),
+      receivedAt,
       change.attachmentCount,
       JSON.stringify(change.attachments),
     ],
@@ -138,6 +140,10 @@ async function retainMailSystemEvent(
   change: CustomerMailboxChange,
   observedAt: Date,
 ): Promise<void> {
+  const occurredAt = parseReceivedAt(change.receivedAt, observedAt);
+  if (await isSystemEventSupportingIdentityReplay(manager, mailboxAddress, change, occurredAt)) {
+    return;
+  }
   const correlation = await correlate(manager, mailboxAddress, change.recipientAddresses);
   await manager.query(
     `INSERT INTO "customer_mail_system_events" (
@@ -153,9 +159,49 @@ async function retainMailSystemEvent(
       change.automationKind,
       correlation?.project_id ?? null,
       correlation?.correspondence_id ?? null,
-      parseReceivedAt(change.receivedAt, observedAt),
+      occurredAt,
     ],
   );
+}
+
+async function isInboundSupportingIdentityReplay(
+  manager: EntityManager,
+  mailboxAddress: string,
+  change: CustomerMailboxChange,
+  receivedAt: Date,
+): Promise<boolean> {
+  if (!change.internetMessageId) return false;
+  const rows = await manager.query(
+    `SELECT EXISTS (
+       SELECT 1 FROM "customer_inbound_messages"
+       WHERE "mailbox_address" = $1
+         AND "internet_message_id" = $2
+         AND "sender_address" IS NOT DISTINCT FROM $3
+         AND "received_at" = $4
+     ) AS "exists"`,
+    [mailboxAddress, change.internetMessageId, change.senderAddress, receivedAt],
+  ) as Array<{ exists: boolean }>;
+  return rows[0]?.exists ?? false;
+}
+
+async function isSystemEventSupportingIdentityReplay(
+  manager: EntityManager,
+  mailboxAddress: string,
+  change: CustomerMailboxChange,
+  occurredAt: Date,
+): Promise<boolean> {
+  if (!change.internetMessageId) return false;
+  const rows = await manager.query(
+    `SELECT EXISTS (
+       SELECT 1 FROM "customer_mail_system_events"
+       WHERE "mailbox_address" = $1
+         AND "internet_message_id" = $2
+         AND "type" = $3
+         AND "occurred_at" = $4
+     ) AS "exists"`,
+    [mailboxAddress, change.internetMessageId, change.automationKind, occurredAt],
+  ) as Array<{ exists: boolean }>;
+  return rows[0]?.exists ?? false;
 }
 
 async function correlate(

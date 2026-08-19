@@ -208,7 +208,7 @@ describe('Customer mailbox synchronization', () => {
     assert.deepEqual(requestedCheckpoints, [null]);
   });
 
-  it('persists the completed delta checkpoint across paged refreshes', async () => {
+  it('persists the completed delta checkpoint across pagination and a process-equivalent restart', async () => {
     pages.push(
       {
         changes: [],
@@ -228,7 +228,7 @@ describe('Customer mailbox synchronization', () => {
     );
 
     await request(apps[0].getHttpServer()).post('/customer-mailbox-sync/refresh').send({}).expect(201);
-    await request(apps[0].getHttpServer()).post('/customer-mailbox-sync/refresh').send({}).expect(201);
+    await request(apps[1].getHttpServer()).post('/customer-mailbox-sync/refresh').send({}).expect(201);
 
     assert.deepEqual(requestedCheckpoints, [
       null,
@@ -325,7 +325,10 @@ describe('Customer mailbox synchronization', () => {
       nextPageCheckpoint: null,
       completedCheckpoint: { value: 'delta-after-retry' },
     });
-    mailboxFailures = [new CustomerMailBoundaryError('TEMPORARY_FAILURE')];
+    mailboxFailures = [
+      new CustomerMailBoundaryError('TEMPORARY_FAILURE'),
+      new CustomerMailBoundaryError('THROTTLED'),
+    ];
     const retryStarted = new Promise<void>((resolve) => {
       retryWaitStarted = resolve;
     });
@@ -350,8 +353,8 @@ describe('Customer mailbox synchronization', () => {
     const [completed, joinedResult] = await Promise.all([first, joined]);
     assert.equal(completed.body.state, 'CURRENT');
     assert.equal(joinedResult.body.state, 'CURRENT');
-    assert.deepEqual(retryDelays, [250]);
-    assert.equal(requestedCheckpoints.length, 2);
+    assert.deepEqual(retryDelays, [250, 500]);
+    assert.equal(requestedCheckpoints.length, 3);
   });
 
   it('does not retry permanent mailbox configuration or authorization failures', async () => {

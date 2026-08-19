@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 
-test('runs scheduled and single-flight manual mailbox refreshes and isolates Graph failure', async ({
+test('runs single-flight manual refreshes and recovers from Graph throttling with bounded backoff', async ({
   page,
   request,
 }) => {
@@ -26,10 +26,22 @@ test('runs scheduled and single-flight manual mailbox refreshes and isolates Gra
   );
   expect(after.deltaRequests - before.deltaRequests).toBe(1);
 
-  await request.post(`${graphBaseUrl}/__test/fail-next-mailbox-delta`);
-  await page.getByTestId('refresh-customer-mailbox').locator('button').click();
-  await expect(page.getByTestId('mailbox-sync-status')).toContainText(
-    'Postafiók átmenetileg nem érhető el',
+  const beforeRetry = await request.get(`${graphBaseUrl}/__test/mailbox-stats`).then((response) =>
+    response.json() as Promise<{ deltaRequests: number }>,
   );
+  await request.post(`${graphBaseUrl}/__test/throttle-next-mailbox-delta`);
+  const retryStartedAt = Date.now();
+  const refreshButton = page.getByTestId('refresh-customer-mailbox').locator('button');
+  await refreshButton.click();
+  await expect(refreshButton).toBeDisabled();
+  await expect(refreshButton).toBeEnabled();
+  await expect(page.getByTestId('mailbox-sync-status')).toContainText(
+    'Postafiók naprakész',
+  );
+  const afterRetry = await request.get(`${graphBaseUrl}/__test/mailbox-stats`).then((response) =>
+    response.json() as Promise<{ deltaRequests: number }>,
+  );
+  expect(afterRetry.deltaRequests - beforeRetry.deltaRequests).toBe(2);
+  expect(Date.now() - retryStartedAt).toBeGreaterThanOrEqual(100);
   await expect(page.getByTestId('new-project-button')).toBeEnabled();
 });

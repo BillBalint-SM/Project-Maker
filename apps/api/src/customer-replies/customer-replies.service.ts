@@ -48,6 +48,11 @@ interface MessageRow {
   classification: CustomerInboundMessageClassification | null;
 }
 
+const linkedTriageJoin = `LEFT JOIN "customer_mail_triage" triage
+  ON triage."message_id" = message."id" AND triage."state" = 'LINKED'`;
+const effectiveCorrespondenceId = 'COALESCE(triage."correspondence_id", message."correspondence_id")';
+const effectiveProjectId = 'COALESCE(triage."project_id", message."project_id")';
+
 @Injectable()
 export class CustomerRepliesService {
   constructor(private readonly dataSource: DataSource) {}
@@ -91,7 +96,8 @@ export class CustomerRepliesService {
                 )
                 AND EXISTS (
                   SELECT 1 FROM "customer_inbound_messages" message
-                  WHERE message."correspondence_id" = correspondence."id"
+                  ${linkedTriageJoin}
+                  WHERE ${effectiveCorrespondenceId} = correspondence."id"
                 )
               ) AS "unknown_delivery_receipt_evidence"
        FROM "customer_correspondences" correspondence
@@ -115,9 +121,8 @@ export class CustomerRepliesService {
               processing."classification"
        FROM "customer_inbound_messages" message
        LEFT JOIN "customer_inbound_message_processing" processing ON processing."message_id" = message."id"
-       LEFT JOIN "customer_mail_triage" triage
-         ON triage."message_id" = message."id" AND triage."state" = 'LINKED'
-       WHERE COALESCE(triage."project_id", message."project_id") = $1
+       ${linkedTriageJoin}
+       WHERE ${effectiveProjectId} = $1
        ORDER BY "received_at", "provider_message_reference"`,
       [projectId],
     ) as MessageRow[];
@@ -174,8 +179,11 @@ export class CustomerRepliesService {
         return;
       }
       const message = await manager.query(
-        `SELECT "id" FROM "customer_inbound_messages"
-         WHERE "id" = $1 AND "correspondence_id" = $2 AND "project_id" = $3`,
+        `SELECT message."id" FROM "customer_inbound_messages" message
+         ${linkedTriageJoin}
+         WHERE message."id" = $1
+           AND ${effectiveCorrespondenceId} = $2
+           AND ${effectiveProjectId} = $3`,
         [input.messageId, correspondenceId, projectId],
       ) as Array<{ id: string }>;
       if (!message[0]) throw new NotFoundException('Customer inbound message not found.');
@@ -216,7 +224,9 @@ async function requireEveryInboundMessageClassified(
     `SELECT COUNT(*)::integer AS "count"
      FROM "customer_inbound_messages" message
      LEFT JOIN "customer_inbound_message_processing" processing ON processing."message_id" = message."id"
-     WHERE message."correspondence_id" = $1 AND processing."message_id" IS NULL`,
+     ${linkedTriageJoin}
+     WHERE ${effectiveCorrespondenceId} = $1
+       AND processing."message_id" IS NULL`,
     [correspondenceId],
   ) as Array<{ count: number }>;
   if ((rows[0]?.count ?? 0) > 0) {
