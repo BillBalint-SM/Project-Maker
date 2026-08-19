@@ -34,6 +34,13 @@ const projectDeletionConflictMessage =
   'This project has persisted activity and cannot be deleted. Archive it instead.';
 const projectDeletionReferentialIntegrityCodes = new Set(['23001', '23503']);
 const readyForPlanningStatus: ProjectStatus = 'READY_FOR_PLANNING';
+const workspaceFields: readonly (keyof UpdateProjectWorkspaceDto)[] = [
+  'internalOwnerName',
+  'nextActionOwnerRole',
+  'nextAction',
+  'dueAt',
+  'status',
+];
 const readyForPlanningRevision: CreateMarkdownRevisionInput = {
   reason: 'MILESTONE',
   milestone: readyForPlanningStatus,
@@ -107,7 +114,7 @@ export class ProjectsService {
     projectId: string,
     input: UpdateProjectWorkspaceDto,
   ): Promise<ProjectWorkspace> {
-    if (Object.keys(input).length === 0) {
+    if (!workspaceFields.some((field) => hasField(input, field))) {
       throw new BadRequestException('Workspace update must include at least one field.');
     }
 
@@ -327,7 +334,7 @@ function hasField(
   input: UpdateProjectWorkspaceDto,
   field: keyof UpdateProjectWorkspaceDto,
 ): boolean {
-  return Object.prototype.hasOwnProperty.call(input, field);
+  return input[field] !== undefined;
 }
 
 function requireText(value: string, field: string): string {

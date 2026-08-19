@@ -203,7 +203,7 @@ function discoveryNextStep(
     return 'Return to the project list and confirm that the project still exists.';
   }
   if (status === 409 && operation === 'create') {
-    return 'The project may be archived or changed. Refresh the cockpit and try again.';
+    return 'A projekt archiválva lett vagy időközben megváltozott. Töltsd újra az oldalt, majd próbáld meg ismét.';
   }
   if (status === 409 && operation === 'update') {
     return 'The discovery follow-up may have changed. Refresh its current version and try again.';

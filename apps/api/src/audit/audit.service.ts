@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  InternalServerErrorException,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import type {
   AuditEventPage,
@@ -6,7 +10,7 @@ import type {
   ProjectActivityFeed,
   ProjectActivityItem,
 } from '@project-maker/contracts';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 
 import { Project } from '../projects/project.entity';
 import { AuditEvent } from './audit-event.entity';
@@ -56,7 +60,7 @@ export class AuditService {
     await this.assertProjectExists(projectId);
 
     const events = await this.auditEventRepository.find({
-      where: { projectId },
+      where: { projectId, eventType: In(projectActivityEventTypes) },
       order: { createdAt: 'DESC', id: 'DESC' },
       take: recentActivityLimit,
     });
@@ -87,13 +91,21 @@ function toAuditEventRecord(event: AuditEvent): AuditEventRecord {
 }
 
 function toProjectActivityItem(event: AuditEvent): ProjectActivityItem {
+  const summary = projectActivitySummaries[
+    event.eventType as ProjectActivityEventType
+  ];
+  if (!summary) {
+    throw new InternalServerErrorException(
+      'Project activity allow-list is inconsistent.',
+    );
+  }
   return {
     occurredAt: event.createdAt.toISOString(),
-    summary: projectActivitySummaries[event.eventType] ?? 'Projektaktivitás rögzítve lett.',
+    summary,
   };
 }
 
-const projectActivitySummaries: Readonly<Record<string, string>> = {
+const projectActivitySummaries = {
   PROJECT_ARCHIVED: 'A projekt archiválva lett.',
   PROJECT_RESTORED: 'A projekt visszaállítva lett.',
   PROJECT_DECISION_INPUTS_UPDATED: 'A döntési értékelés frissítve lett.',
@@ -126,4 +138,10 @@ const projectActivitySummaries: Readonly<Record<string, string>> = {
   CUSTOMER_CORRESPONDENCE_REVIEWED: 'A Customer levelezés új üzenetei át lettek nézve.',
   CUSTOMER_CORRESPONDENCE_STATUS_CHANGED: 'A Customer levelezés feldolgozási állapota megváltozott.',
   CUSTOMER_INBOUND_MESSAGE_CLASSIFIED: 'Egy Customer válasz kézi besorolást kapott.',
-};
+} as const;
+
+type ProjectActivityEventType = keyof typeof projectActivitySummaries;
+
+const projectActivityEventTypes = Object.keys(
+  projectActivitySummaries,
+) as ProjectActivityEventType[];

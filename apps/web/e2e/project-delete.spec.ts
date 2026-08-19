@@ -35,7 +35,7 @@ test('does not send DELETE when the user cancels', async ({ page, request }) => 
     }
   });
 
-  await page.goto(`/projects/${project.id}`);
+  await page.goto(`/projects/${project.id}/settings`);
   await nativeButton(page, 'delete-project-button').click();
   await expect(page.getByTestId('project-delete-confirmation')).toBeVisible();
   await expect(nativeButton(page, 'cancel-project-delete-button')).toBeFocused();
@@ -45,7 +45,7 @@ test('does not send DELETE when the user cancels', async ({ page, request }) => 
 
 test('deletes an eligible draft and returns to the list', async ({ page, request }) => {
   const project = await createProject(request, 'Confirm deletion');
-  await page.goto(`/projects/${project.id}`);
+  await page.goto(`/projects/${project.id}/settings`);
   await nativeButton(page, 'delete-project-button').click();
   const deleteResponse = page.waitForResponse(
     (response) =>
@@ -55,12 +55,12 @@ test('deletes an eligible draft and returns to the list', async ({ page, request
   await nativeButton(page, 'confirm-project-delete-button').click();
   expect((await deleteResponse).status()).toBe(204);
   await expect(page).toHaveURL(/\/$/);
-  expect((await request.get(`${apiOrigin}/projects/${project.id}/cockpit`)).status()).toBe(404);
+  expect((await request.get(`${apiOrigin}/projects/${project.id}/work-state`)).status()).toBe(404);
 });
 
-test('keeps a stale cockpit open after a server-side delete conflict', async ({ page, request }) => {
+test('keeps stale Project settings open after a server-side delete conflict', async ({ page, request }) => {
   const project = await createProject(request, 'Stale deletion conflict');
-  await page.goto(`/projects/${project.id}`);
+  await page.goto(`/projects/${project.id}/settings`);
   await nativeButton(page, 'delete-project-button').click();
   expect(
     (
@@ -77,14 +77,16 @@ test('keeps a stale cockpit open after a server-side delete conflict', async ({ 
   );
   await nativeButton(page, 'confirm-project-delete-button').click();
   expect((await deleteResponse).status()).toBe(409);
-  await expect(page).toHaveURL(new RegExp(`/projects/${project.id}$`));
-  await expect(page.getByTestId('cockpit-action-error')).toContainText(/cannot be deleted/i);
-  await expect(page.getByTestId('cockpit-action-error')).not.toContainText(
+  await expect(page).toHaveURL(new RegExp(`/projects/${project.id}/settings$`));
+  await expect(page.getByTestId('project-settings-action-error')).toContainText(
+    'A projekt már tartalmaz megőrzendő munkát, ezért nem törölhető. Archiváld inkább.',
+  );
+  await expect(page.getByTestId('project-settings-action-error')).not.toContainText(
     /PostgreSQL|customer_follow_ups|audit_events|stack/i,
   );
 });
 
-test('hides deletion for a non-DRAFT cockpit', async ({ page, request }) => {
+test('hides deletion for non-DRAFT Project settings', async ({ page, request }) => {
   const project = await createProject(request, 'Hidden non-draft deletion');
   expect(
     (
@@ -93,6 +95,6 @@ test('hides deletion for a non-DRAFT cockpit', async ({ page, request }) => {
       })
     ).status(),
   ).toBe(200);
-  await page.goto(`/projects/${project.id}`);
+  await page.goto(`/projects/${project.id}/settings`);
   await expect(page.getByTestId('delete-project-button')).toHaveCount(0);
 });

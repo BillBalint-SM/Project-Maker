@@ -10,6 +10,7 @@ import { finalize, type MonoTypeOperatorFunction } from 'rxjs';
 export const cockpitOperationIds = [
   'workspace-save',
   'project-basics-save',
+  'project-status-save',
   'customer-follow-up-save',
   'customer-follow-up-preview',
   'customer-follow-up-ping',

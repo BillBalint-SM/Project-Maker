@@ -119,7 +119,7 @@ test.describe.serial('SCORE-01 readiness employee workflow', () => {
     );
 
     const initialReadinessResponse = waitForReadiness(page, fixture.projectId);
-    await page.goto(`/projects/${fixture.projectId}`);
+    await page.goto(`/projects/${fixture.projectId}/readiness`);
     const initialReadiness = requireAvailableReadiness(
       (await (await initialReadinessResponse).json()) as ProjectReadiness,
     );
@@ -140,17 +140,22 @@ test.describe.serial('SCORE-01 readiness employee workflow', () => {
     );
     await expect(initialOwnerGapAction).toBeVisible();
 
+    await initialOwnerGapAction.click();
+    await expect(page).toHaveURL(`/projects/${fixture.projectId}/status#workspace`);
+    await expect(page.getByTestId('workspace-form')).toBeVisible();
+
     const workspaceSaveResponse = page.waitForResponse(
       (response) =>
         response.request().method() === 'PATCH' &&
         response.url().endsWith(`/api/projects/${fixture.projectId}/workspace`),
     );
-    const ownerRefreshResponse = waitForReadiness(page, fixture.projectId);
-    await page.getByTestId('workspace-internal-owner-input').fill('Readiness workflow owner');
     await page.getByTestId('workspace-next-action-owner-select').click();
     await page.getByRole('option', { name: /PO\/PM/ }).click();
-    await nativeButton(page, 'save-workspace-button').click();
-    expect((await workspaceSaveResponse).status()).toBe(200);
+    await page.getByTestId('save-workspace-button').click();
+    const workspaceSave = await workspaceSaveResponse;
+    expect(workspaceSave.status(), await workspaceSave.text()).toBe(200);
+    const ownerRefreshResponse = waitForReadiness(page, fixture.projectId);
+    await page.goto(`/projects/${fixture.projectId}/readiness`);
     const ownerRefreshedReadiness = requireAvailableReadiness(
       (await (await ownerRefreshResponse).json()) as ProjectReadiness,
     );
@@ -179,9 +184,8 @@ test.describe.serial('SCORE-01 readiness employee workflow', () => {
 
     const discoveryAnchor = page.locator('#discovery-follow-ups');
     await expect(discoveryAnchor).toHaveCount(1);
-    const workspaceAnchor = page.locator('#workspace');
-    await expect(workspaceAnchor).toHaveCount(1);
-    await workspaceAnchor.scrollIntoViewIfNeeded();
+    const readinessTitle = page.locator('#readiness-page-title');
+    await readinessTitle.scrollIntoViewIfNeeded();
     await expect(discoveryAnchor).not.toBeInViewport();
     await nativeButton(page, `readiness-review-gap-action-${followUpGap.id}`).click();
     await expect(discoveryAnchor).toBeInViewport();
@@ -481,7 +485,7 @@ function requireReadinessGap(
   return gap;
 }
 
-test('shows and retries readiness states without blocking Workspace or Discovery', async ({
+test('shows and retries readiness states without blocking Project navigation or Discovery', async ({
   page,
   request,
 }) => {
@@ -509,15 +513,15 @@ test('shows and retries readiness states without blocking Workspace or Discovery
     await route.abort('failed');
   });
 
-  await page.goto('/projects/' + project.id);
+  await page.goto('/projects/' + project.id + '/readiness');
   await firstRequestObserved;
   await expect(page.getByTestId('readiness-review-loading')).toBeVisible();
-  await expect(page.getByTestId('workspace-form')).toBeVisible();
+  await expect(page.getByTestId('project-context-nav-status')).toBeVisible();
   await expect(page.getByTestId('discovery-follow-ups-card')).toBeVisible();
 
   releaseFirstResponse?.();
   await expect(page.getByTestId('readiness-review-error')).toBeVisible();
-  await expect(nativeButton(page, 'save-workspace-button')).toBeEnabled();
+  await expect(page.getByTestId('project-context-nav-status')).toBeVisible();
   await page.unroute(readinessRoute);
   const retryReadinessResponse = page.waitForResponse(
     (response) =>
@@ -543,7 +547,7 @@ test('shows and retries readiness states without blocking Workspace or Discovery
     'Indíts kezdő interjút a felkészültségi értékelés elkészítéséhez.',
   );
   await expect(page.getByTestId('readiness-review-summary')).toHaveCount(0);
-  await expect(nativeButton(page, 'save-workspace-button')).toBeEnabled();
+  await expect(page.getByTestId('project-context-nav-status')).toBeVisible();
   await expect(page.getByTestId('discovery-follow-up-form')).toBeVisible();
 
   const discoveryRefreshResponse = waitForReadiness(page, project.id);
@@ -558,13 +562,12 @@ test('shows and retries readiness states without blocking Workspace or Discovery
   await expect(page.getByTestId('discovery-follow-up-item')).toHaveCount(1);
   await expect(noInitialIntakeState).toContainText('Még nincs kezdő interjú');
   await expect(page.getByTestId('readiness-review-summary')).toHaveCount(0);
-  await expect(page.getByTestId('cockpit-error')).toHaveCount(0);
-  await expect(page.getByTestId('cockpit-action-error')).toHaveCount(0);
+  await expect(page.getByTestId('project-context-shell')).toBeVisible();
   await expect(page.getByTestId('discovery-follow-up-action-error')).toHaveCount(0);
   expect(readinessRequestCount).toBe(1);
 });
 
-test('keeps the newer real readiness state when an older request fails after Workspace save', async ({
+test('keeps the newer readiness state after returning from coordination while an older load is cancelled', async ({
   page,
   request,
 }) => {
@@ -579,6 +582,10 @@ test('keeps the newer real readiness state when an older request fails after Wor
   const olderRequestObserved = new Promise<void>((resolve) => {
     observeOlderRequest = resolve;
   });
+  let settleOlderRoute: (() => void) | null = null;
+  const olderRouteSettled = new Promise<void>((resolve) => {
+    settleOlderRoute = resolve;
+  });
 
   await page.route(readinessRoute, async (route) => {
     readinessRequestCount += 1;
@@ -589,12 +596,21 @@ test('keeps the newer real readiness state when an older request fails after Wor
 
     observeOlderRequest?.();
     await olderResponseReleased;
-    await route.fulfill({ status: 500, body: 'controlled stale readiness failure' });
+    try {
+      await route.fulfill({ status: 500, body: 'controlled stale readiness failure' });
+    } catch {
+      // Navigating to Project status cancels the obsolete readiness request.
+    } finally {
+      settleOlderRoute?.();
+    }
   });
 
-  await page.goto('/projects/' + project.id);
+  await page.goto('/projects/' + project.id + '/readiness');
   await olderRequestObserved;
   await expect(page.getByTestId('readiness-review-loading')).toBeVisible();
+  await page.getByTestId('project-context-nav-status').click();
+  await expect(page).toHaveURL('/projects/' + project.id + '/status?returnTo=%2F');
+  await page.getByTestId('project-status-edit-coordination').click();
   await expect(page.getByTestId('workspace-form')).toBeVisible();
 
   const workspaceSaveResponse = page.waitForResponse(
@@ -602,13 +618,16 @@ test('keeps the newer real readiness state when an older request fails after Wor
       response.request().method() === 'PATCH' &&
       response.url().endsWith('/api/projects/' + project.id + '/workspace'),
   );
+  await page.getByTestId('save-workspace-button').click();
+  const workspaceSave = await workspaceSaveResponse;
+  expect(workspaceSave.status(), await workspaceSave.text()).toBe(200);
+
   const newerReadinessResponse = page.waitForResponse(
     (response) =>
       response.request().method() === 'GET' &&
       response.url().endsWith('/api/projects/' + project.id + '/readiness'),
   );
-  await (await nativeButton(page, 'save-workspace-button')).click();
-  expect((await workspaceSaveResponse).status()).toBe(200);
+  await page.getByTestId('project-context-nav-readiness').click();
 
   const newerResponse = await newerReadinessResponse;
   expect(newerResponse.status()).toBe(200);
@@ -621,17 +640,11 @@ test('keeps the newer real readiness state when an older request fails after Wor
     page.getByTestId('readiness-review-unavailable-no-initial-intake'),
   ).toBeVisible();
 
-  const staleReadinessResponse = page.waitForResponse(
-    (response) =>
-      response.request().method() === 'GET' &&
-      response.url().endsWith('/api/projects/' + project.id + '/readiness') &&
-      response.status() === 500,
-  );
   releaseOlderResponse?.();
-  expect((await staleReadinessResponse).status()).toBe(500);
+  await olderRouteSettled;
   await expect(
     page.getByTestId('readiness-review-unavailable-no-initial-intake'),
   ).toBeVisible();
   await expect(page.getByTestId('readiness-review-error')).toHaveCount(0);
-  await expect(page.getByTestId('cockpit-action-error')).toHaveCount(0);
+  await expect(page.getByTestId('project-context-shell')).toBeVisible();
 });

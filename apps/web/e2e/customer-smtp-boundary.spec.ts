@@ -32,7 +32,7 @@ test('opens the latest Initial Intake customer handoff without a legacy send con
     {},
   );
 
-  await page.goto(`/projects/${project.id}`);
+  await page.goto(`/projects/${project.id}/customer-correspondences`);
   await expect(page.getByTestId('follow-up-card')).toBeVisible();
   await expect(page.getByTestId('send-customer-review-email-button')).toHaveCount(0);
   await page.getByTestId('open-interview-handoff-button').click();
@@ -63,7 +63,7 @@ test('explains that an open Initial Intake must be ended before customer handoff
     type: 'INITIAL_INTAKE',
   });
 
-  await page.goto(`/projects/${project.id}`);
+  await page.goto(`/projects/${project.id}/customer-correspondences`);
   await page.getByTestId('open-interview-handoff-button').click();
 
   await expect(page).toHaveURL(`/projects/${project.id}/interview#customer-handoff`);
@@ -79,7 +79,7 @@ test('explains the Felmérés prerequisite when no Initial Intake exists', async
 }) => {
   const project = await createProject(request, 'missing-intake');
 
-  await page.goto(`/projects/${project.id}`);
+  await page.goto(`/projects/${project.id}/customer-correspondences`);
   await expect(page.getByTestId('follow-up-card')).toBeVisible();
   await expect(page.getByTestId('send-customer-review-email-button')).toHaveCount(0);
   await page.getByTestId('open-interview-handoff-button').click();

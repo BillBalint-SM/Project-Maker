@@ -237,7 +237,7 @@ test.describe('project start journey', () => {
     expect(coordinationUpdate.status()).toBe(200);
 
     await page.getByTestId('edit-project-basics-link').click();
-    await expect(page).toHaveURL(new RegExp(`/projects/${projectId}(?:#project-basics)?$`));
+    await expect(page).toHaveURL(new RegExp(`/projects/${projectId}/settings(?:#project-basics)?$`));
     await expect(page.getByTestId('project-basics-editor')).toBeVisible();
     await page.getByTestId('draft-project-name-input').fill(updatedName);
     await page.getByTestId('draft-customer-contact-email-input').fill(updatedEmail);
@@ -249,7 +249,9 @@ test.describe('project start journey', () => {
     );
     await (await nativeButton(page, 'save-project-basics')).click();
     expect((await updateResponse).status()).toBe(200);
-    await expect(page.getByTestId('project-basics-feedback')).toContainText('Alapadatok mentve');
+    await expect(page.getByTestId('project-basics-feedback')).toContainText(
+      'A projekt alapadatai mentve lettek.',
+    );
 
     await page.reload();
     await expect(page.getByTestId('draft-project-name-input')).toHaveValue(updatedName);
@@ -276,9 +278,11 @@ test.describe('project start journey', () => {
     await (await nativeButton(page, 'save-project-basics')).click();
     await basicsRequestIntercepted;
 
-    await expect(await nativeButton(page, 'save-workspace-button')).toBeDisabled();
+    await expect(await nativeButton(page, 'archive-project-button')).toBeDisabled();
     releaseBasicsRequest?.();
-    await expect(page.getByTestId('project-basics-feedback')).toContainText('Alapadatok mentve');
+    await expect(page.getByTestId('project-basics-feedback')).toContainText(
+      'A projekt alapadatai mentve lettek.',
+    );
   });
 
   test('retries a lost create response without persisting a duplicate Project', async ({ page }) => {

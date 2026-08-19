@@ -2,7 +2,29 @@
   <div class="page-heading">
     <span class="eyebrow">Projektkörnyezet</span>
     <h1 id="readiness-page-title">Felkészültség</h1>
-    <p>A jelenlegi hiányok és a következő tisztázási lépések.</p>
+    <p>A jelenlegi hiányok, tisztázási feladatok és utánkövetések.</p>
   </div>
-  <app-readiness-review [projectId]="projectId" [refreshKey]="0" [dedicatedPage]="true" />
+  <app-readiness-review
+    [projectId]="projectId"
+    [refreshKey]="readinessRefreshKey()"
+    [dedicatedPage]="true"
+  />
+
+  @if (projectStatusLoading()) {
+    <p class="discovery-state" aria-live="polite">Az utánkövetések betöltése…</p>
+  } @else if (projectStatusError(); as error) {
+    <div class="discovery-state" role="alert">
+      <p>{{ error }}</p>
+      <p-button label="Utánkövetések újratöltése" [outlined]="true" (onClick)="loadProjectStatus()" />
+    </div>
+  } @else if (projectStatus(); as status) {
+    <app-discovery-follow-ups
+      [projectId]="projectId"
+      [projectStatus]="status"
+      [reviewFollowUpId]="reviewFollowUpId"
+      [reviewFollowUpVersion]="reviewFollowUpVersion"
+      [reviewCorrespondenceId]="reviewCorrespondenceId"
+      (committedChange)="refreshReadiness()"
+    />
+  }
 </section>
