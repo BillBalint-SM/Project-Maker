@@ -7,12 +7,12 @@ import { MessageModule } from 'primeng/message';
 import { ProgressSpinnerModule } from 'primeng/progressspinner';
 import type {
   ProjectActivityFeed,
-  ProjectPreparationActionTarget,
   ProjectPreparationStatus,
   ProjectWorkspace,
 } from '@project-maker/contracts';
 
 import { ProjectApiService } from './project-api.service';
+import { projectActionRoute } from './project-action-route';
 
 @Component({
   selector: 'app-project-status-page',
@@ -46,7 +46,7 @@ export class ProjectStatusPage implements OnInit {
     if (!preparationStatus) {
       return null;
     }
-    return actionRoute(this.projectId, preparationStatus.primaryAction.target);
+    return projectActionRoute(this.projectId, preparationStatus.primaryAction.target);
   });
 
   ngOnInit(): void {
@@ -119,19 +119,5 @@ export class ProjectStatusPage implements OnInit {
         this.activityLoading.set(false);
       },
     });
-  }
-}
-
-function actionRoute(
-  projectId: string,
-  target: ProjectPreparationActionTarget,
-): readonly string[] {
-  switch (target) {
-    case 'INTERVIEW':
-      return ['/projects', projectId, 'interview'];
-    case 'READINESS':
-      return ['/projects', projectId, 'readiness'];
-    case 'DECISION_REVIEW':
-      return ['/projects', projectId, 'decision-review'];
   }
 }

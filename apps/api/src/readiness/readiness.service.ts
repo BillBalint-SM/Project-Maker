@@ -5,10 +5,11 @@ import type {
   RoundQuestionSnapshot,
 } from '@project-maker/contracts';
 import { loadGeneralPlaybookV1 } from '@project-maker/contracts/general-playbook-runtime';
-import { DataSource, EntityManager } from 'typeorm';
+import { DataSource, EntityManager, In } from 'typeorm';
 
 import { DiscoveryFollowUpEntity } from '../discovery-follow-ups/discovery-follow-up.entity';
-import { findCurrentInitialIntakeSource } from '../interviews/current-initial-intake-source';
+import { findCurrentInitialIntakeSources } from '../interviews/current-initial-intake-source';
+import type { InterviewRoundEntity } from '../interviews/interview-round.entity';
 import {
   loadRoundQuestionAssessmentPolicy,
   toEffectiveRoundQuestionSnapshot,
@@ -36,70 +37,117 @@ export class ReadinessService {
     if (!project) {
       throw new NotFoundException('Project not found.');
     }
-
-    const sourceRound = await findCurrentInitialIntakeSource(
+    const sourceRounds = await findCurrentInitialIntakeSources(manager, [projectId]);
+    const readiness = (await this.getReadinessForProjectsWithManager(
       manager,
-      projectId,
-    );
-    if (!sourceRound) {
-      return { available: false, projectId, reason: 'NO_INITIAL_INTAKE' };
+      [project],
+      sourceRounds,
+    )).get(projectId);
+    if (!readiness) {
+      throw new TypeError(`Missing readiness result for Project ${projectId}.`);
     }
+    return readiness;
+  }
 
-    const policy = await loadGeneralPlaybookV1();
-    const snapshots = await manager.getRepository(RoundQuestionSnapshotEntity).find({
-      where: { roundId: sourceRound.id },
-      order: { order: 'ASC', id: 'ASC' },
+  async getReadinessForProjectsWithManager(
+    manager: EntityManager,
+    projects: readonly Project[],
+    sourceRoundsByProjectId: ReadonlyMap<string, InterviewRoundEntity>,
+  ): Promise<ReadonlyMap<string, ProjectReadiness>> {
+    const unavailable = new Map<string, ProjectReadiness>();
+    const projectsWithRounds = projects.flatMap((project) => {
+      const sourceRound = sourceRoundsByProjectId.get(project.id);
+      if (!sourceRound) {
+        unavailable.set(project.id, {
+          available: false,
+          projectId: project.id,
+          reason: 'NO_INITIAL_INTAKE',
+        });
+        return [];
+      }
+      return [{ project, sourceRound }];
     });
-    if (!hasCanonicalGeneralStableKeys(snapshots, policy)) {
-      return { available: false, projectId, reason: 'UNSUPPORTED_SCHEMA' };
+    if (projectsWithRounds.length === 0) {
+      return unavailable;
     }
 
-    const [answers, overrides, followUps, assessmentPolicy] = await Promise.all([
+    const roundIds = projectsWithRounds.map(({ sourceRound }) => sourceRound.id);
+    const projectIds = projectsWithRounds.map(({ project }) => project.id);
+    const [policy, snapshots, answers, overrides, followUps, assessmentPolicy] = await Promise.all([
+      loadGeneralPlaybookV1(),
+      manager.getRepository(RoundQuestionSnapshotEntity).find({
+        where: { roundId: In(roundIds) },
+        order: { roundId: 'ASC', order: 'ASC', id: 'ASC' },
+      }),
       manager.getRepository(RoundAnswerEntity).find({
-        where: { roundId: sourceRound.id },
-        order: { snapshotId: 'ASC', id: 'ASC' },
+        where: { roundId: In(roundIds) },
+        order: { roundId: 'ASC', snapshotId: 'ASC', id: 'ASC' },
       }),
       manager.getRepository(RoundQuestionAssessmentOverrideEntity).find({
-        where: { roundId: sourceRound.id },
-        order: { snapshotId: 'ASC', id: 'ASC' },
+        where: { roundId: In(roundIds) },
+        order: { roundId: 'ASC', snapshotId: 'ASC', id: 'ASC' },
       }),
       manager.getRepository(DiscoveryFollowUpEntity).find({
-        where: { projectId },
-        order: { dueDate: 'ASC', createdAt: 'ASC', id: 'ASC' },
+        where: { projectId: In(projectIds) },
+        order: { projectId: 'ASC', dueDate: 'ASC', createdAt: 'ASC', id: 'ASC' },
       }),
       loadRoundQuestionAssessmentPolicy(),
     ]);
-    const answersBySnapshotId = new Map(answers.map((answer) => [answer.snapshotId, answer]));
-    const overridesBySnapshotId = new Map(
-      overrides.map((override) => [override.snapshotId, override]),
-    );
-    const effectiveSnapshots = snapshots.map((snapshot) =>
-      toEffectiveRoundQuestionSnapshot(
-        snapshot,
-        answersBySnapshotId.get(snapshot.id) ?? null,
-        overridesBySnapshotId.get(snapshot.id) ?? null,
-        assessmentPolicy,
-      ),
-    );
 
-    return calculateProjectReadiness({
-      project: {
-        id: project.id,
-        name: project.name,
-        customerContactName: project.customerContactName,
-        customerContactEmail: project.customerContactEmail,
-        ballOwner: project.ballOwner,
-      },
-      sourceRound: { id: sourceRound.id, status: sourceRound.status },
-      snapshots: effectiveSnapshots.map(toReadinessSnapshotInput),
-      followUps: followUps.map((followUp) => ({
-        id: followUp.id,
-        status: followUp.status,
-        dueDate: followUp.dueDate,
-        createdAt: followUp.createdAt.toISOString(),
-      })),
-      policy,
-    });
+    const result = new Map(unavailable);
+    for (const { project, sourceRound } of projectsWithRounds) {
+      const roundSnapshots = snapshots.filter((snapshot) => snapshot.roundId === sourceRound.id);
+      if (!hasCanonicalGeneralStableKeys(roundSnapshots, policy)) {
+        result.set(project.id, {
+          available: false,
+          projectId: project.id,
+          reason: 'UNSUPPORTED_SCHEMA',
+        });
+        continue;
+      }
+      const answersBySnapshotId = new Map(
+        answers
+          .filter((answer) => answer.roundId === sourceRound.id)
+          .map((answer) => [answer.snapshotId, answer]),
+      );
+      const overridesBySnapshotId = new Map(
+        overrides
+          .filter((override) => override.roundId === sourceRound.id)
+          .map((override) => [override.snapshotId, override]),
+      );
+      const effectiveSnapshots = roundSnapshots.map((snapshot) =>
+        toEffectiveRoundQuestionSnapshot(
+          snapshot,
+          answersBySnapshotId.get(snapshot.id) ?? null,
+          overridesBySnapshotId.get(snapshot.id) ?? null,
+          assessmentPolicy,
+        ),
+      );
+      result.set(
+        project.id,
+        calculateProjectReadiness({
+          project: {
+            id: project.id,
+            name: project.name,
+            customerContactName: project.customerContactName,
+            customerContactEmail: project.customerContactEmail,
+            ballOwner: project.ballOwner,
+          },
+          sourceRound: { id: sourceRound.id, status: sourceRound.status },
+          snapshots: effectiveSnapshots.map(toReadinessSnapshotInput),
+          followUps: followUps
+            .filter((followUp) => followUp.projectId === project.id)
+            .map((followUp) => ({
+              id: followUp.id,
+              status: followUp.status,
+              dueDate: followUp.dueDate,
+              createdAt: followUp.createdAt.toISOString(),
+            })),
+          policy,
+        }),
+      );
+    }
+    return result;
   }
 }
 
