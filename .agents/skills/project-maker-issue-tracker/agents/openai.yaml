@@ -1,0 +1,6 @@
+interface:
+  display_name: "Project Maker Issue Tracker"
+  short_description: "Operate Project Maker GitHub issues safely"
+  default_prompt: "Use $project-maker-issue-tracker to inspect or update the relevant Project Maker issue."
+policy:
+  allow_implicit_invocation: true

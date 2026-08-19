@@ -1,0 +1,6 @@
+interface:
+  display_name: "Angular Developer"
+  short_description: "Apply current Angular guidance"
+  default_prompt: "Use $angular-developer to implement or review this Angular change with version-appropriate guidance."
+policy:
+  allow_implicit_invocation: true
