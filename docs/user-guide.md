@@ -166,7 +166,7 @@ Az interjú értékelése után nyisd meg a cockpit `Felkészültségi értékel
 
 ### 5. Pillanatkép és kommunikáció
 
-Claude Code átadás előtt generálj friss Markdown-revíziót, majd nézd meg a forráspillanatképet és az előnézetet. Ez a `.md` fájl nem ügyfélkommunikáció. Ügyfélnek az interjú összegzését vagy a külön megírt follow-up pinget küldd; egyik levél sem csatolja és nem másolja be a Markdown-revíziót.
+Belső, kézi munkához generálhatsz friss Markdown-revíziót, majd megnézheted a forráspillanatképet és az előnézetet. A Project Makerben automatizált Claude Code átadás még nem érhető el, és a `.md` fájl nem ügyfélkommunikáció. Ügyfélnek az interjú összegzését vagy a külön megírt follow-up pinget küldd; egyik levél sem csatolja és nem másolja be a Markdown-revíziót.
 
 ### 6. Megőrzés
 
@@ -791,6 +791,8 @@ A cockpit `Customer follow-up` része két összetartozó műveletet fog össze:
 
 Mindkettő a projekt létrehozásakor rögzített `Customer contact email` címre küld. A címzett nem írható felül. A kézi küldés előtt a rendszer pontos előnézetben mutatja a címzettet, a tárgyat és a teljes egyszerű szöveges levelet. A Claude Code-nak szánt Markdown és az interjúcsomag nem része ennek a levélnek.
 
+Az Interview customer handoff az egyetlen teljes ügyfél-összefoglaló küldési folyamat. A Customer follow-up ping rövid, célzott emlékeztető: nem alternatív ügyfélcsomag, nem csatol Markdown-revíziót vagy `.md` fájlt, és nem továbbít belső Claude-instrukciót.
+
 ### Automatikus follow-up beállítása
 
 **Mikor használd?** Ha előre meghatározott időközönként ugyanannak a kapcsolattartónak emlékeztetőt kell kapnia a nyitott discovery-válaszokról.
@@ -827,7 +829,7 @@ Ha az esedékességkor a piszkozat vagy a hivatkozás már nem érvényes, az au
 | `Last delivery` = `NEVER` | Még nem volt pingkézbesítési kísérlet |
 | `Last delivery` = `SENT` | A legutóbbi ping küldése sikeres volt |
 | `Last delivery` = `FAILED` | A legutóbbi ping küldése nem sikerült |
-| `Delivery error` | Biztonságos hibakód, például `SMTP_SEND_FAILED`; nem tartalmaz levél- vagy hitelesítési titkot |
+| `Delivery error` | Biztonságos hibakód, például `SUBMISSION_REJECTED` vagy `TEMPORARY_FAILURE`; nem tartalmaz levél- vagy hitelesítési titkot |
 
 A `SENT` azt igazolja, hogy a levelezési szolgáltatás elfogadta a küldést. Nem bizonyítja, hogy a címzett elolvasta, jóváhagyta vagy válaszolt rá.
 
@@ -1060,7 +1062,7 @@ A Project Maker gyorsan jelez, ha egy kérés nem hajtható végre. A hibaüzene
 3. Ne indíts ugyanabból a műveletből több párhuzamos példányt.
 4. Ha mentés folyik, várd meg. Ha betöltési hiba van, használd az oldal saját retry műveletét.
 5. Ütközésnél töltsd újra az oldalt, és hasonlítsd össze a friss szerverállapotot a szándékoddal.
-6. Külső e-mail-hibánál ne kattints ismét automatikusan; előbb ellenőrizd a címzettet, a Markdown-verziót és a levélküldés elérhetőségét.
+6. Külső e-mail-hibánál ne kattints ismét automatikusan. Ellenőrizd a feladót, a címzettet, a handoff vagy ping pontos előnézetét és az attempt `FAILED` vagy `UNKNOWN` állapotát. `UNKNOWN` esetén a kimenő postafiókot is ellenőrizd, és csak a felület külön kockázatelfogadó műveletével próbáld újra.
 7. Ismétlődő elérhetőségi vagy szolgáltatási hibát a projekt nevével, az oldal nevével, az időponttal és a látható hibaszöveggel jelezz az üzemeltetőnek. Titkot vagy teljes ügyféladatot ne másolj hibajegybe.
 
 ### Hiba- és helyreállítási mátrix
