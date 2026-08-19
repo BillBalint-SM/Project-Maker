@@ -1,7 +1,35 @@
 import { definePreset } from '@primeuix/themes';
-import Aura from '@primeuix/themes/aura';
+import AuraBase from '@primeuix/themes/aura/base';
+import AuraButton from '@primeuix/themes/aura/button';
+import AuraCard from '@primeuix/themes/aura/card';
+import AuraConfirmDialog from '@primeuix/themes/aura/confirmdialog';
+import AuraDatePicker from '@primeuix/themes/aura/datepicker';
+import AuraInputText from '@primeuix/themes/aura/inputtext';
+import AuraMessage from '@primeuix/themes/aura/message';
+import AuraProgressSpinner from '@primeuix/themes/aura/progressspinner';
+import AuraSelect from '@primeuix/themes/aura/select';
+import AuraTag from '@primeuix/themes/aura/tag';
+import AuraTextarea from '@primeuix/themes/aura/textarea';
 
-export const ProjectMakerPreset = definePreset(Aura, {
+// Keep this list aligned with the PrimeNG modules imported by the application.
+// Importing the complete Aura preset makes every component theme eager.
+const ProjectMakerAura = {
+  ...AuraBase,
+  components: {
+    button: AuraButton,
+    card: AuraCard,
+    confirmdialog: AuraConfirmDialog,
+    datepicker: AuraDatePicker,
+    inputtext: AuraInputText,
+    message: AuraMessage,
+    progressspinner: AuraProgressSpinner,
+    select: AuraSelect,
+    tag: AuraTag,
+    textarea: AuraTextarea,
+  },
+};
+
+export const ProjectMakerPreset = definePreset(ProjectMakerAura, {
   extend: {
     projectMaker: {
       electricBlue: '#0088ff',
