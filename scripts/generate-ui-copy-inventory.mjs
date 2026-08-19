@@ -376,6 +376,9 @@ function isUserFacingTypeScriptLiteral(node) {
   if (
     hasConsoleCallAncestor(node) ||
     hasInternalErrorConstructorAncestor(node) ||
+    isErrorSubclassNameAssignment(node) ||
+    isComparisonOperand(node) ||
+    isFocusDiagnosticArgument(node) ||
     isTechnicalSelector(node.text) ||
     isFormattingLiteral(node.text)
   ) return false;
@@ -403,6 +406,46 @@ function isModuleSpecifier(node) {
 function isObjectKey(node) {
   return (ts.isPropertyAssignment(node.parent) || ts.isPropertyDeclaration(node.parent)) &&
     node.parent.name === node;
+}
+
+function isErrorSubclassNameAssignment(node) {
+  const assignment = node.parent;
+  if (
+    !ts.isBinaryExpression(assignment) ||
+    assignment.right !== node ||
+    assignment.operatorToken.kind !== ts.SyntaxKind.EqualsToken ||
+    !ts.isPropertyAccessExpression(assignment.left) ||
+    assignment.left.name.text !== 'name'
+  ) return false;
+
+  let current = assignment.parent;
+  while (current && !ts.isSourceFile(current)) {
+    if (ts.isClassDeclaration(current) || ts.isClassExpression(current)) {
+      return current.heritageClauses?.some((clause) =>
+        clause.token === ts.SyntaxKind.ExtendsKeyword &&
+        clause.types.some((type) => type.expression.getText() === 'Error')
+      ) ?? false;
+    }
+    current = current.parent;
+  }
+  return false;
+}
+
+function isComparisonOperand(node) {
+  const comparisonOperators = new Set([
+    ts.SyntaxKind.EqualsEqualsEqualsToken,
+    ts.SyntaxKind.EqualsEqualsToken,
+    ts.SyntaxKind.ExclamationEqualsEqualsToken,
+    ts.SyntaxKind.ExclamationEqualsToken,
+  ]);
+  return ts.isBinaryExpression(node.parent) &&
+    comparisonOperators.has(node.parent.operatorToken.kind);
+}
+
+function isFocusDiagnosticArgument(node) {
+  if (!ts.isCallExpression(node.parent)) return false;
+  const argumentIndex = node.parent.arguments.indexOf(node);
+  return argumentIndex > 0 && node.parent.expression.getText().toLowerCase().includes('focus');
 }
 
 function hasConsoleCallAncestor(node) {
