@@ -244,6 +244,35 @@ describe('ActiveProjectQueuePageComponent', () => {
     }));
   });
 
+  it('does not let an older debounced search intent discard a newer page cursor', async () => {
+    const api = { getPage: vi.fn().mockReturnValue(of(page)) };
+    await TestBed.configureTestingModule({
+      imports: [ActiveProjectQueuePageComponent],
+      providers: [
+        provideRouter([]),
+        { provide: ActiveProjectQueueApiService, useValue: api },
+      ],
+    }).compileComponents();
+    const router = TestBed.inject(Router);
+    await router.navigateByUrl('/?q=projekt&urgency=OVERDUE');
+    const fixture = TestBed.createComponent(ActiveProjectQueuePageComponent);
+    await fixture.whenStable();
+
+    fixture.componentInstance.search.setValue('projekt ');
+    (
+      fixture.nativeElement.querySelector(
+        '[data-testid="queue-next-page"]',
+      ) as HTMLButtonElement
+    ).click();
+    await fixture.whenStable();
+    expect(router.url).toBe('/?q=projekt&urgency=OVERDUE&cursor=next-token');
+
+    await new Promise((resolve) => setTimeout(resolve, 350));
+    await fixture.whenStable();
+
+    expect(router.url).toBe('/?q=projekt&urgency=OVERDUE&cursor=next-token');
+  });
+
   it('recovers a rejected cursor URL to the first page with Hungarian guidance', async () => {
     const firstPage = { ...page, previousCursor: null, nextCursor: null };
     const api = {

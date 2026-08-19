@@ -13,7 +13,7 @@ import type {
 import { ButtonModule } from 'primeng/button';
 import { ProgressSpinnerModule } from 'primeng/progressspinner';
 import { TagModule } from 'primeng/tag';
-import { catchError, debounce, distinctUntilChanged, EMPTY, map, merge, of, Subject, switchMap, tap, timer } from 'rxjs';
+import { catchError, debounce, distinctUntilChanged, EMPTY, filter, map, merge, of, Subject, switchMap, tap, timer } from 'rxjs';
 
 import {
   ActiveProjectQueueApiService,
@@ -190,8 +190,10 @@ export class ActiveProjectQueuePageComponent implements OnInit {
     });
 
     this.search.valueChanges.pipe(
-      debounce((value) => timer(value.trim() ? 300 : 0)),
+      map((value) => value.trim()),
+      debounce((value) => timer(value ? 300 : 0)),
       distinctUntilChanged(),
+      filter((value) => value !== (this.activeQuery().search ?? '')),
       takeUntilDestroyed(this.destroyRef),
     ).subscribe(() => void this.updateUrl());
   }

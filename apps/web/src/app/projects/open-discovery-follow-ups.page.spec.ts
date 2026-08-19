@@ -4,7 +4,10 @@ import type { OpenDiscoveryFollowUpQueueItem } from '@project-maker/contracts';
 import { of, throwError } from 'rxjs';
 import { describe, expect, it, vi } from 'vitest';
 
-import { DiscoveryFollowUpsApiService } from './discovery-follow-ups/discovery-follow-ups-api.service';
+import {
+  DiscoveryFollowUpsApiError,
+  DiscoveryFollowUpsApiService,
+} from './discovery-follow-ups/discovery-follow-ups-api.service';
 import { OpenDiscoveryFollowUpsPage } from './open-discovery-follow-ups.page';
 
 const openItem: OpenDiscoveryFollowUpQueueItem = {
@@ -52,7 +55,16 @@ describe('OpenDiscoveryFollowUpsPage', () => {
         .fn()
         .mockReturnValue(of([]))
         .mockReturnValueOnce(of([]))
-        .mockReturnValueOnce(throwError(() => new Error('Az utánkövetések nem tölthetők be.'))),
+        .mockReturnValueOnce(
+          throwError(
+            () =>
+              new DiscoveryFollowUpsApiError(
+                'Az utánkövetések nem tölthetők be.',
+                'load',
+                503,
+              ),
+          ),
+        ),
     };
     await TestBed.configureTestingModule({
       imports: [OpenDiscoveryFollowUpsPage],
@@ -78,5 +90,30 @@ describe('OpenDiscoveryFollowUpsPage', () => {
     retry.click();
     await errorFixture.whenStable();
     expect(api.listOpen).toHaveBeenCalledTimes(3);
+  });
+
+  it('does not expose an unexpected internal failure', async () => {
+    const api = {
+      listOpen: vi.fn().mockReturnValue(
+        throwError(() => new Error('PostgreSQL connection password=secret')),
+      ),
+    };
+    await TestBed.configureTestingModule({
+      imports: [OpenDiscoveryFollowUpsPage],
+      providers: [
+        provideRouter([]),
+        { provide: DiscoveryFollowUpsApiService, useValue: api },
+      ],
+    }).compileComponents();
+
+    const fixture = TestBed.createComponent(OpenDiscoveryFollowUpsPage);
+    await fixture.whenStable();
+
+    const alert = fixture.nativeElement.querySelector('[role="alert"]') as HTMLElement;
+    expect(alert.textContent).toContain(
+      'Az utánkövetések nem tölthetők be. Próbáld meg újra.',
+    );
+    expect(alert.textContent).not.toContain('PostgreSQL');
+    expect(alert.textContent).not.toContain('password');
   });
 });
