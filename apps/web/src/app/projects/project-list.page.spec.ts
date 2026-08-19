@@ -147,9 +147,14 @@ describe('ProjectListPage customer mailbox synchronization', () => {
     expect(projectApi.loadPortfolio).toHaveBeenCalledTimes(1);
     expect(projectApi.listProjects).not.toHaveBeenCalled();
     expect(projectApi.loadPreparationStatus).not.toHaveBeenCalled();
-    expect(card?.getAttribute('href')).toBe(
+    const destination = new URL(
+      card?.getAttribute('href') ?? '',
+      'https://project-maker.test',
+    );
+    expect(destination.pathname).toBe(
       '/projects/11111111-1111-4111-8111-111111111111/customer-correspondences',
     );
+    expect(destination.searchParams.get('returnTo')).toBe('/');
     expect(card?.textContent).toContain('Ügyféllevelezés megnyitása');
     expect(card?.textContent).toContain('4 / 9 kérdés megválaszolva');
     expect(card?.textContent).toContain('Új ügyfélválasz');

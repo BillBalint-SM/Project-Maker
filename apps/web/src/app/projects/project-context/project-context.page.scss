@@ -1,0 +1,114 @@
+:host {
+  display: block;
+  min-width: 0;
+}
+
+.project-context {
+  min-width: 0;
+}
+
+.return-link {
+  align-items: center;
+  color: var(--p-primary-color);
+  display: inline-flex;
+  font-weight: 700;
+  gap: 0.4rem;
+  margin-bottom: 1rem;
+  text-decoration: none;
+}
+
+.context-header {
+  background: var(--p-content-background);
+  border: 1px solid var(--p-content-border-color);
+  border-radius: 1rem;
+  box-shadow: 0 0.3rem 1.25rem color-mix(in srgb, var(--pm-deep-navy) 5%, transparent);
+  display: grid;
+  gap: 1rem 1.5rem;
+  grid-template-columns: minmax(12rem, 1fr) minmax(14rem, auto);
+  margin-bottom: 1.5rem;
+  min-width: 0;
+  padding: 1rem 1.25rem;
+}
+
+.project-identity,
+.primary-task {
+  align-content: start;
+  display: grid;
+  gap: 0.45rem;
+  min-width: 0;
+}
+
+.project-name {
+  font-size: clamp(1.15rem, 3vw, 1.45rem);
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+.primary-task {
+  justify-items: start;
+}
+
+.context-loading {
+  align-items: center;
+  color: var(--p-text-muted-color);
+  display: flex;
+  gap: 0.5rem;
+}
+
+.context-loading p-progress-spinner {
+  height: 1.25rem;
+  width: 1.25rem;
+}
+
+.context-error {
+  color: var(--p-red-700);
+  overflow-wrap: anywhere;
+}
+
+.context-navigation {
+  border-top: 1px solid var(--p-content-border-color);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  grid-column: 1 / -1;
+  padding-top: 0.85rem;
+}
+
+.context-navigation a {
+  border-radius: 0.55rem;
+  color: var(--p-text-muted-color);
+  font-weight: 700;
+  padding: 0.55rem 0.7rem;
+  text-decoration: none;
+}
+
+.context-navigation a:hover,
+.context-navigation a.active {
+  background: color-mix(in srgb, var(--p-primary-color) 9%, transparent);
+  color: var(--p-primary-color);
+}
+
+.context-navigation a:focus-visible,
+.return-link:focus-visible {
+  outline: 0.2rem solid var(--p-primary-color);
+  outline-offset: 0.15rem;
+}
+
+.project-context-panel {
+  min-width: 0;
+}
+
+@media (max-width: 42rem) {
+  .context-header {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .context-navigation {
+    grid-column: auto;
+  }
+
+  .context-navigation a {
+    flex: 1 1 9rem;
+    overflow-wrap: anywhere;
+  }
+}

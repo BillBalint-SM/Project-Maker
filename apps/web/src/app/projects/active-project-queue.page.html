@@ -126,6 +126,7 @@
                     <a
                       class="project-name"
                       [routerLink]="projectRoute(item.projectId)"
+                      [queryParams]="projectContextQueryParams()"
                       [attr.data-testid]="'queue-project-' + item.projectId"
                     >{{ item.projectName }}</a>
                     <div class="tags">
@@ -162,6 +163,7 @@
                   <a
                     pButton
                     [routerLink]="actionRoute(item)"
+                    [queryParams]="projectContextQueryParams()"
                     [fragment]="actionFragment(item.primaryAction.target)"
                     [attr.data-testid]="'queue-action-' + item.projectId"
                   >{{ item.primaryAction.label }}</a>

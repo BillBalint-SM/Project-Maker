@@ -1,16 +1,18 @@
 import { convertToParamMap, provideRouter, ActivatedRoute } from '@angular/router';
+import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import type { ProjectWorkState, ProjectWorkspace } from '@project-maker/contracts';
 import { of, throwError } from 'rxjs';
 import { describe, expect, it, vi } from 'vitest';
 
 import { ProjectApiService } from './project-api.service';
+import { ProjectContextState } from './project-context/project-context.state';
 import { ProjectStatusPage } from './project-status.page';
 
 const projectId = '11111111-1111-4111-8111-111111111111';
 
 describe('ProjectStatusPage', () => {
-  it('renders the same canonical primary task and progress as the Portfolio and Active queue', async () => {
+  it('uses the shared canonical work state for coordination without loading it again', async () => {
     const workState: ProjectWorkState = {
       projectId,
       projectName: 'Ügyfélválaszos projekt',
@@ -47,11 +49,12 @@ describe('ProjectStatusPage', () => {
       updatedAt: '2026-08-19T08:00:00.000Z',
     };
     const api = {
-      loadWorkState: vi.fn().mockReturnValue(of(workState)),
+      loadWorkState: vi.fn(),
       loadPreparationStatus: vi.fn(),
       loadProjectWorkspace: vi.fn().mockReturnValue(of(project)),
       loadProjectActivity: vi.fn().mockReturnValue(of({ projectId, events: [] })),
     };
+    const context = projectContextWith(workState);
     await TestBed.configureTestingModule({
       imports: [ProjectStatusPage],
       providers: [
@@ -61,23 +64,21 @@ describe('ProjectStatusPage', () => {
           useValue: { snapshot: { paramMap: convertToParamMap({ projectId }) } },
         },
         { provide: ProjectApiService, useValue: api },
+        { provide: ProjectContextState, useValue: context },
       ],
     }).compileComponents();
 
     const fixture = TestBed.createComponent(ProjectStatusPage);
     await fixture.whenStable();
 
-    const primaryAction = fixture.nativeElement.querySelector(
-      '[data-testid="project-work-primary-action"]',
-    ) as HTMLAnchorElement | null;
-    expect(api.loadWorkState).toHaveBeenCalledWith(projectId);
+    const coordination = fixture.nativeElement.querySelector(
+      '[data-testid="project-status-coordination"]',
+    ) as HTMLElement | null;
+    expect(api.loadWorkState).not.toHaveBeenCalled();
     expect(api.loadPreparationStatus).not.toHaveBeenCalled();
-    expect(primaryAction?.textContent).toContain('Ügyféllevelezés megnyitása');
-    expect(primaryAction?.getAttribute('href')).toBe(
-      `/projects/${projectId}/customer-correspondences`,
-    );
-    expect(fixture.nativeElement.textContent).toContain('Új ügyfélválasz');
-    expect(fixture.nativeElement.textContent).toContain('4 / 9 kérdés megválaszolva');
+    expect(coordination?.textContent).toContain('PO Péter');
+    expect(coordination?.textContent).toContain('Dolgozd fel az ügyfél pontosítását.');
+    expect(fixture.nativeElement.querySelector('[data-testid="project-status-card"]')).toBeNull();
   });
 
   it('keeps canonical coordination visible when customer metadata cannot be loaded', async () => {
@@ -102,7 +103,6 @@ describe('ProjectStatusPage', () => {
       },
     };
     const api = {
-      loadWorkState: vi.fn().mockReturnValue(of(workState)),
       loadProjectWorkspace: vi.fn().mockReturnValue(
         throwError(() => new Error('Az ügyféladatok átmenetileg nem érhetők el.')),
       ),
@@ -117,6 +117,7 @@ describe('ProjectStatusPage', () => {
           useValue: { snapshot: { paramMap: convertToParamMap({ projectId }) } },
         },
         { provide: ProjectApiService, useValue: api },
+        { provide: ProjectContextState, useValue: projectContextWith(workState) },
       ],
     }).compileComponents();
 
@@ -136,3 +137,12 @@ describe('ProjectStatusPage', () => {
     );
   });
 });
+
+function projectContextWith(workState: ProjectWorkState) {
+  return {
+    workState: signal<ProjectWorkState | null>(workState),
+    loading: signal(false),
+    loadError: signal<string | null>(null),
+    reload: vi.fn(),
+  };
+}

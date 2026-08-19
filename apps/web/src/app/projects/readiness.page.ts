@@ -1,11 +1,11 @@
 import { Component, inject } from '@angular/core';
-import { ActivatedRoute, RouterLink } from '@angular/router';
+import { ActivatedRoute } from '@angular/router';
 
 import { ReadinessReviewComponent } from './readiness-review/readiness-review.component';
 
 @Component({
   selector: 'app-readiness-page',
-  imports: [ReadinessReviewComponent, RouterLink],
+  imports: [ReadinessReviewComponent],
   templateUrl: './readiness.page.html',
   styleUrl: './readiness.page.scss',
 })

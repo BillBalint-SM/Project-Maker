@@ -72,6 +72,7 @@
         <a
           class="project-card"
           [routerLink]="projectRoute(entry)"
+          [queryParams]="projectContextQueryParams"
           [fragment]="entry.workState ? actionFragment(entry.workState.primaryAction.target) : undefined"
           [attr.data-testid]="'project-card-' + entry.project.id"
         >
