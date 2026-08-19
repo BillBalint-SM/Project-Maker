@@ -22,14 +22,14 @@ export class MarkdownApiService {
         `/api/projects/${encodedProjectId}/markdown-revisions`,
         input,
       )
-      .pipe(catchError((error: unknown) => failApiRequest(error, 'generálni a Markdown-revíziót')));
+      .pipe(catchError((error: unknown) => failApiRequest(error, 'generálni a specifikációverziót')));
   }
 
   loadConfiguration(projectId: string): Observable<MarkdownGenerationConfiguration> {
     const encodedProjectId = encodeURIComponent(projectId);
     return this.http
       .get<MarkdownGenerationConfiguration>(`/api/projects/${encodedProjectId}/markdown-revisions/configuration`)
-      .pipe(catchError((error: unknown) => failApiRequest(error, 'betölteni a Markdown-sablonokat')));
+      .pipe(catchError((error: unknown) => failApiRequest(error, 'betölteni a specifikációs sablonokat')));
   }
 
   listRevisions(projectId: string): Observable<readonly MarkdownRevision[]> {
@@ -38,7 +38,7 @@ export class MarkdownApiService {
       .get<readonly MarkdownRevision[]>(
         `/api/projects/${encodedProjectId}/markdown-revisions`,
       )
-      .pipe(catchError((error: unknown) => failApiRequest(error, 'betölteni a Markdown-revíziókat')));
+      .pipe(catchError((error: unknown) => failApiRequest(error, 'betölteni a specifikációverziókat')));
   }
 
   loadRevision(projectId: string, revisionId: string): Observable<MarkdownRevision> {
@@ -48,7 +48,7 @@ export class MarkdownApiService {
       .get<MarkdownRevision>(
         `/api/projects/${encodedProjectId}/markdown-revisions/${encodedRevisionId}`,
       )
-      .pipe(catchError((error: unknown) => failApiRequest(error, 'betölteni a Markdown-revíziót')));
+      .pipe(catchError((error: unknown) => failApiRequest(error, 'betölteni a specifikációverziót')));
   }
 
   downloadUrl(projectId: string, revisionId: string): string {
@@ -94,10 +94,10 @@ function mapApiError(error: unknown, action: string): ActionableApiError {
 
   const nextStep =
     error.status === 404
-      ? 'Ellenőrizd, hogy a projekt vagy a revízió még létezik-e.'
+      ? 'Ellenőrizd, hogy a projekt vagy a specifikációverzió még létezik-e.'
       : error.status === 409
         ? safeMarkdownConflictMessage(error) ??
-          'Frissítsd a projektet a legújabb revízióállapotért, majd próbáld újra.'
+          'Frissítsd a projektet a legújabb specifikációverzióért, majd próbáld újra.'
         : 'Ellenőrizd a kiválasztott létrehozási okot, majd próbáld újra.';
   return {
     userMessage: `Nem sikerült ${action}. ${nextStep}`,
@@ -111,8 +111,8 @@ function safeMarkdownConflictMessage(error: HttpErrorResponse): string | null {
   if (message.startsWith('A kötelező sablonblokk nem áll rendelkezésre:')) {
     return `${message} Pótold a megnevezett projektadatot, majd próbáld újra.`;
   }
-  if (message.startsWith('Archivált projekthez nem generálható Markdown-revízió')) {
-    return 'Archivált projekthez nem generálható Markdown-revízió. Előbb állítsd vissza a projektet a Projektbeállításokban.';
+  if (message.startsWith('Archivált projekthez nem hozható létre specifikációverzió')) {
+    return 'Archivált projekthez nem hozható létre specifikációverzió. Előbb állítsd vissza a projektet a Projektbeállításokban.';
   }
   return null;
 }

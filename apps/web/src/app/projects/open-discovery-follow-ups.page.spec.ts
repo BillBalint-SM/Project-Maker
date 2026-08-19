@@ -36,7 +36,7 @@ describe('OpenDiscoveryFollowUpsPage', () => {
     await fixture.whenStable();
 
     const root = fixture.nativeElement as HTMLElement;
-    expect(root.querySelector('h1')?.textContent?.trim()).toBe('Utánkövetések');
+    expect(root.querySelector('h1')?.textContent?.trim()).toBe('Tisztázandó tételek');
     expect(root.querySelectorAll('[data-testid="open-follow-up-row"]')).toHaveLength(1);
     expect(root.textContent).toContain('Hallgatói portál megújítása');
     expect(root.textContent).toContain('Üzleti');
@@ -59,7 +59,7 @@ describe('OpenDiscoveryFollowUpsPage', () => {
           throwError(
             () =>
               new DiscoveryFollowUpsApiError(
-                'Az utánkövetések nem tölthetők be.',
+                'A tisztázandó tételek nem tölthetők be.',
                 'load',
                 503,
               ),
@@ -76,13 +76,13 @@ describe('OpenDiscoveryFollowUpsPage', () => {
 
     const emptyFixture = TestBed.createComponent(OpenDiscoveryFollowUpsPage);
     await emptyFixture.whenStable();
-    expect(emptyFixture.nativeElement.textContent).toContain('Nincs nyitott utánkövetés');
+    expect(emptyFixture.nativeElement.textContent).toContain('Nincs nyitott tisztázandó tétel');
     expect(emptyFixture.nativeElement.querySelector('[data-testid="follow-ups-empty-portfolio"]')).not.toBeNull();
 
     const errorFixture = TestBed.createComponent(OpenDiscoveryFollowUpsPage);
     await errorFixture.whenStable();
     expect(errorFixture.nativeElement.querySelector('[role="alert"]')?.textContent).toContain(
-      'Az utánkövetések nem tölthetők be.',
+      'A tisztázandó tételek nem tölthetők be.',
     );
     const retry = errorFixture.nativeElement.querySelector(
       '[data-testid="follow-ups-retry"]',
@@ -111,7 +111,7 @@ describe('OpenDiscoveryFollowUpsPage', () => {
 
     const alert = fixture.nativeElement.querySelector('[role="alert"]') as HTMLElement;
     expect(alert.textContent).toContain(
-      'Az utánkövetések nem tölthetők be. Próbáld meg újra.',
+      'A tisztázandó tételek nem tölthetők be. Próbáld meg újra.',
     );
     expect(alert.textContent).not.toContain('PostgreSQL');
     expect(alert.textContent).not.toContain('password');

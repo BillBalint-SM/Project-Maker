@@ -157,7 +157,9 @@ test.describe.serial('guided intake real Hungarian browser flow', () => {
     expect(requireQuestion(endedRound, fixture.missingRequiredStableKey).answer).toBeNull();
     await expectActiveRoundStatus(request, fixture.projectId, 'ENDED');
     await expect(page).toHaveURL(`/projects/${fixture.projectId}/readiness`);
-    await expect(page.getByRole('heading', { name: 'Felkészültség', exact: true })).toBeVisible();
+    await expect(
+      page.getByRole('heading', { name: 'Becslési felkészültség', exact: true }),
+    ).toBeVisible();
   });
 
   test('blocks the initial intake start when the project has no published schema', async ({

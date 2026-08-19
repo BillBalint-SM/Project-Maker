@@ -17,7 +17,7 @@
   }
   @if (projectArchived()) {
     <p-message severity="info" data-testid="archived-interview-read-only">
-      Az archivált projekt felmérése és ügyfélcsomagjai csak olvashatók. Módosításhoz előbb állítsd vissza a projektet.
+      Az archivált projekt felmérése és felmérési összefoglalói csak olvashatók. Módosításhoz előbb állítsd vissza a projektet.
     </p-message>
   }
   @if (!loading() && !loadError() && handoffRequested && !round()) {
@@ -424,14 +424,14 @@
                   </p>
                 }
                 <p-button
-                  label="Felmérés lezárása és továbblépés"
+                  label="Felmérés lezárása és hiányok áttekintése"
                   [loading]="completing()"
                   [disabled]="isCompleteDisabled()"
                   data-testid="finish-interview-later-button"
                   (onClick)="finishRound(false)"
                 />
                 <p-button
-                  label="Lezárás és ügyfélcsomag előnézete"
+                  label="Lezárás és felmérési összefoglaló előnézete"
                   severity="secondary"
                   [outlined]="true"
                   [loading]="completing()"

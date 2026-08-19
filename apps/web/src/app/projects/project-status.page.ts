@@ -55,12 +55,12 @@ export class ProjectStatusPage implements OnInit {
     const project = this.coordinationWorkspace();
     return [
       {
-        label: `PO/PM – ${project?.internalOwnerName || 'név nincs beállítva'}`,
+        label: `Belső projektgazda – ${project?.internalOwnerName || 'név nincs beállítva'}`,
         value: 'INTERNAL_OWNER' as const,
         disabled: !project?.internalOwnerName,
       },
       {
-        label: `Ügyfél – ${project?.customerContactName || 'név nincs beállítva'}`,
+        label: `Ügyfélkapcsolattartó – ${project?.customerContactName || 'név nincs beállítva'}`,
         value: 'CUSTOMER_CONTACT' as const,
         disabled: !project?.customerContactName,
       },

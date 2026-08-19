@@ -216,7 +216,7 @@ describe('ProjectsController (e2e)', () => {
     });
     assert.match(firstRevision.body.content, /^# Átadás — R1 project /m);
     assert.match(firstRevision.body.content, /markdown\\-template\\-provenance/);
-    assert.match(firstRevision.body.content, /## Revízió/);
+    assert.match(firstRevision.body.content, /## Specifikációverzió/);
     assert.equal(firstRevision.body.content.includes('```json'), false);
 
     const rememberedConfiguration = await request(app.getHttpServer())
@@ -245,6 +245,16 @@ describe('ProjectsController (e2e)', () => {
       'sourceSnapshotLength',
     ]);
     assert.doesNotMatch(JSON.stringify(auditRows), new RegExp(templateName));
+
+    const activity = await request(app.getHttpServer())
+      .get(`/projects/${projectId}/activity`)
+      .expect(200);
+    assert.equal(
+      activity.body.events.some(
+        (event: { readonly summary?: string }) => event.summary === 'Új specifikációverzió készült.',
+      ),
+      true,
+    );
 
     const otherProjectId = await createProject('markdown-default-template');
     const defaultConfiguration = await request(app.getHttpServer())
@@ -340,14 +350,23 @@ describe('ProjectsController (e2e)', () => {
     await request(app.getHttpServer())
       .post('/settings/markdown-templates')
       .send({ name: 'Nem biztonságos sablon', draftContent: '{{process.env}}' })
-      .expect(400);
+      .expect(400)
+      .expect(({ body }) =>
+        assert.equal(body.message, 'Nem támogatott specifikációs sablon-helyőrző: process.env.'),
+      );
     await request(app.getHttpServer())
       .post('/settings/markdown-templates')
       .send({
         name: 'Beágyazott opcionális sablon',
         draftContent: 'Felkészültség: {{project.readiness?}}',
       })
-      .expect(400);
+      .expect(400)
+      .expect(({ body }) =>
+        assert.equal(
+          body.message,
+          'Az opcionális specifikációs sablon helyőrzőjének önálló Markdown-blokkban kell állnia.',
+        ),
+      );
 
     const projectId = await createProject('markdown-required-placeholder');
     const template = await request(app.getHttpServer())
@@ -524,9 +543,9 @@ describe('ProjectsController (e2e)', () => {
     const allowedEvents = [
       ['PROJECT_ARCHIVED', 'A projekt archiválva lett.'],
       ['PROJECT_RESTORED', 'A projekt visszaállítva lett.'],
-      ['DISCOVERY_FOLLOW_UP_CREATED', 'Új tisztázási utánkövetés jött létre.'],
-      ['DISCOVERY_FOLLOW_UP_UPDATED', 'Egy tisztázási utánkövetés frissítve lett.'],
-      ['DISCOVERY_FOLLOW_UP_RESOLVED', 'Egy tisztázási utánkövetés lezárva lett.'],
+      ['DISCOVERY_FOLLOW_UP_CREATED', 'Új tisztázandó tétel jött létre.'],
+      ['DISCOVERY_FOLLOW_UP_UPDATED', 'Egy tisztázandó tétel frissítve lett.'],
+      ['DISCOVERY_FOLLOW_UP_RESOLVED', 'Egy tisztázandó tétel lezárva lett.'],
       ['PROJECT_DECISION_INPUTS_UPDATED', 'A döntési értékelés frissítve lett.'],
     ] as const;
 
@@ -665,7 +684,7 @@ describe('ProjectsController (e2e)', () => {
       state: 'CLARIFICATION_REQUIRED',
       label: 'Tisztázás szükséges',
       primaryAction: {
-        label: 'Felkészültség megnyitása',
+        label: 'Becslési felkészültség megnyitása',
         target: 'READINESS',
       },
     });
@@ -733,7 +752,7 @@ describe('ProjectsController (e2e)', () => {
       state: 'CLARIFICATION_REQUIRED',
       label: 'Tisztázás szükséges',
       primaryAction: {
-        label: 'Felkészültség megnyitása',
+        label: 'Becslési felkészültség megnyitása',
         target: 'READINESS',
       },
     });

@@ -7,7 +7,7 @@ export const routes: Routes = [
       import('./projects/project-list.page').then(
         (module) => module.ProjectListPage,
       ),
-    title: 'Áttekintő | Project Maker',
+    title: 'Projektportfólió | Project Maker',
   },
   {
     path: 'projects/new',
@@ -23,7 +23,7 @@ export const routes: Routes = [
       import('./projects/active-project-queue.page').then(
         (module) => module.ActiveProjectQueuePageComponent,
       ),
-    title: 'Folyamatban lévő ügyek | Project Maker',
+    title: 'Aktív munkasor | Project Maker',
   },
   {
     path: 'follow-ups',
@@ -31,7 +31,7 @@ export const routes: Routes = [
       import('./projects/open-discovery-follow-ups.page').then(
         (module) => module.OpenDiscoveryFollowUpsPage,
       ),
-    title: 'Utánkövetések | Project Maker',
+    title: 'Tisztázandó tételek | Project Maker',
   },
   {
     path: 'customer-mail-triage',
@@ -70,7 +70,7 @@ export const routes: Routes = [
           import('./projects/readiness.page').then(
             (module) => module.ReadinessPage,
           ),
-        title: 'Felkészültség | Project Maker',
+        title: 'Becslési felkészültség | Project Maker',
       },
       {
         path: 'decision-review',
@@ -86,7 +86,7 @@ export const routes: Routes = [
           import('./markdown/markdown.page').then(
             (module) => module.MarkdownPage,
           ),
-        title: 'Markdown terv | Project Maker',
+        title: 'Projekt-specifikáció | Project Maker',
       },
       {
         path: 'customer-correspondences',
@@ -117,7 +117,7 @@ export const routes: Routes = [
       import('./settings/question-bank.page').then(
         (module) => module.QuestionBankPage,
       ),
-    title: 'Kérdésbank beállítások | Project Maker',
+    title: 'Kérdésbank | Project Maker',
   },
   {
     path: 'settings/markdown-templates',
@@ -125,7 +125,7 @@ export const routes: Routes = [
       import('./settings/markdown-template.page').then(
         (module) => module.MarkdownTemplatePage,
       ),
-    title: 'Markdown beállítások | Project Maker',
+    title: 'Specifikációs sablonok | Project Maker',
   },
   {
     path: '**',

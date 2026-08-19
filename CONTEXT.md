@@ -21,14 +21,15 @@ _Avoid_: One-page project workspace, all-workflow editor
 
 **Portfolio overview**:
 The application-level starting context for current projects, their preparation
-states, and the most important next actions. It does not replace a selected
-project's working context or the active project queue.
+states, and the most important next actions. Its employee-facing name is
+`Projektportfólió`; it does not replace a selected project's working context or
+the active project queue.
 _Avoid_: Full project dossier, unfiltered project list
 
 **Active project queue**:
 A prioritized cross-project list of projects in active preparation, each with
-one clear next action. It is distinct from a queue of individual discovery
-follow-ups.
+one clear next action. Its employee-facing name is `Aktív munkasor`; it is
+distinct from a queue of individual discovery follow-ups.
 _Avoid_: Discovery follow-up queue, project archive
 
 **Selected project context**:
@@ -40,7 +41,7 @@ _Avoid_: Implicit current project, global sticky project state
 
 **Project context navigation**:
 The compact navigation inside a Selected project context: Projektállapot,
-Felmérés, Felkészültség, Döntési értékelés, Markdown terv, and
+Felmérés, Becslési felkészültség, Döntési értékelés, Projekt-specifikáció, and
 Projektbeállítások. A context may explain a missing prerequisite but is not
 hidden merely because the project is earlier in preparation.
 _Avoid_: Global application menu, scroll-only project navigation
@@ -59,6 +60,14 @@ contact details, customer email configuration, archive, and deletion. It is
 separate from active project preparation work.
 _Avoid_: Day-to-day project coordination, hidden destructive controls
 
+**Administrative project phase**:
+The manually recorded business phase shown as `Adminisztratív projektfázis`:
+`Előkészítés alatt`, `Felmérési szakasz`, `Belső egyeztetésre vár`,
+`Ügyfél-visszajelzésre vár`, or `Tervezésre átadva`. It is not the server-derived
+Project preparation state and is not a complete delivery lifecycle with a
+terminal successful-delivery state.
+_Avoid_: Project lifecycle, preparation state, delivery completion
+
 **Operational coordination data**:
 The named Next-action owner, one next action, and due date used to coordinate
 active project preparation. The owner is either the named Internal project
@@ -67,14 +76,16 @@ editable from employee working contexts rather than buried in Project settings.
 _Avoid_: Contact details used as an implicit assignment, project lifecycle control
 
 **Internal project owner**:
-The named internal PO/PM user who operates Project Maker for the project,
-conducts the interview, and may own its next action.
+The named internal employee who operates Project Maker for the project,
+conducts the interview, and may own its next action. Employee-facing language
+calls the role `Belső projektgazda`.
 _Avoid_: Anonymous internal user, unqualified project role
 
 **Next-action owner**:
 The concrete person who currently has the project's next action: either the
 Internal project owner or the Customer contact. Employee-facing language names
-the role and person together.
+the role and person together as `Belső projektgazda – Név` or
+`Ügyfélkapcsolattartó – Név`.
 _Avoid_: Ball owner, free-form owner label
 
 **Ended interview**:
@@ -90,7 +101,8 @@ _Avoid_: One-time pre-send state, readiness approval
 
 **Interview customer handoff**:
 One numbered, immutable, human-readable question-and-answer snapshot explicitly
-sent to the project's named Customer contact after review.
+sent to the project's named Customer contact after review. Its employee-facing
+name is `felmérési összefoglaló`.
 _Avoid_: Customer follow-up ping, arbitrary-recipient email, raw data export
 
 **Interview revision draft**:
@@ -140,7 +152,7 @@ _Avoid_: Rewriting answered questions, mutable historical assessment
 
 **Post-interview readiness transition**:
 The direct transition from an ended Initial Intake meeting to that project's
-Felkészültség context, where its current gaps are understood and acted on while
+`Becslési felkészültség` context, where its current gaps are understood and acted on while
 the ended interview supports versioned review and customer handoff.
 _Avoid_: Returning blindly to a global list, treating completion as readiness
 
@@ -152,8 +164,9 @@ It conveys the next stage of project preparation, not a raw persistence status.
 _Avoid_: DRAFT, inferred priority score, multiple competing project states
 
 **Discovery follow-up queue**:
-The cross-project working view of open Discovery follow-ups. It does not
-include customer communication follow-ups.
+The cross-project working view named `Tisztázandó tételek`, containing open
+Discovery follow-ups from active projects. It does not include Customer
+reminders.
 _Avoid_: Active project queue, customer follow-up queue
 
 **Human-readable project activity**:
@@ -170,14 +183,27 @@ _Avoid_: Deleted project, completed estimation handoff
 
 **Markdown template**:
 A named, reusable, user-editable Markdown structure stored for future
-Markdown revision generation. Multiple templates may be saved separately;
-editing one never rewrites an already saved immutable Markdown revision.
-_Avoid_: Markdown revision, hard-coded renderer, editable historical snapshot
+Specification version generation. Multiple templates may be saved separately;
+editing one never rewrites an already saved immutable Specification version.
+_Avoid_: Specification version, hard-coded renderer, editable historical snapshot
 
 **Markdown template library**:
 The organization-level collection of named Markdown templates available when a
-project generates a future Markdown revision.
-_Avoid_: Project-owned template copy, Markdown revision history
+project generates a future Specification version. Its employee-facing context
+is `Specifikációs sablonok`.
+_Avoid_: Project-owned template copy, Specification version history
+
+**Project specification**:
+The project context named `Projekt-specifikáció`, which presents immutable,
+versioned specification snapshots. Markdown remains the download format, not
+the employee-facing name of the context.
+_Avoid_: Markdown terv, editable live document
+
+**Specification version**:
+One immutable Project specification snapshot, shown as `specifikációverzió` and
+listed under `Verziótörténet`. It retains the selected published template and
+source snapshot; later project or template changes do not rewrite it.
+_Avoid_: Markdown-revízió, live project state, editable historical snapshot
 
 **Default Markdown template**:
 The initial published Markdown template available from the Markdown template
@@ -254,7 +280,8 @@ It may explain delivery state but is not a Customer reply.
 _Avoid_: Customer inbound message, Customer decision, unread reply
 
 **Discovery follow-up**:
-A project-owned accountable discovery work item with a question, owner, due date, status, and next step.
+A project-owned accountable discovery work item shown to employees as a
+`tisztázandó tétel`, with a question, owner, due date, status, and next step.
 _Avoid_: Customer email follow-up, task
 
 **Open discovery follow-up**:

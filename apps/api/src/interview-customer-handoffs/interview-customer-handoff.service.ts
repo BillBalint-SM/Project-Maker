@@ -195,7 +195,7 @@ export class InterviewCustomerHandoffService {
 }
 
 async function buildPreview(manager: EntityManager, project: Project, round: InterviewRoundEntity, handoff: InterviewCustomerHandoffEntity, sender: { name: string; address: string }): Promise<InterviewCustomerHandoffPreview> {
-  if (!project.internalOwnerName) throw new ConflictException('A küldéshez meg kell adni a belső PO/PM nevét.');
+  if (!project.internalOwnerName) throw new ConflictException('A küldéshez meg kell adni a belső projektgazda nevét.');
   if (handoff.version > 1 && !normalize(handoff.modificationSummary)) throw new BadRequestException('A módosítás összefoglalása kötelező.');
   const projection = await loadProjection(manager, project, round, handoff);
   const rendered = renderHandoff(projection);

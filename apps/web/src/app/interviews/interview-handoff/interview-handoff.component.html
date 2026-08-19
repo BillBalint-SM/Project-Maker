@@ -3,7 +3,7 @@
   <ng-template #title>Ügyfélnek küldött felmérési összefoglalók</ng-template>
   <ng-template #subtitle>Az elküldött verziók változatlan előzményként megmaradnak.</ng-template>
   @if (error()) { <p-message severity="error" role="alert">{{ error() }}</p-message> }
-  @if (readOnly()) { <p-message severity="info">Az archivált projekt ügyfélcsomagjai csak olvashatók.</p-message> }
+  @if (readOnly()) { <p-message severity="info">Az archivált projekt felmérési összefoglalói csak olvashatók.</p-message> }
   @if (activeDraft(); as active) {
     <section class="draft" aria-label="Aktív összefoglaló-tervezet">
       <h3>{{ active.version }}. verzió – {{ stateLabel(active.state) }}</h3>
@@ -16,7 +16,7 @@
         <fieldset class="sender-selection" data-testid="handoff-sender-selection">
           <legend>Feladó</legend>
           <label><input type="radio" name="handoff-sender-mode" value="DEDICATED" [ngModel]="senderMode" (ngModelChange)="changeSenderMode($event)" /> Dedikált postafiók – {{ options.dedicatedName }} &lt;{{ options.dedicatedAddress }}&gt;</label>
-          <label><input type="radio" name="handoff-sender-mode" value="CUSTOM" [ngModel]="senderMode" (ngModelChange)="changeSenderMode($event)" /> Saját PO/PM postafiók</label>
+          <label><input type="radio" name="handoff-sender-mode" value="CUSTOM" [ngModel]="senderMode" (ngModelChange)="changeSenderMode($event)" /> Személyes postafiók</label>
           @if (senderMode === 'CUSTOM') {
             <label for="handoff-sender-name">Feladó neve</label>
             <input id="handoff-sender-name" data-testid="handoff-sender-name" [ngModel]="senderName" (ngModelChange)="senderName = $event; changeSender()" />
@@ -56,10 +56,10 @@
     <h3 id="handoff-history-title">Verzióelőzmények</h3>
     @for (item of history(); track item.id) {
       <h4 tabindex="-1" [attr.data-testid]="'handoff-version-heading-' + item.version">{{ item.version }}. verzió – {{ stateLabel(item.state) }}</h4>
-      <button type="button" class="history-item" [attr.data-testid]="'inspect-handoff-version-' + item.version" (click)="inspect(item.id)">Tartalom megnyitása @if (item.sentAt) { – {{ item.sentAt | date: 'yyyy. MM. dd. HH:mm' }} }</button>
+      <button type="button" class="history-item" [attr.data-testid]="'inspect-handoff-version-' + item.version" (click)="inspect(item.id)">Összefoglaló megtekintése @if (item.sentAt) { – {{ item.sentAt | date: 'yyyy. MM. dd. HH:mm' }} }</button>
     }
     @if (selectedDetail(); as selected) {
-      <section class="history-detail" aria-label="Megnyitott ügyfélcsomag-verzió">
+      <section class="history-detail" aria-label="Megnyitott felmérési összefoglaló-verzió">
         <p data-testid="selected-handoff-recipient"><strong>Címzett:</strong> {{ selected.recipientName }} &lt;{{ selected.recipientEmail }}&gt;</p>
         <p data-testid="selected-handoff-sent-at"><strong>Küldés ideje:</strong> {{ selected.sentAt | date: 'yyyy. MM. dd. HH:mm' }}</p>
         <pre class="history-content">{{ selected.textContent }}</pre>

@@ -1,9 +1,9 @@
 <section aria-labelledby="active-queue-title">
-  <a class="back-link" routerLink="/">← Vissza az Áttekintőre</a>
+  <a class="back-link" routerLink="/">← Vissza a projektportfólióhoz</a>
 
   <div class="page-heading">
     <span class="eyebrow">Portfólió</span>
-    <h1 id="active-queue-title">Folyamatban lévő ügyek</h1>
+    <h1 id="active-queue-title">Aktív munkasor</h1>
     <p>Az aktív projektek következő teendői sürgősség szerint rendezve.</p>
   </div>
 
@@ -34,7 +34,7 @@
       }
     </fieldset>
     <fieldset>
-      <legend>Felkészültség</legend>
+      <legend>Becslési felkészültség</legend>
       @for (option of preparationOptions; track option[0]) {
         <label>
           <input type="checkbox" [checked]="selectedPreparationStates().includes(option[0])" (change)="togglePreparationState(option[0])" />
@@ -73,12 +73,12 @@
 
   @if (loading()) {
     <div class="state-panel" data-testid="active-queue-loading" aria-live="polite">
-      <p-progress-spinner ariaLabel="A folyamatban lévő ügyek betöltése" />
-      <p>A folyamatban lévő ügyek betöltése…</p>
+      <p-progress-spinner ariaLabel="Az aktív munkasor betöltése" />
+      <p>Az aktív munkasor betöltése…</p>
     </div>
   } @else if (loadError()) {
     <div class="state-panel" data-testid="active-queue-error" role="alert">
-      <h2>A folyamatban lévő ügyek nem tölthetők be</h2>
+      <h2>Az aktív munkasor nem tölthető be</h2>
       <p>{{ loadError() }}</p>
       <button pButton type="button" severity="secondary" data-testid="queue-initial-retry" (click)="retry()">
         Lista újratöltése
@@ -96,7 +96,7 @@
         } @else {
           <h2>Nincs aktív projekt</h2>
           <p>A listában minden nem archivált projekt megjelenik.</p>
-          <a pButton severity="secondary" routerLink="/">Áttekintő megnyitása</a>
+          <a pButton severity="secondary" routerLink="/">Vissza a projektportfólióhoz</a>
           <a pButton routerLink="/projects/new">Új projekt létrehozása</a>
         }
       </div>
@@ -174,7 +174,7 @@
         }
       </div>
 
-      <nav class="queue-pagination" aria-label="A folyamatban lévő ügyek lapozása">
+      <nav class="queue-pagination" aria-label="Az aktív munkasor lapozása">
         <button
           pButton
           type="button"
