@@ -75,20 +75,21 @@ delivery change; no future merge identity is predicted here.
 - Project coordination: creation records a named internal PO/PM owner. The next
   action is assigned by role to that concrete person or to the named customer
   contact; free-form `Ball owner` is no longer product language.
-- Customer communication: versioned interview handoffs and configurable,
+- Customer communication (`COMM-01.1`): versioned interview handoffs and configurable,
   authored, previewed customer follow-up ping delivery exist. Manual and
   PostgreSQL-coordinated scheduled ping attempts are durable across reload;
   scheduled claims commit before Microsoft Graph submission and revalidate current delivery inputs.
   Recovery occurs only by explicit `FAILED` retry or request-specific
   acknowledged `UNKNOWN` retry, and uncertain delivery pauses the cadence.
   Customer mail is separate from Claude Markdown and from `INTAKE-04`
-  operational follow-up management.
+  operational follow-up management. The still-planned `OUTPUT-01.1` internal
+  Claude Code handoff may not add Markdown or `.md` inputs to Customer SMTP.
 - Web intake UX: the interview page resumes the server active round, autosaves
   text answers after 750 ms, saves discrete values immediately, keeps failed
   drafts visible with retry, and renders deterministic Hungarian coaching from
   persisted question metadata.
 - End-user documentation: `docs/user-guide.md` teaches every stable delivered
-  route and business workflow with nine sanitized application screenshots,
+  route and business workflow with ten sanitized application screenshots,
   three state/workflow diagrams, recovery guidance, and explicit unavailable
   capability boundaries.
 
