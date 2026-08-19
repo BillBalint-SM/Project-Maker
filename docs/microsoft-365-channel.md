@@ -5,6 +5,32 @@ Customer communication channel. It is an operator procedure for a controlled,
 non-production test environment. A green fake-Graph build is necessary
 regression evidence, but it is not production-readiness evidence.
 
+## Delivery and Customer activation ownership
+
+The application, provider boundary, migrations, regression evidence, wizard,
+and this runbook form the supplier delivery. They can be reviewed and deployed
+without giving the supplier access to the Customer tenant. Missing Microsoft
+365 configuration stays fail-closed and does not block unrelated Project Maker
+work.
+
+Tenant activation is a separate Customer-operated release gate:
+
+- the Customer's Entra administrator registers the application, uploads the
+  public certificate, and grants tenant-admin consent for `Mail.Send`;
+- the Customer's Exchange administrator creates and proves the dedicated-
+  mailbox-only `Application Mail.Read` scope;
+- the Customer's deployment secret owner generates and retains the private key
+  and injects the runtime values in the target environment;
+- the Customer's operator runs the controlled smoke and records only the
+  redacted evidence described below.
+
+The supplier must not receive tenant-admin access, mailbox access, the private
+key, access tokens, Customer mail, or a populated `.env`. A Customer maintainer
+may contribute the completed evidence-only change, or provide its bounded
+non-secret fields to the repository maintainer for that single change. Until
+the evidence verifier passes, describe the feature as delivered and tenant-
+ready, not production-activated.
+
 ## Authority and security boundary
 
 The Entra application is single-tenant and authenticates with a certificate,

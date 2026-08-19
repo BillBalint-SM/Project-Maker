@@ -216,6 +216,12 @@ if (-not (Test-Path -LiteralPath $environmentPath)) {
     throw "Create $environmentPath from .env.example before running this wizard."
 }
 
+Write-Host @'
+Run this activation only inside the Customer environment with its authorized
+Entra, Exchange, and deployment-secret owners. Do not provide tenant access,
+the private key, mailbox content, or the populated .env to the supplier.
+'@ -ForegroundColor Yellow
+
 Start-WizardStage -Name 'Register the single-tenant Entra application'
 Open-StepUrl -Uri 'https://entra.microsoft.com/#view/Microsoft_AAD_RegisteredApps/ApplicationsListBlade'
 Write-Step -Message @'
