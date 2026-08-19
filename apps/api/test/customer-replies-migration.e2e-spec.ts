@@ -85,6 +85,7 @@ describe('Correlated Customer replies migration (PostgreSQL)', () => {
       await database.undoLastMigration();
       await database.undoLastMigration();
       await database.undoLastMigration();
+      await database.undoLastMigration();
       const absent = await database.query(
         `SELECT table_name FROM information_schema.tables WHERE table_name = 'customer_inbound_messages'`,
       );
@@ -111,6 +112,7 @@ describe('Correlated Customer replies migration (PostgreSQL)', () => {
          VALUES ($1, 'Egyéb')`,
         [inboundMessageId],
       );
+      await database.undoLastMigration();
       await database.undoLastMigration();
       await assert.rejects(
         database.undoLastMigration(),

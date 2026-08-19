@@ -57,7 +57,9 @@ export class MicrosoftGraphMailClient implements GraphMailClient {
     }
     if (response.status === 202) return { accepted: true, id: null } as const;
     if (response.status === 401 || response.status === 403) throw new GraphMailClientError('AUTHENTICATION');
-    if (response.status === 429) throw new GraphMailClientError('THROTTLED');
+    if (response.status === 429) {
+      throw new GraphMailClientError('THROTTLED', undefined, parseRetryAfterMs(response));
+    }
     if (response.status >= 500) throw new GraphMailClientError('TEMPORARY');
     return { accepted: false } as const;
   }
@@ -81,7 +83,9 @@ export class MicrosoftGraphMailClient implements GraphMailClient {
     }
     if (response.status === 401 || response.status === 403) throw new GraphMailClientError('AUTHENTICATION');
     if (response.status === 410) throw new GraphMailClientError('INVALID_CURSOR');
-    if (response.status === 429) throw new GraphMailClientError('THROTTLED');
+    if (response.status === 429) {
+      throw new GraphMailClientError('THROTTLED', undefined, parseRetryAfterMs(response));
+    }
     if (!response.ok) throw new GraphMailClientError(response.status >= 500 ? 'TEMPORARY' : 'REJECTED');
     const body = await response.json() as { value?: unknown; '@odata.nextLink'?: unknown; '@odata.deltaLink'?: unknown };
     if (!Array.isArray(body.value)) throw new GraphMailClientError('TEMPORARY');
@@ -149,4 +153,18 @@ function normalizeUrl(value: string): string { return value.trim().replace(/\/+$
 
 function encodeJwtPart(value: Readonly<Record<string, string | number>>): string {
   return Buffer.from(JSON.stringify(value), 'utf8').toString('base64url');
+}
+
+function parseRetryAfterMs(response: Response): number | undefined {
+  const value = response.headers.get('retry-after')?.trim();
+  if (!value) return undefined;
+  if (/^\d+(?:\.\d+)?$/.test(value)) {
+    const milliseconds = Number(value) * 1_000;
+    return Number.isSafeInteger(milliseconds) && milliseconds >= 0
+      ? milliseconds
+      : undefined;
+  }
+  const retryAt = Date.parse(value);
+  if (Number.isNaN(retryAt)) return undefined;
+  return Math.max(0, retryAt - Date.now());
 }

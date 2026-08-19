@@ -35,7 +35,10 @@ export function immutableOutboundCustomerMessage(
 }
 
 export class CustomerMailBoundaryError extends Error {
-  constructor(readonly code: CustomerMailErrorCode) {
+  constructor(
+    readonly code: CustomerMailErrorCode,
+    readonly retryAfterMs?: number,
+  ) {
     super('Customer mail operation failed.');
     this.name = 'CustomerMailBoundaryError';
   }

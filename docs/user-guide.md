@@ -856,6 +856,19 @@ Amíg egy kézi attempt `SENDING`, a cockpit más módosításai letiltva maradn
 
 Archivált projektben a mentett ping olvasható marad, de a szerkesztés, előnézet és küldés letiltott. Ha a munka valóban újraindult, előbb állítsd vissza a projektet, ellenőrizd a címzettet és a hivatkozott follow-up nyitott állapotát, majd készíts friss előnézetet.
 
+### Nem társított ügyfélüzenetek feldolgozása
+
+A Portfólió `Customer postafiók` paneljéről nyisd meg a `Nem társított üzenetek` oldalt. Ide kerül az a beérkezett levél, amelyet a rendszer nem tud egyetlen Customer levelezéshez sem biztonságosan hozzárendelni. A bizonytalan automatikus levelek szintén itt maradnak kézi ellenőrzésre; önmagukban nem hoznak létre `Új válasz` állapotot.
+
+1. Ellenőrizd a feladót, a tárgyat, a látható üzenetrészt, az időpontot és a mellékletek számát.
+2. Ha valódi Customer-válasz, válaszd ki a megfelelő aktív projekt Customer levelezését, majd válaszd a `Társítás` műveletet.
+3. Ha az üzenet nem tartozik projektmunkához, válaszd az `Elvetés` műveletet.
+4. A döntés explicit, idempotens és auditált. A társítás után az üzenet egyszer jelenik meg a kiválasztott levelezésben, és egyszer növeli az olvasatlan számlálót.
+
+A kézbesítési jelentések és az automatikus távolléti válaszok külön `Mail-system események` listában láthatók. Nem számítanak Customer-válasznak, ezért nem növelik az olvasatlan számlálót. A dedikált postafiókból visszaérkező saját leveleket a rendszer loopként figyelmen kívül hagyja. Outlookban végzett áthelyezés, olvasottra állítás vagy törlés nem módosítja a már importált Project Maker adatot.
+
+Ha a postafiók kapcsolata átmenetileg megszakad, a rendszer korlátozott számú, késleltetett újrapróbálást végez; konfigurációs vagy jogosultsági hibánál nem indít ismétlési vihart. Lejárt Microsoft Graph cursor esetén új baseline készül: a már importált adatok megmaradnak, a baseline történeti levelei pedig nem jelennek meg új válaszként.
+
 ## Markdown-revíziók és átadási pillanatképek
 
 ![A Markdown-revíziók legfrissebb eleme, metaadatai, változásösszefoglalója és tartalmi előnézete](assets/user-guide/06-markdown-revisions.png)

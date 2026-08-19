@@ -166,11 +166,247 @@ describe('Correlated Customer replies', () => {
 
     graph.queue(reply);
     await request(app.getHttpServer()).post('/customer-mailbox-sync/refresh').send({}).expect(201);
+    graph.queue({ ...reply, id: `${providerMessageReference}-reissued` });
+    await request(app.getHttpServer()).post('/customer-mailbox-sync/refresh').send({}).expect(201);
     const replayed = await request(app.getHttpServer())
       .get(`/projects/${projectId}/customer-correspondences`)
       .expect(200);
     assert.equal(replayed.body.newReplyCount, 0);
     assert.equal(replayed.body.correspondences[0].messages.length, 1);
+  });
+
+  it('retains an uncorrelated message for explicit triage without inferring a Project', async () => {
+    const messageId = `unmatched-${Date.now()}-${Math.random()}`;
+    graph.queue({
+      id: messageId,
+      internetMessageId: `<${messageId}@example.test>`,
+      from: { emailAddress: { address: 'forwarded-customer@example.test' } },
+      toRecipients: [{ emailAddress: { address: 'reply51@pte.hu' } }],
+      subject: 'Továbbított Customer kérdés',
+      body: { contentType: 'text', content: 'Ezt az üzenetet kézzel kell társítani.' },
+      receivedDateTime: '2026-08-18T17:00:00.000Z',
+    });
+
+    await request(app.getHttpServer()).post('/customer-mailbox-sync/refresh').send({}).expect(201);
+
+    const triage = await request(app.getHttpServer()).get('/customer-mail-triage').expect(200);
+    const unmatched = triage.body.unmatchedMessages.find(
+      (message: { providerMessageReference: string }) =>
+        message.providerMessageReference === messageId,
+    );
+    assert.deepEqual(unmatched, {
+      id: unmatched.id,
+      kind: 'UNMATCHED_CUSTOMER_MESSAGE',
+      providerMessageReference: messageId,
+      receivedAt: '2026-08-18T17:00:00.000Z',
+      senderAddress: 'forwarded-customer@example.test',
+      subject: 'Továbbított Customer kérdés',
+      visibleText: 'Ezt az üzenetet kézzel kell társítani.',
+      quotedText: null,
+      attachmentCount: 0,
+      attachments: [],
+      version: 1,
+    });
+    assert.equal('projectId' in unmatched, false);
+    assert.equal('correspondenceId' in unmatched, false);
+  });
+
+  it('separates mail-system events, ignores self-originated loops, and keeps uncertain automation reviewable', async () => {
+    const target = await createSentCorrespondence(app, graph);
+    const suffix = `${Date.now()}-${Math.random()}`;
+    graph.queue(
+      {
+        ...inboundMessage(`dsn-${suffix}`, target.replyToAddress, '2026-08-18T17:05:00.000Z'),
+        internetMessageId: `<dsn-${suffix}@example.test>`,
+        internetMessageHeaders: [
+          { name: 'Content-Type', value: 'multipart/report; report-type=delivery-status' },
+        ],
+      },
+      {
+        ...inboundMessage(`dsn-${suffix}-reissued`, target.replyToAddress, '2026-08-18T17:05:00.000Z'),
+        internetMessageId: `<dsn-${suffix}@example.test>`,
+        internetMessageHeaders: [
+          { name: 'Content-Type', value: 'multipart/report; report-type=delivery-status' },
+        ],
+      },
+      {
+        ...inboundMessage(`ooo-${suffix}`, target.replyToAddress, '2026-08-18T17:06:00.000Z'),
+        internetMessageHeaders: [{ name: 'Auto-Submitted', value: 'auto-replied' }],
+      },
+      {
+        ...inboundMessage(`loop-${suffix}`, target.replyToAddress, '2026-08-18T17:07:00.000Z'),
+        from: { emailAddress: { address: 'REPLY51@PTE.HU' } },
+      },
+      {
+        ...inboundMessage(`automated-${suffix}`, target.replyToAddress, '2026-08-18T17:08:00.000Z'),
+        internetMessageHeaders: [{ name: 'Auto-Submitted', value: 'auto-generated' }],
+      },
+    );
+
+    await request(app.getHttpServer()).post('/customer-mailbox-sync/refresh').send({}).expect(201);
+
+    const correspondence = await request(app.getHttpServer())
+      .get(`/projects/${target.projectId}/customer-correspondences`)
+      .expect(200);
+    assert.equal(correspondence.body.newReplyCount, 0);
+    assert.equal(correspondence.body.correspondences[0].unreadMessageCount, 0);
+    const triage = await request(app.getHttpServer()).get('/customer-mail-triage').expect(200);
+    assert.deepEqual(
+      triage.body.mailSystemEvents
+        .filter((event: { providerMessageReference: string }) => event.providerMessageReference.includes(suffix))
+        .map((event: { type: string }) => event.type)
+        .sort(),
+      ['DELIVERY_REPORT', 'OUT_OF_OFFICE'],
+    );
+    const uncertain = triage.body.unmatchedMessages.find(
+      (message: { providerMessageReference: string }) =>
+        message.providerMessageReference === `automated-${suffix}`,
+    );
+    assert.equal(uncertain.kind, 'UNKNOWN_AUTOMATION');
+    const serialized = JSON.stringify(triage.body);
+    assert.equal(serialized.includes(`loop-${suffix}`), false);
+  });
+
+  it('links one unmatched message idempotently through an explicit correspondence command', async () => {
+    const target = await createSentCorrespondence(app, graph);
+    const correspondenceWork = await request(app.getHttpServer())
+      .get(`/projects/${target.projectId}/customer-correspondences`)
+      .expect(200);
+    const correspondenceId = correspondenceWork.body.correspondences[0].id as string;
+    const messageId = `manual-link-${Date.now()}-${Math.random()}`;
+    graph.queue({
+      id: messageId,
+      internetMessageId: `<${messageId}@example.test>`,
+      from: { emailAddress: { address: 'forwarded-customer@example.test' } },
+      toRecipients: [{ emailAddress: { address: 'reply51@pte.hu' } }],
+      subject: 'Kézzel társítandó Customer kérdés',
+      body: { contentType: 'text', content: 'A társítás után ez egy Customer válasz.' },
+      receivedDateTime: '2026-08-18T17:15:00.000Z',
+    });
+    await request(app.getHttpServer()).post('/customer-mailbox-sync/refresh').send({}).expect(201);
+    const triage = await request(app.getHttpServer()).get('/customer-mail-triage').expect(200);
+    assert.equal(
+      triage.body.eligibleCorrespondences.some(
+        (candidate: { projectId: string; correspondenceId: string }) =>
+          candidate.projectId === target.projectId && candidate.correspondenceId === correspondenceId,
+      ),
+      true,
+    );
+    const unmatched = triage.body.unmatchedMessages.find(
+      (message: { providerMessageReference: string }) =>
+        message.providerMessageReference === messageId,
+    );
+    assert.ok(unmatched);
+
+    const command = {
+      command: 'LINK',
+      correspondenceId,
+      expectedVersion: unmatched.version,
+    };
+    const linked = await request(app.getHttpServer())
+      .post(`/customer-mail-triage/${unmatched.id}/commands`)
+      .send(command)
+      .expect(201);
+    assert.deepEqual(linked.body, {
+      messageId: unmatched.id,
+      state: 'LINKED',
+      version: 2,
+      projectId: target.projectId,
+      correspondenceId,
+    });
+    const repeated = await request(app.getHttpServer())
+      .post(`/customer-mail-triage/${unmatched.id}/commands`)
+      .send(command)
+      .expect(201);
+    assert.deepEqual(repeated.body, linked.body);
+
+    const updated = await request(app.getHttpServer())
+      .get(`/projects/${target.projectId}/customer-correspondences`)
+      .expect(200);
+    assert.equal(updated.body.correspondences[0].status, 'Új válasz');
+    assert.equal(updated.body.correspondences[0].unreadMessageCount, 1);
+    const linkedMessage = updated.body.correspondences[0].messages.find(
+      (message: { providerMessageReference: string }) =>
+        message.providerMessageReference === messageId,
+    );
+    assert.equal(linkedMessage.correlationEvidence, 'MANUAL_TRIAGE');
+    await request(app.getHttpServer())
+      .post(`/projects/${target.projectId}/customer-correspondences/${correspondenceId}/commands`)
+      .send({
+        command: 'SET_STATUS',
+        expectedVersion: updated.body.correspondences[0].processingVersion,
+        status: 'Lezárva',
+      })
+      .expect(409);
+
+    const classified = await request(app.getHttpServer())
+      .post(`/projects/${target.projectId}/customer-correspondences/${correspondenceId}/commands`)
+      .send({
+        command: 'CLASSIFY_MESSAGE',
+        expectedVersion: updated.body.correspondences[0].processingVersion,
+        messageId: unmatched.id,
+        classification: 'Elfogadva',
+        closeCorrespondence: true,
+      })
+      .expect(201);
+    assert.equal(classified.body.status, 'Lezárva');
+    assert.equal(classified.body.messages[0].classification, 'Elfogadva');
+
+    const audit = await request(app.getHttpServer())
+      .get(`/projects/${target.projectId}/audit-events`)
+      .expect(200);
+    const linkEvents = audit.body.events.filter(
+      (event: { eventType: string }) => event.eventType === 'CUSTOMER_UNMATCHED_MESSAGE_LINKED',
+    );
+    assert.equal(linkEvents.length, 1);
+    assert.equal(JSON.stringify(linkEvents).includes('A társítás után'), false);
+    assert.equal(JSON.stringify(linkEvents).includes('Kézzel társítandó'), false);
+  });
+
+  it('dismisses an irrelevant unmatched message idempotently and removes it from active triage', async () => {
+    const messageId = `dismiss-${Date.now()}-${Math.random()}`;
+    graph.queue({
+      id: messageId,
+      internetMessageId: `<${messageId}@example.test>`,
+      from: { emailAddress: { address: 'newsletter@example.test' } },
+      toRecipients: [{ emailAddress: { address: 'reply51@pte.hu' } }],
+      subject: 'Nem projektüzenet',
+      body: { contentType: 'text', content: 'Ez az üzenet nem tartozik projekthez.' },
+      receivedDateTime: '2026-08-18T17:30:00.000Z',
+    });
+    await request(app.getHttpServer()).post('/customer-mailbox-sync/refresh').send({}).expect(201);
+    const before = await request(app.getHttpServer()).get('/customer-mail-triage').expect(200);
+    const unmatched = before.body.unmatchedMessages.find(
+      (message: { providerMessageReference: string }) =>
+        message.providerMessageReference === messageId,
+    );
+    assert.ok(unmatched);
+    const command = { command: 'DISMISS', expectedVersion: unmatched.version };
+
+    const dismissed = await request(app.getHttpServer())
+      .post(`/customer-mail-triage/${unmatched.id}/commands`)
+      .send(command)
+      .expect(201);
+    assert.deepEqual(dismissed.body, {
+      messageId: unmatched.id,
+      state: 'DISMISSED',
+      version: 2,
+      projectId: null,
+      correspondenceId: null,
+    });
+    const repeated = await request(app.getHttpServer())
+      .post(`/customer-mail-triage/${unmatched.id}/commands`)
+      .send(command)
+      .expect(201);
+    assert.deepEqual(repeated.body, dismissed.body);
+    const after = await request(app.getHttpServer()).get('/customer-mail-triage').expect(200);
+    assert.equal(
+      after.body.unmatchedMessages.some(
+        (message: { providerMessageReference: string }) =>
+          message.providerMessageReference === messageId,
+      ),
+      false,
+    );
   });
 
   it('does not infer correlation and reopens a closed reply from an unrecognized sender', async () => {
