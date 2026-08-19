@@ -9,8 +9,8 @@ import {
 
 describe('customer mail identity compatibility', () => {
   const config = new ConfigService({
-    CUSTOMER_MAILBOX_NAME: 'Project Maker',
-    CUSTOMER_MAILBOX_ADDRESS: 'project-maker@pte.hu',
+    CORRESPONDENCE_MAILBOX_NAME: 'Project Maker',
+    CORRESPONDENCE_MAILBOX_ADDRESS: 'project-maker@pte.hu',
   });
 
   it('does not reinterpret a legacy address-as-name snapshot as a confirmed display name', () => {

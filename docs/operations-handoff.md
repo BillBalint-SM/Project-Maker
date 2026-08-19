@@ -21,7 +21,7 @@ The runtime is a Docker Compose stack:
 `project-maker-edge` is the browser-facing network and
 `project-maker-internal` is marked internal. The application currently has no
 authentication or VPN-awareness. The target deployment boundary is therefore
-the customer’s internal network/VPN or an equivalent firewall/reverse-proxy
+the Operator organization’s internal network/VPN or an equivalent firewall/reverse-proxy
 policy. A deployment team must place the published Nginx endpoint behind that
 boundary before using real project data; the application itself does not prove
 that a request came through a VPN.
@@ -63,12 +63,18 @@ do not commit `.env` or real credentials.
 | `WEB_PORT` | yes | Host port mapped to Nginx port `8080`. |
 | `CORS_ORIGIN` | yes | One exact browser origin, for example `http://localhost:8080`; paths, wildcards, credentials, and origin lists are rejected. |
 | `FOLLOW_UP_POLL_INTERVAL_MS` | no | Automatic follow-up poll interval. Valid range is 5,000–86,400,000 ms; default is 60,000. |
-| `CUSTOMER_MAILBOX_SYNC_POLL_INTERVAL_MS` | no | Dedicated Customer mailbox delta poll interval in milliseconds. The default is 60,000; non-integer values and values below 100 fall back to that default. |
-| `CUSTOMER_MAILBOX_NAME` / `CUSTOMER_MAILBOX_ADDRESS` | yes | Dedicated Microsoft 365 sender identity. Graph receives both values in the message `from`; reply correlation uses high-entropy plus-addresses at this mailbox. |
+| `CORRESPONDENCE_MAILBOX_POLL_INTERVAL_MS` | no | Dedicated correspondence mailbox delta poll interval in milliseconds. The default is 60,000; non-integer values and values below 100 fall back to that default. |
+| `CORRESPONDENCE_MAILBOX_NAME` / `CORRESPONDENCE_MAILBOX_ADDRESS` | yes | Operator organization-controlled correspondence identity. The current transport receives both values in the message `from`; reply correlation uses high-entropy plus-addresses at this mailbox. |
 | `GRAPH_TENANT_ID` / `GRAPH_CLIENT_ID` | yes | Microsoft Graph application identity. |
 | `GRAPH_CLIENT_CERTIFICATE_THUMBPRINT` / `GRAPH_CLIENT_PRIVATE_KEY_BASE64` | yes | Certificate credential registered for the application. Supply the SHA-1 thumbprint as exactly 40 hexadecimal characters without separators. Inject the base64-encoded PEM private key only through deployment secrets; never commit or log it. |
 | `GRAPH_BASE_URL` | no | Graph API base URL; defaults to `https://graph.microsoft.com`. |
 | `GRAPH_LOGIN_BASE_URL` | no | Microsoft identity platform base URL; defaults to `https://login.microsoftonline.com`. |
+
+Before upgrading an existing deployment, rename the former mailbox entries in
+its secret store or `.env` file to the matching
+`CORRESPONDENCE_MAILBOX_*` names. The application deliberately does not read
+the legacy names: the correspondence mailbox is controlled by the Operator
+organization, not by a Project Customer.
 
 Customer handoffs use Microsoft Graph with no SMTP fallback. A Graph rejection
 or bounded configuration/authentication failure retains the immutable outbound

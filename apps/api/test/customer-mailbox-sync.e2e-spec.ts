@@ -21,7 +21,7 @@ import {
   type CustomerMailboxChanges,
 } from '../src/mail-delivery/customer-mail-boundary';
 
-describe('Customer mailbox synchronization', () => {
+describe('Correspondence mailbox synchronization', () => {
   const mailboxRun = Date.now().toString(36);
   const apps: INestApplication[] = [];
   let dataSource: DataSource;
@@ -40,7 +40,7 @@ describe('Customer mailbox synchronization', () => {
   let mailboxSequence = 0;
 
   before(async () => {
-    process.env['CUSTOMER_MAILBOX_ADDRESS'] = 'project-maker@pte.hu';
+    process.env['CORRESPONDENCE_MAILBOX_ADDRESS'] = 'project-maker@pte.hu';
     const mailbox: CustomerMailboxChanges = {
       isConfigured: () => mailboxConfigured,
       readChanges: async (checkpoint): Promise<CustomerMailboxChangePage> => {
@@ -95,7 +95,7 @@ describe('Customer mailbox synchronization', () => {
 
   beforeEach(async () => {
     mailboxSequence += 1;
-    process.env['CUSTOMER_MAILBOX_ADDRESS'] = `mailbox-sync-${mailboxRun}-${mailboxSequence}@pte.hu`;
+    process.env['CORRESPONDENCE_MAILBOX_ADDRESS'] = `mailbox-sync-${mailboxRun}-${mailboxSequence}@pte.hu`;
     requestedCheckpoints.length = 0;
     pages = [];
     releaseRead = null;
@@ -124,7 +124,7 @@ describe('Customer mailbox synchronization', () => {
       .expect(201);
 
     assert.equal(refreshed.body.state, 'CURRENT');
-    assert.equal(refreshed.body.mailboxAddress, process.env['CUSTOMER_MAILBOX_ADDRESS']);
+    assert.equal(refreshed.body.mailboxAddress, process.env['CORRESPONDENCE_MAILBOX_ADDRESS']);
     assert.equal(refreshed.body.baselineEstablished, true);
     assert.equal(typeof refreshed.body.lastSuccessfulSyncAt, 'string');
     assert.equal(refreshed.body.refreshInProgress, false);
@@ -277,7 +277,7 @@ describe('Customer mailbox synchronization', () => {
        FROM customer_mailbox_change_inbox
        WHERE mailbox_address = $1
        ORDER BY message_reference`,
-      [process.env['CUSTOMER_MAILBOX_ADDRESS']],
+      [process.env['CORRESPONDENCE_MAILBOX_ADDRESS']],
     );
     assert.deepEqual(retained, [
       {
@@ -306,7 +306,7 @@ describe('Customer mailbox synchronization', () => {
     for (const [errorCode, expectedState] of cases) {
       await dataSource.query(
         'DELETE FROM "customer_mailbox_sync" WHERE "mailbox_address" = $1',
-        [process.env['CUSTOMER_MAILBOX_ADDRESS']],
+        [process.env['CORRESPONDENCE_MAILBOX_ADDRESS']],
       );
       mailboxFailure = new CustomerMailBoundaryError(errorCode);
       const response = await request(apps[0].getHttpServer())
@@ -433,7 +433,7 @@ describe('Customer mailbox synchronization', () => {
     const retained = await dataSource.query<Array<{ message_reference: string }>>(
       `SELECT "message_reference" FROM "customer_mailbox_change_inbox"
        WHERE "mailbox_address" = $1 ORDER BY "message_reference"`,
-      [process.env['CUSTOMER_MAILBOX_ADDRESS']],
+      [process.env['CORRESPONDENCE_MAILBOX_ADDRESS']],
     );
     assert.deepEqual(retained, [
       { message_reference: 'arrived-during-cursor-gap' },
@@ -451,9 +451,9 @@ describe('Customer mailbox synchronization', () => {
 
   it('falls back before scheduling a poll interval beyond the Node timer limit', async () => {
     const originalSetInterval = global.setInterval;
-    const previousPollInterval = process.env['CUSTOMER_MAILBOX_SYNC_POLL_INTERVAL_MS'];
+    const previousPollInterval = process.env['CORRESPONDENCE_MAILBOX_POLL_INTERVAL_MS'];
     const scheduledDelays: number[] = [];
-    process.env['CUSTOMER_MAILBOX_SYNC_POLL_INTERVAL_MS'] = '2147483648';
+    process.env['CORRESPONDENCE_MAILBOX_POLL_INTERVAL_MS'] = '2147483648';
     global.setInterval = ((handler: TimerHandler, delay?: number, ...args: unknown[]) => {
       scheduledDelays.push(Number(delay));
       return originalSetInterval(handler, 60_000, ...args);
@@ -475,9 +475,9 @@ describe('Customer mailbox synchronization', () => {
       await app?.close();
       global.setInterval = originalSetInterval;
       if (previousPollInterval === undefined) {
-        delete process.env['CUSTOMER_MAILBOX_SYNC_POLL_INTERVAL_MS'];
+        delete process.env['CORRESPONDENCE_MAILBOX_POLL_INTERVAL_MS'];
       } else {
-        process.env['CUSTOMER_MAILBOX_SYNC_POLL_INTERVAL_MS'] = previousPollInterval;
+        process.env['CORRESPONDENCE_MAILBOX_POLL_INTERVAL_MS'] = previousPollInterval;
       }
     }
   });

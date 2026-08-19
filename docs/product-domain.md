@@ -41,7 +41,7 @@ The canonical workflow is:
 - **Decision recommendation:** the delivered policy-derived guidance to clarify, prepare an estimate, or treat the project as ready for estimation. It is not an approval.
 - **Estimate-blocking gap:** a current Initial Intake checklist item marked `requiredForEstimate` whose effective status is neither `Kész` nor `Nem releváns`. It is distinct from a critical readiness gap and from a generic open follow-up.
 - **Project status:** the daily work hub for canonical work state, coordination, Customer communication entry, and recent business activity.
-- **Project settings:** the administrative surface for basics, Customer configuration, lifecycle state, and destructive actions.
+- **Project settings:** the administrative surface for basics, Project Customer contact and reminder configuration, lifecycle state, and destructive actions; it does not configure the Operator organization's mail gateway.
 - **Readiness:** the delivered review surface for readiness, factors, prioritized gaps, and Discovery follow-ups; Decision Review remains a separate page.
 - **Canonical specification:** the structured Markdown output from which acceptance criteria, user stories, PDF, and spreadsheet exports are derived.
 

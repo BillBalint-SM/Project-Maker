@@ -16,7 +16,8 @@ The platform-neutral product workflow, vocabulary, domain data intent, general i
 The current runtime, migration, backup/restore, Microsoft 365 mail, VPN boundary, and
 verification handoff is documented in [`docs/operations-handoff.md`](docs/operations-handoff.md).
 Use the [release cutover checklist](docs/release-cutover.md) to separate the
-internal application go-live from Customer-operated Microsoft 365 activation.
+internal application go-live from Operator organization-operated Microsoft 365
+activation.
 
 ## Documentation
 
@@ -90,11 +91,16 @@ The API requires `CORS_ORIGIN`; `@nestjs/config` reads it from the root `.env` w
 | `WEB_PORT` | Host port published by Nginx |
 | `CORS_ORIGIN` | Exact browser origin allowed by the API |
 | `FOLLOW_UP_POLL_INTERVAL_MS` | Automatic follow-up poll interval (5,000–86,400,000 ms) |
-| `CUSTOMER_MAILBOX_SYNC_POLL_INTERVAL_MS` | Customer mailbox delta poll interval in milliseconds; defaults to 60,000, and invalid values or values below 100 fall back to the default |
-| `CUSTOMER_MAILBOX_NAME` / `CUSTOMER_MAILBOX_ADDRESS` | Dedicated Microsoft 365 sender identity; both values are sent in the Graph message `from`, and the address is also used for correlated Reply-To addresses |
+| `CORRESPONDENCE_MAILBOX_POLL_INTERVAL_MS` | Correspondence mailbox poll interval in milliseconds; defaults to 60,000, and invalid values or values below 100 fall back to the default |
+| `CORRESPONDENCE_MAILBOX_NAME` / `CORRESPONDENCE_MAILBOX_ADDRESS` | Operator organization-controlled correspondence identity; both values are sent in the current transport message `from`, and the address is also used for correlated Reply-To addresses |
 | `GRAPH_TENANT_ID` / `GRAPH_CLIENT_ID` | Microsoft Graph application identity |
 | `GRAPH_CLIENT_CERTIFICATE_THUMBPRINT` / `GRAPH_CLIENT_PRIVATE_KEY_BASE64` | Certificate credential; use the SHA-1 thumbprint as exactly 40 hexadecimal characters without separators, and inject the base64-encoded PEM private key as a deployment secret that is never committed or logged |
 | `GRAPH_BASE_URL` | Graph API base URL; normally `https://graph.microsoft.com` |
 | `GRAPH_LOGIN_BASE_URL` | Microsoft identity platform base URL; normally `https://login.microsoftonline.com` |
+
+Existing environment files must rename their former ambiguous mailbox keys to
+the canonical `CORRESPONDENCE_MAILBOX_*` keys before the next deployment. The
+legacy names are intentionally not read because they assign ambiguous ownership
+to infrastructure controlled by the Operator organization.
 
 The API and database do not publish host ports. PostgreSQL data persists in the named `postgres-data` volume.

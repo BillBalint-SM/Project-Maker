@@ -17,8 +17,8 @@ export interface ResolvedCustomerSender {
 }
 
 export function dedicatedCustomerSender(config: ConfigService): ResolvedCustomerSender {
-  const name = config.get<string>('CUSTOMER_MAILBOX_NAME')?.trim() || 'Project Maker';
-  const address = config.get<string>('CUSTOMER_MAILBOX_ADDRESS')?.trim() || '';
+  const name = config.get<string>('CORRESPONDENCE_MAILBOX_NAME')?.trim() || 'Project Maker';
+  const address = config.get<string>('CORRESPONDENCE_MAILBOX_ADDRESS')?.trim() || '';
   if (!isExactPteAddress(address)) {
     throw new ConflictException('A dedikált @pte.hu postafiók nincs beállítva.');
   }

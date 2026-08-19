@@ -18,8 +18,9 @@
     "test:e2e": "pnpm --filter @project-maker/web test:e2e",
     "typecheck": "pnpm --filter @project-maker/contracts build && pnpm -r --if-present typecheck",
     "verify:comm-01-1": "node scripts/verify-comm-01-1-boundary.mjs",
+    "verify:domain-language": "node scripts/verify-domain-language.mjs",
     "verify:m365-tenant-smoke": "node scripts/verify-m365-tenant-smoke.mjs docs/evidence/m365-tenant-smoke.json",
     "verify:ui-copy": "node scripts/generate-ui-copy-inventory.mjs --check",
-    "verify": "pnpm verify:comm-01-1 && pnpm verify:ui-copy && pnpm typecheck && pnpm test && pnpm build"
+    "verify": "pnpm verify:domain-language && pnpm verify:comm-01-1 && pnpm verify:ui-copy && pnpm typecheck && pnpm test && pnpm build"
   }
 }
