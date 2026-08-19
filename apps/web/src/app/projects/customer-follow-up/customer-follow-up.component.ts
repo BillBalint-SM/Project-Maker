@@ -210,7 +210,7 @@ export class CustomerFollowUpComponent implements OnInit {
       .subscribe({
         next: (state) => {
           this.applyState(state, { preserveDraft: this.draftForm.dirty });
-          this.draftFeedback.set('Az automatikus ügyfél-utánkövetés beállításai mentve lettek.');
+          this.draftFeedback.set('Az automatikus ügyfél-emlékeztető beállításai mentve lettek.');
           this.committedChange.emit();
         },
         error: (error: Error) => this.actionError.set(error.message),

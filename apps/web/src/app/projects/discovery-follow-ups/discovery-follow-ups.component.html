@@ -1,5 +1,5 @@
 <p-card id="discovery-follow-ups" data-testid="discovery-follow-ups-card">
-  <ng-template #title>Tisztázási utánkövetések</ng-template>
+  <ng-template #title>Tisztázandó tételek</ng-template>
   <ng-template #subtitle>
     Rögzítsd a tisztázandó kérdést, a felelősét, a határidejét és a következő lépést. Az archivált projektek adatai olvashatók maradnak.
   </ng-template>
@@ -10,8 +10,8 @@
       data-testid="discovery-follow-ups-loading"
       aria-live="polite"
     >
-      <p-progress-spinner ariaLabel="A tisztázási utánkövetések betöltése" />
-      <p>A tisztázási utánkövetések betöltése…</p>
+      <p-progress-spinner ariaLabel="A tisztázandó tételek betöltése" />
+      <p>A tisztázandó tételek betöltése…</p>
     </div>
   } @else if (loadError(); as error) {
     <div
@@ -21,7 +21,7 @@
     >
       <p>{{ error }}</p>
       <p-button
-        label="Tisztázási tételek újratöltése"
+        label="Tisztázandó tételek újratöltése"
         data-testid="retry-discovery-follow-ups-button"
         (onClick)="loadFollowUps()"
       />
@@ -54,7 +54,7 @@
         class="discovery-follow-up-fields"
         [disabled]="mutationDisabled()"
       >
-        <legend class="sr-only">Új tisztázási utánkövetés</legend>
+        <legend class="sr-only">Új tisztázandó tétel</legend>
         <div class="field">
           <label for="discovery-follow-up-category">Kategória</label>
           <p-select
@@ -167,7 +167,7 @@
             </div>
           } @else if (sourceOptions().length === 0) {
             <small data-testid="discovery-follow-up-source-options-empty">
-              Nincs elérhető kezdő felmérési forrás. Az utánkövetés hivatkozás nélkül is létrehozható.
+              Nincs elérhető kezdő felmérési forrás. A tisztázandó tétel hivatkozás nélkül is létrehozható.
             </small>
           }
         </div>
@@ -196,7 +196,7 @@
       </fieldset>
       <p-button
         type="submit"
-        label="Utánkövetés létrehozása"
+        label="Tisztázandó tétel létrehozása"
         [loading]="creating()"
         [disabled]="mutationDisabled()"
         data-testid="create-discovery-follow-up-button"
@@ -204,7 +204,7 @@
     </form>
 
     @if (followUps().length === 0) {
-      <p class="discovery-follow-up-empty">Még nincs rögzített tisztázási utánkövetés.</p>
+      <p class="discovery-follow-up-empty">Még nincs rögzített tisztázandó tétel.</p>
     } @else {
       <ol class="discovery-follow-up-list" data-testid="discovery-follow-ups-list">
         @for (followUp of followUps(); track followUp.id) {
@@ -218,9 +218,9 @@
           >
             @if (reviewFollowUpId() === followUp.id) {
               <p class="reply-review-context" role="status" data-testid="reply-review-context">
-                Ez az utánkövetés egy ügyfél-emlékeztetőre érkezett válasz áttekintési kontextusa.
+                Ez a tisztázandó tétel egy ügyfél-emlékeztetőre érkezett válasz áttekintési kontextusa.
                 @if (reviewFollowUpVersion()) { Az emlékeztető a {{ reviewFollowUpVersion() }}. forrásverzióhoz tartozik. }
-                A válasz nem módosította és nem zárta le automatikusan az utánkövetést.
+                A válasz nem módosította és nem zárta le automatikusan a tisztázandó tételt.
               </p>
             }
             <div class="discovery-follow-up-meta">
@@ -246,7 +246,7 @@
             }
             @if (isCanonicalOpen(followUp)) {
               <p-button
-                label="Szerkesztés"
+                label="Tisztázandó tételek szerkesztése"
                 severity="secondary"
                 [outlined]="true"
                 [disabled]="editActionDisabled()"
@@ -356,7 +356,7 @@
                   class="discovery-follow-up-fields"
                   [disabled]="editControlDisabled()"
                 >
-                  <legend class="sr-only">Tisztázási utánkövetés szerkesztése</legend>
+                  <legend class="sr-only">Tisztázandó tétel szerkesztése</legend>
                   <div class="field">
                     <label for="discovery-follow-up-edit-category">Kategória</label>
                     <p-select
@@ -465,9 +465,9 @@
                     data-testid="discovery-follow-up-edit-conflict"
                   >
                     @if (hasTerminalEditConflict(followUp.id)) {
-                      A lezárt utánkövetés már nem szerkeszthető. Vesd el ezt a piszkozatot.
+                      A lezárt tisztázandó tétel már nem szerkeszthető. Vesd el ezt a piszkozatot.
                     } @else {
-                      Az utánkövetés időközben megváltozott. A piszkozat megmaradt; mentés előtt töltsd be az aktuális verziót.
+                      A tisztázandó tétel időközben megváltozott. A piszkozat megmaradt; mentés előtt töltsd be az aktuális verziót.
                     }
                   </p-message>
                 }
@@ -532,7 +532,7 @@
                   class="discovery-follow-up-fields"
                   [disabled]="resolutionControlsDisabled()"
                 >
-                  <legend class="sr-only">Tisztázási utánkövetés lezárása</legend>
+                  <legend class="sr-only">Tisztázandó tétel lezárása</legend>
                   <div class="field">
                     <label for="discovery-follow-up-resolution-status">Lezárás módja</label>
                     <p-select

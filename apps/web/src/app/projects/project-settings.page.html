@@ -14,7 +14,7 @@
     <div class="page-heading">
       <span class="eyebrow">Projektadminisztráció</span>
       <h1 id="project-settings-title">Projektbeállítások</h1>
-      <p>A projekt azonosító adatai, ügyfélkapcsolati beállításai és életciklus-műveletei.</p>
+      <p>A projekt azonosító adatai, ügyfélkapcsolati beállításai, adminisztratív fázisa, archiválása és törlése.</p>
     </div>
 
     @if (current.project.status === 'ARCHIVED') {
@@ -46,7 +46,7 @@
               <input pInputText id="draft-project-name" formControlName="name" data-testid="draft-project-name-input" />
             </div>
             <div class="field">
-              <label for="draft-internal-owner-name">Belső PO/PM neve</label>
+              <label for="draft-internal-owner-name">Belső projektgazda neve</label>
               <input pInputText id="draft-internal-owner-name" formControlName="internalOwnerName" data-testid="draft-internal-owner-name-input" />
             </div>
             <div class="field" data-testid="customer-contact-settings">
@@ -76,12 +76,12 @@
       <app-customer-follow-up [projectId]="projectId" [archived]="isArchived()" mode="settings" />
 
       <p-card data-testid="project-lifecycle-settings">
-        <ng-template #title>Projekt életciklusa</ng-template>
-        <ng-template #subtitle>Az adminisztratív állapot azt jelzi, hol tart vagy mire vár a projekt.</ng-template>
+        <ng-template #title>Adminisztratív projektfázis</ng-template>
+        <ng-template #subtitle>A kézzel rögzített üzleti fázis azt jelzi, hol tart vagy mire vár a projekt; nem a számított becslési felkészültséget mutatja.</ng-template>
         @if (isArchived()) {
           <dl>
             <div>
-              <dt>Jelenlegi életciklus-állapot</dt>
+              <dt>Jelenlegi adminisztratív projektfázis</dt>
               <dd data-testid="project-lifecycle-status-value">Archivált</dd>
             </div>
           </dl>
@@ -89,7 +89,7 @@
         <form class="settings-form" [formGroup]="lifecycleForm" (ngSubmit)="saveProjectStatus()">
           <fieldset data-testid="project-lifecycle-fieldset" [disabled]="busy()">
             <div class="field">
-              <label for="project-lifecycle-status">Életciklus-állapot</label>
+              <label for="project-lifecycle-status">Adminisztratív projektfázis</label>
               <p-select
                 inputId="project-lifecycle-status"
                 styleClass="full-width"
@@ -107,15 +107,15 @@
           @if (lifecycleFeedback()) {
             <p-message severity="success" role="status" data-testid="project-lifecycle-feedback">{{ lifecycleFeedback() }}</p-message>
           }
-          <p-button type="submit" label="Életciklus-állapot mentése" [loading]="lifecycleSaving()" [disabled]="busy() || lifecycleForm.invalid" data-testid="save-project-lifecycle-status" />
+          <p-button type="submit" label="Adminisztratív projektfázis mentése" [loading]="lifecycleSaving()" [disabled]="busy() || lifecycleForm.invalid" data-testid="save-project-lifecycle-status" />
         </form>
         }
       </p-card>
     </div>
 
     <p-card styleClass="danger-zone" data-testid="project-danger-zone">
-      <ng-template #title>Veszélyzóna</ng-template>
-      <ng-template #subtitle>Életciklus-műveletek, amelyek kiveszik a projektet az aktív munkából vagy végleg törlik.</ng-template>
+      <ng-template #title>Archiválás és törlés</ng-template>
+      <ng-template #subtitle>Műveletek, amelyek kiveszik a projektet az aktív munkából vagy végleg törlik.</ng-template>
 
       @if (isArchived()) {
         <div class="danger-action">

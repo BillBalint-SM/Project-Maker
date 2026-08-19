@@ -567,7 +567,7 @@ test('keeps only cancel available when a conflict refresh finds a terminal disco
     nativeButton(page, 'retry-discovery-follow-up-edit-refresh-button'),
   ).toHaveCount(0);
   await expect(page.getByTestId('discovery-follow-up-edit-conflict')).toContainText(
-    'A lezárt utánkövetés már nem szerkeszthető.',
+    'A lezárt tisztázandó tétel már nem szerkeszthető.',
   );
   await expect(
     nativeButton(page, 'cancel-discovery-follow-up-edit-button'),

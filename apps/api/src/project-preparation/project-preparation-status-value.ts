@@ -9,7 +9,7 @@ const interviewAction: ProjectPreparationAction = {
   target: 'INTERVIEW',
 };
 const readinessAction: ProjectPreparationAction = {
-  label: 'Felkészültség megnyitása',
+  label: 'Becslési felkészültség megnyitása',
   target: 'READINESS',
 };
 const decisionReviewAction: ProjectPreparationAction = {

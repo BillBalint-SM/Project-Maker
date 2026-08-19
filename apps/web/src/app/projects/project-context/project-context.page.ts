@@ -22,9 +22,9 @@ import { validatedProjectReturnTarget } from './project-return-target';
 const projectContextLinks = [
   { key: 'status', label: 'Projektállapot', path: 'status' },
   { key: 'interview', label: 'Felmérés', path: 'interview' },
-  { key: 'readiness', label: 'Felkészültség', path: 'readiness' },
+  { key: 'readiness', label: 'Becslési felkészültség', path: 'readiness' },
   { key: 'decision-review', label: 'Döntési értékelés', path: 'decision-review' },
-  { key: 'markdown', label: 'Markdown terv', path: 'markdown' },
+  { key: 'markdown', label: 'Projekt-specifikáció', path: 'markdown' },
   { key: 'settings', label: 'Projektbeállítások', path: 'settings' },
 ] as const;
 
@@ -69,12 +69,12 @@ export class ProjectContextPage implements OnInit {
   readonly returnLabel = computed(() => {
     const target = this.returnTarget();
     if (target.startsWith('/projects/active')) {
-      return 'Vissza a folyamatban lévő ügyekhez';
+      return 'Vissza az aktív munkasorhoz';
     }
     if (target === '/follow-ups') {
-      return 'Vissza az utánkövetésekhez';
+      return 'Vissza a tisztázandó tételekhez';
     }
-    return 'Vissza az Áttekintőre';
+    return 'Vissza a projektportfólióhoz';
   });
   readonly contextQueryParams = computed(() => ({ returnTo: this.returnTarget() }));
   readonly primaryActionRoute = computed(() => {

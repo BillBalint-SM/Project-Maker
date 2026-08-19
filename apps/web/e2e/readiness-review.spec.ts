@@ -109,7 +109,9 @@ test.describe.serial('SCORE-01 readiness employee workflow', () => {
     const completedRound = (await completedResponse).status();
     expect(completedRound).toBe(201);
     await expect(page).toHaveURL(`/projects/${fixture.projectId}/readiness`);
-    await expect(page.getByRole('heading', { name: 'Felkészültség', exact: true })).toBeVisible();
+    await expect(
+      page.getByRole('heading', { name: 'Becslési felkészültség', exact: true }),
+    ).toBeVisible();
 
     const remediationRound = await createInitialIntakeRound(request, fixture.projectId);
     const checklistGapQuestion = requireOptionalQuestion(remediationRound.questions);

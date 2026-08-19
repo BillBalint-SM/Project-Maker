@@ -21,7 +21,13 @@ test.describe.serial('OUTPUT-01 Markdown template library employee workflow', ()
     const project = (await projectResponse.json()) as { readonly id: string };
 
     await page.goto('/settings/markdown-templates');
-    await expect(page.getByRole('heading', { name: 'Markdown beállítások' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Specifikációs sablonok' })).toBeVisible();
+    await expect(
+      page.getByRole('listitem').filter({ hasText: 'Specifikációverzió metaadatai' }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole('listitem').filter({ hasText: 'Kezdő felmérés' }),
+    ).toBeVisible();
     await page.getByTestId('new-markdown-template-button').click();
     await page.getByTestId('markdown-template-name-input').fill(templateName);
     await page
@@ -54,7 +60,7 @@ test.describe.serial('OUTPUT-01 Markdown template library employee workflow', ()
     await expect(page.getByRole('alert')).not.toContainText('process.env');
 
     await page.goto(`/projects/${project.id}/markdown`);
-    await expect(page.getByRole('heading', { name: 'Markdown terv' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Projekt-specifikáció' })).toBeVisible();
     const templateSelect = page.getByTestId('markdown-template-select');
     const templateOption = templateSelect.locator('option').filter({ hasText: templateName });
     const templateId = await templateOption.getAttribute('value');
@@ -118,7 +124,7 @@ test.describe.serial('OUTPUT-01 Markdown template library employee workflow', ()
 
     await page.getByTestId('markdown-template-select').selectOption(optional.id);
     await page.getByTestId('generate-markdown-button').click();
-    await expect(page.getByTestId('markdown-success')).toContainText('Markdown-revízió');
+    await expect(page.getByTestId('markdown-success')).toContainText('specifikáció');
     await expect(page.getByTestId('markdown-content-preview')).not.toContainText('## Felkészültség');
     await expect(page.getByTestId('markdown-content-preview')).not.toContainText('## Döntési értékelés');
 

@@ -76,7 +76,7 @@ describe('ProjectSettingsPage', () => {
     ).toBe(true);
   });
 
-  it('updates only the administrative lifecycle status from Project settings', async () => {
+  it('updates only the administrative project phase from Project settings', async () => {
     const project = projectFixture('DRAFT');
     const { fixture, api } = await createPage(project);
 
@@ -91,7 +91,7 @@ describe('ProjectSettingsPage', () => {
       (fixture.nativeElement as HTMLElement)
         .querySelector('[data-testid="project-lifecycle-feedback"]')
         ?.textContent,
-    ).toContain('A projekt életciklus-állapota frissítve lett.');
+    ).toContain('Az adminisztratív projektfázis frissítve lett.');
   });
 });
 

@@ -28,7 +28,7 @@ test.describe.serial('interview customer handoff browser journey', () => {
     await nativeButton(page, 'finish-interview-and-send-button').click();
     await expect(page.getByTestId('handoff-preview-button')).toBeVisible();
     await expect(page.getByText('1. verzió előnézete')).toBeVisible();
-    await page.getByLabel('Saját PO/PM postafiók').check();
+    await page.getByLabel('Személyes postafiók').check();
     await page.getByTestId('handoff-sender-name').fill('Teszt PO');
     const invalidPreviewResponse = page.waitForResponse((response) => response.request().method() === 'POST' && response.url().endsWith('/preview'));
     await page.getByTestId('handoff-sender-address').fill('x..y@pte.hu');
@@ -134,7 +134,7 @@ test.describe.serial('interview customer handoff browser journey', () => {
 
     await apiJson(request, 'POST', `/projects/${fixture.projectId}/archive`);
     await page.reload();
-    await expect(page.getByText('Az archivált projekt ügyfélcsomagjai csak olvashatók.')).toBeVisible();
+    await expect(page.getByText('Az archivált projekt felmérési összefoglalói csak olvashatók.')).toBeVisible();
     await expect(await nativeButton(page, 'retry-failed-handoff')).toBeDisabled();
     await page.getByTestId('inspect-handoff-version-1').click();
     await expect(page.locator('.history-content')).toBeVisible();

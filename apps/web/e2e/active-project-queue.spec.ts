@@ -31,7 +31,7 @@ test('searches and filters the Active project queue with reload-safe replace-his
   await page.goto('/');
   await page.getByTestId('active-project-queue-link').click();
   await expect(page).toHaveURL('/projects/active');
-  await expect(page.getByRole('heading', { name: 'Folyamatban lévő ügyek' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Aktív munkasor' })).toBeVisible();
   await page.getByTestId('queue-search').fill(`  ARVIZTURO MUNKASOR ${uniquePart.toUpperCase()}  `);
 
   const projectLink = page.getByTestId(`queue-project-${project.id}`);
@@ -290,7 +290,11 @@ test('offers filter reset and portfolio actions for the two empty queue states',
 
   await expect(page).toHaveURL('/projects/active');
   await expect(page.getByRole('heading', { name: 'Nincs aktív projekt' })).toBeVisible();
-  await expect(page.getByRole('link', { name: 'Áttekintő megnyitása' })).toHaveAttribute('href', '/');
+  await expect(
+    page
+      .getByTestId('active-queue-empty')
+      .getByRole('link', { name: 'Vissza a projektportfólióhoz' }),
+  ).toHaveAttribute('href', '/');
   await expect(page.getByRole('link', { name: 'Új projekt létrehozása' })).toHaveAttribute('href', '/projects/new');
 });
 

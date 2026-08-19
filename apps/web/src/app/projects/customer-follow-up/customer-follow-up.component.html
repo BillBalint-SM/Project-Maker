@@ -10,7 +10,7 @@
 } @else if (state(); as current) {
 <p-card id="customer-communication" data-testid="follow-up-card">
   @if (mode() === 'settings') {
-    <ng-template #title>Automatikus ügyfél-utánkövetés</ng-template>
+    <ng-template #title>Automatikus ügyfél-emlékeztető</ng-template>
     <ng-template #subtitle>Az emlékeztetők ütemezésének projektbeállításai.</ng-template>
   } @else {
     <ng-template #title>Ügyfél-emlékeztető</ng-template>
@@ -85,7 +85,7 @@
   @if (scheduleValidationPaused()) {
     <section class="follow-up-recovery follow-up-recovery--warning" data-testid="follow-up-schedule-validation-pause">
       <h3>Az automatikus ügyfél-emlékeztető szünetel</h3>
-      <p>A mentett piszkozat vagy a kapcsolódó tisztázási tétel már nem érvényes. Frissítsd és mentsd a piszkozatot az újraütemezéshez.</p>
+      <p>A mentett piszkozat vagy a kapcsolódó tisztázandó tétel már nem érvényes. Frissítsd és mentsd a piszkozatot az újraütemezéshez.</p>
     </section>
   }
 
@@ -147,7 +147,7 @@
         <small>A szöveg egyszerű szövegként kerül az e-mailbe, legfeljebb 10 000 karakterben.</small>
       </div>
       <div class="field">
-        <label for="follow-up-reference-select">Kapcsolódó nyitott tisztázási tétel (nem kötelező)</label>
+        <label for="follow-up-reference-select">Kapcsolódó nyitott tisztázandó tétel (nem kötelező)</label>
         <select
           id="follow-up-reference-select"
           formControlName="referencedFollowUpId"
@@ -185,7 +185,7 @@
             [ngModelOptions]="{ standalone: true }"
             (ngModelChange)="changeSenderMode($event)"
           />
-          Saját PO/PM postafiók
+          Személyes postafiók
         </label>
         @if (senderMode === 'CUSTOM') {
           <div class="field">
@@ -224,7 +224,7 @@
       />
       <p-button
         type="button"
-        label="Pontos előnézet"
+        label="Küldési előnézet"
         [outlined]="true"
         [loading]="previewing()"
         [disabled]="controlsDisabled() || draftForm.dirty || !current.messageDraft || !senderIsValid()"
@@ -302,7 +302,7 @@
       aria-describedby="follow-up-settings-help"
       data-testid="follow-up-settings-fieldset"
     >
-      <legend class="sr-only">Automatikus ügyfél-utánkövetés beállításai</legend>
+      <legend class="sr-only">Automatikus ügyfél-emlékeztető beállításai</legend>
 
       <div class="follow-up-toggle">
         <input
@@ -354,7 +354,7 @@
 
     <p-button
       type="submit"
-      label="Utánkövetési beállítások mentése"
+      label="Emlékeztető beállításainak mentése"
       [loading]="saving()"
       [disabled]="controlsDisabled()"
       data-testid="save-follow-up-settings-button"
@@ -362,7 +362,7 @@
   </form>
   }
 
-  <dl class="follow-up-status" aria-label="Ügyfél-utánkövetés állapota">
+  <dl class="follow-up-status" aria-label="Ügyfél-emlékeztető állapota">
     @if (mode() === 'settings') {
     <div>
       <dt>Automatikus emlékeztetők</dt>

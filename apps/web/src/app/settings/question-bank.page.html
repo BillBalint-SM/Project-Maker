@@ -2,7 +2,7 @@
   <div class="heading-row">
     <div class="page-heading">
       <span class="eyebrow">Szervezeti beállítás</span>
-      <h1 id="question-bank-title">Kérdésbank beállítások</h1>
+      <h1 id="question-bank-title">Kérdésbank</h1>
       <p>Az új projektek felmérési kérdéssémájához használható alapkérdések kezelése.</p>
     </div>
     @if (!showForm() && !loading() && !loadError()) {
@@ -280,7 +280,7 @@
             }
             <div class="item-actions">
               <p-button
-                label="Szerkesztés"
+                label="Alapkérdés szerkesztése"
                 severity="secondary"
                 [outlined]="true"
                 [attr.data-testid]="'edit-base-question-' + question.id"
