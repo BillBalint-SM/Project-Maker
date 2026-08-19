@@ -240,6 +240,34 @@ Azonos módosítási idő esetén a sorrend stabil marad. Az archivált projekt 
 
 Betöltési hiba nem töröl projektet és nem hoz létre újat. Ha a `Try again` ismét hibázik, ne töltsd ki újra több böngészőlapon ugyanazt a projektet; jelezd az üzemeltetőnek, hogy a webapp vagy a háttérszolgáltatás nem elérhető.
 
+### Aktív munkasor
+
+![Az Aktív munkasor három, sürgősség szerint rendezett fiktív projekttel, szűrőkkel és elsődleges műveletekkel](assets/user-guide/10-active-project-queue.png)
+
+*Az Aktív munkasor a teljes portfólió következő teendőit csoportosítja; minden sor egy projektet és annak egyetlen elsődleges következő műveletét mutatja.*
+
+A portfólió fejlécében válaszd az `Aktív munkasor` gombot, ha nem egy előre kiválasztott projektből, hanem az összes aktív projekt közül szeretnéd eldönteni, mivel foglalkozz következőként. A csoportok mindig ebben a sürgősségi sorrendben jelennek meg:
+
+1. új Customer-válasz érkezett;
+2. lejárt a következő lépés;
+3. hamarosan lejár;
+4. folyamatban van, de nincs közeli határidő.
+
+A projektnév-keresés, a sürgősségi és a felkészültségi jelölők együtt szűkítik a listát. A szűrés és a rendezés a szerveren történik, ezért a csoportok és a darabszámok nem csak a már letöltött tíz sort írják le. A képernyő külön jelzi, hány projekt látható az aktuális oldalon, és hány felel meg összesen. Az `Előző oldal` és `Következő oldal` gombokkal tízesével járhatod be az eredményt.
+
+Minden sorban ellenőrizd a projekt nevét, a felkészültségi állapotot, a következő lépést, a felelőst és a határidőt. A sor végén lévő elsődleges művelet a projekt jelenlegi következő munkafelületét nyitja meg. A böngésző Vissza művelete visszaadja ugyanazt a keresést, szűrést és lapozott oldalt.
+
+Az oldal nem rendeződik át automatikusan a háttérben. Ha tudatosan friss képet szeretnél, válaszd a `Munkasor frissítése` gombot. A frissítés az első oldalra áll, megtartja a szűrőket, kiírja az utolsó lekérés idejét, és képernyőolvasó számára is jelzi a sikert vagy a hibát.
+
+Hiba esetén a biztonságos folytatás attól függ, volt-e már sikeresen betöltött oldal:
+
+- kezdeti betöltési hibánál a lista helyett az `Újrapróbálás` jelenik meg;
+- frissítési vagy lapozási hibánál az utolsó sikeres oldal látható marad `A lista elavult lehet.` jelzéssel; a `Sikertelen lekérés újrapróbálása` pontosan ugyanazt a lapot és szűrést kéri újra;
+- lejárt vagy érvénytelen oldalhivatkozásnál a rendszer biztonságosan az első oldalra áll, és ezt külön üzenetben jelzi;
+- ha a szűrők mellett nincs találat, a `Szűrők törlése` visszaállítja a teljes munkasort; ha egyáltalán nincs aktív projekt, innen visszatérhetsz a portfólióba vagy új projektet hozhatsz létre.
+
+A kereső, a jelölők, a frissítés, a lapozás és a sorműveletek billentyűzettel is használhatók. Keskeny képernyőn a sorok egymás alá tördelik ugyanezeket az adatokat és műveleteket; a prioritási csoportok sorrendje nem változik.
+
 ### Új projekt létrehozása
 
 **Mikor használd?** Amikor új, önálló discovery- vagy igénytisztázási munkatérre van szükség. Ne hozz létre második projektet pusztán azért, mert a meglévő projekt éppen várakozik vagy archivált; előbb ellenőrizd, hogy azt kell-e visszaállítani.
