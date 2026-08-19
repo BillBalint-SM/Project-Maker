@@ -108,7 +108,8 @@ test.describe.serial('SCORE-01 readiness employee workflow', () => {
     await nativeButton(page, 'finish-interview-later-button').click();
     const completedRound = (await completedResponse).status();
     expect(completedRound).toBe(201);
-    await expect(page.getByTestId('interview-handoff')).toBeVisible();
+    await expect(page).toHaveURL(`/projects/${fixture.projectId}/readiness`);
+    await expect(page.getByRole('heading', { name: 'Felkészültség', exact: true })).toBeVisible();
 
     const remediationRound = await createInitialIntakeRound(request, fixture.projectId);
     const checklistGapQuestion = requireOptionalQuestion(remediationRound.questions);
@@ -542,9 +543,9 @@ test('shows and retries readiness states without blocking Project navigation or 
   const noInitialIntakeState = page.getByTestId(
     'readiness-review-unavailable-no-initial-intake',
   );
-  await expect(noInitialIntakeState).toContainText('Még nincs kezdő interjú');
+  await expect(noInitialIntakeState).toContainText('Még nincs kezdő felmérés');
   await expect(noInitialIntakeState).toContainText(
-    'Indíts kezdő interjút a felkészültségi értékelés elkészítéséhez.',
+    'Indíts kezdő felmérést a felkészültségi értékelés elkészítéséhez.',
   );
   await expect(page.getByTestId('readiness-review-summary')).toHaveCount(0);
   await expect(page.getByTestId('project-context-nav-status')).toBeVisible();
@@ -560,7 +561,7 @@ test('shows and retries readiness states without blocking Project navigation or 
     reason: 'NO_INITIAL_INTAKE',
   });
   await expect(page.getByTestId('discovery-follow-up-item')).toHaveCount(1);
-  await expect(noInitialIntakeState).toContainText('Még nincs kezdő interjú');
+  await expect(noInitialIntakeState).toContainText('Még nincs kezdő felmérés');
   await expect(page.getByTestId('readiness-review-summary')).toHaveCount(0);
   await expect(page.getByTestId('project-context-shell')).toBeVisible();
   await expect(page.getByTestId('discovery-follow-up-action-error')).toHaveCount(0);

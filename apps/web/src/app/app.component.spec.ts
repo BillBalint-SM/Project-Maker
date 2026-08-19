@@ -7,7 +7,7 @@ import { AppComponent } from './app.component';
 import { CustomerRepliesApiService } from './projects/customer-replies-api.service';
 
 describe('AppComponent', () => {
-  it('renders Project Maker', async () => {
+  it('renders the accepted Hungarian global navigation and reply entry point', async () => {
     await TestBed.configureTestingModule({
       imports: [AppComponent],
       providers: [
@@ -23,12 +23,33 @@ describe('AppComponent', () => {
     }).compileComponents();
 
     const fixture = TestBed.createComponent(AppComponent);
-    fixture.detectChanges();
+    await fixture.whenStable();
 
     const brand = fixture.nativeElement.querySelector('.brand strong') as
       | HTMLElement
       | null;
     expect(brand?.textContent?.trim()).toBe('Project Maker');
-    expect(fixture.nativeElement.querySelector('[data-testid="global-customer-reply-count"]')?.textContent).toContain('(3)');
+    const navigationLabels = Array.from(
+      fixture.nativeElement.querySelectorAll('[data-nav-label]') as NodeListOf<HTMLElement>,
+    ).map((item) => item.textContent?.trim());
+    expect(navigationLabels).toEqual([
+      'Áttekintő',
+      'Új projekt',
+      'Folyamatban lévő ügyek',
+      'Utánkövetések',
+      'Markdown beállítások',
+      'Kérdésbank beállítások',
+    ]);
+
+    const replyEntry = fixture.nativeElement.querySelector(
+      '[data-testid="global-customer-reply-count"]',
+    ) as HTMLAnchorElement | null;
+    expect(replyEntry?.getAttribute('href')).toBe(
+      '/projects/active?urgency=CUSTOMER_REPLY',
+    );
+    expect(replyEntry?.textContent).toContain('3');
+    expect(replyEntry?.getAttribute('aria-label')).toBe(
+      '3 új ügyfélválasz megnyitása',
+    );
   });
 });

@@ -15,17 +15,17 @@ export class MarkdownTemplateApiService {
 
   list(): Observable<readonly MarkdownTemplateSummary[]> {
     return this.http.get<readonly MarkdownTemplateSummary[]>('/api/settings/markdown-templates')
-      .pipe(catchError((error: unknown) => fail(error, 'betölteni a Markdown sablonokat')));
+      .pipe(catchError((error: unknown) => fail(error, 'betölteni a Markdown-sablonokat')));
   }
 
   create(input: CreateMarkdownTemplateInput): Observable<MarkdownTemplateSummary> {
     return this.http.post<MarkdownTemplateSummary>('/api/settings/markdown-templates', input)
-      .pipe(catchError((error: unknown) => fail(error, 'létrehozni a Markdown sablont')));
+      .pipe(catchError((error: unknown) => fail(error, 'létrehozni a Markdown-sablont')));
   }
 
   update(id: string, input: UpdateMarkdownTemplateDraftInput): Observable<MarkdownTemplateSummary> {
     return this.http.put<MarkdownTemplateSummary>(`/api/settings/markdown-templates/${encodeURIComponent(id)}/draft`, input)
-      .pipe(catchError((error: unknown) => fail(error, 'menteni a Markdown sablon draftját')));
+      .pipe(catchError((error: unknown) => fail(error, 'menteni a Markdown-sablon piszkozatát')));
   }
 
   preview(id: string): Observable<MarkdownTemplatePreview> {
@@ -40,21 +40,12 @@ export class MarkdownTemplateApiService {
 }
 
 function fail(error: unknown, action: string): Observable<never> {
-  const serverMessage = error instanceof HttpErrorResponse ? safeServerMessage(error) : null;
   const message = error instanceof HttpErrorResponse
-    ? (error.status === 400 || error.status === 409) && serverMessage
-      ? serverMessage
-      : `Nem sikerült ${action} (HTTP ${error.status}). Ellenőrizd az adatokat, majd próbáld újra.`
+    ? error.status === 409
+      ? `Nem sikerült ${action}, mert a sablon időközben megváltozott. Frissítsd az oldalt, majd próbáld újra.`
+      : error.status === 400
+        ? 'A Markdown-sablon nem támogatott vagy hibás helyőrzőt tartalmaz. Ellenőrizd a használható helyőrzőket, majd mentsd újra.'
+      : `Nem sikerült ${action}. Ellenőrizd az adatokat, majd próbáld újra.`
     : `Nem sikerült ${action}. Próbáld újra.`;
   return throwError(() => new Error(message));
-}
-
-function safeServerMessage(error: HttpErrorResponse): string | null {
-  const payload: unknown = error.error;
-  if (!payload || typeof payload !== 'object' || !('message' in payload)) {
-    return null;
-  }
-
-  const message = payload.message;
-  return typeof message === 'string' && message.trim().length > 0 ? message : null;
 }

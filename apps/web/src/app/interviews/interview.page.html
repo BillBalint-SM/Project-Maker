@@ -1,8 +1,8 @@
 <section aria-labelledby="interview-title">
   <div class="page-heading interview-heading">
-    <span class="eyebrow">Vezetett interjú</span>
-    <h1 id="interview-title">Projektinterjú</h1>
-    <p>Válaszd ki az aktív kérdéseket, fogadd el a sémát, majd folytasd a kezdő interjúkört.</p>
+    <span class="eyebrow">Projektfelmérés</span>
+    <h1 id="interview-title">Felmérés</h1>
+    <p>Válaszd ki az aktív kérdéseket, fogadd el a kérdéssémát, majd folytasd a kezdő felmérési kört.</p>
   </div>
 
   @if (actionError()) {
@@ -17,7 +17,7 @@
   }
   @if (projectArchived()) {
     <p-message severity="info" data-testid="archived-interview-read-only">
-      Az archivált projekt interjúja és ügyfélcsomagjai csak olvashatók. Módosításhoz előbb állítsd vissza a projektet.
+      Az archivált projekt felmérése és ügyfélcsomagjai csak olvashatók. Módosításhoz előbb állítsd vissza a projektet.
     </p-message>
   }
   @if (!loading() && !loadError() && handoffRequested && !round()) {
@@ -26,7 +26,7 @@
       data-testid="interview-handoff-prerequisite"
       role="status"
     >
-      Az interjúösszegzés még nem érhető el. Előbb fogadd el a kérdéssémát és indítsd el az Initial Intake felmérést ezen az oldalon.
+      A felmérési összegzés még nem érhető el. Előbb fogadd el a kérdéssémát és indítsd el a kezdő felmérést ezen az oldalon.
     </p-message>
   }
   @if (!loading() && !loadError() && handoffRequested && round()?.status === 'OPEN') {
@@ -35,21 +35,21 @@
       data-testid="interview-handoff-prerequisite"
       role="status"
     >
-      Az interjúösszegzés még nem érhető el. Előbb zárd le az Initial Intake meetinget ezen az oldalon.
+      A felmérési összegzés még nem érhető el. Előbb zárd le a kezdő felmérési kört ezen az oldalon.
     </p-message>
   }
 
   @if (loading()) {
     <div class="state-panel" data-testid="interview-loading" aria-live="polite">
-      <p-progress-spinner ariaLabel="Interjúkérdések betöltése" />
-      <p>Betöltjük a kérdésbankot, a projektsémát és az aktív interjúkört…</p>
+      <p-progress-spinner ariaLabel="Felmérési kérdések betöltése" />
+      <p>Betöltjük a kérdésbankot, a projektsémát és az aktív felmérési kört…</p>
     </div>
   } @else if (loadError()) {
     <div class="state-panel" data-testid="interview-error" role="alert">
-      <h2>Nem sikerült betölteni az interjúoldalt</h2>
+      <h2>A felmérési oldal nem tölthető be</h2>
       <p data-testid="interview-load-error-text">{{ loadError() }}</p>
       <p-button
-        label="Újrapróbálás"
+        label="Felmérési oldal újratöltése"
         severity="secondary"
         data-testid="retry-interview-button"
         (onClick)="loadInterviewData()"
@@ -80,9 +80,9 @@
             <span data-testid="project-schema-status">
               Elfogadott kérdésséma v{{ schema()!.schemaVersion }} (bank v{{ schema()!.bankVersion }})
             </span>
-            <p>A kérdésséma elfogadva. A kezdő interjú indítása még hátravan.</p>
+            <p>A kérdésséma elfogadva. A kezdő felmérés indítása még hátravan.</p>
             <p-button
-              label="Interjú indításának újrapróbálása"
+              label="Felmérés indításának újrapróbálása"
               [loading]="roundSaving()"
               [disabled]="roundSaving() || projectArchived()"
               data-testid="retry-initial-intake-button"
@@ -123,7 +123,7 @@
               <span data-testid="project-schema-status">Még nincs elfogadott kérdésséma.</span>
             }
             <p-button
-              [label]="schema() ? 'Séma frissítése' : 'Séma elfogadása és interjú indítása'"
+              [label]="schema() ? 'Kérdésséma frissítése' : 'Kérdésséma elfogadása és felmérés indítása'"
               [loading]="schemaSaving()"
               [disabled]="schemaSaving() || selectedCount() === 0 || hasOpenRound() || projectArchived()"
               data-testid="publish-project-schema-button"
@@ -132,7 +132,7 @@
           </div>
           @if (hasOpenRound()) {
             <p class="schema-lock-note" data-testid="schema-lock-note">
-              A séma zárolva van, amíg a nyitott kezdő interjúkör fut.
+              A kérdésséma zárolva van, amíg a nyitott kezdő felmérési kör fut.
             </p>
           }
         }
@@ -140,16 +140,16 @@
 
       @if (round()) {
       <p-card>
-        <ng-template #title>Kezdő interjúkör</ng-template>
+        <ng-template #title>Kezdő felmérési kör</ng-template>
         <ng-template #subtitle>
-          Az interjúkör a kiválasztott séma változatlan pillanatképét őrzi.
+          A felmérési kör a kiválasztott kérdésséma változatlan pillanatképét őrzi.
         </ng-template>
 
         @if (round(); as currentRound) {
             @if (currentRound.status === 'OPEN') {
               <div class="resume-state" data-testid="active-round-resume-state">
-                <strong>Folyamatban lévő kezdő interjúkör folytatása</strong>
-                <p>A szerveren mentett állapot töltődött vissza, ezért innen folytathatod ugyanazt a kört.</p>
+                <strong>Folyamatban lévő kezdő felmérési kör folytatása</strong>
+                <p>A legutóbb mentett állapot töltődött vissza, ezért innen folytathatod ugyanazt a kört.</p>
               </div>
             }
             <div class="round-header">
@@ -158,7 +158,7 @@
                 <p>{{ currentRound.questions.length }} pillanatkép-kérdés</p>
               </div>
               <p-tag
-                [value]="currentRound.status === 'ENDED' ? 'Meeting lezárva' : 'Folyamatban'"
+                [value]="currentRound.status === 'ENDED' ? 'Felmérési kör lezárva' : 'Folyamatban'"
                 [severity]="currentRound.status === 'ENDED' ? 'success' : 'info'"
                 data-testid="round-status"
               />
@@ -166,7 +166,7 @@
 
             @if (currentRound.questions.length === 0) {
               <div class="state-panel compact" data-testid="round-empty">
-                <h2>Nincs kérdés ebben az interjúkörben</h2>
+                <h2>Nincs kérdés ebben a felmérési körben</h2>
                 <p>Frissítsd a projektsémát, majd indíts új kört.</p>
               </div>
             } @else {
@@ -424,16 +424,16 @@
                   </p>
                 }
                 <p-button
-                  label="Mentés, később küldöm"
-                  severity="success"
+                  label="Felmérés lezárása és továbblépés"
                   [loading]="completing()"
                   [disabled]="isCompleteDisabled()"
                   data-testid="finish-interview-later-button"
                   (onClick)="finishRound(false)"
                 />
                 <p-button
-                  label="Mentés és küldés"
-                  severity="success"
+                  label="Lezárás és ügyfélcsomag előnézete"
+                  severity="secondary"
+                  [outlined]="true"
                   [loading]="completing()"
                   [disabled]="isCompleteDisabled()"
                   data-testid="finish-interview-and-send-button"

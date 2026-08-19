@@ -13,7 +13,7 @@ import type {
 import { ButtonModule } from 'primeng/button';
 import { ProgressSpinnerModule } from 'primeng/progressspinner';
 import { TagModule } from 'primeng/tag';
-import { catchError, debounce, distinctUntilChanged, EMPTY, map, merge, of, Subject, switchMap, tap, timer } from 'rxjs';
+import { catchError, debounce, distinctUntilChanged, EMPTY, filter, map, merge, of, Subject, switchMap, tap, timer } from 'rxjs';
 
 import {
   ActiveProjectQueueApiService,
@@ -171,16 +171,16 @@ export class ActiveProjectQueuePageComponent implements OnInit {
         this.stale.set(false);
         this.updateError.set(null);
         if (request.kind === 'REFRESH') {
-          this.liveStatus.set('A munkasor frissítve.');
+          this.liveStatus.set('A lista frissítve.');
         } else if (request.kind === 'RETRY') {
-          this.liveStatus.set('A munkasor ismét elérhető.');
+          this.liveStatus.set('A lista ismét elérhető.');
         }
       } else if (error) {
         this.failedRequest = request;
         if (this.page()) {
           this.stale.set(true);
           this.updateError.set(error);
-          this.liveStatus.set('A munkasor frissítése nem sikerült. A korábbi lista maradt látható.');
+          this.liveStatus.set('A lista frissítése nem sikerült. A korábbi adatok maradtak láthatók.');
         } else {
           this.loadError.set(error);
         }
@@ -190,8 +190,10 @@ export class ActiveProjectQueuePageComponent implements OnInit {
     });
 
     this.search.valueChanges.pipe(
-      debounce((value) => timer(value.trim() ? 300 : 0)),
+      map((value) => value.trim()),
+      debounce((value) => timer(value ? 300 : 0)),
       distinctUntilChanged(),
+      filter((value) => value !== (this.activeQuery().search ?? '')),
       takeUntilDestroyed(this.destroyRef),
     ).subscribe(() => void this.updateUrl());
   }

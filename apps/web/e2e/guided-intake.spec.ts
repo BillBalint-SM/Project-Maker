@@ -156,8 +156,8 @@ test.describe.serial('guided intake real Hungarian browser flow', () => {
     expect(endedRound.status).toBe('ENDED');
     expect(requireQuestion(endedRound, fixture.missingRequiredStableKey).answer).toBeNull();
     await expectActiveRoundStatus(request, fixture.projectId, 'ENDED');
-    await expect(page.getByTestId('interview-handoff')).toBeVisible();
-    await expect(page.getByTestId('handoff-preview-button')).toBeVisible();
+    await expect(page).toHaveURL(`/projects/${fixture.projectId}/readiness`);
+    await expect(page.getByRole('heading', { name: 'Felkészültség', exact: true })).toBeVisible();
   });
 
   test('blocks the initial intake start when the project has no published schema', async ({
@@ -173,7 +173,7 @@ test.describe.serial('guided intake real Hungarian browser flow', () => {
     );
     await expect(page.getByTestId('project-schema-status')).toContainText(hungarianTextPattern);
     await expect(page.getByTestId('create-interview-round-button')).toHaveCount(0);
-    await expect(page.getByRole('heading', { name: 'Kezdő interjúkör' })).toHaveCount(0);
+    await expect(page.getByRole('heading', { name: 'Kezdő felmérési kör' })).toHaveCount(0);
     await expect(page.getByTestId('round-questions')).toHaveCount(0);
     expect(await getActiveRound(request, project.id)).toBeNull();
   });

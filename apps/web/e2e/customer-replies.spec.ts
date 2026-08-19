@@ -30,7 +30,7 @@ test('surfaces one safe token-correlated Customer reply across global and Portfo
   expect(mailboxStats.preferHeaders).toContain('IdType="ImmutableId"');
 
   await page.goto('/');
-  await expect(page.getByTestId('global-customer-reply-count')).toContainText('(1)');
+  await expect(page.getByTestId('global-customer-reply-count')).toHaveText('1');
   const portfolioCard = page.getByTestId(`project-card-${setup.projectId}`);
   await expect(page.getByTestId(`project-reply-count-${setup.projectId}`)).toContainText('1 új ügyfélválasz');
   await expect(portfolioCard).toContainText('Új ügyfélválasz');
@@ -51,13 +51,13 @@ test('surfaces one safe token-correlated Customer reply across global and Portfo
   await page.getByRole('button', { name: 'Lezárás' }).click();
   await expect(page.getByRole('alert')).toContainText('Töltsd újra az adatokat');
   await expect(page.getByText('Mehet tovább.')).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Adatok újratöltése' })).toBeVisible();
-  await page.getByRole('button', { name: 'Adatok újratöltése' }).click();
+  await expect(page.getByRole('button', { name: 'Ügyféllevelezés újratöltése' })).toBeVisible();
+  await page.getByRole('button', { name: 'Ügyféllevelezés újratöltése' }).click();
   await expect(page.getByText('Mehet tovább.')).toBeVisible();
 
   await page.getByRole('button', { name: 'Átnéztem' }).click();
   await expect(page.getByText('0 olvasatlan üzenet')).toBeVisible();
-  await expect(page.getByTestId('global-customer-reply-count')).not.toContainText('(1)');
+  await expect(page.getByTestId('global-customer-reply-count')).toHaveCount(0);
   const classification = page.getByLabel('Kézi besorolás');
   await classification.selectOption('Módosítást kér');
   await expect(classification).toHaveValue('Módosítást kér');
@@ -131,10 +131,14 @@ test('opens the exact ping source without resolving it and retains UNKNOWN evide
   await request.post('/api/customer-mailbox-sync/refresh');
 
   await page.goto(`/projects/${project.id}/customer-correspondences`);
-  await expect(page.getByTestId('unknown-delivery-receipt-evidence')).toContainText('átvételi bizonyíték');
-  await page.getByRole('link', { name: 'Forrás Discovery follow-up áttekintése' }).click();
+  await expect(page.getByTestId('unknown-delivery-receipt-evidence')).toContainText(
+    'igazolja az átvételt',
+  );
+  await page.getByRole('link', { name: 'Kapcsolódó tisztázási tétel áttekintése' }).click();
   await expect(page).toHaveURL(new RegExp(`reviewFollowUpId=${followUp.id}`));
-  await expect(page.getByTestId('reply-review-context')).toContainText('nem módosította és nem oldotta fel');
+  await expect(page.getByTestId('reply-review-context')).toContainText(
+    'nem módosította és nem zárta le',
+  );
   const afterReview = await request.get(`/api/projects/${project.id}/discovery-follow-ups`)
     .then((response) => response.json()) as Array<{ id: string; status: string; version: number }>;
   expect(afterReview.find((item) => item.id === followUp.id)?.status).toBe(followUp.status);
@@ -219,12 +223,12 @@ test('triages unmatched mail and separates automated mailbox events without crea
   await expect(page.getByText('Ezt nem szabad megjeleníteni.')).toHaveCount(0);
 
   const humanMessage = page.locator('article').filter({ hasText: 'Ezt a levelet a megfelelő projekthez kell kapcsolni.' });
-  await humanMessage.getByLabel('Customer levelezés').selectOption(setup.correspondenceId);
+  await humanMessage.getByLabel('Ügyféllevelezés').selectOption(setup.correspondenceId);
   await humanMessage.getByRole('button', { name: 'Társítás' }).click();
   await expect(humanMessage).toHaveCount(0);
 
   const automatedMessage = page.locator('article').filter({ hasText: 'Bizonytalan automatikus tartalom.' });
-  await automatedMessage.getByRole('button', { name: 'Elvetés' }).click();
+  await automatedMessage.getByRole('button', { name: 'Nem releváns' }).click();
   await expect(automatedMessage).toHaveCount(0);
 
   await page.goto(`/projects/${setup.projectId}/customer-correspondences`);

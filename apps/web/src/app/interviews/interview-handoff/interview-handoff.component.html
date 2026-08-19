@@ -1,6 +1,6 @@
 <p-confirmdialog key="interview-handoff-send" [closeOnEscape]="true" />
 <p-card data-testid="interview-handoff">
-  <ng-template #title>Ügyfélnek küldött interjú-összefoglalók</ng-template>
+  <ng-template #title>Ügyfélnek küldött felmérési összefoglalók</ng-template>
   <ng-template #subtitle>Az elküldött verziók változatlan előzményként megmaradnak.</ng-template>
   @if (error()) { <p-message severity="error" role="alert">{{ error() }}</p-message> }
   @if (readOnly()) { <p-message severity="info">Az archivált projekt ügyfélcsomagjai csak olvashatók.</p-message> }
@@ -10,7 +10,7 @@
       @if (active.version > 1 && active.state === 'DRAFT') {
         <label for="handoff-summary">Módosítás összefoglalása</label>
         <textarea pTextarea id="handoff-summary" [ngModel]="summary" (ngModelChange)="changeSummary($event)" rows="3" data-testid="handoff-modification-summary" [disabled]="readOnly()"></textarea>
-        <p-button label="Összefoglalás mentése" [disabled]="busy() || readOnly()" (onClick)="saveSummary()" />
+        <p-button label="Módosítás leírásának mentése" [outlined]="true" [disabled]="busy() || readOnly()" (onClick)="saveSummary()" />
       }
       @if (active.state === 'DRAFT' && senderOptions(); as options) {
         <fieldset class="sender-selection" data-testid="handoff-sender-selection">
@@ -27,12 +27,12 @@
       }
       @if (active.state === 'DRAFT') { <p-button label="Előnézet és küldés" [disabled]="busy() || readOnly()" data-testid="handoff-preview-button" (onClick)="preview()" /> }
       @if (active.state === 'FAILED') {
-        <p-message severity="error" data-testid="handoff-state-message">A levelezőrendszer elutasította az átadást. Ugyanaz a tartalom és Reply-To azonosság újrapróbálható.</p-message>
-        <p-button label="Újrapróbálás" [disabled]="busy() || readOnly()" data-testid="retry-failed-handoff" (onClick)="retry(active)" />
+        <p-message severity="error" data-testid="handoff-state-message">A levelezőrendszer elutasította az átadást. Az eredeti levél változatlan tartalommal újraküldhető.</p-message>
+        <p-button label="Összefoglaló újraküldése" [disabled]="busy() || readOnly()" data-testid="retry-failed-handoff" (onClick)="retry(active)" />
       }
       @if (active.state === 'UNKNOWN') {
         @if (active.receiptEvidence) {
-          <p-message severity="success" data-testid="handoff-receipt-evidence">A Customer válasza igazolja az átvételt. Az eredeti ismeretlen kézbesítési eredmény megmarad, újraküldés nem szükséges.</p-message>
+          <p-message severity="success" data-testid="handoff-receipt-evidence">Az ügyfél válasza igazolja az átvételt. Az eredeti bizonytalan kézbesítési eredmény megmarad; újraküldés nem szükséges.</p-message>
         } @else {
           <p-message severity="warn" data-testid="handoff-state-message">A levelezőrendszer átvételi eredménye nem ismert. Újrapróbálás előtt ellenőrizd a kimenő postafiókot.</p-message>
           <p-button label="Ellenőrzés után újrapróbálás" [disabled]="busy() || readOnly()" data-testid="retry-unknown-handoff" (onClick)="confirmUnknownRetry(active, $any($event.currentTarget))" />
@@ -56,12 +56,12 @@
     <h3 id="handoff-history-title">Verzióelőzmények</h3>
     @for (item of history(); track item.id) {
       <h4 tabindex="-1" [attr.data-testid]="'handoff-version-heading-' + item.version">{{ item.version }}. verzió – {{ stateLabel(item.state) }}</h4>
-      <button type="button" class="history-item" [attr.data-testid]="'inspect-handoff-version-' + item.version" (click)="inspect(item.id)">Tartalom megnyitása @if (item.sentAt) { – {{ item.sentAt }} }</button>
+      <button type="button" class="history-item" [attr.data-testid]="'inspect-handoff-version-' + item.version" (click)="inspect(item.id)">Tartalom megnyitása @if (item.sentAt) { – {{ item.sentAt | date: 'yyyy. MM. dd. HH:mm' }} }</button>
     }
     @if (selectedDetail(); as selected) {
       <section class="history-detail" aria-label="Megnyitott ügyfélcsomag-verzió">
         <p data-testid="selected-handoff-recipient"><strong>Címzett:</strong> {{ selected.recipientName }} &lt;{{ selected.recipientEmail }}&gt;</p>
-        <p data-testid="selected-handoff-sent-at"><strong>Küldés ideje:</strong> {{ selected.sentAt }}</p>
+        <p data-testid="selected-handoff-sent-at"><strong>Küldés ideje:</strong> {{ selected.sentAt | date: 'yyyy. MM. dd. HH:mm' }}</p>
         <pre class="history-content">{{ selected.textContent }}</pre>
       </section>
     }

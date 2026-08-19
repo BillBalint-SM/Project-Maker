@@ -49,7 +49,7 @@ test.describe.serial('interview customer handoff browser journey', () => {
     await nativeButton(page, 'start-handoff-version').click();
     await expect(page.getByTestId('handoff-modification-summary')).toBeVisible();
     await page.getByTestId('handoff-modification-summary').fill('Az ügyfél pontosította az elvárt eredményt.');
-    await page.getByRole('button', { name: 'Összefoglalás mentése' }).click();
+    await page.getByRole('button', { name: 'Módosítás leírásának mentése' }).click();
 
     const answer = 'Az ügyfél által jóváhagyott, pontosított üzleti eredmény.';
     const answerResponse = page.waitForResponse((response) => response.request().method() === 'PATCH' && response.url().includes(`/api/projects/${fixture.projectId}/rounds/${fixture.roundId}/answers/${fixture.snapshotId}`));
@@ -126,7 +126,7 @@ test.describe.serial('interview customer handoff browser journey', () => {
 
     await nativeButton(page, 'start-handoff-version').click();
     await page.getByTestId('handoff-modification-summary').fill('Az ügyfél további pontosítást kért.');
-    await page.getByRole('button', { name: 'Összefoglalás mentése' }).click();
+    await page.getByRole('button', { name: 'Módosítás leírásának mentése' }).click();
     await nativeButton(page, 'handoff-preview-button').click();
     await request.post(`${graphFakeUrl}/__test/reject-next`);
     await sendCurrentPreview(page, fixture.projectId, fixture.roundId);
@@ -185,7 +185,7 @@ test.describe.serial('interview customer handoff browser journey', () => {
 
 async function sendCurrentPreview(page: Page, projectId: string, roundId: string, expectedStatus = 201): Promise<void> {
   await nativeButton(page, 'send-handoff-button').click();
-  await expect(page.getByRole('alertdialog', { name: 'Interjú-összefoglaló küldése' })).toBeVisible();
+  await expect(page.getByRole('alertdialog', { name: 'Felmérési összefoglaló küldése' })).toBeVisible();
   const responsePromise = page.waitForResponse((response) => response.request().method() === 'POST' && response.url().includes(`/api/projects/${projectId}/rounds/${roundId}/customer-handoffs/`) && response.url().endsWith('/send'));
   await page.getByRole('button', { name: 'Küldés az ügyfélnek', exact: true }).last().click();
   expect((await responsePromise).status()).toBe(expectedStatus);

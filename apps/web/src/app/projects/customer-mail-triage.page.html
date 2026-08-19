@@ -1,17 +1,20 @@
 <section aria-labelledby="triage-title">
-  <a routerLink="/">← Vissza a portfólióhoz</a>
+  <a routerLink="/">← Vissza az Áttekintőre</a>
   <header>
-    <span class="eyebrow">Customer kommunikáció</span>
+    <span class="eyebrow">Ügyfélkapcsolat</span>
     <h1 id="triage-title">Nem társított ügyfélüzenetek</h1>
-    <p>Itt csak explicit döntéssel társíthatsz vagy vethetsz el egy üzenetet.</p>
+    <p>Minden üzenetről külön dönthetsz: meglévő levelezéshez társítod, vagy nem relevánsként elveted.</p>
   </header>
 
   @if (loading()) {
-    <p aria-live="polite">Üzenetek betöltése…</p>
+    <div class="state-panel" aria-live="polite">
+      <p-progress-spinner ariaLabel="Nem társított ügyfélüzenetek betöltése" />
+      <p>Az üzenetek betöltése folyamatban van…</p>
+    </div>
   } @else if (loadError()) {
     <div class="state-panel" role="alert">
       <p>{{ loadError() }}</p>
-      <button type="button" (click)="load()">Újrapróbálás</button>
+      <p-button label="Üzenetek újratöltése" (onClick)="load()" />
     </div>
   } @else if (view(); as triage) {
     @if (commandError()) {
@@ -29,7 +32,7 @@
               <div class="message-heading">
                 <div>
                   <span class="kind">
-                    {{ message.kind === 'UNKNOWN_AUTOMATION' ? 'Ellenőrzendő automatikus levél' : 'Nem társított Customer üzenet' }}
+                    {{ message.kind === 'UNKNOWN_AUTOMATION' ? 'Ellenőrzendő automatikus levél' : 'Nem társított ügyfélüzenet' }}
                   </span>
                   <h3>{{ message.subject || 'Tárgy nélküli üzenet' }}</h3>
                 </div>
@@ -43,7 +46,7 @@
                 <p>{{ message.attachmentCount }} melléklet</p>
               }
               <div class="message-actions">
-                <label [for]="'target-' + message.id">Customer levelezés</label>
+                <label [for]="'target-' + message.id">Ügyféllevelezés</label>
                 <select
                   [id]="'target-' + message.id"
                   [disabled]="pendingMessageId() !== null"
@@ -56,19 +59,19 @@
                     </option>
                   }
                 </select>
-                <button
+                <button pButton
                   type="button"
                   [disabled]="pendingMessageId() !== null"
                   [attr.data-testid]="'link-message-' + message.id"
                   (click)="link(message)"
-                >Társítás</button>
-                <button
+                >Üzenet társítása</button>
+                <button pButton
                   type="button"
-                  class="secondary"
+                  class="p-button-outlined"
                   [disabled]="pendingMessageId() !== null"
                   [attr.data-testid]="'dismiss-message-' + message.id"
                   (click)="dismiss(message)"
-                >Elvetés</button>
+                >Nem releváns</button>
               </div>
             </article>
           }
@@ -77,9 +80,9 @@
     </section>
 
     <section aria-labelledby="events-title">
-      <h2 id="events-title">Mail-system események</h2>
+      <h2 id="events-title">Levelezőrendszer-események</h2>
       @if (triage.mailSystemEvents.length === 0) {
-        <p>Nincs új mail-system esemény.</p>
+        <p>Nincs új levelezőrendszer-esemény.</p>
       } @else {
         <ul class="event-list">
           @for (event of triage.mailSystemEvents; track event.id) {

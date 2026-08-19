@@ -1,5 +1,7 @@
 import { expect, test } from '@playwright/test';
 
+import { tabTo } from './keyboard-assertions';
+
 test('searches and filters the Active project queue with reload-safe replace-history state', async ({ page }) => {
   const uniquePart = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
   const created = await page.request.post('/api/projects', {
@@ -29,7 +31,7 @@ test('searches and filters the Active project queue with reload-safe replace-his
   await page.goto('/');
   await page.getByTestId('active-project-queue-link').click();
   await expect(page).toHaveURL('/projects/active');
-  await expect(page.getByRole('heading', { name: 'Aktív munkasor' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Folyamatban lévő ügyek' })).toBeVisible();
   await page.getByTestId('queue-search').fill(`  ARVIZTURO MUNKASOR ${uniquePart.toUpperCase()}  `);
 
   const projectLink = page.getByTestId(`queue-project-${project.id}`);
@@ -70,21 +72,21 @@ test('completes the keyboard employee journey and restores the paged queue URL a
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/');
   const queueLink = page.getByTestId('active-project-queue-link');
-  await queueLink.focus();
-  await queueLink.press('Enter');
+  await tabTo(page, queueLink);
+  await page.keyboard.press('Enter');
   await expect(page).toHaveURL('/projects/active');
 
   await page.getByTestId('queue-search').fill(uniquePart);
   const overdueFilter = page.getByLabel('Lejárt', { exact: true });
-  await overdueFilter.focus();
-  await overdueFilter.press('Space');
+  await tabTo(page, overdueFilter);
+  await page.keyboard.press('Space');
   await expect(overdueFilter).toBeChecked();
   await expect(page.getByRole('region', { name: 'Lejárt a következő lépés' })).toBeVisible();
   await expect(page.locator('.queue-row')).toHaveCount(10);
 
   const nextPage = page.getByTestId('queue-next-page');
-  await nextPage.focus();
-  await nextPage.press('Enter');
+  await tabTo(page, nextPage);
+  await page.keyboard.press('Enter');
   await expect(page.locator('.queue-row')).toHaveCount(1);
   const queueUrl = page.url();
   expect(queueUrl).toContain(`q=${uniquePart}`);
@@ -92,8 +94,22 @@ test('completes the keyboard employee journey and restores the paged queue URL a
   expect(queueUrl).toContain('cursor=');
 
   const projectLink = page.locator('[data-testid^="queue-project-"]').first();
-  await projectLink.focus();
-  await projectLink.press('Enter');
+  const queueReturnTarget = `${new URL(queueUrl).pathname}${new URL(queueUrl).search}`;
+  await expect
+    .poll(async () => {
+      const href = await projectLink.getAttribute('href');
+      return new URL(href ?? '', page.url()).searchParams.get('returnTo');
+    })
+    .toBe(queueReturnTarget);
+  await tabTo(page, projectLink);
+  await expect(page).toHaveURL(queueUrl);
+  await expect
+    .poll(async () => {
+      const href = await projectLink.getAttribute('href');
+      return new URL(href ?? '', page.url()).searchParams.get('returnTo');
+    })
+    .toBe(queueReturnTarget);
+  await page.keyboard.press('Enter');
   await expect(page.getByTestId('project-context-shell')).toBeVisible();
   await expect(page.getByTestId('project-context-nav-status')).toHaveAttribute(
     'aria-current',
@@ -116,6 +132,7 @@ test('completes the keyboard employee journey and restores the paged queue URL a
   ).toBe(true);
 
   const statusUrl = page.url();
+  expect(new URL(statusUrl).searchParams.get('returnTo')).toBe(queueReturnTarget);
   await page.reload();
   await expect(page).toHaveURL(statusUrl);
   const queueReturn = new URL(queueUrl);
@@ -126,8 +143,8 @@ test('completes the keyboard employee journey and restores the paged queue URL a
   await expect(page.getByTestId('project-status-card')).toHaveCount(0);
 
   const interviewContext = page.getByTestId('project-context-nav-interview');
-  await interviewContext.focus();
-  await interviewContext.press('Enter');
+  await tabTo(page, interviewContext);
+  await page.keyboard.press('Enter');
   await expect(page.getByTestId('project-context-nav-interview')).toHaveAttribute(
     'aria-current',
     'page',
@@ -141,8 +158,8 @@ test('completes the keyboard employee journey and restores the paged queue URL a
   );
 
   const statusContext = page.getByTestId('project-context-nav-status');
-  await statusContext.focus();
-  await statusContext.press('Enter');
+  await tabTo(page, statusContext);
+  await page.keyboard.press('Enter');
   await expect(page.getByTestId('project-context-nav-status')).toHaveAttribute(
     'aria-current',
     'page',
@@ -150,8 +167,8 @@ test('completes the keyboard employee journey and restores the paged queue URL a
 
   const primaryAction = page.getByTestId('project-context-primary-action');
   await expect(primaryAction).toHaveText('Következő lépés kezelése');
-  await primaryAction.focus();
-  await primaryAction.press('Enter');
+  await tabTo(page, primaryAction);
+  await page.keyboard.press('Enter');
   await expect(page.getByTestId('workspace-form')).toBeVisible();
   await page.reload();
   await expect(page.getByTestId('workspace-form')).toBeVisible();
@@ -162,8 +179,8 @@ test('completes the keyboard employee journey and restores the paged queue URL a
   await expect(page.getByTestId('workspace-form')).toBeVisible();
 
   const returnLink = page.getByTestId('project-context-return');
-  await returnLink.focus();
-  await returnLink.press('Enter');
+  await tabTo(page, returnLink);
+  await page.keyboard.press('Enter');
   await expect(page).toHaveURL(queueUrl);
   await expect(page.getByTestId('queue-search')).toHaveValue(uniquePart);
   await expect(page.getByLabel('Lejárt', { exact: true })).toBeChecked();
@@ -234,21 +251,21 @@ test('keeps queue context through a failed refresh and announces recovery', asyn
   const projectLink = page.getByTestId(`queue-project-${project.id}`);
   await expect(projectLink).toBeVisible();
   const refresh = page.getByTestId('queue-refresh');
-  await refresh.focus();
+  await tabTo(page, refresh);
   failNextQueueRequest = true;
-  await refresh.click();
+  await page.keyboard.press('Enter');
 
   await expect(page.getByTestId('active-queue-stale')).toContainText('A lista elavult lehet.');
   await expect(projectLink).toBeVisible();
   await expect(refresh).toBeFocused();
   await expect(page.getByTestId('queue-live-status')).toContainText(
-    'A munkasor frissítése nem sikerült. A korábbi lista maradt látható.',
+    'A lista frissítése nem sikerült. A korábbi adatok maradtak láthatók.',
   );
 
   await page.getByTestId('queue-update-retry').click();
   await expect(page.getByTestId('active-queue-stale')).toHaveCount(0);
   await expect(projectLink).toBeVisible();
-  await expect(page.getByTestId('queue-live-status')).toContainText('A munkasor ismét elérhető.');
+  await expect(page.getByTestId('queue-live-status')).toContainText('A lista ismét elérhető.');
 });
 
 test('offers filter reset and portfolio actions for the two empty queue states', async ({ page }) => {
@@ -273,7 +290,7 @@ test('offers filter reset and portfolio actions for the two empty queue states',
 
   await expect(page).toHaveURL('/projects/active');
   await expect(page.getByRole('heading', { name: 'Nincs aktív projekt' })).toBeVisible();
-  await expect(page.getByRole('link', { name: 'Portfólió áttekintése' })).toHaveAttribute('href', '/');
+  await expect(page.getByRole('link', { name: 'Áttekintő megnyitása' })).toHaveAttribute('href', '/');
   await expect(page.getByRole('link', { name: 'Új projekt létrehozása' })).toHaveAttribute('href', '/projects/new');
 });
 

@@ -1,9 +1,9 @@
 <section aria-labelledby="active-queue-title">
-  <a class="back-link" routerLink="/">← Vissza a portfólióhoz</a>
+  <a class="back-link" routerLink="/">← Vissza az Áttekintőre</a>
 
   <div class="page-heading">
     <span class="eyebrow">Portfólió</span>
-    <h1 id="active-queue-title">Aktív munkasor</h1>
+    <h1 id="active-queue-title">Folyamatban lévő ügyek</h1>
     <p>Az aktív projektek következő teendői sürgősség szerint rendezve.</p>
   </div>
 
@@ -14,7 +14,7 @@
   }
 
   <section class="queue-filters" aria-labelledby="queue-filter-title">
-    <h2 id="queue-filter-title">Munkasor szűrése</h2>
+    <h2 id="queue-filter-title">Lista szűrése</h2>
     <label class="search-field">
       <span>Projektnév</span>
       <input type="search" [formControl]="search" placeholder="Keresés projektnévben" data-testid="queue-search" />
@@ -51,7 +51,7 @@
       severity="secondary"
       data-testid="queue-refresh"
       (click)="refresh()"
-    >Munkasor frissítése</button>
+    >Lista frissítése</button>
     @if (page(); as loadedPage) {
       <span>Utolsó lekérés: {{ loadedPage.retrievedAt | date: 'yyyy. MM. dd. HH:mm' }}</span>
     }
@@ -73,15 +73,15 @@
 
   @if (loading()) {
     <div class="state-panel" data-testid="active-queue-loading" aria-live="polite">
-      <p-progress-spinner ariaLabel="Az aktív munkasor betöltése" />
-      <p>Az aktív munkasor betöltése…</p>
+      <p-progress-spinner ariaLabel="A folyamatban lévő ügyek betöltése" />
+      <p>A folyamatban lévő ügyek betöltése…</p>
     </div>
   } @else if (loadError()) {
     <div class="state-panel" data-testid="active-queue-error" role="alert">
-      <h2>Az aktív munkasor nem tölthető be</h2>
+      <h2>A folyamatban lévő ügyek nem tölthetők be</h2>
       <p>{{ loadError() }}</p>
       <button pButton type="button" severity="secondary" data-testid="queue-initial-retry" (click)="retry()">
-        Újrapróbálás
+        Lista újratöltése
       </button>
     </div>
   } @else if (page(); as queuePage) {
@@ -95,8 +95,8 @@
           </button>
         } @else {
           <h2>Nincs aktív projekt</h2>
-          <p>A munkasorban minden nem archivált projekt megjelenik.</p>
-          <a pButton severity="secondary" routerLink="/">Portfólió áttekintése</a>
+          <p>A listában minden nem archivált projekt megjelenik.</p>
+          <a pButton severity="secondary" routerLink="/">Áttekintő megnyitása</a>
           <a pButton routerLink="/projects/new">Új projekt létrehozása</a>
         }
       </div>
@@ -174,7 +174,7 @@
         }
       </div>
 
-      <nav class="queue-pagination" aria-label="Munkasor lapozása">
+      <nav class="queue-pagination" aria-label="A folyamatban lévő ügyek lapozása">
         <button
           pButton
           type="button"

@@ -217,7 +217,7 @@ function clarificationMessages(
       case 'TOO_MANY_ESTIMATE_BLOCKING_GAPS':
         return `Több mint ${clarificationRules.estimateBlockingGapsAbove} becslést blokkoló hiány maradt.`;
       case 'DECISION_SCORE_BELOW_ESTIMATE_PREPARATION_THRESHOLD':
-        return `A Decision Score még nem éri el a ${preparationRules.decisionScoreAtLeast}-ös becslés-előkészítési küszöböt.`;
+        return `A döntési pontszám még nem éri el a ${preparationRules.decisionScoreAtLeast}-ös becslés-előkészítési küszöböt.`;
       case 'READINESS_BELOW_ESTIMATE_PREPARATION_THRESHOLD':
         return `A felkészültség még nem éri el a ${preparationRules.readinessAtLeast}%-os becslés-előkészítési küszöböt.`;
     }

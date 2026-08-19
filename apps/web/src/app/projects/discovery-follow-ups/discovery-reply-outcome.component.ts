@@ -15,7 +15,7 @@ import type { CustomerCorrespondenceView } from '@project-maker/contracts';
         }"
         queryParamsHandling="merge"
         [fragment]="'discovery-follow-up-' + source.followUpId"
-        [attr.data-testid]="'review-ping-source-' + correspondence().id">Forrás Discovery follow-up áttekintése</a>
+        [attr.data-testid]="'review-ping-source-' + correspondence().id">Kapcsolódó tisztázási tétel áttekintése</a>
     }
   `,
 })
