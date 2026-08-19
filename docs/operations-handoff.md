@@ -4,6 +4,10 @@ This document describes the current web-platform foundation as it exists in
 the repository. It is an operator/developer handoff, not a claim that every
 product capability in `docs/product-domain.md` is complete.
 
+For an actual handover or go-live, use the
+[release cutover checklist](release-cutover.md) as the decision record and this
+document as its detailed runtime and recovery reference.
+
 ## Runtime boundary
 
 The runtime is a Docker Compose stack:
