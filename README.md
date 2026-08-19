@@ -15,6 +15,8 @@ The platform-neutral product workflow, vocabulary, domain data intent, general i
 
 The current runtime, migration, backup/restore, Microsoft 365 mail, VPN boundary, and
 verification handoff is documented in [`docs/operations-handoff.md`](docs/operations-handoff.md).
+Use the [release cutover checklist](docs/release-cutover.md) to separate the
+internal application go-live from Customer-operated Microsoft 365 activation.
 
 ## Documentation
 
