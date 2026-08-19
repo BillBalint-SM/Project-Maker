@@ -5,7 +5,7 @@ import { DataSource } from 'typeorm';
 
 import { migrationsForHistoricalDatabase } from './migration-harness';
 
-describe('Customer mailbox synchronization migration (PostgreSQL)', () => {
+describe('Correspondence mailbox synchronization migration (PostgreSQL)', () => {
   it('reverts an unused sync state and refuses to discard an established delta baseline', async () => {
     const databaseUrl = process.env['DATABASE_URL'];
     if (!databaseUrl) throw new Error('DATABASE_URL is required for the mailbox sync migration proof.');
@@ -38,7 +38,7 @@ describe('Customer mailbox synchronization migration (PostgreSQL)', () => {
 
       await assert.rejects(
         database.undoLastMigration(),
-        /Migration 0019 cannot remove an established Customer mailbox delta baseline/,
+        /Migration 0019 cannot remove an established correspondence mailbox delta baseline/,
       );
     } finally {
       if (database?.isInitialized) await database.destroy();

@@ -57,7 +57,7 @@ export class CustomerMailboxSync0019CustomerMailboxSync1787472000000
     ) as Array<{ count: string }>;
     if ((retained[0]?.count ?? '0') !== '0') {
       throw new Error(
-        'Migration 0019 cannot remove an established Customer mailbox delta baseline.',
+        'Migration 0019 cannot remove an established correspondence mailbox delta baseline.',
       );
     }
     await queryRunner.query('DROP TABLE "customer_mailbox_change_inbox"');

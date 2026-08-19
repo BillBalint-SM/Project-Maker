@@ -55,7 +55,7 @@ export class CustomerMailboxSyncService implements OnModuleInit, OnModuleDestroy
     private readonly config: ConfigService,
     private readonly replyIngestion: CustomerReplyIngestionService,
   ) {
-    this.pollIntervalMs = pollInterval(config.get<string>('CUSTOMER_MAILBOX_SYNC_POLL_INTERVAL_MS'));
+    this.pollIntervalMs = pollInterval(config.get<string>('CORRESPONDENCE_MAILBOX_POLL_INTERVAL_MS'));
   }
 
   onModuleInit(): void {
@@ -76,7 +76,7 @@ export class CustomerMailboxSyncService implements OnModuleInit, OnModuleDestroy
     try {
       await this.refresh();
     } catch {
-      this.logger.warn('Customer mailbox synchronization failed.');
+      this.logger.warn('Correspondence mailbox synchronization failed.');
     }
   }
 
@@ -124,7 +124,7 @@ export class CustomerMailboxSyncService implements OnModuleInit, OnModuleDestroy
         where: { mailboxAddress },
         lock: { mode: 'pessimistic_write' },
       });
-      if (!state) throw new Error('Customer mailbox synchronization state is unavailable.');
+      if (!state) throw new Error('Correspondence mailbox synchronization state is unavailable.');
       if (hasActiveLease(state, attemptedAt)) return { claimed: false as const, state };
       state.state = 'INITIALIZING';
       state.lastAttemptedSyncAt = attemptedAt;
@@ -196,7 +196,7 @@ export class CustomerMailboxSyncService implements OnModuleInit, OnModuleDestroy
       return result;
     });
     const saved = await this.syncRepository.findOneBy({ mailboxAddress });
-    if (!saved) throw new Error('Customer mailbox synchronization state is unavailable.');
+    if (!saved) throw new Error('Correspondence mailbox synchronization state is unavailable.');
     if (completion.affected === 0) {
       return toStatus(
         saved,
@@ -209,7 +209,7 @@ export class CustomerMailboxSyncService implements OnModuleInit, OnModuleDestroy
   }
 
   private mailboxAddress(): string | null {
-    return this.config.get<string>('CUSTOMER_MAILBOX_ADDRESS')?.trim() || null;
+    return this.config.get<string>('CORRESPONDENCE_MAILBOX_ADDRESS')?.trim() || null;
   }
 
   private async readPageWithRetry(

@@ -104,7 +104,7 @@ export class GraphCustomerMailBoundary implements CustomerOutboundMail, Customer
     if (!this.isConfigured()) {
       throw new CustomerMailBoundaryError('CONFIGURATION_ERROR');
     }
-    const outbound = toGraphMessage(message, this.config?.get<string>('CUSTOMER_MAILBOX_ADDRESS')?.trim());
+    const outbound = toGraphMessage(message, this.config?.get<string>('CORRESPONDENCE_MAILBOX_ADDRESS')?.trim());
     try {
       const accepted = await this.client.submit(outbound);
       return accepted.accepted

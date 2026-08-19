@@ -9,7 +9,7 @@ import { CustomerRepliesApiService } from './customer-replies-api.service';
 import { ProjectApiService } from './project-api.service';
 import { ProjectListPage } from './project-list.page';
 
-describe('ProjectListPage customer mailbox synchronization', () => {
+describe('ProjectListPage correspondence mailbox synchronization', () => {
   it('shows mailbox freshness and refreshes through the employee action', async () => {
     const initial: CustomerMailboxSyncStatus = {
       mailboxAddress: 'project-maker@pte.hu',

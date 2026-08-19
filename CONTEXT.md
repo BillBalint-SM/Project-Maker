@@ -4,6 +4,26 @@ The domain language used to describe discovery projects, intake work, and their 
 
 ## Language
 
+**Operator organization**:
+The organization that owns and operates a Project Maker deployment and employs
+its internal users. It supplies runtime infrastructure and configuration; it
+is never the Customer in Project Maker product language. Hungarian operations
+documentation calls it `üzemeltető szervezet`.
+_Avoid_: Customer, Customer tenant, Project Customer
+
+**Project Customer**:
+The external organization for which a project is being prepared. The shorter
+`Customer` qualifier is reserved for this organization and its correspondence;
+it never denotes the Operator organization. Hungarian product language calls
+it `projektügyfél`, or `ügyfél` where the Project context is unambiguous.
+_Avoid_: Operator organization, deployment owner, application customer
+
+**Customer contact**:
+The named person at the Project Customer who receives Project Customer
+communication and may own a project's next action. Employee-facing language
+calls the role `Ügyfélkapcsolattartó`.
+_Avoid_: Operator, internal project owner, infrastructure administrator
+
 **Project preparation journey**:
 The primary employee journey for a PM, PO, or BA from selecting a project,
 through completing the Initial Intake and resolving its resulting work, to
@@ -55,9 +75,10 @@ the Initial Intake interview.
 _Avoid_: Scroll navigation, URL for every transient selection, hidden context switch
 
 **Project settings**:
-The project-scoped administration context for basic project data, customer
-contact details, customer email configuration, archive, and deletion. It is
-separate from active project preparation work.
+The project-scoped administration context for basic project data, Project
+Customer contact details, Project Customer reminder configuration, archive,
+and deletion. It does not configure the Operator organization's mail gateway
+and is separate from active project preparation work.
 _Avoid_: Day-to-day project coordination, hidden destructive controls
 
 **Administrative project phase**:
@@ -235,11 +256,11 @@ A project-owned conversation anchored to one outbound Customer communication
 and containing every related Customer inbound message in received order.
 _Avoid_: Delivery attempt, single reply field, project-wide mailbox
 
-**Customer communication mailbox**:
-The organization-owned mailbox dedicated to Project Maker Customer messages.
-It is a transport boundary shared by Projects, not an employee's personal
-working inbox or the owner of Customer correspondence status.
-_Avoid_: Internal project owner's mailbox, Project inbox, employee task queue
+**Correspondence mailbox**:
+The Operator organization-controlled mailbox dedicated to Project Customer
+messages. It is shared by Projects; Project Customers neither own nor configure
+it, and it is not an employee's personal working inbox.
+_Avoid_: Customer mailbox, Internal project owner's mailbox, Project inbox
 
 **Mail-system acceptance**:
 Confirmation that an outbound Customer message was accepted by the
@@ -248,10 +269,9 @@ reading by the Customer.
 _Avoid_: Delivered, read receipt, Customer response
 
 **Outbound Customer sender**:
-The organization mailbox entered by a VPN-trusted employee and captured as the
-immutable `From` identity of one outbound Customer communication. Project Maker
-does not treat that address as proof of employee identity, and Reply-To remains
-separate.
+The Operator organization-controlled sender identity captured as the immutable
+`From` identity of one outbound Customer communication. Project Maker does not
+treat that address as proof of employee identity, and Reply-To remains separate.
 _Avoid_: Reply-To address, authenticated employee identity, current Project owner
 
 **Customer correspondence status**:
@@ -268,14 +288,14 @@ not attachment content.
 _Avoid_: Delivery receipt, audit payload, executable email content
 
 **Unmatched Customer message**:
-A message received by the Customer communication mailbox that cannot yet be
+A message received by the Correspondence mailbox that cannot yet be
 linked to a Project-owned Customer correspondence. It remains available for
 explicit linking or dismissal rather than being silently discarded.
 _Avoid_: Spam, deleted reply, automatically inferred Project message
 
 **Mail-system event**:
 A non-conversational message such as a delivery failure, delivery report, or
-automatic absence response received through the Customer communication mailbox.
+automatic absence response received through the Correspondence mailbox.
 It may explain delivery state but is not a Customer reply.
 _Avoid_: Customer inbound message, Customer decision, unread reply
 

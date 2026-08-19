@@ -21,7 +21,7 @@ export class MicrosoftGraphMailClient implements GraphMailClient {
     this.clientId = config.get<string>('GRAPH_CLIENT_ID')?.trim() ?? '';
     this.certificateThumbprint = config.get<string>('GRAPH_CLIENT_CERTIFICATE_THUMBPRINT')?.trim() ?? '';
     this.privateKeyBase64 = config.get<string>('GRAPH_CLIENT_PRIVATE_KEY_BASE64')?.trim() ?? '';
-    this.mailboxAddress = config.get<string>('CUSTOMER_MAILBOX_ADDRESS')?.trim() ?? '';
+    this.mailboxAddress = config.get<string>('CORRESPONDENCE_MAILBOX_ADDRESS')?.trim() ?? '';
   }
 
   isConfigured(): boolean {

@@ -66,8 +66,8 @@ describe('Correlated Customer replies', () => {
   const graph = new CustomerReplyGraphFake();
 
   before(async () => {
-    process.env['CUSTOMER_MAILBOX_ADDRESS'] = 'reply51@pte.hu';
-    process.env['CUSTOMER_MAILBOX_NAME'] = 'Project Maker';
+    process.env['CORRESPONDENCE_MAILBOX_ADDRESS'] = 'reply51@pte.hu';
+    process.env['CORRESPONDENCE_MAILBOX_NAME'] = 'Project Maker';
     const module = await Test.createTestingModule({ imports: [AppModule] })
       .overrideProvider(graphMailClientToken)
       .useValue(graph)

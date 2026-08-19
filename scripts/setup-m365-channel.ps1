@@ -217,9 +217,10 @@ if (-not (Test-Path -LiteralPath $environmentPath)) {
 }
 
 Write-Host @'
-Run this activation only inside the Customer environment with its authorized
-Entra, Exchange, and deployment-secret owners. Do not provide tenant access,
-the private key, mailbox content, or the populated .env to the supplier.
+Run this activation only inside the Operator organization's environment with
+its authorized Entra, Exchange, and deployment-secret owners. Do not provide
+tenant access, the private key, mailbox content, or the populated .env to the
+supplier.
 '@ -ForegroundColor Yellow
 
 Start-WizardStage -Name 'Register the single-tenant Entra application'
@@ -313,8 +314,8 @@ Set-DotEnvValue -Path $environmentPath -Name 'GRAPH_TENANT_ID' -Value $tenantId
 Set-DotEnvValue -Path $environmentPath -Name 'GRAPH_CLIENT_ID' -Value $clientId
 Set-DotEnvValue -Path $environmentPath -Name 'GRAPH_CLIENT_CERTIFICATE_THUMBPRINT' -Value $certificateThumbprint.ToUpperInvariant()
 Set-DotEnvValue -Path $environmentPath -Name 'GRAPH_CLIENT_PRIVATE_KEY_BASE64' -Value $privateKeyBase64
-Set-DotEnvValue -Path $environmentPath -Name 'CUSTOMER_MAILBOX_NAME' -Value $mailboxName
-Set-DotEnvValue -Path $environmentPath -Name 'CUSTOMER_MAILBOX_ADDRESS' -Value $mailboxAddress
+Set-DotEnvValue -Path $environmentPath -Name 'CORRESPONDENCE_MAILBOX_NAME' -Value $mailboxName
+Set-DotEnvValue -Path $environmentPath -Name 'CORRESPONDENCE_MAILBOX_ADDRESS' -Value $mailboxAddress
 $privateKeyBase64 = $null
 
 Start-WizardStage -Name 'Hand off the controlled tenant smoke'

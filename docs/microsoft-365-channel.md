@@ -1,31 +1,36 @@
-# Microsoft 365 Customer mailbox channel
+# Microsoft 365 correspondence channel
+
+> **Transitional implementation:** this runbook records the currently delivered
+> Microsoft Graph transport. [ADR 0003](adr/0003-use-operator-provided-mail-gateway.md)
+> makes an Operator organization-provided SMTP/IMAP gateway the target
+> architecture. Do not present this runbook as the target activation model.
 
 This runbook provisions and proves Project Maker's dedicated Microsoft 365
 Customer communication channel. It is an operator procedure for a controlled,
 non-production test environment. A green fake-Graph build is necessary
 regression evidence, but it is not production-readiness evidence.
 
-## Delivery and Customer activation ownership
+## Delivery and Operator organization activation ownership
 
 The application, provider boundary, migrations, regression evidence, wizard,
 and this runbook form the supplier delivery. They can be reviewed and deployed
-without giving the supplier access to the Customer tenant. Missing Microsoft
+without giving the supplier access to the Operator organization's tenant. Missing Microsoft
 365 configuration stays fail-closed and does not block unrelated Project Maker
 work.
 
-Tenant activation is a separate Customer-operated release gate:
+Tenant activation is a separate Operator organization-operated release gate:
 
-- the Customer's Entra administrator registers the application, uploads the
+- the Operator organization's Entra administrator registers the application, uploads the
   public certificate, and grants tenant-admin consent for `Mail.Send`;
-- the Customer's Exchange administrator creates and proves the dedicated-
+- the Operator organization's Exchange administrator creates and proves the dedicated-
   mailbox-only `Application Mail.Read` scope;
-- the Customer's deployment secret owner generates and retains the private key
+- the Operator organization's deployment secret owner generates and retains the private key
   and injects the runtime values in the target environment;
-- the Customer's operator runs the controlled smoke and records only the
+- the Operator organization's operator runs the controlled smoke and records only the
   redacted evidence described below.
 
 The supplier must not receive tenant-admin access, mailbox access, the private
-key, access tokens, Customer mail, or a populated `.env`. A Customer maintainer
+key, access tokens, Project Customer mail, or a populated `.env`. An Operator organization maintainer
 may contribute the completed evidence-only change, or provide its bounded
 non-secret fields to the repository maintainer for that single change. Until
 the evidence verifier passes, describe the feature as delivered and tenant-
@@ -49,7 +54,7 @@ The permission model is deliberately asymmetric:
   the application can submit from the dedicated mailbox and an employee-entered
   exact `@pte.hu` mailbox;
 - grant `Application Mail.Read` in Exchange Online Application RBAC with a
-  resource scope that selects only the dedicated Customer communication
+  resource scope that selects only the dedicated correspondence
   mailbox;
 - do not grant unscoped `Mail.Read` in Entra. Entra permission grants and
   Exchange Application RBAC grants are additive, so an unscoped Entra grant
@@ -75,7 +80,7 @@ local `.env` file.
 | Enterprise app service-principal Object ID | Entra Enterprise applications | public operational identifier | wizard memory only for Exchange RBAC |
 | Certificate SHA-1 thumbprint | Entra Certificates page | public operational identifier | `.env` `GRAPH_CLIENT_CERTIFICATE_THUMBPRINT` |
 | Base64-encoded PEM private key | deployment secret owner | secret | `.env` `GRAPH_CLIENT_PRIVATE_KEY_BASE64` only |
-| Dedicated mailbox name and base address | Exchange administrator | public runtime configuration | `.env` `CUSTOMER_MAILBOX_NAME` and `CUSTOMER_MAILBOX_ADDRESS` |
+| Dedicated mailbox name and base address | Exchange administrator | public runtime configuration | `.env` `CORRESPONDENCE_MAILBOX_NAME` and `CORRESPONDENCE_MAILBOX_ADDRESS` |
 
 Do not add any of these values to GitHub Actions: the mandatory tenant smoke is
 non-CI, and repository CI uses only the controlled Graph fake.
@@ -226,7 +231,7 @@ the Microsoft 365 channel is not production-ready.
 ## Polling and recovery
 
 - The default mailbox delta poll is 60 seconds and can be changed with
-  `CUSTOMER_MAILBOX_SYNC_POLL_INTERVAL_MS`. Manual refresh joins the same
+  `CORRESPONDENCE_MAILBOX_POLL_INTERVAL_MS`. Manual refresh joins the same
   durable single-flight path.
 - A first connection establishes a baseline without importing historical mail.
   An expired cursor preserves retained messages, rebuilds the baseline, and

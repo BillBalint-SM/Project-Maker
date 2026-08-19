@@ -4,7 +4,14 @@ Ez az ellenőrzőlista a Project Maker átadásának két, egymástól függetle
 kapuját választja szét:
 
 1. az alkalmazás belső/VPN-környezetben történő élesítése;
-2. a Microsoft 365 ügyfélkommunikációs csatorna ügyféloldali aktiválása.
+2. a Microsoft 365 projektügyfél-kommunikációs csatorna üzemeltető szervezeti
+   aktiválása.
+
+> **Átmeneti állapot:** ez a második kapu a jelenlegi Microsoft Graph
+> implementációt dokumentálja. A célarchitektúrát az
+> [ADR 0003](adr/0003-use-operator-provided-mail-gateway.md) rögzíti: az
+> üzemeltető szervezet szabványos SMTP/IMAP gateway-t biztosít. A Graph-runbook
+> nem adható át végleges aktiválási modellként.
 
 Az első kapu teljesíthető a Microsoft 365 tenant aktiválása nélkül. Ilyenkor a
 projektmunka használható, a Microsoft 365 műveletek pedig konfiguráció hiányában
@@ -13,7 +20,8 @@ produkcióban aktiváltnak.
 
 ## Átadási csomag
 
-Az ügyfél a következő, egymásra hivatkozó anyagokat kapja:
+Az átvevő, egyben üzemeltető szervezet a következő, egymásra hivatkozó
+anyagokat kapja:
 
 - a telepítendő, pontos Git commitot és annak zöld GitHub CI-eredményét;
 - a [végfelhasználói útmutatót](user-guide.md);
@@ -26,7 +34,7 @@ Az ügyfél a következő, egymásra hivatkozó anyagokat kapja:
 - ezt a döntési és aláírási ellenőrzőlistát.
 
 Valódi `.env`, jelszó, privát kulcs, hozzáférési token, postafiók-tartalom vagy
-ügyféladat nem része az átadási csomagnak.
+projektügyfél-adat nem része az átadási csomagnak.
 
 ## Felelősök és átadandó bizonyíték
 
@@ -49,17 +57,17 @@ Valódi `.env`, jelszó, privát kulcs, hozzáférési token, postafiók-tartalo
 - [ ] A telepítési gazda rögzítette a pontos forrás-commitot; az élesítés nem
   egy közben változó branchből történik.
 - [ ] A commit `checkpoint` és `container-smoke` CI-kapuja zöld.
-- [ ] Az alkalmazás csak az ügyfél belső hálózatán/VPN-jén vagy azzal
+- [ ] Az alkalmazás csak az üzemeltető szervezet belső hálózatán/VPN-jén vagy azzal
   egyenértékű tűzfal és reverse proxy mögött érhető el.
 - [ ] A külső végpont HTTPS-t használ, a `CORS_ORIGIN` pedig pontosan ezt az
   origint tartalmazza. Az alkalmazásban nincs saját bejelentkezés vagy
   jogosultság-ellenőrzés, ezért nyilvános internetes kitettség nem elfogadható.
-- [ ] A `.env` az ügyfél jóváhagyott runtime/secret helyén van, nem került
+- [ ] A `.env` az üzemeltető szervezet jóváhagyott runtime/secret helyén van, nem került
   Gitbe, ticketbe, chatbe vagy átadási dokumentumba.
 - [ ] Meglévő adatbázis frissítése előtt készült ellenőrzött PostgreSQL-mentés.
   Új, üres telepítésnél ezt az operátor kifejezetten `nem alkalmazható`ként
   rögzítette.
-- [ ] Az ügyfél kijelölte a mentési megőrzés és a visszaállítási próba
+- [ ] Az üzemeltető szervezet kijelölte a mentési megőrzés és a visszaállítási próba
   felelősét. A restore eljárás az üzemeltetési átadás szerint, nem az éles
   adatbázison lett kipróbálva.
 
@@ -73,7 +81,7 @@ Valódi `.env`, jelszó, privát kulcs, hozzáférési token, postafiók-tartalo
    pnpm test:e2e
    ```
 
-2. Töltsd ki az ügyfélkörnyezet `.env` fájlját, majd ellenőrizd a Compose
+2. Töltsd ki az üzemeltető szervezet környezetének `.env` fájlját, majd ellenőrizd a Compose
    konfigurációt anélkül, hogy annak tartalmát naplóznád:
 
    ```powershell
@@ -106,19 +114,20 @@ Valódi `.env`, jelszó, privát kulcs, hozzáférési token, postafiók-tartalo
 
 Az alkalmazás akkor adható át üzleti használatra, ha minden fenti pont sikeres.
 Ha az M365 kapu még nincs kész, az átadási jegyzőkönyvben szerepeljen:
-`Az alkalmazás éles; a Microsoft 365 ügyfélkommunikáció tenant-ready, de még
-nem produkcióban aktivált.`
+`Az alkalmazás éles; a projektügyfél-kommunikáció jelenlegi Microsoft 365
+implementációja az üzemeltető szervezet tenantjában aktiválható, de még nem
+produkcióban aktivált.`
 
 ## 2. kapu — Microsoft 365 aktiválás
 
-Ezt a kaput kizárólag az ügyfél Entra-, Exchange-, deployment-secret- és
+Ezt a kaput kizárólag az üzemeltető szervezet Entra-, Exchange-, deployment-secret- és
 üzemeltetési felelősei hajthatják végre. A szállító nem kap tenant-adminisztrátori
 hozzáférést, postafiók-hozzáférést, privát kulcsot vagy kitöltött `.env` fájlt.
 
-- [ ] Az adminisztrátorok az ügyfélkörnyezetben futtatták a
+- [ ] Az adminisztrátorok az üzemeltető szervezet környezetében futtatták a
   `scripts/setup-m365-channel.ps1` wizardot.
 - [ ] Entra oldalon csak a publikus tanúsítvány került feltöltésre; a privát
-  kulcs az ügyfél secret store-jában maradt.
+  kulcs az üzemeltető szervezet secret store-jában maradt.
 - [ ] A tenant-wide `Mail.Send` consent dokumentáltan elfogadott.
 - [ ] Az Exchange `Application Mail.Read` csak a dedikált Project Maker
   postafiókra érvényes; egy másik postafiók igazoltan kívül esik a scope-on, és
@@ -161,7 +170,7 @@ maradnak nyitva a valós aktiválásig.
 - nyilvános vagy nem kontrollált hálózati kitettség saját autentikáció nélkül;
 - hiányzó mentés meglévő adat frissítése előtt;
 - sikertelen health vagy függő/sikertelen migráció;
-- valódi ügyféladatokkal végzett első próba;
+- valódi projektügyfél-adatokkal végzett első próba;
 - M365 aktiváltnak nevezett környezet `NOT_RUN` vagy sikertelen tenant-smoke
   evidence mellett;
 - sikertelen plus-address vagy dedikált postafiókon kívülre is érvényes
@@ -170,7 +179,7 @@ maradnak nyitva a valós aktiválásig.
 ## Visszaállítás és visszavonás
 
 1. Állítsd le a web- és API-írásokat; a PostgreSQL volume-ot ne töröld.
-2. Rögzítsd a hiba idejét és a telepített commitot titok vagy ügyféladat nélkül.
+2. Rögzítsd a hiba idejét és a telepített commitot titok vagy projektügyfél-adat nélkül.
 3. Adatvesztési vagy migrációs probléma esetén az ellenőrzött mentésből, az
    [ellenőrzött restore eljárással](operations-handoff.md#controlled-restore)
    állíts vissza. Ne próbálj adatot törölni azért, hogy egy védett migration

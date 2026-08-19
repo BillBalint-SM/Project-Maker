@@ -6,7 +6,7 @@
 - [Current roadmap](roadmap.md) — delivered capability, planned work, opportunities, and improvements.
 - [Product domain](product-domain.md) — platform-neutral intent and vocabulary; not a delivery-status record.
 - [Operations handoff](operations-handoff.md) — runtime, recovery, email, and verification guidance.
-- [Release cutover checklist](release-cutover.md) — separate application go-live from Customer-operated Microsoft 365 activation, with owners, gates, rollback, and sign-off.
+- [Release cutover checklist](release-cutover.md) — separate application go-live from Operator organization-operated Microsoft 365 activation, with owners, gates, rollback, and sign-off.
 - [Microsoft 365 channel](microsoft-365-channel.md) — Entra/Exchange provisioning, controlled tenant smoke, recovery, and certificate rotation.
 
 ## Architecture and decision records

@@ -248,7 +248,7 @@ export function parseCustomerMailErrorCode(value: unknown): CustomerMailErrorCod
 }
 
 export function parseCustomerMailboxSyncState(value: unknown): CustomerMailboxSyncState {
-  return parseClosedValue(value, customerMailboxSyncStates, 'customer mailbox sync state');
+  return parseClosedValue(value, customerMailboxSyncStates, 'correspondence mailbox sync state');
 }
 
 function parseClosedValue<const T extends readonly string[]>(
