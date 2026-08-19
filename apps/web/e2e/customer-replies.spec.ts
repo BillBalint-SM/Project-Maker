@@ -134,7 +134,7 @@ test('opens the exact ping source without resolving it and retains UNKNOWN evide
   await expect(page.getByTestId('unknown-delivery-receipt-evidence')).toContainText(
     'igazolja az átvételt',
   );
-  await page.getByRole('link', { name: 'Kapcsolódó tisztázási tétel áttekintése' }).click();
+  await page.getByRole('link', { name: 'Kapcsolódó tisztázandó tétel áttekintése' }).click();
   await expect(page).toHaveURL(new RegExp(`reviewFollowUpId=${followUp.id}`));
   await expect(page.getByTestId('reply-review-context')).toContainText(
     'nem módosította és nem zárta le',

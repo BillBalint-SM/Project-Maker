@@ -21,6 +21,7 @@ import type {
   ProjectReadiness,
   ProjectDecisionReview,
 } from '@project-maker/contracts';
+import { projectStatusLabel } from '@project-maker/contracts/runtime';
 import { DataSource, EntityManager, In, QueryFailedError } from 'typeorm';
 
 import { AuditEvent, type AuditPayload } from '../audit/audit-event.entity';
@@ -96,7 +97,7 @@ export class MarkdownService {
   ): Promise<MarkdownRevision> {
     validateCreateInput(input);
     if (project.status === 'ARCHIVED') {
-      throw new ConflictException('Archivált projekthez nem generálható Markdown-revízió; előbb állítsd vissza a projektet.');
+      throw new ConflictException('Archivált projekthez nem hozható létre specifikációverzió; előbb állítsd vissza a projektet.');
     }
 
     const revisionRepository = manager.getRepository(MarkdownRevisionEntity);
@@ -183,7 +184,7 @@ export class MarkdownService {
     const defaultTemplate = templates.find((template) => template.isDefault);
     const selectedTemplateId = project.markdownTemplateId ?? defaultTemplate?.id;
     if (!selectedTemplateId) {
-      throw new ConflictException('Nem érhető el publikált Markdown-sablon.');
+      throw new ConflictException('Nem érhető el publikált specifikációs sablon.');
     }
     return { selectedTemplateId, templates };
   }
@@ -409,7 +410,7 @@ function summarizeChanges(
   version: number,
 ): string {
   if (!previousRevision) {
-    return 'Első revízió; nincs korábbi revízió.';
+    return 'Első specifikációverzió; nincs korábbi verzió.';
   }
 
   const previousSnapshot = previousRevision.sourceSnapshot;
@@ -417,7 +418,7 @@ function summarizeChanges(
     .map((section) => describeSectionChanges(previousSnapshot[section], currentSnapshot[section], section))
     .filter((section): section is SectionChangeReport => section !== null);
   if (sectionChanges.length === 0) {
-    return `A(z) ${version}. revízió forráspillanatképe nem változott a(z) ${previousRevision.version}. revízió óta.`;
+    return `A(z) ${version}. specifikációverzió forráspillanatképe nem változott a(z) ${previousRevision.version}. verzió óta.`;
   }
 
   const details = sectionChanges.flatMap((section) => {
@@ -439,7 +440,7 @@ function summarizeChanges(
     ];
   });
   return [
-    `A(z) ${version}. revízió a következő változásokat rögzíti a(z) ${previousRevision.version}. revízió óta:`,
+    `A(z) ${version}. specifikációverzió a következő változásokat rögzíti a(z) ${previousRevision.version}. verzió óta:`,
     ...details,
   ].join('\n');
 }
@@ -672,15 +673,15 @@ function renderValues(input: MarkdownRenderInput): Readonly<Record<string, strin
   return {
     'project.name': escapeMarkdownInline(input.sourceSnapshot.project.name),
     'revision.metadata': [
-      '## Revízió',
+      '## Specifikációverzió',
       '',
       `- Verzió: ${input.version}`,
       `- Generálás oka: ${input.reason === 'MANUAL' ? 'Kézi' : 'Mérföldkő'}`,
       `- Mérföldkő: ${input.milestone ? escapeMarkdownInline(input.milestone) : 'Nincs'}`,
       `- Létrehozva (UTC): ${input.createdAt.toISOString()}`,
-      `- Előző revízió: ${input.previousRevision ? `v${input.previousRevision.version}` : 'Nincs'}`,
+      `- Előző verzió: ${input.previousRevision ? `v${input.previousRevision.version}` : 'Nincs'}`,
       '',
-      '### Változások az előző revízió óta',
+      '### Változások az előző verzió óta',
       '',
       input.changeSummary,
     ].join('\n'),
@@ -699,7 +700,7 @@ function renderProjectContext(project: ProjectWorkspace): string {
     `- Projekt: ${escapeMarkdownInline(project.name)}`,
     `- Ügyfélkapcsolat: ${escapeMarkdownInline(project.customerContactName)}`,
     `- Kapcsolati e-mail: ${escapeMarkdownInline(project.customerContactEmail)}`,
-    `- Státusz: ${escapeMarkdownInline(project.status)}`,
+    `- Adminisztratív projektfázis: ${escapeMarkdownInline(projectStatusLabel(project.status))}`,
     `- Következő lépés felelőse: ${project.nextActionOwner.displayName ? escapeMarkdownInline(project.nextActionOwner.displayName) : 'Nincs kijelölve'}`,
     `- Következő lépés: ${project.nextAction ? escapeMarkdownInline(project.nextAction) : 'Nincs megadva'}`,
   ].join('\n');

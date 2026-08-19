@@ -33,12 +33,12 @@ describe('AppComponent', () => {
       fixture.nativeElement.querySelectorAll('[data-nav-label]') as NodeListOf<HTMLElement>,
     ).map((item) => item.textContent?.trim());
     expect(navigationLabels).toEqual([
-      'Áttekintő',
+      'Projektportfólió',
       'Új projekt',
-      'Folyamatban lévő ügyek',
-      'Utánkövetések',
-      'Markdown beállítások',
-      'Kérdésbank beállítások',
+      'Aktív munkasor',
+      'Tisztázandó tételek',
+      'Specifikációs sablonok',
+      'Kérdésbank',
     ]);
 
     const replyEntry = fixture.nativeElement.querySelector(

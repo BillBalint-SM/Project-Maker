@@ -55,7 +55,9 @@ test('resumes schema-required projects directly and keeps the server-derived sta
   );
 
   await page.goto(`/projects/${project.id}/readiness`);
-  await expect(page.getByRole('heading', { name: 'Felkészültség', exact: true })).toBeVisible();
+  await expect(
+    page.getByRole('heading', { name: 'Becslési felkészültség', exact: true }),
+  ).toBeVisible();
   await expect(page.getByTestId('readiness-review-card')).toBeVisible();
 
   await page.goto(`/projects/${project.id}/decision-review`);
@@ -118,7 +120,7 @@ test('surfaces project coordination and redacted recent activity', async ({ page
   await expect(page.getByTestId('follow-up-card')).toBeVisible();
 });
 
-test('keeps lifecycle editing in Project settings and persists the selected state', async ({
+test('keeps administrative phase editing in Project settings and persists the selected value', async ({
   page,
 }) => {
   const uniquePart = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -139,7 +141,7 @@ test('keeps lifecycle editing in Project settings and persists the selected stat
 
   const statusSelect = page.getByTestId('project-lifecycle-status-select');
   await statusSelect.click();
-  await page.getByRole('option', { name: 'Ügyfélre vár', exact: true }).click();
+  await page.getByRole('option', { name: 'Ügyfél-visszajelzésre vár', exact: true }).click();
   const saveResponse = page.waitForResponse(
     (response) =>
       response.request().method() === 'PATCH' &&
@@ -148,11 +150,11 @@ test('keeps lifecycle editing in Project settings and persists the selected stat
   await page.getByTestId('save-project-lifecycle-status').locator('button').click();
   expect((await saveResponse).status()).toBe(200);
   await expect(page.getByTestId('project-lifecycle-feedback')).toContainText(
-    'A projekt életciklus-állapota frissítve lett.',
+    'Az adminisztratív projektfázis frissítve lett.',
   );
 
   await page.reload();
   await expect(page.getByTestId('project-lifecycle-status-select')).toContainText(
-    'Ügyfélre vár',
+    'Ügyfél-visszajelzésre vár',
   );
 });

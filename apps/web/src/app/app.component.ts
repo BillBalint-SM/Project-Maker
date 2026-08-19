@@ -10,7 +10,7 @@ import { CustomerRepliesApiService } from './projects/customer-replies-api.servi
   template: `
     <header class="app-header">
       <div class="header-inner">
-        <a class="brand" routerLink="/" aria-label="Project Maker áttekintő">
+        <a class="brand" routerLink="/" aria-label="Project Maker projektportfólió">
           <span class="brand-mark" aria-hidden="true">PM</span>
           <span>
             <strong>Project Maker</strong>
@@ -20,13 +20,13 @@ import { CustomerRepliesApiService } from './projects/customer-replies-api.servi
         <nav class="app-nav" aria-label="Fő navigáció">
           <ul>
             <li>
-              <a data-nav-label routerLink="/" routerLinkActive="active" ariaCurrentWhenActive="page" [routerLinkActiveOptions]="{ exact: true }">Áttekintő</a>
+              <a data-nav-label routerLink="/" routerLinkActive="active" ariaCurrentWhenActive="page" [routerLinkActiveOptions]="{ exact: true }">Projektportfólió</a>
             </li>
             <li>
               <a data-nav-label routerLink="/projects/new" routerLinkActive="active" ariaCurrentWhenActive="page">Új projekt</a>
             </li>
             <li class="queue-nav-item">
-              <a data-nav-label routerLink="/projects/active" routerLinkActive="active" ariaCurrentWhenActive="page">Folyamatban lévő ügyek</a>
+              <a data-nav-label routerLink="/projects/active" routerLinkActive="active" ariaCurrentWhenActive="page">Aktív munkasor</a>
               @if (newReplyCount() > 0) {
                 <a
                   class="reply-count"
@@ -38,13 +38,13 @@ import { CustomerRepliesApiService } from './projects/customer-replies-api.servi
               }
             </li>
             <li>
-              <a data-nav-label routerLink="/follow-ups" routerLinkActive="active" ariaCurrentWhenActive="page">Utánkövetések</a>
+              <a data-nav-label routerLink="/follow-ups" routerLinkActive="active" ariaCurrentWhenActive="page">Tisztázandó tételek</a>
             </li>
             <li>
-              <a data-nav-label routerLink="/settings/markdown-templates" routerLinkActive="active" ariaCurrentWhenActive="page">Markdown beállítások</a>
+              <a data-nav-label routerLink="/settings/markdown-templates" routerLinkActive="active" ariaCurrentWhenActive="page">Specifikációs sablonok</a>
             </li>
             <li>
-              <a data-nav-label routerLink="/settings/questions" routerLinkActive="active" ariaCurrentWhenActive="page">Kérdésbank beállítások</a>
+              <a data-nav-label routerLink="/settings/questions" routerLinkActive="active" ariaCurrentWhenActive="page">Kérdésbank</a>
             </li>
           </ul>
         </nav>

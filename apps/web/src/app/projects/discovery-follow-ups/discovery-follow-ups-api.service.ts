@@ -24,12 +24,12 @@ export type DiscoveryOperation =
   | 'resolve';
 
 const discoveryActions: Readonly<Record<DiscoveryOperation, string>> = {
-  load: 'betölteni az utánkövetéseket',
+  load: 'betölteni a tisztázandó tételeket',
   'load-source-options': 'betölteni a kezdő felmérés forrásait',
-  create: 'létrehozni az utánkövetést',
-  update: 'menteni az utánkövetés módosításait',
-  'set-source-link': 'módosítani az utánkövetés forrását',
-  resolve: 'lezárni az utánkövetést',
+  create: 'létrehozni a tisztázandó tételt',
+  update: 'menteni a tisztázandó tétel módosításait',
+  'set-source-link': 'módosítani a tisztázandó tétel forrását',
+  resolve: 'lezárni a tisztázandó tételt',
 };
 
 export class DiscoveryFollowUpsApiError extends Error {
@@ -207,19 +207,19 @@ function discoveryNextStep(
   operation: DiscoveryOperation,
 ): string {
   if (status === 404) {
-    return 'Térj vissza az Áttekintőre, és ellenőrizd, hogy a projekt még létezik-e.';
+    return 'Térj vissza a projektportfólióhoz, és ellenőrizd, hogy a projekt még létezik-e.';
   }
   if (status === 409 && operation === 'create') {
     return 'A projekt archiválva lett vagy időközben megváltozott. Töltsd újra az oldalt, majd próbáld meg ismét.';
   }
   if (status === 409 && operation === 'update') {
-    return 'Az utánkövetés időközben megváltozhatott. Töltsd be az aktuális verziót, majd próbáld újra.';
+    return 'A tisztázandó tétel időközben megváltozhatott. Töltsd be az aktuális verziót, majd próbáld újra.';
   }
   if (status === 409 && operation === 'set-source-link') {
     return 'A kezdő felmérés forráslistája frissült. Válassz újra.';
   }
   if (status === 409) {
-    return 'Frissítsd a projektet a legújabb életciklus-állapot megjelenítéséhez.';
+    return 'Frissítsd a projektet a legújabb adminisztratív projektfázis megjelenítéséhez.';
   }
   if (status === 400 && operation === 'create') {
     return 'Válassz kategóriát, töltsd ki a kötelező mezőket és adj meg valós határidőt.';
@@ -227,5 +227,5 @@ function discoveryNextStep(
   if (status === 400 && operation === 'resolve') {
     return 'Ellenőrizd a megadott értékeket, majd próbáld újra.';
   }
-  return 'Frissítsd az utánkövetéseket, majd próbáld újra.';
+  return 'Frissítsd a tisztázandó tételeket, majd próbáld újra.';
 }

@@ -1,7 +1,7 @@
 <p-card data-testid="readiness-review-card">
   <ng-template #title>Felkészültségi értékelés</ng-template>
   <ng-template #subtitle>
-    Az értékelés a kezdő felmérés, az ellenőrzőlista és a tisztázási utánkövetések aktuális állapotát foglalja össze.
+    Az értékelés a kezdő felmérés, az ellenőrzőlista és a tisztázandó tételek aktuális állapotát foglalja össze.
   </ng-template>
 
   @if (loading()) {
@@ -97,7 +97,7 @@
                   }
                   @case ('follow-ups') {
                     <p-button
-                      label="Utánkövetések megnyitása"
+                      label="Tisztázandó tételek kezelése"
                       [attr.data-testid]="'readiness-review-gap-action-' + gap.id"
                       (onClick)="scrollToDiscoveryFollowUps()"
                     />

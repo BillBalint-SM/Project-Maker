@@ -1,7 +1,7 @@
 <section aria-labelledby="markdown-settings-title">
   <div class="page-heading settings-heading">
     <span class="eyebrow">Szervezeti beállítás</span>
-    <h1 id="markdown-settings-title">Markdown beállítások</h1>
+    <h1 id="markdown-settings-title">Specifikációs sablonok</h1>
     <p>Névvel ellátott sablonokat szerkeszthetsz, előnézetben ellenőrizhetsz és változatlan publikált verzióként tehetsz elérhetővé.</p>
   </div>
 
@@ -9,7 +9,7 @@
   @if (feedback()) { <p-message severity="success" role="status" data-testid="markdown-template-feedback">{{ feedback() }}</p-message> }
 
   @if (loading()) {
-    <div class="state-panel"><p-progress-spinner ariaLabel="Markdown sablonok betöltése" /><p>Markdown sablonok betöltése…</p></div>
+    <div class="state-panel"><p-progress-spinner ariaLabel="Specifikációs sablonok betöltése" /><p>Specifikációs sablonok betöltése…</p></div>
   } @else if (loadError()) {
     <div class="state-panel" role="alert"><h2>A sablonok nem tölthetők be</h2><p>{{ loadError() }}</p><p-button label="Sablonok újratöltése" (onClick)="load()" /></div>
   } @else {

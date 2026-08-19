@@ -26,7 +26,7 @@ const headingBlockPattern = /^#{1,6}[ \t]+\S[^\r\n]*$/;
 
 const previewValues: Readonly<Record<string, string | null>> = {
   'project.name': 'Minta projekt',
-  'revision.metadata': '## Revízió\n\n- Ok: Kézi generálás\n- Verzió: 1',
+  'revision.metadata': '## Specifikációverzió\n\n- Ok: Kézi generálás\n- Verzió: 1',
   'project.context': '## Projektkontextus\n\n- Ügyfél: Minta ügyfél\n- Felelős: Minta tulajdonos',
   'project.schema': '## Elfogadott kérdésséma\n\n30 kiválasztott kérdés.',
   'project.initialIntake': '## Initial Intake\n\nA minta felmérés lezárult.',
@@ -68,7 +68,7 @@ export class MarkdownTemplateService {
       return toSummary(await this.dataSource.getRepository(MarkdownTemplateEntity).save(template), null);
     } catch (error) {
       if (isUniqueViolation(error)) {
-        throw new ConflictException('Már létezik ilyen nevű Markdown-sablon.');
+        throw new ConflictException('Már létezik ilyen nevű specifikációs sablon.');
       }
       throw error;
     }
@@ -84,7 +84,7 @@ export class MarkdownTemplateService {
       return toSummary(saved, await this.latestVersion(id));
     } catch (error) {
       if (isUniqueViolation(error)) {
-        throw new ConflictException('Már létezik ilyen nevű Markdown-sablon.');
+        throw new ConflictException('Már létezik ilyen nevű specifikációs sablon.');
       }
       throw error;
     }
@@ -129,14 +129,14 @@ export class MarkdownTemplateService {
       ? await this.findTemplate(templateId)
       : await this.dataSource.getRepository(MarkdownTemplateEntity).findOneBy({ isDefault: true });
     if (!template) {
-      throw new ConflictException('Nem érhető el alapértelmezett Markdown-sablon.');
+      throw new ConflictException('Nem érhető el alapértelmezett specifikációs sablon.');
     }
     const version = await this.dataSource.getRepository(MarkdownTemplateVersionEntity).findOne({
       where: { templateId: template.id },
       order: { version: 'DESC' },
     });
     if (!version) {
-      throw new ConflictException('A kiválasztott Markdown-sablonnak nincs publikált verziója.');
+      throw new ConflictException('A kiválasztott specifikációs sablonnak nincs publikált verziója.');
     }
     return { template, version };
   }
@@ -162,11 +162,11 @@ export function validateTemplateContent(content: string): void {
   const matches = [...content.matchAll(placeholderPattern)];
   const residue = content.replace(placeholderPattern, '');
   if (residue.includes('{{') || residue.includes('}}')) {
-    throw new BadRequestException('A Markdown-sablon hibás formátumú placeholdert tartalmaz.');
+    throw new BadRequestException('A specifikációs sablon hibás formátumú helyőrzőt tartalmaz.');
   }
   for (const match of matches) {
     if (!allowedPlaceholders.has(match[1] ?? '')) {
-      throw new BadRequestException(`Nem támogatott Markdown-sablon placeholder: ${match[1] ?? ''}.`);
+      throw new BadRequestException(`Nem támogatott specifikációs sablon-helyőrző: ${match[1] ?? ''}.`);
     }
   }
   for (const block of splitMarkdownBlocks(content)) {
@@ -175,7 +175,7 @@ export function validateTemplateContent(content: string): void {
     );
     if (hasOptionalPlaceholder && !optionalPlaceholderBlockPattern.test(block.trim())) {
       throw new BadRequestException(
-        'Az opcionális Markdown-sablon placeholdernek önálló Markdown-blokkban kell állnia.',
+        'Az opcionális specifikációs sablon helyőrzőjének önálló Markdown-blokkban kell állnia.',
       );
     }
   }

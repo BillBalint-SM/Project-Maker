@@ -371,7 +371,7 @@ export class DiscoveryFollowUpsComponent implements OnInit {
             sortDiscoveryFollowUps([...current, created]),
           );
           this.resetCreationForm();
-          this.feedback.set('Az utánkövetés létrejött.');
+          this.feedback.set('A tisztázandó tétel létrejött.');
           this.committedChange.emit();
         },
         error: (error: Error) => {
@@ -443,7 +443,7 @@ export class DiscoveryFollowUpsComponent implements OnInit {
             ),
           );
           this.clearSourceLinkState();
-          this.feedback.set('Az utánkövetés forrása frissült.');
+          this.feedback.set('A tisztázandó tétel forrása frissült.');
           this.committedChange.emit();
         },
         error: (error: Error) => {
@@ -532,7 +532,7 @@ export class DiscoveryFollowUpsComponent implements OnInit {
       current.source === null
     ) {
       this.actionError.set(
-        'A forráshivatkozás nem törölhető, mert az utánkövetés már nem nyitott vagy nincs hozzárendelt forrása. Frissítsd az utánkövetéseket, majd próbáld újra.',
+        'A forráshivatkozás nem törölhető, mert a tisztázandó tétel már nem nyitott vagy nincs hozzárendelt forrása. Frissítsd a tisztázandó tételeket, majd próbáld újra.',
       );
       return;
     }
@@ -570,7 +570,7 @@ export class DiscoveryFollowUpsComponent implements OnInit {
               ),
             ),
           );
-          this.feedback.set('Az utánkövetés forráshivatkozása törölve.');
+          this.feedback.set('A tisztázandó tétel forráshivatkozása törölve.');
           this.committedChange.emit();
         },
         error: (error: Error) => this.actionError.set(error.message),
@@ -694,7 +694,7 @@ export class DiscoveryFollowUpsComponent implements OnInit {
             ),
           );
           this.clearEditState();
-          this.feedback.set('Az utánkövetés módosításai mentve.');
+          this.feedback.set('A tisztázandó tétel módosításai mentve.');
           this.committedChange.emit();
         },
         error: (error: Error) => {
@@ -705,7 +705,7 @@ export class DiscoveryFollowUpsComponent implements OnInit {
           ) {
             this.editConflictId.set(followUpId);
             this.actionError.set(
-              'Az utánkövetés időközben megváltozott. A piszkozat megmaradt; mentés előtt töltsd be az aktuális verziót.',
+              'A tisztázandó tétel időközben megváltozott. A piszkozat megmaradt; mentés előtt töltsd be az aktuális verziót.',
             );
             this.refreshAfterEditConflict(followUpId);
             return;
@@ -751,14 +751,14 @@ export class DiscoveryFollowUpsComponent implements OnInit {
           this.followUps.set(sortDiscoveryFollowUps(followUps));
           if (!refreshedFollowUp) {
             this.actionError.set(
-              'Az utánkövetés frissítés után nem található. Mentés előtt próbáld újra a frissítést.',
+              'A tisztázandó tétel frissítés után nem található. Mentés előtt próbáld újra a frissítést.',
             );
             return;
           }
 
           if (!this.isCanonicalOpen(refreshedFollowUp)) {
             this.actionError.set(
-              'A lezárt utánkövetés már nem szerkeszthető. Vesd el ezt a piszkozatot.',
+              'A lezárt tisztázandó tétel már nem szerkeszthető. Vesd el ezt a piszkozatot.',
             );
           }
 
@@ -881,7 +881,7 @@ export class DiscoveryFollowUpsComponent implements OnInit {
           );
           this.openedResolutionId.set(null);
           this.resetResolutionForm();
-          this.feedback.set('Az utánkövetés lezárva.');
+          this.feedback.set('A tisztázandó tétel lezárva.');
           this.committedChange.emit();
         },
         error: (error: Error) => {

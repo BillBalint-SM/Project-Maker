@@ -45,8 +45,8 @@ const factorCopy: Readonly<Record<FactorId, { readonly label: string; readonly h
     helpText: 'Az aktuális intake ellenőrzőlista releváns elemeinek teljessége.',
   },
   followUpResolution: {
-    label: 'Tisztázási utánkövetés',
-    helpText: 'A tisztázási utánkövetések lezártsága.',
+    label: 'Tisztázandó tételek',
+    helpText: 'A tisztázandó tételek lezártsága.',
   },
 };
 
@@ -356,13 +356,13 @@ function createGaps(input: ReadinessCalculatorInput): readonly ReadinessGap[] {
       gap: {
         id: `follow-up-${followUp.id}`,
         severity: isBlocked ? criticalSeverity : importantSeverity,
-        category: 'Tisztázási utánkövetés',
+        category: 'Tisztázandó tétel',
         message: isBlocked
-          ? 'Egy tisztázási utánkövetés blokkolt állapotban van.'
-          : 'Van lezáratlan tisztázási utánkövetés.',
+          ? 'Egy tisztázandó tétel blokkolt állapotban van.'
+          : 'Van lezáratlan tisztázandó tétel.',
         nextStep: isBlocked
-          ? 'Oldd fel a blokkoló tisztázási utánkövetést.'
-          : 'Dolgozd fel vagy zárd le a tisztázási utánkövetést.',
+          ? 'Oldd fel a blokkoló tisztázandó tételt.'
+          : 'Dolgozd fel vagy zárd le a tisztázandó tételt.',
         target: 'follow-ups',
         snapshotId: null,
         followUpId: followUp.id,
