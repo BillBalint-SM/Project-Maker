@@ -79,7 +79,8 @@ class ImapFlowMailboxClient implements ImapMailboxClient {
       uid: `${search.fromUid}:${search.toUid}`,
       ...(search.since === null ? {} : { since: new Date(search.since) }),
     }, { uid: true });
-    return result === false ? [] : result;
+    if (result === false) throw new Error('IMAP SEARCH did not complete.');
+    return result;
   }
 
   async fetch(uids: readonly number[]): Promise<readonly ImapMailboxRecord[]> {
