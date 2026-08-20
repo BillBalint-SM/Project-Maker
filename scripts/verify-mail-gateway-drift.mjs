@@ -11,7 +11,7 @@ const scanTargets = [
   'packages/contracts/src',
 ];
 const excludedDirectories = new Set([
-  'docs/superpowers', 'docs/evidence', 'docs/adr', 'apps/api/src/migrations',
+  'docs/evidence', 'docs/adr', 'apps/api/src/migrations',
 ]);
 const excludedFiles = new Set([
   'scripts/verify-mail-gateway-drift.mjs',

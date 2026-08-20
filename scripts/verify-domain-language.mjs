@@ -7,7 +7,6 @@ const excludedPaths = new Set([
   'scripts/verify-domain-language.mjs',
   'scripts/test/verify-domain-language.test.mjs',
 ]);
-const excludedPrefixes = ['docs/superpowers/'];
 const scannedExtensions = new Set(['.example', '.md', '.mjs', '.ps1', '.ts', '.yaml', '.yml']);
 const forbiddenLanguage = [
   { label: 'legacy mailbox configuration', pattern: /\bCUSTOMER_MAILBOX_(?:NAME|ADDRESS|SYNC_POLL_INTERVAL_MS)\b/g },
@@ -36,7 +35,7 @@ let scannedFileCount = 0;
 
 for (const absoluteFile of await listScannableFiles(repositoryRoot)) {
   const relativeFile = toRepositoryPath(absoluteFile);
-  if (excludedPaths.has(relativeFile) || excludedPrefixes.some((prefix) => relativeFile.startsWith(prefix))) {
+  if (excludedPaths.has(relativeFile)) {
     continue;
   }
   const content = withoutGlossaryAvoidLines(await readFile(absoluteFile, 'utf8'));

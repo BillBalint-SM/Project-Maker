@@ -1,8 +1,12 @@
 ---
-status: accepted
+status: superseded
+superseded-by: 0004-project-operation-policy
 ---
 
-# Keep the project cockpit as a domain-aligned orchestration shell
+# Superseded: keep the project cockpit as a domain-aligned orchestration shell
+
+This decision is retained for history. Its active terminology and policy are
+replaced by [ADR-0004](0004-project-operation-policy.md).
 
 The project cockpit route remains a thin orchestration module, while each business area owns its state, rules, markup, styles, and data adapter inside a cohesive deep module. The first extraction introduces a cockpit-local, typed, single-flight operation policy and then moves Discovery follow-ups behind its own seam; Customer email follow-up remains a separate domain. The server stays authoritative for lifecycle and business validity, while the browser policy coordinates concurrent mutations and presents immediate affordances.
 
