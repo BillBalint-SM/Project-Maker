@@ -24,6 +24,7 @@ The current implementation and delivery status are maintained in
 - [x] **INTAKE-03:** Answers autosave and remain recoverable after restart. Verified for persisted answers in the first `INITIAL_INTAKE` slice: text autosaves after the 750 ms quiet period, discrete values save immediately, failed saves keep the draft and expose retry, reload/API restart/Compose-backed recovery return the same active round and answer from PostgreSQL.
 - [x] **INTAKE-04:** Users can manage follow-ups with owner, due date, status, answer/decision, next step, and optional Initial Intake source linkage.
 - [x] **INTAKE-05:** The UI provides Hungarian coaching content and deterministic answer-quality guidance. Verified for the first `INITIAL_INTAKE` slice: loading, blocked, save, retry, validation, completion, and round-state messages are Hungarian, and question coaching is rendered deterministically from persisted contract metadata without a model or keyword path.
+- [ ] **ATTACH-01:** Employees can upload and download governed Question Bank reference files and Project work attachments on Initial Intake checklist snapshots and Discovery follow-ups without rewriting retained history or retaining Customer inbound attachment content.
 
 ## Customer communication
 

@@ -142,9 +142,9 @@ questions. It is administered separately from choosing a project's questions.
 _Avoid_: Project question schema, interview round
 
 **Published Question Bank version**:
-The versioned, published Question Bank state from which a new Project question
-schema may select questions. Editing occurs in a draft and does not rewrite a
-previously approved Project question schema.
+The immutable Question Bank state from which a new Project question schema may
+select questions. A successful Question Bank change creates a successor version
+and never rewrites an earlier Project question schema.
 _Avoid_: Live mutation of an active interview, unversioned question source
 
 **Project question schema**:
@@ -170,6 +170,18 @@ The Project question schema that belongs to a started or completed Initial
 Intake interview round. It is not changed in place; a different assessment
 uses a newly accepted schema and a new Initial Intake round.
 _Avoid_: Rewriting answered questions, mutable historical assessment
+
+**Question Bank reference file**:
+An Operator organization-maintained file belonging to one question revision in
+a Published Question Bank version. A Project question schema retains the exact
+reference-file set it selected.
+_Avoid_: Project work attachment, mutable link to the latest Question Bank
+
+**Project work attachment**:
+A Project-owned file attached to one Initial Intake checklist snapshot or one
+Discovery follow-up. It remains separate from Question Bank guidance and
+Customer inbound attachment metadata.
+_Avoid_: Question Bank reference file, Customer inbound attachment, general Project document library
 
 **Post-interview readiness transition**:
 The direct transition from an ended Initial Intake meeting to that project's
