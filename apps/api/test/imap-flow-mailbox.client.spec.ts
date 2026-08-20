@@ -67,6 +67,23 @@ describe('IMAP protocol client', () => {
         && !error.message.includes('secret provider diagnostic'),
     );
   });
+
+  it('treats a connection loss during SEARCH as a retryable boundary failure', async () => {
+    const identity = await tlsIdentity;
+    server = new ControlledImapServer(identity, 'DISCONNECT_ON_SEARCH');
+    const port = await server.listen();
+    const mailbox = new ImapCustomerMailboxChanges(
+      configuration(port, identity.caCertificate),
+      new ImapFlowMailboxClientFactory(),
+    );
+
+    await assert.rejects(
+      mailbox.readChanges(null, '2026-08-20T08:00:00.000Z'),
+      (error: unknown) => error instanceof CustomerMailBoundaryError
+        && error.code === 'TEMPORARY_FAILURE',
+    );
+    assert.equal(server.commands.some((command) => command.includes('UID SEARCH')), true);
+  });
 });
 
 class ControlledImapServer {
@@ -77,7 +94,7 @@ class ControlledImapServer {
 
   constructor(
     identity: { readonly key: string; readonly certificate: string },
-    private readonly authentication: 'ACCEPT' | 'REJECT',
+    private readonly authentication: 'ACCEPT' | 'REJECT' | 'DISCONNECT_ON_SEARCH',
   ) {
     this.server = createServer(
       { key: identity.key, cert: identity.certificate, minVersion: 'TLSv1.2' },
@@ -149,7 +166,8 @@ class ControlledImapServer {
             '',
           ].join('\r\n'));
         } else if (upper.startsWith('UID SEARCH ')) {
-          socket.write(`* SEARCH 7\r\n${tag} OK SEARCH completed\r\n`);
+          if (this.authentication === 'DISCONNECT_ON_SEARCH') socket.destroy();
+          else socket.write(`* SEARCH 7\r\n${tag} OK SEARCH completed\r\n`);
         } else if (upper.startsWith('UID FETCH ')) {
           this.respondToFetch(socket, tag, command);
         } else if (upper === 'NOOP') {
@@ -177,7 +195,7 @@ class ControlledImapServer {
   }
 
   private finishAuthentication(socket: TLSSocket, tag: string, username: string): void {
-    if (this.authentication === 'ACCEPT' && username) {
+    if (this.authentication !== 'REJECT' && username) {
       this.authenticatedUsername = username;
       socket.write(`${tag} OK AUTHENTICATE completed\r\n`);
       return;
