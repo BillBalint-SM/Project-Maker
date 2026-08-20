@@ -15,7 +15,7 @@
   workflows remain available when the gateway is incomplete. Gateway activation
   requires the controlled smoke evidence described in
   [mail-gateway.md](../docs/mail-gateway.md).
-- Database migration `0023` is the current schema baseline. Historical
+- Database migration `0024` is the current schema baseline. Historical
   migrations remain retained and must not be edited or removed.
 
 ## Verification

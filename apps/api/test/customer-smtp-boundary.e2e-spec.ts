@@ -25,7 +25,7 @@ describe('Customer SMTP boundary', () => {
   const delivered: DeliveredMessage[] = [];
 
   before(async () => {
-    process.env['CORRESPONDENCE_MAILBOX_ADDRESS'] = 'project-maker@pte.hu';
+    process.env['CORRESPONDENCE_MAILBOX_ADDRESS'] = 'project-maker@example.test';
     process.env['CORRESPONDENCE_MAILBOX_NAME'] = 'Project Maker';
     const module = await Test.createTestingModule({ imports: [AppModule] })
       .overrideProvider(customerOutboundMailToken)

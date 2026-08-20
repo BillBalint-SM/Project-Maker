@@ -1,5 +1,7 @@
 import { expect, test, type APIRequestContext } from '@playwright/test';
 
+import { correspondenceMailboxAddress } from './mail-gateway-test-identity';
+
 test('runs single-flight manual refreshes and recovers from a bounded temporary IMAP failure', async ({
   page,
   request,
@@ -60,7 +62,7 @@ async function queueMailboxProbe(
     data: {
       internetMessageId: `<mailbox-sync-${label}@example.test>`,
       senderAddress: 'mailbox-sync@example.test',
-      recipientAddresses: ['project-maker@pte.hu'],
+      recipientAddresses: [correspondenceMailboxAddress],
       subject: `Mailbox sync ${label}`,
       textContent: `Mailbox sync probe ${label}.`,
       receivedAt: '2026-08-20T08:00:00.000Z',

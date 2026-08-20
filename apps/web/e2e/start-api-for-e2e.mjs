@@ -30,7 +30,7 @@ async function main() {
     env: {
       ...process.env,
       CORS_ORIGIN: process.env.CORS_ORIGIN ?? 'http://127.0.0.1:4200',
-      CORRESPONDENCE_MAILBOX_ADDRESS: process.env.CORRESPONDENCE_MAILBOX_ADDRESS ?? 'project-maker@pte.hu',
+      CORRESPONDENCE_MAILBOX_ADDRESS: process.env.CORRESPONDENCE_MAILBOX_ADDRESS ?? 'project-maker-e2e@example.test',
       CORRESPONDENCE_MAILBOX_NAME: process.env.CORRESPONDENCE_MAILBOX_NAME ?? 'Project Maker',
       MAIL_GATEWAY_SMTP_HOST: 'localhost', MAIL_GATEWAY_SMTP_PORT: String(gateway.smtpPort), MAIL_GATEWAY_SMTP_SECURITY: 'IMPLICIT_TLS', MAIL_GATEWAY_SMTP_USERNAME: 'playwright-smtp-user', MAIL_GATEWAY_SMTP_PASSWORD: 'playwright-smtp-password',
       MAIL_GATEWAY_IMAP_HOST: 'localhost', MAIL_GATEWAY_IMAP_PORT: String(gateway.imapPort), MAIL_GATEWAY_IMAP_SECURITY: 'IMPLICIT_TLS', MAIL_GATEWAY_IMAP_USERNAME: 'playwright-imap-user', MAIL_GATEWAY_IMAP_PASSWORD: 'playwright-imap-password', MAIL_GATEWAY_IMAP_FOLDER: 'INBOX',
@@ -42,7 +42,6 @@ async function main() {
   for (const signal of ['SIGINT', 'SIGTERM']) process.on(signal, () => { api.kill(signal); controlServer.close(); void gateway.close(); });
   api.on('exit', (code, signal) => signal ? process.kill(process.pid, signal) : process.exit(code ?? 1));
 }
-
 class GatewayFixture {
   constructor(identity) {
     this.identity = identity; this.sent = []; this.messages = []; this.nextUid = 1; this.readAttempts = 0; this.sockets = new Set();

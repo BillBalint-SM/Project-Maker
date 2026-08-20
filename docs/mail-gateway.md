@@ -47,6 +47,36 @@ SMTP and IMAP credentials stay separate even when the Operator supplies equal
 values. Do not enable plaintext, opportunistic TLS, credential logging, or a
 transport fallback.
 
+## Local synthetic gateway suite
+
+The complete mail path can be tested without an Operator mailbox or external
+credentials. Docker Desktop must be running, then this single command creates
+an isolated PostgreSQL container, generates a private test CA, starts real TLS
+SMTP and IMAP socket servers, runs the suite, and removes the container:
+
+```powershell
+pnpm test:mail-gateway
+```
+
+The aggregate covers these public seams:
+
+| Layer | Coverage | Focused command |
+| --- | --- | --- |
+| Unit and protocol | Configuration fail-closed rules, sender identity, encrypted checkpoints, SMTP outcome classification, IMAP paging/recovery, and authenticated TLS socket behavior | `pnpm test:mail-gateway:unit` |
+| API integration | Database-backed handoff, reminder, mailbox synchronization, reply correlation, and provider-neutral sender migration behavior | `pnpm test:mail-gateway:integration` |
+| Operations | Drift guard and the redacted activation-evidence schema | `pnpm test:mail-gateway:ops` |
+| Browser smoke | Real API and PostgreSQL with the controlled TLS gateway, including send, rejection/unknown outcomes, reply ingestion, replay deduplication, and temporary IMAP failure recovery | `pnpm test:mail-gateway:smoke` |
+
+Use the aggregate command for normal local verification. The focused API
+integration and browser commands expect the same disposable test database and
+mail-gateway environment that the aggregate or CI runner provisions.
+
+GitHub CI runs the same aggregate through `pnpm test:mail-gateway:ci` with an
+isolated service database. The synthetic suite never changes
+`docs/evidence/mail-gateway-smoke.json`: a local gateway proves application and
+protocol behavior, but it cannot prove the future Operator gateway's network,
+certificate chain, permissions, folder, or address-rewrite policy.
+
 ## Controlled gateway smoke
 
 Run this only in a controlled non-CI environment with a disposable Project

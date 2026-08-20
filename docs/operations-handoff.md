@@ -113,6 +113,7 @@ ordered TypeORM migrations registered in
 21. `0021-customer-correspondence-processing.ts` — explicit correspondence status, unread state, per-message classification, redacted processing audit, and guarded rollback while processing history exists.
 22. `0022-receipt-proven-handoff-revision.ts` — allows a receipt-proven `UNKNOWN` handoff to keep its immutable outcome while a successor handoff draft is created; rollback refuses an incompatible superseded state.
 23. `0023-customer-mail-triage.ts` — unmatched-message link/dismiss decisions, mail-system event retention, supporting Internet Message-ID lookup, and guarded rollback for retained triage history.
+24. `0024-operator-mail-gateway-sender.ts` — removes the retired provider-domain restriction from persisted sender snapshots while retaining generic email-shape constraints and guarded rollback.
 
 The deployed API image contains the compiled migration classes, but not the
 TypeScript migration source tree used by the development-only
@@ -163,7 +164,7 @@ docker compose --env-file .env exec -T api node -e $migrationStatusScript
 
 `pending: false` means that all migration classes in the running image are
 recorded in the database. The `applied` array is the database's migration
-history; the twenty-three expected names are listed above.
+history; the twenty-four expected names are listed above.
 
 There is no safe arbitrary migration selector in the runtime image. A
 controlled revert can undo only the latest applied migration through a
@@ -213,8 +214,10 @@ messages, and `0021` separately protects retained correspondence processing and
 classification history. Migration `0022` refuses to restore the earlier active-
 handoff uniqueness rule after an `UNKNOWN` handoff has been superseded.
 Migration `0023` protects retained mail-system events and explicit unmatched-
-message triage actions. These guards are recovery signals, not invitations to
-delete evidence until a rollback succeeds.
+message triage actions. Migration `0024` refuses to restore the retired
+provider-domain restriction while non-provider sender history exists. These
+guards are recovery signals, not invitations to delete evidence until a
+rollback succeeds.
 Before any revert, inspect the migration and choose the rollback procedure
 appropriate to the affected objects.
 
