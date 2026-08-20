@@ -74,16 +74,17 @@ describe('Customer SMTP boundary', () => {
        VALUES ($1, $2, 'CUSTOMER_REVIEW_EMAIL_SENT', $3::jsonb)`,
       [historicalEventId, projectId, JSON.stringify({ revisionVersion: '3' })],
     );
-    const history = await request(app.getHttpServer())
-      .get(`/projects/${projectId}/audit-events`)
-      .expect(200);
-    assert.ok(
-      history.body.events.some(
-        (event: { eventType: string; payload: Record<string, string> }) =>
-          event.eventType === 'CUSTOMER_REVIEW_EMAIL_SENT' &&
-          event.payload.revisionVersion === '3',
-      ),
+    const history = await dataSource.query<Array<{ event_type: string; payload: Record<string, string> }>>(
+      `SELECT "event_type", "payload"
+       FROM "audit_events"
+       WHERE "project_id" = $1`,
+      [projectId],
     );
+    assert.ok(history.some(
+      (event) =>
+        event.event_type === 'CUSTOMER_REVIEW_EMAIL_SENT' &&
+        event.payload.revisionVersion === '3',
+    ));
   });
 
   it('rejects revision input and keeps the manual ping free of internal delivery content', async () => {

@@ -10,7 +10,6 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import type {
   CreateMarkdownRevisionInput,
-  ProjectCockpit,
   ProjectStatus,
   ProjectWorkspace,
 } from '@project-maker/contracts';
@@ -95,19 +94,6 @@ export class ProjectsService {
     });
 
     return projects.map(toWorkspace);
-  }
-
-  async cockpit(projectId: string): Promise<ProjectCockpit> {
-    const project = await this.findProject(projectId);
-    return {
-      projectId: project.id,
-      status: project.status,
-      internalOwnerName: project.internalOwnerName,
-      nextActionOwnerRole: project.nextActionOwnerRole,
-      nextActionOwner: toNextActionOwner(project),
-      nextAction: project.nextAction,
-      dueAt: toIsoOrNull(project.dueAt),
-    };
   }
 
   async updateWorkspace(
@@ -266,13 +252,6 @@ export class ProjectsService {
     }
   }
 
-  private async findProject(projectId: string): Promise<Project> {
-    const project = await this.projectRepository.findOneBy({ id: projectId });
-    if (!project) {
-      throw new NotFoundException('Project not found.');
-    }
-    return project;
-  }
 }
 
 async function findLockedProject(manager: EntityManager, projectId: string): Promise<Project> {

@@ -7,7 +7,7 @@ import {
 } from '@angular/core';
 import { finalize, type MonoTypeOperatorFunction } from 'rxjs';
 
-export const cockpitOperationIds = [
+export const projectOperationIds = [
   'workspace-save',
   'project-basics-save',
   'project-status-save',
@@ -24,31 +24,31 @@ export const cockpitOperationIds = [
   'project-delete',
 ] as const;
 
-export type CockpitOperationId = (typeof cockpitOperationIds)[number];
+export type ProjectOperationId = (typeof projectOperationIds)[number];
 
-export interface CockpitOperationLease {
-  readonly operation: CockpitOperationId;
+export interface ProjectOperationLease {
+  readonly operation: ProjectOperationId;
   release(): void;
 }
 
-export interface CockpitOperationPolicy {
-  readonly activeOperation: Signal<CockpitOperationId | null>;
+export interface ProjectOperationPolicy {
+  readonly activeOperation: Signal<ProjectOperationId | null>;
   readonly busy: Signal<boolean>;
-  tryAcquire(operation: CockpitOperationId): CockpitOperationLease | null;
+  tryAcquire(operation: ProjectOperationId): ProjectOperationLease | null;
 }
 
-export const COCKPIT_OPERATION_POLICY =
-  new InjectionToken<CockpitOperationPolicy>('COCKPIT_OPERATION_POLICY');
+export const PROJECT_OPERATION_POLICY =
+  new InjectionToken<ProjectOperationPolicy>('PROJECT_OPERATION_POLICY');
 
-export function createCockpitOperationPolicy(): CockpitOperationPolicy {
-  const activeOperationState = signal<CockpitOperationId | null>(null);
+export function createProjectOperationPolicy(): ProjectOperationPolicy {
+  const activeOperationState = signal<ProjectOperationId | null>(null);
   const activeOperation = activeOperationState.asReadonly();
   const busy = computed(() => activeOperation() !== null);
   let activeLeaseToken: symbol | null = null;
 
   function tryAcquire(
-    operation: CockpitOperationId,
-  ): CockpitOperationLease | null {
+    operation: ProjectOperationId,
+  ): ProjectOperationLease | null {
     if (activeLeaseToken !== null) {
       return null;
     }
@@ -63,7 +63,7 @@ export function createCockpitOperationPolicy(): CockpitOperationPolicy {
       release(): void {
         if (released) {
           throw new Error(
-            'Cockpit operation lease ' + operation + ' was already released.',
+            'Project operation lease ' + operation + ' was already released.',
           );
         }
         if (
@@ -71,7 +71,7 @@ export function createCockpitOperationPolicy(): CockpitOperationPolicy {
           activeOperationState() !== operation
         ) {
           throw new Error(
-            'Cockpit operation lease ' + operation + ' is not active.',
+            'Project operation lease ' + operation + ' is not active.',
           );
         }
 
@@ -85,15 +85,15 @@ export function createCockpitOperationPolicy(): CockpitOperationPolicy {
   return { activeOperation, busy, tryAcquire };
 }
 
-export function provideCockpitOperationPolicy(): Provider {
+export function provideProjectOperationPolicy(): Provider {
   return {
-    provide: COCKPIT_OPERATION_POLICY,
-    useFactory: createCockpitOperationPolicy,
+    provide: PROJECT_OPERATION_POLICY,
+    useFactory: createProjectOperationPolicy,
   };
 }
 
-export function releaseCockpitOperationOnFinalize<T>(
-  lease: CockpitOperationLease,
+export function releaseProjectOperationOnFinalize<T>(
+  lease: ProjectOperationLease,
 ): MonoTypeOperatorFunction<T> {
   return finalize(() => lease.release());
 }

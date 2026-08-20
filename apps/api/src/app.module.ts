@@ -1,7 +1,6 @@
 import { BadRequestException, Module, ValidationPipe, type ValidationError } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { APP_PIPE } from '@nestjs/core';
-import { TerminusModule } from '@nestjs/terminus';
 
 import { AuditModule } from './audit/audit.module';
 import { DatabaseModule } from './database/database.module';
@@ -21,7 +20,6 @@ import { ReadinessModule } from './readiness/readiness.module';
 @Module({
   imports: [
     ConfigModule.forRoot({ envFilePath: '../../.env', isGlobal: true }),
-    TerminusModule,
     DatabaseModule,
     MailDeliveryModule.gateway(),
     DecisionReviewModule,

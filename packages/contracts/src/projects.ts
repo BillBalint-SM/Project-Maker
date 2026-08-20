@@ -67,13 +67,3 @@ export interface ProjectWorkspace {
   readonly createdAt: string;
   readonly updatedAt: string;
 }
-
-export interface ProjectCockpit {
-  readonly projectId: string;
-  readonly status: ProjectStatus;
-  readonly internalOwnerName: string | null;
-  readonly nextActionOwnerRole: NextActionOwnerRole | null;
-  readonly nextActionOwner: NextActionOwner;
-  readonly nextAction: string | null;
-  readonly dueAt: string | null;
-}
