@@ -33,7 +33,7 @@ describe('Customer follow-up ping draft and manual delivery', () => {
   let releaseDelivery: (() => void) | null = null;
 
   before(async () => {
-    process.env['CORRESPONDENCE_MAILBOX_ADDRESS'] = 'project-maker@pte.hu';
+    process.env['CORRESPONDENCE_MAILBOX_ADDRESS'] = 'project-maker@example.test';
     process.env['CORRESPONDENCE_MAILBOX_NAME'] = 'Project Maker';
     const module = await Test.createTestingModule({ imports: [AppModule] })
       .overrideProvider(customerOutboundMailToken)
@@ -151,7 +151,7 @@ describe('Customer follow-up ping draft and manual delivery', () => {
       .expect(200);
     assert.deepEqual(initialSenderIdentity.body, {
       name: 'Project Maker',
-      address: 'project-maker@pte.hu',
+      address: 'project-maker@example.test',
     });
     await request(app.getHttpServer())
       .post(`/projects/${projectId}/follow-up/ping/preview`)
@@ -188,7 +188,7 @@ describe('Customer follow-up ping draft and manual delivery', () => {
     assert.equal(preview.body.draftVersion, 2);
     assert.equal(preview.body.referencedFollowUpVersion, 1);
     assert.equal(preview.body.senderName, 'Project Maker');
-    assert.equal(preview.body.senderAddress, 'project-maker@pte.hu');
+    assert.equal(preview.body.senderAddress, 'project-maker@example.test');
     assert.equal(typeof preview.body.previewToken, 'string');
     assert.match(preview.body.text, /Kérlek, küldd el a hiányzó jóváhagyást\./);
     assert.match(preview.body.text, /Kérdés: Melyik jóváhagyás hiányzik\?/);
@@ -207,8 +207,8 @@ describe('Customer follow-up ping draft and manual delivery', () => {
     assert.equal(delivered.length, 1);
     assert.equal(submitted.length, 1);
     assert.equal(submitted[0]?.senderName, 'Project Maker');
-    assert.equal(submitted[0]?.senderAddress, 'project-maker@pte.hu');
-    assert.match(submitted[0]?.replyToAddress ?? '', /^.+\+[A-Za-z0-9_-]+@pte\.hu$/);
+    assert.equal(submitted[0]?.senderAddress, 'project-maker@example.test');
+    assert.match(submitted[0]?.replyToAddress ?? '', /^.+\+[A-Za-z0-9_-]+@example\.test$/);
     assert.equal(deliveredMessageFrozen.at(-1), true);
     assert.deepEqual(delivered[0], {
       to: preview.body.recipientEmail,
@@ -237,7 +237,7 @@ describe('Customer follow-up ping draft and manual delivery', () => {
     assert.equal(outboundRows.length, 1);
     assert.equal(outboundRows[0]?.source_type, 'CUSTOMER_FOLLOW_UP_PING');
     assert.equal(outboundRows[0]?.sender_name, 'Project Maker');
-    assert.equal(outboundRows[0]?.sender_address, 'project-maker@pte.hu');
+    assert.equal(outboundRows[0]?.sender_address, 'project-maker@example.test');
     assert.equal(outboundRows[0]?.reply_to_address, submitted[0]?.replyToAddress);
 
     const correspondenceRows = await dataSource.query<Array<{
@@ -469,7 +469,7 @@ describe('Customer follow-up ping draft and manual delivery', () => {
     const identity = await loadPingIdentity(dataSource, projectId);
     assert.ok(identity.outbound_communication_id);
     assert.ok(identity.correspondence_id);
-    assert.match(identity.reply_to_address, /^project-maker\+[A-Za-z0-9_-]+@pte\.hu$/);
+    assert.match(identity.reply_to_address, /^project-maker\+[A-Za-z0-9_-]+@example\.test$/);
   });
 
   it('persists an uncertain result and requires acknowledgement on that exact retry request', async () => {
@@ -639,8 +639,8 @@ describe('Customer follow-up ping draft and manual delivery', () => {
     assert.equal((await first).status, 201);
     assert.equal(delivered.length, 1);
     assert.equal(submitted[0]?.senderName, 'Project Maker');
-    assert.equal(submitted[0]?.senderAddress, 'project-maker@pte.hu');
-    assert.match(submitted[0]?.replyToAddress ?? '', /^project-maker\+.+@pte\.hu$/);
+    assert.equal(submitted[0]?.senderAddress, 'project-maker@example.test');
+    assert.match(submitted[0]?.replyToAddress ?? '', /^project-maker\+.+@example\.test$/);
 
     const archivedProjectId = await createProject(app, 'archived-retry');
     await request(app.getHttpServer())
@@ -1102,8 +1102,8 @@ describe('Customer follow-up ping draft and manual delivery', () => {
     assert.equal(delivered.length, 1);
     assert.equal(delivered[0].to, 'current-scheduled-recipient@example.test');
     assert.equal(submitted[0]?.senderName, 'Project Maker');
-    assert.equal(submitted[0]?.senderAddress, 'project-maker@pte.hu');
-    assert.match(submitted[0]?.replyToAddress ?? '', /^project-maker\+.+@pte\.hu$/);
+    assert.equal(submitted[0]?.senderAddress, 'project-maker@example.test');
+    assert.match(submitted[0]?.replyToAddress ?? '', /^project-maker\+.+@example\.test$/);
     assert.match(delivered[0].text, /Kérlek, erősítsd meg a döntést\./);
     assert.match(delivered[0].text, /Kérdés: Melyik döntést kell megerősíteni\?/);
     assert.doesNotMatch(delivered[0].text, /\.md\b|Markdown|Claude Code|execution-plan revision/i);

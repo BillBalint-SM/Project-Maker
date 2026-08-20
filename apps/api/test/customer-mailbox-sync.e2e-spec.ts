@@ -40,7 +40,7 @@ describe('Correspondence mailbox synchronization', () => {
   let mailboxSequence = 0;
 
   before(async () => {
-    process.env['CORRESPONDENCE_MAILBOX_ADDRESS'] = 'project-maker@pte.hu';
+    process.env['CORRESPONDENCE_MAILBOX_ADDRESS'] = 'project-maker@example.test';
     const mailbox: CustomerMailboxChanges = {
       isConfigured: () => mailboxConfigured,
       readChanges: async (checkpoint): Promise<CustomerMailboxChangePage> => {
@@ -95,7 +95,7 @@ describe('Correspondence mailbox synchronization', () => {
 
   beforeEach(async () => {
     mailboxSequence += 1;
-    process.env['CORRESPONDENCE_MAILBOX_ADDRESS'] = `mailbox-sync-${mailboxRun}-${mailboxSequence}@pte.hu`;
+    process.env['CORRESPONDENCE_MAILBOX_ADDRESS'] = `mailbox-sync-${mailboxRun}-${mailboxSequence}@example.test`;
     requestedCheckpoints.length = 0;
     pages = [];
     releaseRead = null;
@@ -523,10 +523,10 @@ function mailboxChange(messageReference: string) {
     changeType: 'UPSERTED' as const,
     automationKind: 'HUMAN' as const,
     messageReference,
-    internetMessageId: `<${messageReference}@pte.hu>`,
+    internetMessageId: `<${messageReference}@example.test>`,
     inReplyTo: '<outbound-message@project-maker.local>',
-    senderAddress: 'customer@pte.hu',
-    recipientAddresses: ['project-maker@pte.hu'],
+    senderAddress: 'customer@example.test',
+    recipientAddresses: ['project-maker@example.test'],
     subject: 'Új ügyfélválasz',
     textContent: 'A projekt mehet tovább.',
     receivedAt: '2026-08-18T11:59:00.000Z',

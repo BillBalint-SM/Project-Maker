@@ -78,7 +78,11 @@ describe('Correlated Customer replies migration (PostgreSQL)', () => {
       database = new DataSource({
         type: 'postgres',
         url: withDatabaseName(databaseUrl, databaseName),
-        migrations: [...migrationsForFreshDatabase()],
+        migrations: [
+          ...migrationsForHistoricalDatabase(
+            'CustomerMailTriage0023CustomerMailTriage1787817600000',
+          ),
+        ],
       });
       await database.initialize();
       await database.runMigrations();

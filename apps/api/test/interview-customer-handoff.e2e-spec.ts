@@ -56,7 +56,7 @@ describe('Interview customer handoff HTTP boundary', () => {
   const mailGateway = new ControlledMailGateway();
 
   before(async () => {
-    process.env['CORRESPONDENCE_MAILBOX_ADDRESS'] = 'project-maker@pte.hu';
+    process.env['CORRESPONDENCE_MAILBOX_ADDRESS'] = 'project-maker@example.test';
     process.env['CORRESPONDENCE_MAILBOX_NAME'] = 'Project Maker';
     const module = await Test.createTestingModule({ imports: [AppModule] })
       .overrideProvider(customerOutboundMailToken)
@@ -98,21 +98,21 @@ describe('Interview customer handoff HTTP boundary', () => {
     const firstPreview = await request(app.getHttpServer()).post(`/projects/${project.body.id}/rounds/${roundId}/customer-handoffs/${firstId}/preview`).send({}).expect(201);
     assert.match(firstPreview.body.textContent, /Nincs rögzített válasz/);
     assert.equal(firstPreview.body.senderName, 'Project Maker');
-    assert.equal(firstPreview.body.senderAddress, 'project-maker@pte.hu');
+    assert.equal(firstPreview.body.senderAddress, 'project-maker@example.test');
     await request(app.getHttpServer()).post(`/projects/${project.body.id}/rounds/${roundId}/customer-handoffs/${firstId}/send`).send({ ...sendInput(firstPreview.body), senderAddress: 'personal@example.test' }).expect(400);
     const sent = await request(app.getHttpServer()).post(`/projects/${project.body.id}/rounds/${roundId}/customer-handoffs/${firstId}/send`).send(sendInput(firstPreview.body)).expect(201);
     assert.equal(sent.body.state, 'SENT');
     assert.equal(mailGateway.delivered.length, 1);
     assert.equal(mailGateway.deliveredMessageFrozen.at(-1), true);
     assert.equal(mailGateway.delivered[0]?.htmlContent, firstPreview.body.htmlContent);
-    assert.equal(mailGateway.delivered[0]?.senderAddress, 'project-maker@pte.hu');
-    assert.match(mailGateway.delivered[0]?.replyToAddress ?? '', /^project-maker\+[a-f0-9]{48}@pte\.hu$/);
+    assert.equal(mailGateway.delivered[0]?.senderAddress, 'project-maker@example.test');
+    assert.match(mailGateway.delivered[0]?.replyToAddress ?? '', /^project-maker\+[a-f0-9]{48}@example\.test$/);
     assert.equal(sent.body.mailSystemAcceptance, 'ACCEPTED');
     assert.equal(sent.body.correspondenceId.length, 36);
     const senderIdentity = await request(app.getHttpServer()).get(`/projects/${project.body.id}/rounds/${roundId}/customer-handoffs/sender-identity`).expect(200);
     assert.deepEqual(senderIdentity.body, {
       name: 'Project Maker',
-      address: 'project-maker@pte.hu',
+      address: 'project-maker@example.test',
     });
 
     const second = await request(app.getHttpServer()).post(`/projects/${project.body.id}/rounds/${roundId}/customer-handoffs`).send({}).expect(201);

@@ -23,6 +23,7 @@ import { CorrelatedCustomerReplies0020CorrelatedCustomerReplies1787558400000 } f
 import { CustomerCorrespondenceProcessing0021CustomerCorrespondenceProcessing1787644800000 } from '../migrations/0021-customer-correspondence-processing';
 import { ReceiptProvenHandoffRevision0022ReceiptProvenHandoffRevision1787731200000 } from '../migrations/0022-receipt-proven-handoff-revision';
 import { CustomerMailTriage0023CustomerMailTriage1787817600000 } from '../migrations/0023-customer-mail-triage';
+import { OperatorMailGatewaySender0024OperatorMailGatewaySender1787904000000 } from '../migrations/0024-operator-mail-gateway-sender';
 
 export type ApiMigration = new () => MigrationInterface;
 
@@ -50,6 +51,7 @@ export const migrationSequence: readonly ApiMigration[] = [
   CustomerCorrespondenceProcessing0021CustomerCorrespondenceProcessing1787644800000,
   ReceiptProvenHandoffRevision0022ReceiptProvenHandoffRevision1787731200000,
   CustomerMailTriage0023CustomerMailTriage1787817600000,
+  OperatorMailGatewaySender0024OperatorMailGatewaySender1787904000000,
 ];
 
 export function migrationsThrough(migrationName: string): readonly ApiMigration[] {

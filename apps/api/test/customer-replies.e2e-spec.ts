@@ -67,7 +67,7 @@ describe('Correlated Customer replies', () => {
   const mail = new CustomerReplyMailFake();
 
   before(async () => {
-    process.env['CORRESPONDENCE_MAILBOX_ADDRESS'] = 'reply51@pte.hu';
+    process.env['CORRESPONDENCE_MAILBOX_ADDRESS'] = 'reply51@example.test';
     process.env['CORRESPONDENCE_MAILBOX_NAME'] = 'Project Maker';
     const module = await Test.createTestingModule({ imports: [AppModule] })
       .overrideProvider(customerOutboundMailToken)
@@ -176,7 +176,7 @@ describe('Correlated Customer replies', () => {
 
   it('retains an uncorrelated message for explicit triage without inferring a Project', async () => {
     const messageId = `unmatched-${Date.now()}-${Math.random()}`;
-    mail.queue(mailboxPage(inboundMessage(messageId, 'reply51@pte.hu', '2026-08-18T17:00:00.000Z', {
+    mail.queue(mailboxPage(inboundMessage(messageId, 'reply51@example.test', '2026-08-18T17:00:00.000Z', {
       internetMessageId: `<${messageId}@example.test>`,
       senderAddress: 'forwarded-customer@example.test',
       subject: 'Továbbított Customer kérdés',
@@ -227,7 +227,7 @@ describe('Correlated Customer replies', () => {
       },
       {
         ...inboundMessage(`loop-${suffix}`, target.replyToAddress, '2026-08-18T17:07:00.000Z'),
-        senderAddress: 'REPLY51@PTE.HU',
+        senderAddress: 'REPLY51@EXAMPLE.TEST',
       },
       {
         ...inboundMessage(`automated-${suffix}`, target.replyToAddress, '2026-08-18T17:08:00.000Z'),
@@ -266,7 +266,7 @@ describe('Correlated Customer replies', () => {
       .expect(200);
     const correspondenceId = correspondenceWork.body.correspondences[0].id as string;
     const messageId = `manual-link-${Date.now()}-${Math.random()}`;
-    mail.queue(mailboxPage(inboundMessage(messageId, 'reply51@pte.hu', '2026-08-18T17:15:00.000Z', {
+    mail.queue(mailboxPage(inboundMessage(messageId, 'reply51@example.test', '2026-08-18T17:15:00.000Z', {
       internetMessageId: `<${messageId}@example.test>`,
       senderAddress: 'forwarded-customer@example.test',
       subject: 'Kézzel társítandó Customer kérdés',
@@ -354,7 +354,7 @@ describe('Correlated Customer replies', () => {
 
   it('dismisses an irrelevant unmatched message idempotently and removes it from active triage', async () => {
     const messageId = `dismiss-${Date.now()}-${Math.random()}`;
-    mail.queue(mailboxPage(inboundMessage(messageId, 'reply51@pte.hu', '2026-08-18T17:30:00.000Z', {
+    mail.queue(mailboxPage(inboundMessage(messageId, 'reply51@example.test', '2026-08-18T17:30:00.000Z', {
       internetMessageId: `<${messageId}@example.test>`,
       senderAddress: 'newsletter@example.test',
       subject: 'Nem projektüzenet',
@@ -415,7 +415,7 @@ describe('Correlated Customer replies', () => {
     const replyToAddress = mail.sent.at(-1)?.replyToAddress;
     assert.ok(replyToAddress);
 
-    mail.queue(mailboxPage(inboundMessage(`unmatched-${messageSuffix}`, 'reply51+invalid@pte.hu', '2026-08-18T15:00:00.000Z', {
+    mail.queue(mailboxPage(inboundMessage(`unmatched-${messageSuffix}`, 'reply51+invalid@example.test', '2026-08-18T15:00:00.000Z', {
       inReplyTo: '<outbound-2>',
       subject: preview.body.subject,
       textContent: 'A tárgy és a header nem elegendő.',
