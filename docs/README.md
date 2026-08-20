@@ -16,6 +16,10 @@
 - [Operator mail gateway decision](adr/0003-use-operator-provided-mail-gateway.md)
 - [Current requirement checklist](../.planning/REQUIREMENTS.md) — checked only with delivery evidence.
 
+## Accepted designs pending implementation
+
+- [ATTACH-01 governed discovery attachments](attach-01-governed-discovery-attachments.md) — bounded Question Bank guidance and Project-owned discovery files without a general document library.
+
 ## End-user guidance
 
 The [Hungarian end-user guide](user-guide.md) is the canonical daily-work
