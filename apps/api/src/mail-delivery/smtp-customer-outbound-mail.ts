@@ -5,6 +5,7 @@ import type {
   OutboundCustomerMessage,
 } from '@project-maker/contracts';
 import nodemailer, { type Transporter } from 'nodemailer';
+import type { Logger } from 'nodemailer/lib/shared';
 
 import {
   createMailGatewayConfiguration,
@@ -24,26 +25,25 @@ interface NodemailerFailure {
 @Injectable()
 export class SmtpCustomerOutboundMail implements CustomerOutboundMail {
   private readonly configuration: MailGatewayConfiguration | null;
-  private readonly transporter: Transporter | null;
 
   constructor(config: ConfigService) {
     this.configuration = createMailGatewayConfiguration(config);
-    this.transporter = this.configuration
-      ? createTransporter(this.configuration)
-      : null;
   }
 
   isConfigured(): boolean {
-    return this.transporter !== null;
+    return this.configuration !== null;
   }
 
   async submit(message: OutboundCustomerMessage): Promise<MailSubmissionResult> {
     const configuration = this.configuration;
-    const transporter = this.transporter;
-    if (!configuration || !transporter) {
+    if (!configuration) {
       throw new CustomerMailBoundaryError('CONFIGURATION_ERROR');
     }
     requireSafeMessage(message);
+    let messageStreamCompleted = false;
+    const transporter = createTransporter(configuration, () => {
+      messageStreamCompleted = true;
+    });
     try {
       const result = await transporter.sendMail({
         from: {
@@ -75,12 +75,15 @@ export class SmtpCustomerOutboundMail implements CustomerOutboundMail {
           : null,
       });
     } catch (error) {
-      throw normalizeSmtpFailure(error);
+      throw normalizeSmtpFailure(error, messageStreamCompleted);
     }
   }
 }
 
-function createTransporter(configuration: MailGatewayConfiguration): Transporter {
+function createTransporter(
+  configuration: MailGatewayConfiguration,
+  onMessageStreamCompleted: () => void,
+): Transporter {
   const implicitTls = configuration.smtp.security === 'IMPLICIT_TLS';
   return nodemailer.createTransport({
     host: configuration.smtp.host,
@@ -102,11 +105,35 @@ function createTransporter(configuration: MailGatewayConfiguration): Transporter
     connectionTimeout: configuration.timeoutMs,
     greetingTimeout: configuration.timeoutMs,
     socketTimeout: configuration.timeoutMs,
-    logger: false,
+    logger: createSubmissionPhaseObserver(onMessageStreamCompleted),
     debug: false,
     disableFileAccess: true,
     disableUrlAccess: true,
   });
+}
+
+function createSubmissionPhaseObserver(onMessageStreamCompleted: () => void): Logger {
+  const discard = (..._parameters: unknown[]): void => undefined;
+  return {
+    level: discard,
+    trace: discard,
+    debug: discard,
+    info(metadata: unknown) {
+      // Nodemailer emits this event after the complete DATA stream is handed to the socket.
+      // Observe only that phase marker; never retain or emit its diagnostic arguments.
+      if (
+        isRecord(metadata)
+        && metadata.tnx === 'message'
+        && typeof metadata.inByteCount === 'number'
+        && typeof metadata.outByteCount === 'number'
+      ) {
+        onMessageStreamCompleted();
+      }
+    },
+    warn: discard,
+    error: discard,
+    fatal: discard,
+  };
 }
 
 function requireSafeMessage(message: OutboundCustomerMessage): void {
@@ -125,7 +152,10 @@ function safeAddress(value: string): boolean {
     && /^[^@\s]+@[^@\s]+$/.test(value);
 }
 
-function normalizeSmtpFailure(error: unknown): CustomerMailBoundaryError {
+function normalizeSmtpFailure(
+  error: unknown,
+  messageStreamCompleted: boolean,
+): CustomerMailBoundaryError {
   const failure = isFailure(error) ? error : {};
   const code = typeof failure.code === 'string' ? failure.code.toUpperCase() : '';
   const command = typeof failure.command === 'string'
@@ -147,12 +177,16 @@ function normalizeSmtpFailure(error: unknown): CustomerMailBoundaryError {
   if (responseCode !== null && responseCode >= 400) {
     return new CustomerMailBoundaryError('TEMPORARY_FAILURE');
   }
-  if (command === 'DATA' || code === 'ECONNECTION') {
+  if (command === 'DATA' || messageStreamCompleted) {
     return new CustomerMailBoundaryError('OUTCOME_UNKNOWN');
   }
   return new CustomerMailBoundaryError('TEMPORARY_FAILURE');
 }
 
 function isFailure(value: unknown): value is NodemailerFailure {
+  return typeof value === 'object' && value !== null;
+}
+
+function isRecord(value: unknown): value is Readonly<Record<string, unknown>> {
   return typeof value === 'object' && value !== null;
 }

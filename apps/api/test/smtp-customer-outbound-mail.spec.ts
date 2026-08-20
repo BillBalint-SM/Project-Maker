@@ -156,6 +156,32 @@ describe('SMTP Customer outbound mail protocol boundary', () => {
     await assert.rejects(mail.submit(outboundMessage()), boundaryError('OUTCOME_UNKNOWN'));
   });
 
+  it('treats a connection loss before DATA as a retryable temporary failure', async () => {
+    const identity = await tlsIdentity;
+    let receivedData = false;
+    server = new SMTPServer({
+      secure: true,
+      key: identity.key,
+      cert: identity.certificate,
+      authOptional: false,
+      onAuth: authenticate,
+      onMailFrom(_address, _session, _callback) {
+        for (const connection of server!.connections) {
+          connection._socket.destroy();
+        }
+      },
+      onData(stream, _session, callback) {
+        receivedData = true;
+        void collect(stream).then(() => callback(), callback);
+      },
+    });
+    const port = await listen(server);
+    const mail = new SmtpCustomerOutboundMail(configuration(port, identity.caCertificate));
+
+    await assert.rejects(mail.submit(outboundMessage()), boundaryError('TEMPORARY_FAILURE'));
+    assert.equal(receivedData, false);
+  });
+
   it('fails closed when a STARTTLS-required gateway does not advertise STARTTLS', async () => {
     let receivedData = false;
     server = new SMTPServer({
