@@ -179,7 +179,7 @@ Ez a leltár a munkavállalói felületen megjelenő kanonikus navigációs neve
 | Megosztott felületi szöveg | Hiba és helyreállítás | Nem sikerült {érték}. {érték} | apps/web/src/app/interviews/interview-api.service.ts:176 |
 | Megosztott felületi szöveg | Hiba és helyreállítás | Nem sikerült {érték}. Frissítsd az oldalt, majd próbáld újra. | apps/web/src/app/interviews/interview-api.service.ts:182 |
 | Felmérési összefoglaló | Futásidejű UI-szöveg | betölteni az összefoglalókat | apps/web/src/app/interviews/interview-handoff/interview-handoff-api.service.ts:12 |
-| Felmérési összefoglaló | Futásidejű UI-szöveg | betölteni a feladókat | apps/web/src/app/interviews/interview-handoff/interview-handoff-api.service.ts:13 |
+| Felmérési összefoglaló | Futásidejű UI-szöveg | betölteni a levelezési postafiók feladóját | apps/web/src/app/interviews/interview-handoff/interview-handoff-api.service.ts:13 |
 | Felmérési összefoglaló | Futásidejű UI-szöveg | betölteni az összefoglalót | apps/web/src/app/interviews/interview-handoff/interview-handoff-api.service.ts:14 |
 | Felmérési összefoglaló | Futásidejű UI-szöveg | létrehozni az új verziót | apps/web/src/app/interviews/interview-handoff/interview-handoff-api.service.ts:15 |
 | Felmérési összefoglaló | Futásidejű UI-szöveg | menteni a módosítás leírását | apps/web/src/app/interviews/interview-handoff/interview-handoff-api.service.ts:16 |
@@ -200,11 +200,8 @@ Ez a leltár a munkavállalói felületen megjelenő kanonikus navigációs neve
 | Felmérési összefoglaló | Látható szöveg | Az archivált projekt felmérési összefoglalói csak olvashatók. | apps/web/src/app/interviews/interview-handoff/interview-handoff.component.html |
 | Felmérési összefoglaló | Cím | {érték}. verzió – {érték} | apps/web/src/app/interviews/interview-handoff/interview-handoff.component.html |
 | Felmérési összefoglaló | Mező | Módosítás összefoglalása | apps/web/src/app/interviews/interview-handoff/interview-handoff.component.html |
-| Felmérési összefoglaló | Mező | Feladó | apps/web/src/app/interviews/interview-handoff/interview-handoff.component.html |
-| Felmérési összefoglaló | Látható szöveg | Dedikált postafiók – {érték} &lt;{érték}&gt; | apps/web/src/app/interviews/interview-handoff/interview-handoff.component.html |
-| Felmérési összefoglaló | Látható szöveg | Személyes postafiók | apps/web/src/app/interviews/interview-handoff/interview-handoff.component.html |
-| Felmérési összefoglaló | Mező | Feladó neve | apps/web/src/app/interviews/interview-handoff/interview-handoff.component.html |
-| Felmérési összefoglaló | Mező | Feladó @pte.hu címe | apps/web/src/app/interviews/interview-handoff/interview-handoff.component.html |
+| Felmérési összefoglaló | Cím | Feladó | apps/web/src/app/interviews/interview-handoff/interview-handoff.component.html |
+| Felmérési összefoglaló | Látható szöveg | Az üzemeltető szervezet dedikált levelezési postafiókja: {érték} &lt;{érték}&gt; | apps/web/src/app/interviews/interview-handoff/interview-handoff.component.html |
 | Felmérési összefoglaló | Látható szöveg | A levelezőrendszer elutasította az átadást. Az eredeti levél változatlan tartalommal újraküldhető. | apps/web/src/app/interviews/interview-handoff/interview-handoff.component.html |
 | Felmérési összefoglaló | Látható szöveg | Az ügyfél válasza igazolja az átvételt. Az eredeti bizonytalan kézbesítési eredmény megmarad; újraküldés nem szükséges. | apps/web/src/app/interviews/interview-handoff/interview-handoff.component.html |
 | Felmérési összefoglaló | Látható szöveg | A levelezőrendszer átvételi eredménye nem ismert. Újrapróbálás előtt ellenőrizd a kimenő postafiókot. | apps/web/src/app/interviews/interview-handoff/interview-handoff.component.html |
@@ -216,18 +213,18 @@ Ez a leltár a munkavállalói felületen megjelenő kanonikus navigációs neve
 | Felmérési összefoglaló | Cím | Verzióelőzmények | apps/web/src/app/interviews/interview-handoff/interview-handoff.component.html |
 | Felmérési összefoglaló | Művelet | Összefoglaló megtekintése – {érték} | apps/web/src/app/interviews/interview-handoff/interview-handoff.component.html |
 | Felmérési összefoglaló | Látható szöveg | Küldés ideje: | apps/web/src/app/interviews/interview-handoff/interview-handoff.component.html |
-| Felmérési összefoglaló | Futásidejű UI-szöveg | {érték} ({érték}) részére küldöd a {érték}. verziót. | apps/web/src/app/interviews/interview-handoff/interview-handoff.component.ts:66 |
-| Felmérési összefoglaló | Futásidejű UI-szöveg | Felmérési összefoglaló küldése | apps/web/src/app/interviews/interview-handoff/interview-handoff.component.ts:66 |
-| Felmérési összefoglaló | Címke | Küldés az ügyfélnek | apps/web/src/app/interviews/interview-handoff/interview-handoff.component.ts:66 |
-| Felmérési összefoglaló | Címke | Mégse | apps/web/src/app/interviews/interview-handoff/interview-handoff.component.ts:66 |
-| Felmérési összefoglaló | Futásidejű UI-szöveg | Ismeretlen átadás ellenőrzése | apps/web/src/app/interviews/interview-handoff/interview-handoff.component.ts:71 |
-| Felmérési összefoglaló | Futásidejű UI-szöveg | A levelezőrendszer korábbi átvétele nem bizonyítható. Ellenőrizted a kimenő postafiókot, és vállalod az esetleges kettős küldést? | apps/web/src/app/interviews/interview-handoff/interview-handoff.component.ts:71 |
-| Felmérési összefoglaló | Címke | Ellenőriztem, újrapróbálom | apps/web/src/app/interviews/interview-handoff/interview-handoff.component.ts:71 |
-| Felmérési összefoglaló | Címke | Piszkozat | apps/web/src/app/interviews/interview-handoff/interview-handoff.component.ts:74 |
-| Felmérési összefoglaló | Címke | Átadás folyamatban | apps/web/src/app/interviews/interview-handoff/interview-handoff.component.ts:74 |
-| Felmérési összefoglaló | Címke | Átadva a levelezőrendszernek | apps/web/src/app/interviews/interview-handoff/interview-handoff.component.ts:74 |
-| Felmérési összefoglaló | Hiba és helyreállítás | Sikertelen | apps/web/src/app/interviews/interview-handoff/interview-handoff.component.ts:74 |
-| Felmérési összefoglaló | Címke | Ellenőrzést igényel | apps/web/src/app/interviews/interview-handoff/interview-handoff.component.ts:74 |
+| Felmérési összefoglaló | Futásidejű UI-szöveg | {érték} ({érték}) részére küldöd a {érték}. verziót. | apps/web/src/app/interviews/interview-handoff/interview-handoff.component.ts:61 |
+| Felmérési összefoglaló | Futásidejű UI-szöveg | Felmérési összefoglaló küldése | apps/web/src/app/interviews/interview-handoff/interview-handoff.component.ts:61 |
+| Felmérési összefoglaló | Címke | Küldés az ügyfélnek | apps/web/src/app/interviews/interview-handoff/interview-handoff.component.ts:61 |
+| Felmérési összefoglaló | Címke | Mégse | apps/web/src/app/interviews/interview-handoff/interview-handoff.component.ts:61 |
+| Felmérési összefoglaló | Futásidejű UI-szöveg | Ismeretlen átadás ellenőrzése | apps/web/src/app/interviews/interview-handoff/interview-handoff.component.ts:66 |
+| Felmérési összefoglaló | Futásidejű UI-szöveg | A levelezőrendszer korábbi átvétele nem bizonyítható. Ellenőrizted a kimenő postafiókot, és vállalod az esetleges kettős küldést? | apps/web/src/app/interviews/interview-handoff/interview-handoff.component.ts:66 |
+| Felmérési összefoglaló | Címke | Ellenőriztem, újrapróbálom | apps/web/src/app/interviews/interview-handoff/interview-handoff.component.ts:66 |
+| Felmérési összefoglaló | Címke | Piszkozat | apps/web/src/app/interviews/interview-handoff/interview-handoff.component.ts:69 |
+| Felmérési összefoglaló | Címke | Átadás folyamatban | apps/web/src/app/interviews/interview-handoff/interview-handoff.component.ts:69 |
+| Felmérési összefoglaló | Címke | Átadva a levelezőrendszernek | apps/web/src/app/interviews/interview-handoff/interview-handoff.component.ts:69 |
+| Felmérési összefoglaló | Hiba és helyreállítás | Sikertelen | apps/web/src/app/interviews/interview-handoff/interview-handoff.component.ts:69 |
+| Felmérési összefoglaló | Címke | Ellenőrzést igényel | apps/web/src/app/interviews/interview-handoff/interview-handoff.component.ts:69 |
 | Felmérési összefoglaló | Művelet | Új összefoglaló-verzió készítése | apps/web/src/app/interviews/interview-handoff/interview-reply-outcome.component.ts |
 | Felmérési összefoglaló | Hiba és helyreállítás | Az új összefoglaló-verzió nem indítható. Töltsd újra az adatokat, és ellenőrizd a projekt állapotát. | apps/web/src/app/interviews/interview-handoff/interview-reply-outcome.component.ts:54 |
 | Felmérés | Művelet | Felmérési oldal újratöltése | apps/web/src/app/interviews/interview.page.html |
@@ -449,7 +446,7 @@ Ez a leltár a munkavállalói felületen megjelenő kanonikus navigációs neve
 | Ügyféllevelezés | Hiba és helyreállítás | A művelet nem hajtható végre a jelenlegi adatokkal. Töltsd újra az adatokat, majd próbáld meg ismét. | apps/web/src/app/projects/customer-correspondences.page.ts:232 |
 | Ügyfél-emlékeztető | Futásidejű UI-szöveg | betölteni az ügyfél-emlékeztetőt | apps/web/src/app/projects/customer-follow-up/customer-follow-up-api.service.ts:34 |
 | Ügyfél-emlékeztető | Futásidejű UI-szöveg | betölteni a hivatkozható tisztázandó tételeket | apps/web/src/app/projects/customer-follow-up/customer-follow-up-api.service.ts:45 |
-| Ügyfél-emlékeztető | Futásidejű UI-szöveg | betölteni az ügyfél-emlékeztető feladóit | apps/web/src/app/projects/customer-follow-up/customer-follow-up-api.service.ts:52 |
+| Ügyfél-emlékeztető | Futásidejű UI-szöveg | betölteni a levelezési postafiók feladóját | apps/web/src/app/projects/customer-follow-up/customer-follow-up-api.service.ts:52 |
 | Ügyfél-emlékeztető | Futásidejű UI-szöveg | menteni az automatikus emlékeztető beállításait | apps/web/src/app/projects/customer-follow-up/customer-follow-up-api.service.ts:62 |
 | Ügyfél-emlékeztető | Futásidejű UI-szöveg | menteni az ügyfél-emlékeztető piszkozatát | apps/web/src/app/projects/customer-follow-up/customer-follow-up-api.service.ts:72 |
 | Ügyfél-emlékeztető | Futásidejű UI-szöveg | elkészíteni az ügyfél-emlékeztető előnézetét | apps/web/src/app/projects/customer-follow-up/customer-follow-up-api.service.ts:85 |
@@ -460,7 +457,7 @@ Ez a leltár a munkavállalói felületen megjelenő kanonikus navigációs neve
 | Ügyfél-emlékeztető | Hiba és helyreállítás | Nem sikerült {érték}, mert az állapot időközben megváltozott. Töltsd újra az aktuális piszkozatot. | apps/web/src/app/projects/customer-follow-up/customer-follow-up-api.service.ts:145 |
 | Ügyfél-emlékeztető | Hiba és helyreállítás | A kézbesítési eredmény bizonytalan. Ellenőrizd a kimenő postafiókot az újraküldés előtt. | apps/web/src/app/projects/customer-follow-up/customer-follow-up-api.service.ts:153 |
 | Ügyfél-emlékeztető | Hiba és helyreállítás | Az ügyfél-emlékeztető küldése sikertelen. Kézzel újrapróbálható. | apps/web/src/app/projects/customer-follow-up/customer-follow-up-api.service.ts:159 |
-| Ügyfél-emlékeztető | Hiba és helyreállítás | Nem sikerült {érték}, mert az e-mail-küldés nem érhető el. Ellenőrizd a Microsoft 365 beállításait. | apps/web/src/app/projects/customer-follow-up/customer-follow-up-api.service.ts:165 |
+| Ügyfél-emlékeztető | Hiba és helyreállítás | Nem sikerült {érték}, mert az e-mail-küldés nem érhető el. Ellenőrizd a levelezési átjáró beállításait. | apps/web/src/app/projects/customer-follow-up/customer-follow-up-api.service.ts:165 |
 | Ügyfél-emlékeztető | Művelet | Ügyfél-emlékeztető újratöltése | apps/web/src/app/projects/customer-follow-up/customer-follow-up.component.html |
 | Ügyfél-emlékeztető | Művelet | Küldés újrapróbálása | apps/web/src/app/projects/customer-follow-up/customer-follow-up.component.html |
 | Ügyfél-emlékeztető | Művelet | Ellenőriztem, újraküldöm | apps/web/src/app/projects/customer-follow-up/customer-follow-up.component.html |
@@ -493,11 +490,8 @@ Ez a leltár a munkavállalói felületen megjelenő kanonikus navigációs neve
 | Ügyfél-emlékeztető | Mező | Kapcsolódó nyitott tisztázandó tétel (nem kötelező) | apps/web/src/app/projects/customer-follow-up/customer-follow-up.component.html |
 | Ügyfél-emlékeztető | Látható szöveg | Nincs kapcsolódó kérdés | apps/web/src/app/projects/customer-follow-up/customer-follow-up.component.html |
 | Ügyfél-emlékeztető | Látható szöveg | {érték} · {érték} | apps/web/src/app/projects/customer-follow-up/customer-follow-up.component.html |
-| Ügyfél-emlékeztető | Mező | Feladó | apps/web/src/app/projects/customer-follow-up/customer-follow-up.component.html |
-| Ügyfél-emlékeztető | Látható szöveg | Dedikált postafiók – {érték} &lt;{érték}&gt; | apps/web/src/app/projects/customer-follow-up/customer-follow-up.component.html |
-| Ügyfél-emlékeztető | Látható szöveg | Személyes postafiók | apps/web/src/app/projects/customer-follow-up/customer-follow-up.component.html |
-| Ügyfél-emlékeztető | Mező | Feladó neve | apps/web/src/app/projects/customer-follow-up/customer-follow-up.component.html |
-| Ügyfél-emlékeztető | Mező | Feladó pontos @pte.hu címe | apps/web/src/app/projects/customer-follow-up/customer-follow-up.component.html |
+| Ügyfél-emlékeztető | Cím | Feladó | apps/web/src/app/projects/customer-follow-up/customer-follow-up.component.html |
+| Ügyfél-emlékeztető | Látható szöveg | Az üzemeltető szervezet dedikált levelezési postafiókja: {érték} &lt;{érték}&gt; | apps/web/src/app/projects/customer-follow-up/customer-follow-up.component.html |
 | Ügyfél-emlékeztető | Cím | Ügyfél-emlékeztető előnézete | apps/web/src/app/projects/customer-follow-up/customer-follow-up.component.html |
 | Ügyfél-emlékeztető | Látható szöveg | Ezt a pontos címzettet és tartalmat küldi el a rendszer. | apps/web/src/app/projects/customer-follow-up/customer-follow-up.component.html |
 | Ügyfél-emlékeztető | Látható szöveg | Címzett | apps/web/src/app/projects/customer-follow-up/customer-follow-up.component.html |
@@ -521,15 +515,15 @@ Ez a leltár a munkavállalói felületen megjelenő kanonikus navigációs neve
 | Ügyfél-emlékeztető | Látható szöveg | Legutóbbi kézbesítés | apps/web/src/app/projects/customer-follow-up/customer-follow-up.component.html |
 | Ügyfél-emlékeztető | Látható szöveg | Kézbesítési hiba | apps/web/src/app/projects/customer-follow-up/customer-follow-up.component.html |
 | Ügyfél-emlékeztető | Látható szöveg | Felmérési összefoglaló megnyitása | apps/web/src/app/projects/customer-follow-up/customer-follow-up.component.html |
-| Ügyfél-emlékeztető | Futásidejű UI-szöveg | Az automatikus ügyfél-emlékeztető beállításai mentve lettek. | apps/web/src/app/projects/customer-follow-up/customer-follow-up.component.ts:213 |
-| Ügyfél-emlékeztető | Futásidejű UI-szöveg | Piszkozat mentve. | apps/web/src/app/projects/customer-follow-up/customer-follow-up.component.ts:246 |
-| Ügyfél-emlékeztető | Futásidejű UI-szöveg | Átadva a levelezőrendszernek. | apps/web/src/app/projects/customer-follow-up/customer-follow-up.component.ts:345 |
-| Ügyfél-emlékeztető | Címke | Még nem történt küldés | apps/web/src/app/projects/customer-follow-up/customer-follow-up.component.ts:443 |
-| Ügyfél-emlékeztető | Címke | Sikeresen elküldve | apps/web/src/app/projects/customer-follow-up/customer-follow-up.component.ts:444 |
-| Ügyfél-emlékeztető | Hiba és helyreállítás | Sikertelen küldés | apps/web/src/app/projects/customer-follow-up/customer-follow-up.component.ts:445 |
-| Ügyfél-emlékeztető | Hiba és helyreállítás | Nincs jelzett hiba | apps/web/src/app/projects/customer-follow-up/customer-follow-up.component.ts:450 |
-| Ügyfél-emlékeztető | Hiba és helyreállítás | A kézbesítés eredménye bizonytalan. | apps/web/src/app/projects/customer-follow-up/customer-follow-up.component.ts:452 |
-| Ügyfél-emlékeztető | Hiba és helyreállítás | A levelezőrendszer elutasította a küldést. | apps/web/src/app/projects/customer-follow-up/customer-follow-up.component.ts:454 |
+| Ügyfél-emlékeztető | Futásidejű UI-szöveg | Az automatikus ügyfél-emlékeztető beállításai mentve lettek. | apps/web/src/app/projects/customer-follow-up/customer-follow-up.component.ts:208 |
+| Ügyfél-emlékeztető | Futásidejű UI-szöveg | Piszkozat mentve. | apps/web/src/app/projects/customer-follow-up/customer-follow-up.component.ts:241 |
+| Ügyfél-emlékeztető | Futásidejű UI-szöveg | Átadva a levelezőrendszernek. | apps/web/src/app/projects/customer-follow-up/customer-follow-up.component.ts:319 |
+| Ügyfél-emlékeztető | Címke | Még nem történt küldés | apps/web/src/app/projects/customer-follow-up/customer-follow-up.component.ts:417 |
+| Ügyfél-emlékeztető | Címke | Sikeresen elküldve | apps/web/src/app/projects/customer-follow-up/customer-follow-up.component.ts:418 |
+| Ügyfél-emlékeztető | Hiba és helyreállítás | Sikertelen küldés | apps/web/src/app/projects/customer-follow-up/customer-follow-up.component.ts:419 |
+| Ügyfél-emlékeztető | Hiba és helyreállítás | Nincs jelzett hiba | apps/web/src/app/projects/customer-follow-up/customer-follow-up.component.ts:424 |
+| Ügyfél-emlékeztető | Hiba és helyreállítás | A kézbesítés eredménye bizonytalan. | apps/web/src/app/projects/customer-follow-up/customer-follow-up.component.ts:426 |
+| Ügyfél-emlékeztető | Hiba és helyreállítás | A levelezőrendszer elutasította a küldést. | apps/web/src/app/projects/customer-follow-up/customer-follow-up.component.ts:428 |
 | Nem társított ügyfélüzenetek | Művelet | Üzenetek újratöltése | apps/web/src/app/projects/customer-mail-triage.page.html |
 | Nem társított ügyfélüzenetek | Művelet | ← Vissza a projektportfólióhoz | apps/web/src/app/projects/customer-mail-triage.page.html |
 | Nem társított ügyfélüzenetek | Látható szöveg | Ügyfélkapcsolat | apps/web/src/app/projects/customer-mail-triage.page.html |
@@ -948,4 +942,4 @@ Ez a leltár a munkavállalói felületen megjelenő kanonikus navigációs neve
 | Specifikációs sablonok | Címke | Felkészültség | packages/contracts/src/markdown-templates.ts:26 |
 | Specifikációs sablonok | Címke | Döntési értékelés | packages/contracts/src/markdown-templates.ts:27 |
 
-Összesen: **941** leltárelem.
+Összesen: **935** leltárelem.

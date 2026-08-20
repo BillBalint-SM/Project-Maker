@@ -574,7 +574,7 @@ Függőben lévő vagy hibás technikai mentésnél a lezáró műveletek letilt
 
 ### Első küldés most vagy később
 
-A lezárás automatikusan létrehozza az 1. verziójú felmérési összefoglaló `Piszkozat` állapotát. A címzett a projekt megnevezett ügyfélkapcsolattartója. Előnézet előtt válaszd a dedikált postafiókot vagy a `Személyes postafiók` lehetőséget; az utóbbinál add meg a belső projektgazda nevét és pontos `@pte.hu` címét. Aldomain és hasonló domain nem fogadható el. A legutóbb sikeresen használt feladót a projekt megjegyzi, de minden előnézet előtt szerkeszthető.
+A lezárás automatikusan létrehozza az 1. verziójú felmérési összefoglaló `Piszkozat` állapotát. A címzett a projekt megnevezett ügyfélkapcsolattartója. Előnézet előtt a rendszer a konfigurált dedikált levelezési azonosítást mutatja; ez a küldő, nem szerkeszthető és nem választható helyette személyes postafiók.
 
 - `Felmérés lezárása és hiányok áttekintése`: a felmérés lezárul, majd a `Becslési felkészültség` oldal nyílik meg; a felmérési összefoglaló később készíthető elő.
 - `Lezárás és felmérési összefoglaló előnézete`: a felmérés lezárul, majd megnyílik az előnézet. A küldés csak a megerősítés után indul.
@@ -588,7 +588,7 @@ Küldés előtt mindig olvasd át a tárgyat, a címzett nevét és címét, val
 | `Piszkozat` | Szerkeszthető, még nem küldött verzió | Módosítás, előnézet, majd küldés |
 | `Átadás folyamatban` | A küldési kísérlet folyamatban van | Ne indíts második küldést; várj vagy töltsd újra |
 | `Átadva a levelezőrendszernek` | A levelezőrendszer elfogadta az átadást; ez nem kézbesítési vagy olvasási igazolás | Ügyfélmódosításhoz indíts új verziót |
-| `Sikertelen` | A Microsoft Graph ismerten elutasította az átadást | Ellenőrizd az okot, majd válaszd az újrapróbálást |
+| `Sikertelen` | A levelezési gateway ismerten elutasította az átadást | Ellenőrizd az okot, majd válaszd az újrapróbálást |
 | `Ellenőrzést igényel` | Nem bizonyítható, hogy a megszakadt kísérlet kézbesített-e | Előbb ellenőrizd a postafiókot/szolgáltatót; csak ezután válaszd a folytatást |
 
 Az `Átadva a levelezőrendszernek` verzió nem szerkeszthető. A `Sikertelen` ugyanazt a változatlan előnézeti tartalmat próbálja újra. Az `Ellenőrzést igényel` nem automatikus újraküldési engedély: a rendszer azért áll meg, hogy ne küldjön észrevétlenül duplikált levelet.
@@ -805,26 +805,26 @@ Ha az esedékességkor a piszkozat vagy a hivatkozás már nem érvényes, az au
 
 A `Sikeresen elküldve` azt igazolja, hogy a levelezési szolgáltatás elfogadta a küldést. Nem bizonyítja, hogy a címzett elolvasta, jóváhagyta vagy válaszolt rá.
 
-Ismert Microsoft Graph-elutasításkor a felület `Sikertelen küldés` állapotot mutat, a következő automatikus időpont pedig a beállított időköz szerint megmarad. A hibás próbálkozás külön kézzel is újrapróbálható. Bizonytalan kimenetnél az automatikus ütemezés szünetel: előbb ellenőrizd a kimenő postafiókot, majd csak a külön kockázatelfogadással indított újrapróbálás sikeres befejezése ütemezi a következő emlékeztetőt.
+Ismert gateway-elutasításkor a felület `Sikertelen küldés` állapotot mutat, a következő automatikus időpont pedig a beállított időköz szerint megmarad. A hibás próbálkozás külön kézzel is újrapróbálható. Bizonytalan kimenetnél az automatikus ütemezés szünetel: előbb ellenőrizd a kimenő postafiókot, majd csak a külön kockázatelfogadással indított újrapróbálás sikeres befejezése ütemezi a következő emlékeztetőt.
 
 Lejárat után az automatikus feldolgozás kikapcsolja az ütemezést és törli a következő emlékeztető időpontját. Archivált projekthez nem küld automatikus levelet; amikor az ütemező a következő esedékes tételt feldolgozza, az archivált projekt ütemezését is kikapcsolja.
 
 ### Egyetlen kézi emlékeztető küldése
 
-> **Külső hatás — küldés előtt ellenőrizd:** a `Küldés az ügyfélnek` valódi Microsoft 365 levelet indít a küldési előnézetben mutatott feladótól a mutatott címzettnek. Ha bármelyik adat hibás, válaszd a `Mégse` gombot.
+> **Külső hatás — küldés előtt ellenőrizd:** a `Küldés az ügyfélnek` valódi levelet indít az üzemeltető szervezet konfigurált dedikált levelezési azonosításától a mutatott címzettnek. Ha bármelyik adat hibás, válaszd a `Mégse` gombot.
 
 A kézi emlékeztető akkor is használható, ha az automatikus ütemezés kikapcsolt. A piszkozat kötelező, a kapcsolódó nyitott tisztázandó tétel nem kötelező. A levélbe csak a megírt üzenet, valamint választás esetén a kérdés, a következő lépés és a határidő kerül. A felelős, kategória, válasz vagy döntés, forráshivatkozás, azonosítók, belső eseményadatok, Markdown és Claude-instrukciók kimaradnak. A piszkozat környező szóközeit a rendszer levágja; a mentett tartalom nem lehet üres és legfeljebb 10 000 karakteres.
 
 1. Nyisd meg az `Ügyféllevelezés` oldalt, írd meg az `Üzenet az ügyfélnek` mezőt, és szükség esetén válassz egy nyitott tisztázandó tételt.
 2. Válaszd a `Piszkozat mentése` gombot. Ha közben más mentett, a saját szöveged megmarad; csak az `Aktuális piszkozat újratöltése` írja felül. Az automatikus ütemezés ettől külön, a `Projektbeállítások` oldalon kezelhető.
-3. Válaszd a dedikált postafiókot vagy a `Személyes postafiók` lehetőséget; az utóbbinál add meg a feladó nevét és pontos `@pte.hu` címét. A projekt a legutóbb sikeresen használt feladót megjegyzi; a jóváhagyott név és cím együtt kerül a Microsoft Graph levél `from` mezőjébe.
+3. Ellenőrizd a mutatott dedikált levelezési azonosítást. Ez az üzemeltető szervezet által konfigurált, rögzített küldő; személyes vagy másik feladó nem választható.
 4. Válaszd a `Küldési előnézet` gombot, majd ellenőrizd a feladót, a címzettet, a tárgyat és a teljes levélszöveget.
 5. A `Mégse` visszavisz az előnézetet megnyitó gombra. A `Küldés az ügyfélnek` egyszer használható előnézeti tokennel indítja a levelet.
-6. Várd meg az `Átadva a levelezőrendszernek.` sikerüzenetet, majd ellenőrizd a legutóbbi emlékeztető és kézbesítési kísérlet állapotát. Ez a Graph-elfogadást bizonyítja, nem a kézbesítést vagy az olvasást.
+6. Várd meg az `Átadva a levelezőrendszernek.` sikerüzenetet, majd ellenőrizd a legutóbbi emlékeztető és kézbesítési kísérlet állapotát. Ez a levelezőrendszer elfogadását bizonyítja, nem a kézbesítést vagy az olvasást.
 
-Ha az előnézet óta megváltozik a feladó, a címzett, a piszkozat vagy a hivatkozott tisztázandó tétel, a küldés konfliktussal leáll. Töltsd újra az aktuális állapotot, mentsd újra a szándékos módosítást, és készíts új előnézetet. Sikertelen Graph-küldéskor biztonságos állapot és redaktált belső esemény marad; a címzett és a levél szövege nem kerül a technikai eseményadatokba. Ugyanazon küldés újrapróbálása megtartja a levél tartalmát és válaszcímét; egy későbbi új emlékeztető új küldési azonosságot kap.
+Ha az előnézet óta megváltozik a címzett, a piszkozat vagy a hivatkozott tisztázandó tétel, a küldés konfliktussal leáll. Töltsd újra az aktuális állapotot, mentsd újra a szándékos módosítást, és készíts új előnézetet. Sikertelen gateway-küldéskor biztonságos állapot és redaktált belső esemény marad; a címzett és a levél szövege nem kerül a technikai eseményadatokba. Ugyanazon küldés újrapróbálása megtartja a levél tartalmát és válaszcímét; egy későbbi új emlékeztető új küldési azonosságot kap.
 
-Amíg egy kézi küldés folyamatban van, az emlékeztető munkafelület saját módosításai letiltva maradnak. A felület rövid időközönként újraolvassa ezt az állapotot, ezért a bizonyított siker, hiba vagy a 15 perces zárolás lejárata oldalfrissítés nélkül feloldja a műveleteket. Ha a Graph-kérés eredménye a levél átadása után nem bizonyítható, a rendszer bizonytalan állapotot őriz meg. Ellenőrizd a kimenő postafiókot. Változatlan piszkozatnál csak ezután válaszd az `Ellenőriztem, újraküldöm`, majd a `Kockázat elfogadása és újraküldés` műveletet. Ha közben szándékosan módosítottad a piszkozatot, mentsd el, készíts friss előnézetet, majd azon válaszd a `Kockázat elfogadása és friss küldés` műveletet.
+Amíg egy kézi küldés folyamatban van, az emlékeztető munkafelület saját módosításai letiltva maradnak. A felület rövid időközönként újraolvassa ezt az állapotot, ezért a bizonyított siker, hiba vagy a 15 perces zárolás lejárata oldalfrissítés nélkül feloldja a műveleteket. Ha a gateway-kérés eredménye a levél átadása után nem bizonyítható, a rendszer bizonytalan állapotot őriz meg. Ellenőrizd a kimenő postafiókot. Változatlan piszkozatnál csak ezután válaszd az `Ellenőriztem, újraküldöm`, majd a `Kockázat elfogadása és újraküldés` műveletet. Ha közben szándékosan módosítottad a piszkozatot, mentsd el, készíts friss előnézetet, majd azon válaszd a `Kockázat elfogadása és friss küldés` műveletet.
 
 Archivált projektben a mentett emlékeztető olvasható marad, de a szerkesztés, előnézet és küldés letiltott. Ha a munka valóban újraindult, előbb állítsd vissza a projektet, ellenőrizd a címzettet és a hivatkozott tisztázandó tétel nyitott állapotát, majd készíts friss előnézetet.
 
@@ -839,7 +839,7 @@ A `Projektportfólió` `Ügyfélpostafiók` paneljéről nyisd meg a `Nem társ�
 
 A kézbesítési jelentések és az automatikus távolléti válaszok külön `Levelezőrendszer-események` listában láthatók. Nem számítanak ügyfélválasznak, ezért nem növelik az olvasatlan számlálót. A dedikált postafiókból visszaérkező saját leveleket a rendszer figyelmen kívül hagyja. Outlookban végzett áthelyezés, olvasottra állítás vagy törlés nem módosítja a már importált Project Maker adatot.
 
-Ha a postafiók kapcsolata átmenetileg megszakad, a rendszer korlátozott számú, késleltetett újrapróbálást végez; konfigurációs vagy jogosultsági hibánál nem indít ismétlési vihart. Lejárt Microsoft Graph cursor esetén új baseline készül: a már importált adatok megmaradnak, a baseline történeti levelei pedig nem jelennek meg új válaszként.
+Ha a postafiók kapcsolata átmenetileg megszakad, a rendszer korlátozott számú, késleltetett újrapróbálást végez; konfigurációs vagy hitelesítési hibánál nem indít ismétlési vihart. Érvénytelen IMAP UIDVALIDITY ellenőrzőpont esetén új baseline készül: a már importált adatok megmaradnak, a baseline történeti levelei pedig nem jelennek meg új válaszként.
 
 ## Specifikációverziók és átadási pillanatképek
 
@@ -1030,7 +1030,7 @@ A Project Maker gyorsan jelez, ha egy kérés nem hajtható végre. A hibaüzene
 | `Nem sikerült menteni…` egy felmérési válasznál | A sikertelen helyi piszkozat látható marad, a korábbi mentett válasz nem sérül | Ellenőrizd a piszkozatot, majd válaszd a `Mentés újrapróbálása` gombot |
 | A felmérés lezárása nem indítható | A kör nyitott, a mentett válaszok változatlanok | Várd meg a függő mentést vagy próbáld újra a hibás mentést; tartalmi hiány önmagában nem akadály |
 | A felmérési összefoglaló előnézete elavult | Semmi nem ment ki | Töltsd újra az előnézetet a legutóbbi mentett válaszokból, majd erősítsd meg újra a küldést |
-| A küldés eredménye bizonytalan | A kézbesítés és a duplikáció kockázata nem ismert | Ellenőrizd a Microsoft 365 kimenő postafiókot; csak ezután folytasd a felületen |
+| A küldés eredménye bizonytalan | A kézbesítés és a duplikáció kockázata nem ismert | Ellenőrizd az üzemeltető szervezet dedikált kimenő postafiókját; csak ezután folytasd a felületen |
 | Nincs elfogadott projektséma | Felmérési kör nem jön létre | Jelölj ki legalább egy aktív kérdést, majd válaszd a `Kérdésséma elfogadása és felmérés indítása` gombot |
 | Nincs aktív alapkérdés | A korábbi bankverziók és projektek nem sérülnek | A kijelölt kérdésbank-gazda aktiváljon megfelelő kérdést, majd töltsd újra a `Felmérés` oldalt |
 | A séma zárolt | A nyitott kör pillanatképe változatlan marad | Fejezd be és zárd le a nyitott kört; az utódsémát csak utána publikáld |

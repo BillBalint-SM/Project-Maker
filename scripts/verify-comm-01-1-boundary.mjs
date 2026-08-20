@@ -17,9 +17,8 @@ const approvedCustomerSmtpBoundaryFiles = new Set([
   'apps/api/src/follow-ups/follow-up.service.ts',
   'apps/api/src/interview-customer-handoffs/interview-customer-handoff.service.ts',
   'apps/api/src/mail-delivery/customer-mail-boundary.ts',
-  'apps/api/src/mail-delivery/graph-customer-mail-boundary.ts',
   'apps/api/src/mail-delivery/mail-delivery.module.ts',
-  'apps/api/src/mail-delivery/smtp-mailer.service.ts',
+  'apps/api/src/mail-delivery/smtp-customer-outbound-mail.ts',
 ]);
 
 const customerSmtpBoundaryReference =
@@ -56,7 +55,7 @@ const currentDocumentationExpectations = [
   },
   {
     file: 'docs/operations-handoff.md',
-    required: ['Customer SMTP boundary'],
+    required: ['Customer mail gateway boundary'],
   },
 ];
 

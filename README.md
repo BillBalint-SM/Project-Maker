@@ -13,10 +13,10 @@ Only Nginx publishes a host port. It serves the SPA and proxies `/api/*` to the 
 
 The platform-neutral product workflow, vocabulary, domain data intent, general intake playbook, and scoring rules are preserved in [`docs/product-domain.md`](docs/product-domain.md). The current foundation does not yet implement all of that product behavior.
 
-The current runtime, migration, backup/restore, Microsoft 365 mail, VPN boundary, and
+The current runtime, migration, backup/restore, TLS SMTP/IMAP mail gateway, VPN boundary, and
 verification handoff is documented in [`docs/operations-handoff.md`](docs/operations-handoff.md).
 Use the [release cutover checklist](docs/release-cutover.md) to separate the
-internal application go-live from Operator organization-operated Microsoft 365
+internal application go-live from Operator organization-operated mail-gateway
 activation.
 
 ## Documentation
@@ -92,11 +92,11 @@ The API requires `CORS_ORIGIN`; `@nestjs/config` reads it from the root `.env` w
 | `CORS_ORIGIN` | Exact browser origin allowed by the API |
 | `FOLLOW_UP_POLL_INTERVAL_MS` | Automatic follow-up poll interval (5,000–86,400,000 ms) |
 | `CORRESPONDENCE_MAILBOX_POLL_INTERVAL_MS` | Correspondence mailbox poll interval in milliseconds; defaults to 60,000, and invalid values or values below 100 fall back to the default |
-| `CORRESPONDENCE_MAILBOX_NAME` / `CORRESPONDENCE_MAILBOX_ADDRESS` | Operator organization-controlled correspondence identity; both values are sent in the current transport message `from`, and the address is also used for correlated Reply-To addresses |
-| `GRAPH_TENANT_ID` / `GRAPH_CLIENT_ID` | Microsoft Graph application identity |
-| `GRAPH_CLIENT_CERTIFICATE_THUMBPRINT` / `GRAPH_CLIENT_PRIVATE_KEY_BASE64` | Certificate credential; use the SHA-1 thumbprint as exactly 40 hexadecimal characters without separators, and inject the base64-encoded PEM private key as a deployment secret that is never committed or logged |
-| `GRAPH_BASE_URL` | Graph API base URL; normally `https://graph.microsoft.com` |
-| `GRAPH_LOGIN_BASE_URL` | Microsoft identity platform base URL; normally `https://login.microsoftonline.com` |
+| `CORRESPONDENCE_MAILBOX_NAME` / `CORRESPONDENCE_MAILBOX_ADDRESS` | Operator organization-controlled dedicated sender identity; Reply-To correlation uses the configured address and generated plus-addresses |
+| `MAIL_GATEWAY_SMTP_*` | TLS SMTP host, port, security mode, and dedicated credential |
+| `MAIL_GATEWAY_IMAP_*` | TLS IMAP host, port, security mode, folder, and separate credential |
+| `MAIL_GATEWAY_CHECKPOINT_SECRET` | At least 32 random characters for encrypted IMAP checkpoints |
+| `MAIL_GATEWAY_TLS_CA_CERTIFICATE_BASE64` | Optional private-CA PEM, base64 encoded; leave empty for public trust roots |
 
 Existing environment files must rename their former ambiguous mailbox keys to
 the canonical `CORRESPONDENCE_MAILBOX_*` keys before the next deployment. The

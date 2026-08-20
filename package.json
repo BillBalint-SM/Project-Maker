@@ -19,8 +19,10 @@
     "typecheck": "pnpm --filter @project-maker/contracts build && pnpm -r --if-present typecheck",
     "verify:comm-01-1": "node scripts/verify-comm-01-1-boundary.mjs",
     "verify:domain-language": "node scripts/verify-domain-language.mjs",
-    "verify:m365-tenant-smoke": "node scripts/verify-m365-tenant-smoke.mjs docs/evidence/m365-tenant-smoke.json",
+    "verify:mail-gateway-smoke": "node scripts/verify-mail-gateway-smoke.mjs --require-pass docs/evidence/mail-gateway-smoke.json",
+    "verify:mail-gateway-smoke-schema": "node scripts/verify-mail-gateway-smoke.mjs docs/evidence/mail-gateway-smoke.json",
+    "verify:mail-gateway-drift": "node scripts/verify-mail-gateway-drift.mjs",
     "verify:ui-copy": "node scripts/generate-ui-copy-inventory.mjs --check",
-    "verify": "pnpm verify:domain-language && pnpm verify:comm-01-1 && pnpm verify:ui-copy && pnpm typecheck && pnpm test && pnpm build"
+    "verify": "pnpm verify:domain-language && pnpm verify:comm-01-1 && pnpm verify:mail-gateway-smoke-schema && pnpm verify:mail-gateway-drift && pnpm verify:ui-copy && pnpm typecheck && pnpm test && pnpm build"
   }
 }

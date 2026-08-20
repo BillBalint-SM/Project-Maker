@@ -15,7 +15,7 @@ The runtime is a Docker Compose stack:
 | Service | Role | Network exposure |
 | --- | --- | --- |
 | `web` | Angular 22.1 + licensed PrimeNG 22.0.0 static application served by Nginx; proxies `/api/*` | Publishes `WEB_PORT` (default `8080`) |
-| `api` | NestJS 11 API, TypeORM migrations, Microsoft Graph mail boundary and follow-up timer | Internal only; port `3000` is exposed to the Compose network |
+| `api` | NestJS 11 API, TypeORM migrations, TLS SMTP/IMAP mail gateway boundary and follow-up timer | Internal only; port `3000` is exposed to the Compose network |
 | `postgres` | PostgreSQL 18.4 Alpine data store | Internal only; no host port |
 
 `project-maker-edge` is the browser-facing network and
@@ -63,12 +63,12 @@ do not commit `.env` or real credentials.
 | `WEB_PORT` | yes | Host port mapped to Nginx port `8080`. |
 | `CORS_ORIGIN` | yes | One exact browser origin, for example `http://localhost:8080`; paths, wildcards, credentials, and origin lists are rejected. |
 | `FOLLOW_UP_POLL_INTERVAL_MS` | no | Automatic follow-up poll interval. Valid range is 5,000–86,400,000 ms; default is 60,000. |
-| `CORRESPONDENCE_MAILBOX_POLL_INTERVAL_MS` | no | Dedicated correspondence mailbox delta poll interval in milliseconds. The default is 60,000; non-integer values and values below 100 fall back to that default. |
-| `CORRESPONDENCE_MAILBOX_NAME` / `CORRESPONDENCE_MAILBOX_ADDRESS` | yes | Operator organization-controlled correspondence identity. The current transport receives both values in the message `from`; reply correlation uses high-entropy plus-addresses at this mailbox. |
-| `GRAPH_TENANT_ID` / `GRAPH_CLIENT_ID` | yes | Microsoft Graph application identity. |
-| `GRAPH_CLIENT_CERTIFICATE_THUMBPRINT` / `GRAPH_CLIENT_PRIVATE_KEY_BASE64` | yes | Certificate credential registered for the application. Supply the SHA-1 thumbprint as exactly 40 hexadecimal characters without separators. Inject the base64-encoded PEM private key only through deployment secrets; never commit or log it. |
-| `GRAPH_BASE_URL` | no | Graph API base URL; defaults to `https://graph.microsoft.com`. |
-| `GRAPH_LOGIN_BASE_URL` | no | Microsoft identity platform base URL; defaults to `https://login.microsoftonline.com`. |
+| `CORRESPONDENCE_MAILBOX_POLL_INTERVAL_MS` | no | Dedicated correspondence mailbox IMAP poll interval in milliseconds. The default is 60,000; non-integer values and values below 100 fall back to that default. |
+| `CORRESPONDENCE_MAILBOX_NAME` / `CORRESPONDENCE_MAILBOX_ADDRESS` | yes | Operator organization-controlled dedicated sender identity; reply correlation uses high-entropy plus-addresses at this mailbox. |
+| `MAIL_GATEWAY_SMTP_*` | yes | TLS SMTP endpoint and dedicated credential. Only `STARTTLS_REQUIRED` and `IMPLICIT_TLS` are accepted. |
+| `MAIL_GATEWAY_IMAP_*` | yes | TLS IMAP inbox endpoint, folder, and separately managed credential. |
+| `MAIL_GATEWAY_CHECKPOINT_SECRET` | yes | At least 32 random characters for encrypted mailbox/folder-bound checkpoints. |
+| `MAIL_GATEWAY_TLS_CA_CERTIFICATE_BASE64` | no | Optional base64 PEM private CA for both TLS channels. |
 
 Before upgrading an existing deployment, rename the former mailbox entries in
 its secret store or `.env` file to the matching
@@ -76,14 +76,13 @@ its secret store or `.env` file to the matching
 the legacy names: the correspondence mailbox is controlled by the Operator
 organization, not by a Project Customer.
 
-Customer handoffs use Microsoft Graph with no SMTP fallback. A Graph rejection
+Customer handoffs use the Operator-provided TLS SMTP gateway with no fallback. A known rejection
 or bounded configuration/authentication failure retains the immutable outbound
 communication, correspondence identity, and append-only attempt result. A retry
 uses the same Reply-To identity; a new logical version creates a successor
 correspondence. `ACCEPTED` means only that the mail system accepted submission.
-Provisioning, mailbox-scoped Exchange Application RBAC, plus-address rollout
-gating, controlled tenant smoke, recovery, and certificate rotation are defined
-in the [Microsoft 365 channel runbook](microsoft-365-channel.md).
+Gateway activation, controlled smoke, IMAP recovery, and credential rotation are
+defined in the [Operator mail gateway runbook](mail-gateway.md).
 
 ## Database migrations and recovery
 
@@ -107,9 +106,9 @@ ordered TypeORM migrations registered in
 14. `0014-interview-customer-handoff.ts` — named internal ownership, concrete next-action owner role, `OPEN`/`ENDED` interview meeting semantics, content versions, immutable sent customer-handoff versions, editable draft gating, and guarded rollback while handoff history exists.
 15. `0015-customer-follow-up-ping-draft.ts` — one optimistic customer-ping draft per project, same-project Discovery reference integrity, bounded preview state, durable delivery attempts, and guarded rollback while new ping activity is retained.
 16. `0016-project-start-creation-request.ts` — durable Project-start creation request identity for retry-safe draft creation.
-17. `0017-m365-interview-handoff.ts` — Microsoft 365 identities, immutable outbound Customer communication, correspondence anchors, and delivery attempts for interview handoffs.
-18. `0018-m365-customer-follow-up-ping.ts` — Microsoft 365 correspondence identities and acceptance results for Customer follow-up pings.
-19. `0019-customer-mailbox-sync.ts` — durable dedicated-mailbox identity, completed Graph delta checkpoint, bounded freshness/failure state, synchronization timestamps, lease ownership, and retained post-baseline mailbox changes.
+17. `0017-m365-interview-handoff.ts` — historical migration name; immutable outbound Customer communication, correspondence anchors, and delivery attempts for interview handoffs.
+18. `0018-m365-customer-follow-up-ping.ts` — historical migration name; correspondence identities and acceptance results for Customer follow-up pings.
+19. `0019-customer-mailbox-sync.ts` — durable dedicated-mailbox identity, completed historical checkpoint, bounded freshness/failure state, synchronization timestamps, lease ownership, and retained post-baseline mailbox changes.
 20. `0020-correlated-customer-replies.ts` — append-only normalized inbound Customer messages, token-only correlation evidence, bounded attachment metadata, correspondence ordering indexes, and rollback protection for retained messages.
 21. `0021-customer-correspondence-processing.ts` — explicit correspondence status, unread state, per-message classification, redacted processing audit, and guarded rollback while processing history exists.
 22. `0022-receipt-proven-handoff-revision.ts` — allows a receipt-proven `UNKNOWN` handoff to keep its immutable outcome while a successor handoff draft is created; rollback refuses an incompatible superseded state.
@@ -348,7 +347,7 @@ selects the latest five allow-listed business events before limiting and maps
 them to specific Hungarian summaries. The bounded technical audit API and its
 redacted persistence remain available for protected operational evidence.
 
-### Customer SMTP boundary and delivery semantics
+### Customer mail gateway boundary and delivery semantics
 
 `COMM-01.1` is a hard production boundary. Customer follow-up contracts,
 module wiring, service behavior, manual delivery, and the due-state worker do
@@ -356,19 +355,19 @@ not accept or import a Markdown revision, `.md` attachment, Claude instruction,
 or full Interview customer handoff. The removed legacy customer-review route
 stays absent; historical audit rows remain readable but cannot create a new
 delivery. `OUTPUT-01.1` is still planned and must deliver its internal Claude
-Code handoff without crossing this Customer SMTP boundary.
+Code handoff without crossing this Customer mail gateway boundary.
 
 These are intentionally separate flows:
 
 - **Interview customer handoff:** ending an interview creates version 1 in
-  `DRAFT`. The employee selects the dedicated mailbox or an exact `@pte.hu`
-  sender before preview. Preview binds sender, recipient, subject, HTML, text,
+  `DRAFT`. The configured dedicated correspondence identity is shown before
+  preview. Preview binds sender, recipient, subject, HTML, text,
   and source content version. Send requires the matching digest and uses a database
   lease so only one attempt can own the version. Every logical version retains
   one immutable outbound resource, one plus-addressed Reply-To identity, one
   correspondence, and append-only submission attempts. `SENT` versions are immutable;
   a customer change request creates the next draft with a required modification
-  summary and re-enables edits for that ended round. Known Graph rejections become
+  summary and re-enables edits for that ended round. Known gateway rejections become
   `FAILED`; expired or interrupted attempts become `UNKNOWN` and require an
   explicitly acknowledged retry after checking external delivery evidence and
   accepting the possible duplicate-delivery risk.
@@ -380,13 +379,12 @@ These are intentionally separate flows:
   open Discovery follow-up from the same project. Manual send requires a
   15-minute, single-use preview token whose fingerprint binds the recipient,
   normalized draft, draft version, and referenced follow-up version/status.
-  Before preview the employee selects the dedicated mailbox or a named sender
-  at the exact `@pte.hu` domain. The preview fingerprint includes that sender,
-  and Graph receives the same confirmed name and address in the message `from`.
+  Before preview the configured dedicated correspondence identity is shown.
+  The preview fingerprint includes that fixed sender identity.
   The manual delivery claim also has a 15-minute lease. Each new logical ping
   creates one immutable outbound communication, tokenized central Reply-To and
-  Customer correspondence before Microsoft Graph I/O, then finalizes in a
-  separate transaction. Explicit Graph rejection becomes `FAILED`; an
+  Customer correspondence before SMTP I/O, then finalizes in a
+  separate transaction. Explicit gateway rejection becomes `FAILED`; an
   indeterminate provider result becomes
   `UNKNOWN`. Both terminal recovery states survive reload. `FAILED` can be
   retried only by an explicit retry command. `UNKNOWN` requires the exact
@@ -403,10 +401,10 @@ These are intentionally separate flows:
   category, answer, source linkage, identifiers, or audit content. The due-state
   worker re-reads the current recipient, draft, and optional reference. It claims
   one due item in a short PostgreSQL transaction by persisting `SENDING` and
-  clearing `nextPingAt`, then performs Graph submission outside the transaction and finalizes
+  clearing `nextPingAt`, then performs SMTP submission outside the transaction and finalizes
   in a separate transaction. This provides one durable owner across workers
   without holding a database lock during network I/O. A successful scheduled
-  attempt advances cadence from the worker's controlled clock. A known Graph
+  attempt advances cadence from the worker's controlled clock. A known gateway
   rejection becomes `FAILED` and retains the next cadence; `UNKNOWN` clears the
   next due time and requires the same explicit, request-specific duplicate-risk
   recovery as a manual attempt. A due draft/reference validation conflict pauses
@@ -423,7 +421,7 @@ Relevant API routes:
 
 ```text
 GET   /api/projects/{projectId}/follow-up
-GET   /api/projects/{projectId}/follow-up/sender-options
+GET   /api/projects/{projectId}/follow-up/sender-identity
 PATCH /api/projects/{projectId}/follow-up
 PATCH /api/projects/{projectId}/follow-up/draft
 GET   /api/projects/{projectId}/follow-up/reference-options
@@ -431,9 +429,11 @@ POST  /api/projects/{projectId}/follow-up/ping/preview
 POST  /api/projects/{projectId}/follow-up/ping
 POST  /api/projects/{projectId}/follow-up/ping/retry
 GET   /api/projects/{projectId}/rounds/{roundId}/customer-handoffs
+GET   /api/projects/{projectId}/rounds/{roundId}/customer-handoffs/sender-identity
+GET   /api/projects/{projectId}/rounds/{roundId}/customer-handoffs/{handoffId}
 POST  /api/projects/{projectId}/rounds/{roundId}/customer-handoffs
 PUT   /api/projects/{projectId}/rounds/{roundId}/customer-handoffs/{handoffId}/draft
-GET   /api/projects/{projectId}/rounds/{roundId}/customer-handoffs/{handoffId}/preview
+POST  /api/projects/{projectId}/rounds/{roundId}/customer-handoffs/{handoffId}/preview
 POST  /api/projects/{projectId}/rounds/{roundId}/customer-handoffs/{handoffId}/send
 POST  /api/projects/{projectId}/rounds/{roundId}/customer-handoffs/{handoffId}/retry
 POST  /api/projects/{projectId}/rounds/{roundId}/customer-handoffs/{handoffId}/resume-editing
@@ -528,12 +528,12 @@ contracts runtime import, starts PostgreSQL and the migration-gated API, and
 invokes the canonical discovery/readiness consumers. OUTPUT-01 closeout also
 proves in the built image that the published Default template can generate a
 canonical revision with immutable template provenance. The complete Playwright
-suite uses the controlled local Graph fake to verify Project-start, handoff,
+suite uses the controlled local mail-gateway fake to verify Project-start, handoff,
 ping, archive/restore, late-reply, UNKNOWN, classification, no-Markdown, and
-mailbox-recovery behavior without tenant credentials. This evidence does not
-prove production readiness. A separately authorized non-CI tenant run must
-follow the [Microsoft 365 channel runbook](microsoft-365-channel.md), and its
-bounded evidence must pass `pnpm verify:m365-tenant-smoke`.
+mailbox-recovery behavior without gateway credentials. This evidence does not
+prove production readiness. A separately authorized non-CI gateway run must
+follow the [Operator mail gateway runbook](mail-gateway.md), and its
+bounded evidence must pass `pnpm verify:mail-gateway-smoke`.
 
 The declared SCORE-01.1 browser evidence is:
 

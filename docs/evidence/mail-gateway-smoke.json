@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "environment": "CONTROLLED_NON_CI_GATEWAY",
+  "executedAt": null,
+  "commit": null,
+  "result": "NOT_RUN",
+  "checks": {
+    "smtpTlsSubmissionAccepted": false,
+    "dedicatedSenderIdentityPreserved": false,
+    "replyToPreserved": false,
+    "imapInboxBaselineEstablished": false,
+    "imapReplyDetected": false,
+    "exactCorrelationRetained": false,
+    "replayDeduplicated": false,
+    "boundedRedactedFailureVerified": false,
+    "tlsVerificationEnforced": false,
+    "fakeGatewayInsufficientAcknowledged": true
+  }
+}
