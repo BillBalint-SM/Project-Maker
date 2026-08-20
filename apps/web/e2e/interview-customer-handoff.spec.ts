@@ -3,6 +3,13 @@ import { resolve } from 'node:path';
 
 import { expect, test, type APIRequestContext, type Page } from '@playwright/test';
 
+import {
+  correspondenceMailboxAddress,
+  correspondenceMailboxIdentity,
+  correspondenceMailboxName,
+  correspondenceReplyToPattern,
+} from './mail-gateway-test-identity';
+
 const gatewayFixtureUrl = `http://127.0.0.1:${process.env.MAIL_GATEWAY_FIXTURE_PORT ?? '25260'}`;
 const requireFromApi = createRequire(resolve(process.cwd(), '..', 'api', 'package.json'));
 const { Client } = requireFromApi('pg') as {
@@ -29,11 +36,11 @@ test.describe.serial('interview customer handoff browser journey', () => {
     await expect(page.getByTestId('handoff-preview-button')).toBeVisible();
     await expect(page.getByText('1. verzió előnézete')).toBeVisible();
     await expect(page.getByTestId('handoff-sender-identity'))
-      .toContainText('Project Maker <project-maker@pte.hu>');
+      .toContainText(correspondenceMailboxIdentity);
     await expect(page.getByText('Személyes postafiók')).toHaveCount(0);
     await expect(page.getByTestId('handoff-sender-name')).toHaveCount(0);
     await expect(page.getByTestId('handoff-sender-address')).toHaveCount(0);
-    await expect(page.locator('.preview')).toContainText('Project Maker <project-maker@pte.hu>');
+    await expect(page.locator('.preview')).toContainText(correspondenceMailboxIdentity);
     await sendCurrentPreview(page, fixture.projectId, fixture.roundId);
     await expect.poll(() => sentMessages(request).then((items) => items.length)).toBe(1);
     await expect(page.getByRole('heading', { name: /Verzióelőzmények/ })).toBeVisible();
@@ -84,12 +91,12 @@ test.describe.serial('interview customer handoff browser journey', () => {
       from?: { name?: string; address?: string } | null;
       replyToAddress?: string | null;
     };
-    expect(firstSubmission.envelope?.from).toBe('project-maker@pte.hu');
+    expect(firstSubmission.envelope?.from).toBe(correspondenceMailboxAddress);
     expect(firstSubmission.from).toEqual({
-      name: 'Project Maker',
-      address: 'project-maker@pte.hu',
+      name: correspondenceMailboxName,
+      address: correspondenceMailboxAddress,
     });
-    expect(firstSubmission.replyToAddress).toMatch(/^project-maker\+[a-f0-9]{48}@pte\.hu$/);
+    expect(firstSubmission.replyToAddress).toMatch(correspondenceReplyToPattern());
 
     await page.getByTestId('inspect-handoff-version-1').click();
     await expect(page.getByTestId('selected-handoff-recipient')).toContainText(`handoff-${fixture.suffix}@example.test`);

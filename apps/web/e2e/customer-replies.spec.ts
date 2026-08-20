@@ -1,5 +1,7 @@
 import { expect, test, type APIRequestContext } from '@playwright/test';
 
+import { correspondenceMailboxAddress } from './mail-gateway-test-identity';
+
 const gatewayFixtureUrl = `http://127.0.0.1:${process.env.MAIL_GATEWAY_FIXTURE_PORT ?? '25260'}`;
 
 test.beforeEach(async ({ request }) => {
@@ -159,7 +161,7 @@ test('triages unmatched mail and separates automated mailbox events without crea
     {
       internetMessageId: `<unmatched-${suffix}@example.test>`,
       senderAddress: setup.customerEmail,
-      recipientAddresses: ['project-maker@pte.hu'],
+      recipientAddresses: [correspondenceMailboxAddress],
       subject: 'Kézzel társítandó levél',
       textContent: 'Ezt a levelet a megfelelő projekthez kell kapcsolni.',
       receivedAt: '2026-08-18T19:00:00.000Z',
@@ -188,7 +190,7 @@ test('triages unmatched mail and separates automated mailbox events without crea
     },
     {
       internetMessageId: `<loop-${suffix}@example.test>`,
-      senderAddress: 'PROJECT-MAKER@PTE.HU', recipientAddresses: [replyToAddress],
+      senderAddress: correspondenceMailboxAddress.toUpperCase(), recipientAddresses: [replyToAddress],
       subject: 'Saját levél',
       textContent: 'Ezt nem szabad megjeleníteni.', receivedAt: '2026-08-18T19:04:00.000Z',
     },

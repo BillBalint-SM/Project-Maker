@@ -70,13 +70,76 @@ jobs:
       - name: Run verify
         run: pnpm verify
 
+  mail-gateway:
+    runs-on: ubuntu-latest
+    env:
+      ACTIVE_PROJECT_QUEUE_CURSOR_SECRET: ci-mail-gateway-cursor-secret-at-least-32-characters
+      CORS_ORIGIN: http://127.0.0.1:4200
+      DATABASE_URL: postgres://project_maker_app:ci-password@127.0.0.1:5432/project_maker_mail_gateway_test
+      CORRESPONDENCE_MAILBOX_NAME: Project Maker CI gateway
+      CORRESPONDENCE_MAILBOX_ADDRESS: project-maker-ci@example.test
+      MAIL_GATEWAY_SMTP_HOST: 127.0.0.1
+      MAIL_GATEWAY_SMTP_PORT: '2525'
+      MAIL_GATEWAY_SMTP_SECURITY: STARTTLS_REQUIRED
+      MAIL_GATEWAY_SMTP_USERNAME: ci-smtp-user
+      MAIL_GATEWAY_SMTP_PASSWORD: ci-smtp-password
+      MAIL_GATEWAY_IMAP_HOST: 127.0.0.1
+      MAIL_GATEWAY_IMAP_PORT: '2143'
+      MAIL_GATEWAY_IMAP_SECURITY: STARTTLS_REQUIRED
+      MAIL_GATEWAY_IMAP_USERNAME: ci-imap-user
+      MAIL_GATEWAY_IMAP_PASSWORD: ci-imap-password
+      MAIL_GATEWAY_IMAP_FOLDER: INBOX
+      MAIL_GATEWAY_CHECKPOINT_SECRET: ci-mail-gateway-checkpoint-secret-at-least-32-characters
+    services:
+      postgres:
+        image: postgres:18.4-alpine3.24
+        env:
+          POSTGRES_DB: project_maker_mail_gateway_test
+          POSTGRES_USER: project_maker_app
+          POSTGRES_PASSWORD: ci-password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U project_maker_app -d project_maker_mail_gateway_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 26.4.0
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Chromium
+        run: pnpm --filter @project-maker/web exec playwright install --with-deps chromium
+
+      - name: Build shared contracts
+        run: pnpm --filter @project-maker/contracts build
+
+      - name: Run database migrations
+        run: pnpm --filter @project-maker/api migration:run
+
+      - name: Test the controlled TLS SMTP/IMAP gateway at every application seam
+        run: pnpm test:mail-gateway:ci
+
   container-smoke:
     runs-on: ubuntu-latest
     env:
       ACTIVE_PROJECT_QUEUE_CURSOR_SECRET: ci-cursor-secret-with-at-least-32-characters
       COMPOSE_PROJECT_NAME: project-maker-container-smoke-${{ github.run_id }}-${{ github.run_attempt }}
       CORS_ORIGIN: http://localhost:8080
-      CORRESPONDENCE_MAILBOX_ADDRESS: project-maker-ci-placeholder@pte.hu
+      CORRESPONDENCE_MAILBOX_ADDRESS: project-maker-container-smoke@example.test
       CORRESPONDENCE_MAILBOX_NAME: Project Maker CI
       DATABASE_URL: postgres://project_maker_app:ci-password@postgres:5432/project_maker_container_smoke
       MAIL_GATEWAY_SMTP_HOST: 127.0.0.1

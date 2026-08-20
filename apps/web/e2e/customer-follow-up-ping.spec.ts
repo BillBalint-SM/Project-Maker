@@ -4,6 +4,13 @@ import { resolve } from 'node:path';
 
 import { expect, test, type APIRequestContext, type Page } from '@playwright/test';
 
+import {
+  correspondenceMailboxAddress,
+  correspondenceMailboxIdentity,
+  correspondenceMailboxName,
+  correspondenceReplyToPattern,
+} from './mail-gateway-test-identity';
+
 const gatewayFixtureUrl = `http://127.0.0.1:${process.env.MAIL_GATEWAY_FIXTURE_PORT ?? '25260'}`;
 const requireFromApi = createRequire(resolve(process.cwd(), '..', 'api', 'package.json'));
 const { Client } = requireFromApi('pg') as {
@@ -48,7 +55,7 @@ test('authors, previews, cancels, and explicitly sends one referenced customer p
   await expect(page.getByTestId('follow-up-message-draft')).toHaveValue(message);
   await expect(page.getByTestId('follow-up-reference-select')).toHaveValue(reference.id);
   await expect(page.getByTestId('follow-up-sender-identity'))
-    .toContainText('Project Maker <project-maker@pte.hu>');
+    .toContainText(correspondenceMailboxIdentity);
   await expect(page.getByTestId('follow-up-sender-selection')).toHaveCount(0);
   await expect(page.getByTestId('follow-up-sender-name')).toHaveCount(0);
   await expect(page.getByTestId('follow-up-sender-address')).toHaveCount(0);
@@ -58,7 +65,7 @@ test('authors, previews, cancels, and explicitly sends one referenced customer p
   await previewTrigger.click();
   const preview = page.getByRole('alertdialog', { name: 'Ügyfél-emlékeztető előnézete' });
   await expect(preview).toContainText(project.customerContactEmail);
-  await expect(preview).toContainText('Project Maker <project-maker@pte.hu>');
+  await expect(preview).toContainText(correspondenceMailboxIdentity);
   await expect(preview).toContainText(message);
   await expect(preview).toContainText('Kérdés: Melyik jóváhagyás hiányzik?');
   await expect(preview).toContainText('Következő lépés: Az ügyfél elküldi a jóváhagyást.');
@@ -85,13 +92,13 @@ test('authors, previews, cancels, and explicitly sends one referenced customer p
     from?: { name?: string; address?: string } | null;
     replyToAddress?: string | null;
   };
-  expect(submission.envelope?.from).toBe('project-maker@pte.hu');
+  expect(submission.envelope?.from).toBe(correspondenceMailboxAddress);
   expect(submission.from).toEqual({
-    name: 'Project Maker',
-    address: 'project-maker@pte.hu',
+    name: correspondenceMailboxName,
+    address: correspondenceMailboxAddress,
   });
   expect(submission.replyToAddress)
-    .toMatch(/^project-maker\+[a-f0-9]{48}@pte\.hu$/);
+    .toMatch(correspondenceReplyToPattern());
 });
 
 test('preserves the local draft after a stale preview and reloads only on explicit request', async ({

@@ -47,6 +47,14 @@ pnpm verify
 pnpm test:e2e
 ```
 
+To test the complete TLS SMTP/IMAP path without external credentials, run the
+isolated synthetic-gateway suite. It provisions and removes its own local test
+database; see [`docs/mail-gateway.md`](docs/mail-gateway.md#local-synthetic-gateway-suite).
+
+```powershell
+pnpm test:mail-gateway
+```
+
 ## Run with Docker Compose
 
 Create a local environment file and replace the placeholder password in both `POSTGRES_PASSWORD` and `DATABASE_URL` with the same strong secret:
