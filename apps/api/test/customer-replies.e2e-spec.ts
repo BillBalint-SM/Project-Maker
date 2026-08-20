@@ -3,6 +3,7 @@ import { Test } from '@nestjs/testing';
 import assert from 'node:assert/strict';
 import { after, before, describe, it } from 'node:test';
 import request from 'supertest';
+import { DataSource } from 'typeorm';
 
 import { AppModule } from '../src/app.module';
 import {
@@ -64,6 +65,7 @@ class CustomerReplyMailFake implements CustomerOutboundMail, CustomerMailboxChan
 describe('Correlated Customer replies', () => {
   let app: INestApplication;
   let secondApp: INestApplication;
+  let dataSource: DataSource;
   const mail = new CustomerReplyMailFake();
 
   before(async () => {
@@ -77,6 +79,7 @@ describe('Correlated Customer replies', () => {
       .compile();
     app = module.createNestApplication({ logger: false });
     await app.init();
+    dataSource = app.get(DataSource);
     const secondModule = await Test.createTestingModule({ imports: [AppModule] })
       .overrideProvider(customerOutboundMailToken)
       .useValue(mail)
@@ -341,11 +344,11 @@ describe('Correlated Customer replies', () => {
     assert.equal(classified.body.status, 'Lezárva');
     assert.equal(classified.body.messages[0].classification, 'Elfogadva');
 
-    const audit = await request(app.getHttpServer())
-      .get(`/projects/${target.projectId}/audit-events`)
-      .expect(200);
-    const linkEvents = audit.body.events.filter(
-      (event: { eventType: string }) => event.eventType === 'CUSTOMER_UNMATCHED_MESSAGE_LINKED',
+    const linkEvents = await dataSource.query<Array<{ payload: Record<string, unknown> }>>(
+      `SELECT "payload"
+       FROM "audit_events"
+       WHERE "project_id" = $1 AND "event_type" = 'CUSTOMER_UNMATCHED_MESSAGE_LINKED'`,
+      [target.projectId],
     );
     assert.equal(linkEvents.length, 1);
     assert.equal(JSON.stringify(linkEvents).includes('A társítás után'), false);
@@ -545,11 +548,16 @@ describe('Correlated Customer replies', () => {
       classifications,
     );
 
-    const cockpit = await request(app.getHttpServer()).get(`/projects/${projectId}/cockpit`).expect(200);
-    assert.equal(cockpit.body.status, 'DRAFT');
-    const audit = await request(app.getHttpServer()).get(`/projects/${projectId}/audit-events`).expect(200);
-    const processingEvents = audit.body.events.filter((event: { eventType: string }) =>
-      event.eventType.startsWith('CUSTOMER_'),
+    const projects = await request(app.getHttpServer()).get('/projects').expect(200);
+    assert.equal(
+      projects.body.find((project: { id: string }) => project.id === projectId)?.status,
+      'DRAFT',
+    );
+    const processingEvents = await dataSource.query<Array<{ event_type: string; payload: Record<string, unknown> }>>(
+      `SELECT "event_type", "payload"
+       FROM "audit_events"
+       WHERE "project_id" = $1 AND "event_type" LIKE 'CUSTOMER_%'`,
+      [projectId],
     );
     assert.equal(processingEvents.length >= 6, true);
     const serializedAudit = JSON.stringify(processingEvents);

@@ -13,9 +13,34 @@ const { SMTPServer } = requireFromApi('smtp-server');
 const { simpleParser } = requireFromApi('mailparser');
 const { generate } = requireFromApi('selfsigned');
 
-if (!process.env.DATABASE_URL) {
-  console.error('DATABASE_URL is required for web E2E because Playwright starts the real API and runs migrations against PostgreSQL.');
-  process.exit(1);
+async function main() {
+  if (!process.env.DATABASE_URL) {
+    console.error('DATABASE_URL is required for web E2E because Playwright starts the real API and runs migrations against PostgreSQL.');
+    process.exit(1);
+  }
+  await resetLocalE2eDatabase(process.env.DATABASE_URL);
+  const fixturePort = Number(process.env.MAIL_GATEWAY_FIXTURE_PORT ?? '25260');
+  const identity = await tlsIdentity();
+  const gateway = new GatewayFixture(identity);
+  await gateway.listen();
+  const controlServer = createHttpServer((request, response) => gateway.control(request, response));
+  await listen(controlServer, fixturePort, '127.0.0.1');
+  await pnpm(['--dir', repositoryDirectory, '--filter', '@project-maker/api', 'migration:run']);
+  const api = spawnPnpm(['--dir', repositoryDirectory, '--filter', '@project-maker/api', 'start'], {
+    env: {
+      ...process.env,
+      CORS_ORIGIN: process.env.CORS_ORIGIN ?? 'http://127.0.0.1:4200',
+      CORRESPONDENCE_MAILBOX_ADDRESS: process.env.CORRESPONDENCE_MAILBOX_ADDRESS ?? 'project-maker-e2e@example.test',
+      CORRESPONDENCE_MAILBOX_NAME: process.env.CORRESPONDENCE_MAILBOX_NAME ?? 'Project Maker',
+      MAIL_GATEWAY_SMTP_HOST: 'localhost', MAIL_GATEWAY_SMTP_PORT: String(gateway.smtpPort), MAIL_GATEWAY_SMTP_SECURITY: 'IMPLICIT_TLS', MAIL_GATEWAY_SMTP_USERNAME: 'playwright-smtp-user', MAIL_GATEWAY_SMTP_PASSWORD: 'playwright-smtp-password',
+      MAIL_GATEWAY_IMAP_HOST: 'localhost', MAIL_GATEWAY_IMAP_PORT: String(gateway.imapPort), MAIL_GATEWAY_IMAP_SECURITY: 'IMPLICIT_TLS', MAIL_GATEWAY_IMAP_USERNAME: 'playwright-imap-user', MAIL_GATEWAY_IMAP_PASSWORD: 'playwright-imap-password', MAIL_GATEWAY_IMAP_FOLDER: 'INBOX',
+      MAIL_GATEWAY_CHECKPOINT_SECRET: 'playwright-mail-gateway-checkpoint-secret-at-least-32-bytes',
+      MAIL_GATEWAY_TLS_CA_CERTIFICATE_BASE64: Buffer.from(identity.caCertificate).toString('base64'),
+      CORRESPONDENCE_MAILBOX_POLL_INTERVAL_MS: '60000',
+    }, stdio: 'inherit', windowsHide: true,
+  });
+  for (const signal of ['SIGINT', 'SIGTERM']) process.on(signal, () => { api.kill(signal); controlServer.close(); void gateway.close(); });
+  api.on('exit', (code, signal) => signal ? process.kill(process.pid, signal) : process.exit(code ?? 1));
 }
 class GatewayFixture {
   constructor(identity) {
@@ -91,26 +116,4 @@ function spawnPnpm(args, options) { return process.platform === 'win32' ? spawn(
 async function resetLocalE2eDatabase(databaseUrl) { safeDatabaseUrl(databaseUrl); const client = new Client({ connectionString: databaseUrl }); await client.connect(); try { await client.query('DROP SCHEMA IF EXISTS public CASCADE'); await client.query('CREATE SCHEMA public'); } finally { await client.end(); } }
 function safeDatabaseUrl(databaseUrl) { let url; try { url = new URL(databaseUrl); } catch { throw new Error('DATABASE_URL must be a valid local PostgreSQL URL for web E2E.'); } const name = url.pathname.replace(/^\//, ''); if (!['postgres:', 'postgresql:'].includes(url.protocol) || !['127.0.0.1', 'localhost', '[::1]'].includes(url.hostname) || !/(^|[_-])(e2e|test)([_-]|$)/i.test(name)) throw new Error('Web E2E resets its database before migrations. DATABASE_URL must point to a localhost PostgreSQL database whose name contains test or e2e.'); }
 
-await resetLocalE2eDatabase(process.env.DATABASE_URL);
-const fixturePort = Number(process.env.MAIL_GATEWAY_FIXTURE_PORT ?? '25260');
-const identity = await tlsIdentity();
-const gateway = new GatewayFixture(identity);
-await gateway.listen();
-const controlServer = createHttpServer((request, response) => gateway.control(request, response));
-await listen(controlServer, fixturePort, '127.0.0.1');
-await pnpm(['--dir', repositoryDirectory, '--filter', '@project-maker/api', 'migration:run']);
-const api = spawnPnpm(['--dir', repositoryDirectory, '--filter', '@project-maker/api', 'start'], {
-  env: {
-    ...process.env,
-    CORS_ORIGIN: process.env.CORS_ORIGIN ?? 'http://127.0.0.1:4200',
-    CORRESPONDENCE_MAILBOX_ADDRESS: process.env.CORRESPONDENCE_MAILBOX_ADDRESS ?? 'project-maker-e2e@example.test',
-    CORRESPONDENCE_MAILBOX_NAME: process.env.CORRESPONDENCE_MAILBOX_NAME ?? 'Project Maker',
-    MAIL_GATEWAY_SMTP_HOST: 'localhost', MAIL_GATEWAY_SMTP_PORT: String(gateway.smtpPort), MAIL_GATEWAY_SMTP_SECURITY: 'IMPLICIT_TLS', MAIL_GATEWAY_SMTP_USERNAME: 'playwright-smtp-user', MAIL_GATEWAY_SMTP_PASSWORD: 'playwright-smtp-password',
-    MAIL_GATEWAY_IMAP_HOST: 'localhost', MAIL_GATEWAY_IMAP_PORT: String(gateway.imapPort), MAIL_GATEWAY_IMAP_SECURITY: 'IMPLICIT_TLS', MAIL_GATEWAY_IMAP_USERNAME: 'playwright-imap-user', MAIL_GATEWAY_IMAP_PASSWORD: 'playwright-imap-password', MAIL_GATEWAY_IMAP_FOLDER: 'INBOX',
-    MAIL_GATEWAY_CHECKPOINT_SECRET: 'playwright-mail-gateway-checkpoint-secret-at-least-32-bytes',
-    MAIL_GATEWAY_TLS_CA_CERTIFICATE_BASE64: Buffer.from(identity.caCertificate).toString('base64'),
-    CORRESPONDENCE_MAILBOX_POLL_INTERVAL_MS: '60000',
-  }, stdio: 'inherit', windowsHide: true,
-});
-for (const signal of ['SIGINT', 'SIGTERM']) process.on(signal, () => { api.kill(signal); controlServer.close(); void gateway.close(); });
-api.on('exit', (code, signal) => signal ? process.kill(process.pid, signal) : process.exit(code ?? 1));
+await main();

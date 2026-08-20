@@ -43,20 +43,18 @@ describe('ProjectsController (e2e)', () => {
     await app.close();
   });
 
-  it('creates a draft project and returns it from the list and cockpit', async () => {
+  it('creates a draft project, returns it from the active list, and keeps retired routes unavailable', async () => {
     const projectId = await createProject('create');
 
-    const response = await request(app.getHttpServer())
-      .get(`/projects/${projectId}/cockpit`)
-      .expect(200);
-    if (response.body.projectId !== projectId || response.body.status !== 'DRAFT') {
-      throw new Error('cockpit response did not identify the created draft project');
-    }
-
     const listResponse = await request(app.getHttpServer()).get('/projects').expect(200);
-    if (!listResponse.body.some((project: { id: string }) => project.id === projectId)) {
+    if (!listResponse.body.some((project: { id: string; status: string }) =>
+      project.id === projectId && project.status === 'DRAFT',
+    )) {
       throw new Error('created project was not returned by GET /projects');
     }
+
+    await request(app.getHttpServer()).get(`/projects/${projectId}/cockpit`).expect(404);
+    await request(app.getHttpServer()).get(`/projects/${projectId}/audit-events`).expect(404);
   });
 
   it('returns one Project-start draft for repeated use of the same creation command', async () => {
@@ -144,7 +142,8 @@ describe('ProjectsController (e2e)', () => {
       .expect(200);
 
     await request(app.getHttpServer()).delete(`/projects/${projectId}`).expect(204);
-    await request(app.getHttpServer()).get(`/projects/${projectId}/cockpit`).expect(404);
+    const listResponse = await request(app.getHttpServer()).get('/projects').expect(200);
+    assert.equal(listResponse.body.some((project: { id: string }) => project.id === projectId), false);
   });
 
   it('manages a named Markdown template draft through preview and publication', async () => {
@@ -1235,13 +1234,10 @@ describe('ProjectsController (e2e)', () => {
       .patch(`/projects/${projectId}/workspace`)
       .send({ internalOwnerName: null, nextActionOwnerRole: 'INTERNAL_OWNER' })
       .expect(400);
-    await request(app.getHttpServer())
-      .get(`/projects/${projectId}/cockpit`)
-      .expect(200)
-      .expect(({ body }) => {
-        assert.equal(body.nextActionOwner.complete, true);
-        assert.equal(body.nextActionOwner.role, 'INTERNAL_OWNER');
-      });
+    const listResponse = await request(app.getHttpServer()).get('/projects').expect(200);
+    const project = listResponse.body.find((item: { id: string }) => item.id === projectId);
+    assert.equal(project.nextActionOwner.complete, true);
+    assert.equal(project.nextActionOwner.role, 'INTERNAL_OWNER');
   });
 
   it('returns an unsaved default follow-up state and persists only after PATCH', async () => {
@@ -2943,7 +2939,6 @@ describe('ProjectsController (e2e)', () => {
     const projectId = await createProject('delete-empty-draft');
 
     await request(app.getHttpServer()).delete(`/projects/${projectId}`).expect(204);
-    await request(app.getHttpServer()).get(`/projects/${projectId}/cockpit`).expect(404);
 
     const listResponse = await request(app.getHttpServer()).get('/projects').expect(200);
     assert.equal(listResponse.body.some((project: { id: string }) => project.id === projectId), false);
@@ -3103,7 +3098,7 @@ describe('ProjectsController (e2e)', () => {
       const response = await request(app.getHttpServer()).delete(`/projects/${projectId}`);
       assert.equal(response.status, 409);
       assert.equal(response.body.message, projectDeletionConflictMessage);
-      await request(app.getHttpServer()).get(`/projects/${projectId}/cockpit`).expect(200);
+      await expectProjectListed(projectId);
     } finally {
       await dataSource.query(
         'DROP TRIGGER IF EXISTS "trg_e2e_add_project_delete_blocker" ON "projects"',
@@ -3137,7 +3132,7 @@ describe('ProjectsController (e2e)', () => {
       const response = await request(app.getHttpServer()).delete(`/projects/${projectId}`);
       assert.equal(response.status, 409);
       assert.equal(response.body.message, projectDeletionConflictMessage);
-      await request(app.getHttpServer()).get(`/projects/${projectId}/cockpit`).expect(200);
+      await expectProjectListed(projectId);
     } finally {
       await dataSource.query(
         'DROP TRIGGER IF EXISTS "trg_e2e_add_deleted_project_fk_blocker" ON "projects"',
@@ -3179,7 +3174,7 @@ describe('ProjectsController (e2e)', () => {
 
     const missingProjectId = '00000000-0000-4000-8000-000000000000';
     await request(app.getHttpServer())
-      .get(`/projects/${missingProjectId}/cockpit`)
+      .get(`/projects/${missingProjectId}/activity`)
       .expect(404);
   });
 
@@ -3396,6 +3391,11 @@ describe('ProjectsController (e2e)', () => {
   async function expectProjectDeletionConflict(projectId: string): Promise<void> {
     const response = await request(app.getHttpServer()).delete(`/projects/${projectId}`).expect(409);
     assert.equal(response.body.message, projectDeletionConflictMessage);
+  }
+
+  async function expectProjectListed(projectId: string): Promise<void> {
+    const response = await request(app.getHttpServer()).get('/projects').expect(200);
+    assert.equal(response.body.some((project: { id: string }) => project.id === projectId), true);
   }
 
   async function clearProjectAuditEvents(projectId: string): Promise<void> {

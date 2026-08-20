@@ -33,10 +33,10 @@ import { ProgressSpinnerModule } from 'primeng/progressspinner';
 import { TextareaModule } from 'primeng/textarea';
 
 import {
-  COCKPIT_OPERATION_POLICY,
-  type CockpitOperationLease,
-  releaseCockpitOperationOnFinalize,
-} from '../cockpit-operation-policy';
+  PROJECT_OPERATION_POLICY,
+  type ProjectOperationLease,
+  releaseProjectOperationOnFinalize,
+} from '../project-operation-policy';
 import {
   CustomerFollowUpApiError,
   CustomerFollowUpApiService,
@@ -61,7 +61,7 @@ import {
 })
 export class CustomerFollowUpComponent implements OnInit {
   private readonly api = inject(CustomerFollowUpApiService);
-  private readonly operationPolicy = inject(COCKPIT_OPERATION_POLICY);
+  private readonly operationPolicy = inject(PROJECT_OPERATION_POLICY);
   private readonly destroyRef = inject(DestroyRef);
   private readonly document = inject(DOCUMENT);
   private readonly injector = inject(Injector);
@@ -99,7 +99,7 @@ export class CustomerFollowUpComponent implements OnInit {
   });
   private previewFocusReturn: HTMLElement | null = null;
   private retryFocusReturn: HTMLElement | null = null;
-  private recoveredPendingLease: CockpitOperationLease | null = null;
+  private recoveredPendingLease: ProjectOperationLease | null = null;
   private recoveredPendingRefreshHandle: ReturnType<typeof setTimeout> | null = null;
 
   readonly settingsForm = new FormGroup({
@@ -199,7 +199,7 @@ export class CustomerFollowUpComponent implements OnInit {
     this.api
       .updateSettings(this.projectId(), input)
       .pipe(
-        releaseCockpitOperationOnFinalize(lease),
+        releaseProjectOperationOnFinalize(lease),
         takeUntilDestroyed(this.destroyRef),
       )
       .subscribe({
@@ -232,7 +232,7 @@ export class CustomerFollowUpComponent implements OnInit {
         expectedVersion: current.draftVersion,
       })
       .pipe(
-        releaseCockpitOperationOnFinalize(lease),
+        releaseProjectOperationOnFinalize(lease),
         takeUntilDestroyed(this.destroyRef),
       )
       .subscribe({
@@ -263,7 +263,7 @@ export class CustomerFollowUpComponent implements OnInit {
         expectedVersion: current.draftVersion,
       })
       .pipe(
-        releaseCockpitOperationOnFinalize(lease),
+        releaseProjectOperationOnFinalize(lease),
         takeUntilDestroyed(this.destroyRef),
       )
       .subscribe({
@@ -310,7 +310,7 @@ export class CustomerFollowUpComponent implements OnInit {
           : {}),
       })
       .pipe(
-        releaseCockpitOperationOnFinalize(lease),
+        releaseProjectOperationOnFinalize(lease),
         takeUntilDestroyed(this.destroyRef),
       )
       .subscribe({
@@ -385,7 +385,7 @@ export class CustomerFollowUpComponent implements OnInit {
       attemptId: attempt.attemptId,
       acknowledgeDuplicateRisk: attempt.state === 'UNKNOWN',
     }).pipe(
-      releaseCockpitOperationOnFinalize(lease),
+      releaseProjectOperationOnFinalize(lease),
       takeUntilDestroyed(this.destroyRef),
     ).subscribe({
       next: () => {

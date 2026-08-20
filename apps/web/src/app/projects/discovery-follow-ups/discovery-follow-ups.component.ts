@@ -46,9 +46,9 @@ import {
 import { finalize } from 'rxjs';
 
 import {
-  COCKPIT_OPERATION_POLICY,
-  releaseCockpitOperationOnFinalize,
-} from '../cockpit-operation-policy';
+  PROJECT_OPERATION_POLICY,
+  releaseProjectOperationOnFinalize,
+} from '../project-operation-policy';
 import {
   DiscoveryFollowUpsApiError,
   DiscoveryFollowUpsApiService,
@@ -93,7 +93,7 @@ export class DiscoveryFollowUpsComponent implements OnInit {
   readonly committedChange = output<void>();
 
   private readonly api = inject(DiscoveryFollowUpsApiService);
-  private readonly operationPolicy = inject(COCKPIT_OPERATION_POLICY);
+  private readonly operationPolicy = inject(PROJECT_OPERATION_POLICY);
   private readonly destroyRef = inject(DestroyRef);
   private readonly document = inject(DOCUMENT);
   private readonly injector = inject(Injector);
@@ -362,7 +362,7 @@ export class DiscoveryFollowUpsComponent implements OnInit {
     this.api
       .create(this.projectId(), input)
       .pipe(
-        releaseCockpitOperationOnFinalize(lease),
+        releaseProjectOperationOnFinalize(lease),
         takeUntilDestroyed(this.destroyRef),
       )
       .subscribe({
@@ -430,7 +430,7 @@ export class DiscoveryFollowUpsComponent implements OnInit {
       })
       .pipe(
         finalize(() => this.savingSourceLinkId.set(null)),
-        releaseCockpitOperationOnFinalize(lease),
+        releaseProjectOperationOnFinalize(lease),
         takeUntilDestroyed(this.destroyRef),
       )
       .subscribe({
@@ -558,7 +558,7 @@ export class DiscoveryFollowUpsComponent implements OnInit {
       })
       .pipe(
         finalize(() => this.savingSourceLinkId.set(null)),
-        releaseCockpitOperationOnFinalize(lease),
+        releaseProjectOperationOnFinalize(lease),
         takeUntilDestroyed(this.destroyRef),
       )
       .subscribe({
@@ -681,7 +681,7 @@ export class DiscoveryFollowUpsComponent implements OnInit {
       .update(this.projectId(), followUpId, input)
       .pipe(
         finalize(() => this.savingEditId.set(null)),
-        releaseCockpitOperationOnFinalize(lease),
+        releaseProjectOperationOnFinalize(lease),
         takeUntilDestroyed(this.destroyRef),
       )
       .subscribe({
@@ -867,7 +867,7 @@ export class DiscoveryFollowUpsComponent implements OnInit {
       .resolve(this.projectId(), followUpId, input)
       .pipe(
         finalize(() => this.savingResolutionId.set(null)),
-        releaseCockpitOperationOnFinalize(lease),
+        releaseProjectOperationOnFinalize(lease),
         takeUntilDestroyed(this.destroyRef),
       )
       .subscribe({

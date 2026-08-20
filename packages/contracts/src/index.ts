@@ -8,7 +8,6 @@ export * from './markdown-revisions.js';
 export * from './markdown-templates.js';
 export * from './follow-ups.js';
 export * from './discovery-follow-ups.js';
-export * from './audit.js';
 export * from './readiness.js';
 export * from './decision-review.js';
 export * from './project-preparation-status.js';

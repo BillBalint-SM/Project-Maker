@@ -10,7 +10,7 @@ import {
   Patch,
   Post,
 } from '@nestjs/common';
-import type { ProjectCockpit, ProjectWorkspace } from '@project-maker/contracts';
+import type { ProjectWorkspace } from '@project-maker/contracts';
 
 import { CreateProjectDto } from './dto/create-project.dto';
 import { UpdateProjectBasicsDto } from './dto/update-project-basics.dto';
@@ -29,13 +29,6 @@ export class ProjectsController {
   @Get()
   list(): Promise<readonly ProjectWorkspace[]> {
     return this.projectsService.list();
-  }
-
-  @Get(':projectId/cockpit')
-  cockpit(
-    @Param('projectId', new ParseUUIDPipe()) projectId: string,
-  ): Promise<ProjectCockpit> {
-    return this.projectsService.cockpit(projectId);
   }
 
   @Patch(':projectId/workspace')

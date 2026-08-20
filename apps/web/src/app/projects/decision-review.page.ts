@@ -1,13 +1,13 @@
 import { Component, inject } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 
-import { provideCockpitOperationPolicy } from './cockpit-operation-policy';
+import { provideProjectOperationPolicy } from './project-operation-policy';
 import { DecisionReviewComponent } from './decision-review/decision-review.component';
 
 @Component({
   selector: 'app-decision-review-page',
   imports: [DecisionReviewComponent],
-  providers: [provideCockpitOperationPolicy()],
+  providers: [provideProjectOperationPolicy()],
   templateUrl: './decision-review.page.html',
   styleUrl: './decision-review.page.scss',
 })
