@@ -299,6 +299,18 @@ channel. It preserves safe message text and bounded attachment metadata, but
 not attachment content.
 _Avoid_: Delivery receipt, audit payload, executable email content
 
+**Customer reply classification**:
+An employee-recorded interpretation of a Customer inbound message:
+`Elfogadva`, `Módosítást kér`, `Kérdés vagy válasz`, or `Egyéb`. It is not a
+formal Project decision and does not create one automatically.
+_Avoid_: Automatic sentiment, delivery result, Go/No-Go decision
+
+**Unrecognized Customer reply sender**:
+A Customer inbound message whose sender cannot be matched to the Project's
+named Customer contact. The message remains available for employee review but
+is not treated as coming from a verified Customer contact.
+_Avoid_: Rejected reply, verified Customer contact
+
 **Unmatched Customer message**:
 A message received by the Correspondence mailbox that cannot yet be
 linked to a Project-owned Customer correspondence. It remains available for
