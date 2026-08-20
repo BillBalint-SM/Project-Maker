@@ -6,7 +6,7 @@ import { createMailGatewayConfiguration } from '../src/config/mail-gateway.confi
 
 describe('Operator-provided mail gateway configuration', () => {
   it('accepts separate TLS-only SMTP and IMAP profiles', () => {
-    const configuration = createMailGatewayConfiguration(new ConfigService({
+    const configuration = createMailGatewayConfiguration(isolatedConfig({
       CORRESPONDENCE_MAILBOX_NAME: 'Project Maker',
       CORRESPONDENCE_MAILBOX_ADDRESS: 'project-maker@example.test',
       MAIL_GATEWAY_SMTP_HOST: 'smtp.example.test',
@@ -61,12 +61,12 @@ describe('Operator-provided mail gateway configuration', () => {
     ];
 
     for (const values of invalidConfigurations) {
-      assert.equal(createMailGatewayConfiguration(new ConfigService(values)), null);
+      assert.equal(createMailGatewayConfiguration(isolatedConfig(values)), null);
     }
   });
 
   it('does not treat retired Graph settings as a mail gateway fallback', () => {
-    const configuration = createMailGatewayConfiguration(new ConfigService({
+    const configuration = createMailGatewayConfiguration(isolatedConfig({
       CORRESPONDENCE_MAILBOX_NAME: 'Project Maker',
       CORRESPONDENCE_MAILBOX_ADDRESS: 'project-maker@example.test',
       GRAPH_TENANT_ID: 'tenant',
@@ -84,11 +84,11 @@ describe('Operator-provided mail gateway configuration', () => {
       'dGVzdC1jZXJ0aWZpY2F0ZQ==',
       '-----END CERTIFICATE-----',
     ].join('\n');
-    const valid = createMailGatewayConfiguration(new ConfigService({
+    const valid = createMailGatewayConfiguration(isolatedConfig({
       ...completeConfiguration(),
       MAIL_GATEWAY_TLS_CA_CERTIFICATE_BASE64: Buffer.from(certificate).toString('base64'),
     }));
-    const invalid = createMailGatewayConfiguration(new ConfigService({
+    const invalid = createMailGatewayConfiguration(isolatedConfig({
       ...completeConfiguration(),
       MAIL_GATEWAY_TLS_CA_CERTIFICATE_BASE64: Buffer.from('not a certificate').toString('base64'),
     }));
@@ -112,4 +112,26 @@ function completeConfiguration(): Record<string, string> {
     MAIL_GATEWAY_IMAP_PASSWORD: 'imap-secret',
     MAIL_GATEWAY_CHECKPOINT_SECRET: 'checkpoint-secret-with-at-least-32-bytes',
   };
+}
+
+function isolatedConfig(values: Record<string, string>): ConfigService {
+  const gatewayKeys = [
+    'CORRESPONDENCE_MAILBOX_NAME',
+    'CORRESPONDENCE_MAILBOX_ADDRESS',
+    'MAIL_GATEWAY_SMTP_HOST',
+    'MAIL_GATEWAY_SMTP_PORT',
+    'MAIL_GATEWAY_SMTP_SECURITY',
+    'MAIL_GATEWAY_SMTP_USERNAME',
+    'MAIL_GATEWAY_SMTP_PASSWORD',
+    'MAIL_GATEWAY_IMAP_HOST',
+    'MAIL_GATEWAY_IMAP_PORT',
+    'MAIL_GATEWAY_IMAP_SECURITY',
+    'MAIL_GATEWAY_IMAP_USERNAME',
+    'MAIL_GATEWAY_IMAP_PASSWORD',
+    'MAIL_GATEWAY_IMAP_FOLDER',
+    'MAIL_GATEWAY_CHECKPOINT_SECRET',
+    'MAIL_GATEWAY_TLS_CA_CERTIFICATE_BASE64',
+  ];
+  const isolatedValues = Object.fromEntries(gatewayKeys.map((key) => [key, '']));
+  return new ConfigService({ ...isolatedValues, ...values });
 }
