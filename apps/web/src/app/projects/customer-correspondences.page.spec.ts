@@ -35,6 +35,18 @@ describe('CustomerCorrespondencesPage', () => {
       .mockReturnValueOnce(throwError(() => new Error('rejected')))
       .mockReturnValue(of({ ...correspondence, unreadMessageCount: 0, processingVersion: 2 }));
     const summary = vi.fn(() => of({ newReplyCount: 0, projectCount: 0, projects: [] }));
+    const preview = vi.fn().mockReturnValue(of({
+      recipientName: 'Ügyfél Anna',
+      recipientEmail: 'anna@example.test',
+      senderName: 'Project Maker',
+      senderAddress: 'project-maker@example.test',
+      subject: 'Ügyfél-emlékeztető',
+      text: 'Emlékeztető',
+      draftVersion: 1,
+      referencedFollowUpVersion: null,
+      previewToken: 'preview-token',
+      expiresAt: '2026-08-20T09:00:00.000Z',
+    }));
     await TestBed.configureTestingModule({
       imports: [CustomerCorrespondencesPage],
       providers: [
@@ -54,10 +66,10 @@ describe('CustomerCorrespondencesPage', () => {
               lastDeliveryError: null, latestManualAttempt: null,
             }),
             listReferenceOptions: () => of([]),
-            senderOptions: () => of({
-              dedicatedName: 'Project Maker', dedicatedAddress: 'project-maker@pte.hu',
-              lastUsedName: null, lastUsedAddress: null,
+            senderIdentity: () => of({
+              name: 'Project Maker', address: 'project-maker@example.test',
             }),
+            preview,
           },
         },
       ],
@@ -89,5 +101,15 @@ describe('CustomerCorrespondencesPage', () => {
     ]);
     expect(fixture.nativeElement.querySelector('[data-testid="follow-up-draft-form"]')).not.toBeNull();
     expect(fixture.nativeElement.querySelector('[data-testid="follow-up-settings-form"]')).toBeNull();
+    expect(fixture.nativeElement.querySelector('[data-testid="follow-up-sender-identity"]')?.textContent)
+      .toContain('Project Maker <project-maker@example.test>');
+    expect(fixture.nativeElement.querySelector('[data-testid="follow-up-sender-selection"]')).toBeNull();
+    expect(fixture.nativeElement.querySelector('input[type="radio"]')).toBeNull();
+
+    const previewButton = fixture.nativeElement
+      .querySelector('[data-testid="preview-follow-up-ping-button"] button') as HTMLButtonElement;
+    previewButton.click();
+    await fixture.whenStable();
+    expect(preview).toHaveBeenCalledWith('project-1', { expectedVersion: 1 });
   });
 });

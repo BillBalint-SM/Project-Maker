@@ -5,7 +5,6 @@ import type {
   MailSubmissionResult,
   OutboundCustomerMessage,
 } from '@project-maker/contracts';
-import { Injectable } from '@nestjs/common';
 
 export const customerOutboundMailToken = 'CUSTOMER_OUTBOUND_MAIL';
 export const customerMailboxChangesToken = 'CUSTOMER_MAILBOX_CHANGES';
@@ -17,7 +16,10 @@ export interface CustomerOutboundMail {
 
 export interface CustomerMailboxChanges {
   isConfigured(): boolean;
-  readChanges(checkpoint: CustomerMailboxCheckpoint | null): Promise<CustomerMailboxChangePage>;
+  readChanges(
+    checkpoint: CustomerMailboxCheckpoint | null,
+    recoverySince?: string | null,
+  ): Promise<CustomerMailboxChangePage>;
 }
 
 export function immutableOutboundCustomerMessage(
@@ -41,16 +43,5 @@ export class CustomerMailBoundaryError extends Error {
   ) {
     super('Customer mail operation failed.');
     this.name = 'CustomerMailBoundaryError';
-  }
-}
-
-@Injectable()
-export class UnavailableCustomerMailboxChanges implements CustomerMailboxChanges {
-  isConfigured(): boolean {
-    return false;
-  }
-
-  async readChanges(_checkpoint: CustomerMailboxCheckpoint | null): Promise<CustomerMailboxChangePage> {
-    throw new CustomerMailBoundaryError('CONFIGURATION_ERROR');
   }
 }

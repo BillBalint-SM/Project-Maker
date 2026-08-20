@@ -3,28 +3,37 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
 import {
-  preferredCustomerSender,
-  rememberedCustomerSender,
+  dedicatedCustomerSender,
 } from '../src/mail-delivery/customer-mail-identity';
 
-describe('customer mail identity compatibility', () => {
+describe('Operator-provided correspondence mailbox identity', () => {
   const config = new ConfigService({
     CORRESPONDENCE_MAILBOX_NAME: 'Project Maker',
-    CORRESPONDENCE_MAILBOX_ADDRESS: 'project-maker@pte.hu',
+    CORRESPONDENCE_MAILBOX_ADDRESS: 'project-maker@operator.example',
   });
 
-  it('does not reinterpret a legacy address-as-name snapshot as a confirmed display name', () => {
-    assert.equal(rememberedCustomerSender('po@pte.hu', 'po@pte.hu'), null);
-    assert.deepEqual(
-      preferredCustomerSender('po@pte.hu', 'po@pte.hu', config),
-      { name: 'Project Maker', address: 'project-maker@pte.hu' },
-    );
+  it('uses the configured dedicated identity without a provider-specific domain rule', () => {
+    assert.deepEqual(dedicatedCustomerSender(config), {
+      name: 'Project Maker',
+      address: 'project-maker@operator.example',
+    });
   });
 
-  it('preserves a genuinely named remembered sender', () => {
-    assert.deepEqual(
-      rememberedCustomerSender('PO Péter', 'po.peter@pte.hu'),
-      { name: 'PO Péter', address: 'po.peter@pte.hu' },
-    );
+  it('fails closed on a malformed configured identity', () => {
+    for (const values of [
+      {
+        CORRESPONDENCE_MAILBOX_NAME: 'Project Maker',
+        CORRESPONDENCE_MAILBOX_ADDRESS: 'not-an-address',
+      },
+      {
+        CORRESPONDENCE_MAILBOX_NAME: 'Project\r\nMaker',
+        CORRESPONDENCE_MAILBOX_ADDRESS: 'project-maker@operator.example',
+      },
+    ]) {
+      assert.throws(
+        () => dedicatedCustomerSender(new ConfigService(values)),
+        /levelezési postafiók/i,
+      );
+    }
   });
 });

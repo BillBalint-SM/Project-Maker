@@ -19,10 +19,10 @@ import { ProgressSpinnerModule } from 'primeng/progressspinner';
 import { SelectModule } from 'primeng/select';
 
 import {
-  COCKPIT_OPERATION_POLICY,
-  provideCockpitOperationPolicy,
-  releaseCockpitOperationOnFinalize,
-} from './cockpit-operation-policy';
+  PROJECT_OPERATION_POLICY,
+  provideProjectOperationPolicy,
+  releaseProjectOperationOnFinalize,
+} from './project-operation-policy';
 import { CustomerFollowUpComponent } from './customer-follow-up/customer-follow-up.component';
 import type { ProjectSettingsView } from './project-api.models';
 import { ProjectApiService } from './project-api.service';
@@ -44,7 +44,7 @@ type ActiveProjectStatus = Exclude<ProjectStatus, 'ARCHIVED'>;
     ReactiveFormsModule,
     SelectModule,
   ],
-  providers: [ConfirmationService, provideCockpitOperationPolicy()],
+  providers: [ConfirmationService, provideProjectOperationPolicy()],
   templateUrl: './project-settings.page.html',
   styleUrl: './project-settings.page.scss',
 })
@@ -55,7 +55,7 @@ export class ProjectSettingsPage implements OnInit {
   private readonly confirmationService = inject(ConfirmationService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly projectContext = inject(ProjectContextState, { optional: true });
-  readonly operationPolicy = inject(COCKPIT_OPERATION_POLICY);
+  readonly operationPolicy = inject(PROJECT_OPERATION_POLICY);
 
   readonly projectId = this.route.snapshot.paramMap.get('projectId') ?? '';
   readonly view = signal<ProjectSettingsView | null>(null);
@@ -159,7 +159,7 @@ export class ProjectSettingsPage implements OnInit {
       customerContactName: value.customerContactName.trim(),
       customerContactEmail: value.customerContactEmail.trim(),
     }).pipe(
-      releaseCockpitOperationOnFinalize(lease),
+      releaseProjectOperationOnFinalize(lease),
       takeUntilDestroyed(this.destroyRef),
     ).subscribe({
       next: (project) => {
@@ -182,7 +182,7 @@ export class ProjectSettingsPage implements OnInit {
     this.api.updateWorkspace(this.projectId, {
       status: this.lifecycleForm.controls.status.value,
     }).pipe(
-      releaseCockpitOperationOnFinalize(lease),
+      releaseProjectOperationOnFinalize(lease),
       takeUntilDestroyed(this.destroyRef),
     ).subscribe({
       next: (project) => {
@@ -212,7 +212,7 @@ export class ProjectSettingsPage implements OnInit {
     this.actionError.set(null);
     this.feedback.set(null);
     this.api.archiveProject(this.projectId).pipe(
-      releaseCockpitOperationOnFinalize(lease),
+      releaseProjectOperationOnFinalize(lease),
       takeUntilDestroyed(this.destroyRef),
     ).subscribe({
       next: (project) => {
@@ -231,7 +231,7 @@ export class ProjectSettingsPage implements OnInit {
     this.actionError.set(null);
     this.feedback.set(null);
     this.api.restoreProject(this.projectId).pipe(
-      releaseCockpitOperationOnFinalize(lease),
+      releaseProjectOperationOnFinalize(lease),
       takeUntilDestroyed(this.destroyRef),
     ).subscribe({
       next: (project) => {
@@ -261,7 +261,7 @@ export class ProjectSettingsPage implements OnInit {
     this.actionError.set(null);
     this.feedback.set(null);
     this.api.deleteProject(this.projectId).pipe(
-      releaseCockpitOperationOnFinalize(lease),
+      releaseProjectOperationOnFinalize(lease),
       takeUntilDestroyed(this.destroyRef),
     ).subscribe({
       next: () => void this.router.navigate(['/']),

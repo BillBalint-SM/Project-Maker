@@ -3,51 +3,53 @@ import { Test } from '@nestjs/testing';
 import assert from 'node:assert/strict';
 import { after, before, describe, it } from 'node:test';
 import request from 'supertest';
+import { DataSource } from 'typeorm';
 
 import { AppModule } from '../src/app.module';
 import {
-  graphMailClientToken,
-  GraphMailClientError,
-  type GraphMailClient,
-  type GraphMailboxMessage,
-  type GraphMailboxPage,
-  type GraphOutboundMessage,
-} from '../src/mail-delivery/graph-customer-mail-boundary';
+  CustomerMailBoundaryError,
+  type CustomerMailboxChanges,
+  type CustomerOutboundMail,
+  customerMailboxChangesToken,
+  customerOutboundMailToken,
+} from '../src/mail-delivery/customer-mail-boundary';
+import type {
+  CustomerMailboxChange,
+  CustomerMailboxChangePage,
+  MailSubmissionResult,
+  OutboundCustomerMessage,
+} from '@project-maker/contracts';
 
-class CustomerReplyGraphFake implements GraphMailClient {
-  readonly sent: GraphOutboundMessage[] = [];
+class CustomerReplyMailFake implements CustomerOutboundMail, CustomerMailboxChanges {
+  readonly sent: OutboundCustomerMessage[] = [];
   submitMode: 'SUCCESS' | 'UNKNOWN' = 'SUCCESS';
-  private changes: readonly GraphMailboxMessage[] = [];
-  private deltaVersion = 0;
+  private pages: readonly CustomerMailboxChangePage[] = [];
+  private checkpointVersion = 0;
   private heldRead: { started: () => void; wait: Promise<void> } | null = null;
 
   isConfigured(): boolean { return true; }
 
-  async submit(message: GraphOutboundMessage) {
+  async submit(message: OutboundCustomerMessage): Promise<MailSubmissionResult> {
     this.sent.push(message);
-    if (this.submitMode === 'UNKNOWN') throw new GraphMailClientError('UNKNOWN_OUTCOME');
-    return { accepted: true, id: `outbound-${this.sent.length}` } as const;
+    if (this.submitMode === 'UNKNOWN') throw new CustomerMailBoundaryError('OUTCOME_UNKNOWN');
+    return { acceptance: 'ACCEPTED', messageReference: `outbound-${this.sent.length}` };
   }
 
-  async readMailboxPage(_checkpoint: string | null): Promise<GraphMailboxPage> {
+  async readChanges(_checkpoint: { value: string } | null): Promise<CustomerMailboxChangePage> {
     if (this.heldRead) {
       const held = this.heldRead;
       this.heldRead = null;
       held.started();
       await held.wait;
     }
-    this.deltaVersion += 1;
-    const value = this.changes;
-    this.changes = [];
-    return {
-      value,
-      nextCheckpoint: null,
-      completedCheckpoint: `delta-${this.deltaVersion}`,
-    };
+    this.checkpointVersion += 1;
+    const page = this.pages[0];
+    this.pages = this.pages.slice(1);
+    return page ?? emptyMailboxPage(this.checkpointVersion);
   }
 
-  queue(...changes: readonly GraphMailboxMessage[]): void {
-    this.changes = changes;
+  queue(...pages: readonly CustomerMailboxChangePage[]): void {
+    this.pages = pages;
   }
 
   holdNextRead(): { started: Promise<void>; release: () => void } {
@@ -63,20 +65,26 @@ class CustomerReplyGraphFake implements GraphMailClient {
 describe('Correlated Customer replies', () => {
   let app: INestApplication;
   let secondApp: INestApplication;
-  const graph = new CustomerReplyGraphFake();
+  let dataSource: DataSource;
+  const mail = new CustomerReplyMailFake();
 
   before(async () => {
-    process.env['CORRESPONDENCE_MAILBOX_ADDRESS'] = 'reply51@pte.hu';
+    process.env['CORRESPONDENCE_MAILBOX_ADDRESS'] = 'reply51@example.test';
     process.env['CORRESPONDENCE_MAILBOX_NAME'] = 'Project Maker';
     const module = await Test.createTestingModule({ imports: [AppModule] })
-      .overrideProvider(graphMailClientToken)
-      .useValue(graph)
+      .overrideProvider(customerOutboundMailToken)
+      .useValue(mail)
+      .overrideProvider(customerMailboxChangesToken)
+      .useValue(mail)
       .compile();
     app = module.createNestApplication({ logger: false });
     await app.init();
+    dataSource = app.get(DataSource);
     const secondModule = await Test.createTestingModule({ imports: [AppModule] })
-      .overrideProvider(graphMailClientToken)
-      .useValue(graph)
+      .overrideProvider(customerOutboundMailToken)
+      .useValue(mail)
+      .overrideProvider(customerMailboxChangesToken)
+      .useValue(mail)
       .compile();
     secondApp = secondModule.createNestApplication({ logger: false });
     await secondApp.init();
@@ -94,30 +102,24 @@ describe('Correlated Customer replies', () => {
     const handoffId = history.body[0].id as string;
     const preview = await request(app.getHttpServer())
       .post(`/projects/${projectId}/rounds/${roundId}/customer-handoffs/${handoffId}/preview`)
-      .send({ mode: 'CUSTOM', name: 'PO Péter', address: 'po.peter@pte.hu' })
+      .send({})
       .expect(201);
     await request(app.getHttpServer())
       .post(`/projects/${projectId}/rounds/${roundId}/customer-handoffs/${handoffId}/send`)
       .send(sendInput(preview.body))
       .expect(201);
-    const replyToAddress = graph.sent.at(-1)?.replyTo[0]?.emailAddress.address;
+    const replyToAddress = mail.sent.at(-1)?.replyToAddress;
     assert.ok(replyToAddress);
 
-    const reply: GraphMailboxMessage = {
-      id: providerMessageReference,
+    const reply = inboundMessage(providerMessageReference, replyToAddress, '2026-08-18T14:00:00.000Z', {
       internetMessageId: '<reply-1@example.test>',
-      from: { emailAddress: { address: customerEmail } },
-      toRecipients: [{ emailAddress: { address: replyToAddress } }],
-      subject: 'Re: Projektösszefoglaló',
-      body: {
-        contentType: 'html',
-        content: '<p>Mehet a projekt.</p><script>steal()</script><p>On Monday wrote:</p><blockquote>Régi szöveg</blockquote>',
-      },
-      receivedDateTime: '2026-08-18T14:00:00.000Z',
+      senderAddress: customerEmail,
+      textContent: 'Mehet a projekt.\nOn Monday wrote:\nRégi szöveg',
+      attachmentCount: 1,
       attachments: [{ name: 'scope.pdf', contentType: 'application/pdf', size: 2048 }],
-    };
-    graph.queue(reply);
-    const held = graph.holdNextRead();
+    });
+    mail.queue(mailboxPage(reply));
+    const held = mail.holdNextRead();
     const firstRefresh = request(app.getHttpServer()).post('/customer-mailbox-sync/refresh').send({}).expect(201).then((response) => response);
     await held.started;
     const joinedRefresh = request(secondApp.getHttpServer()).post('/customer-mailbox-sync/refresh').send({}).expect(201).then((response) => response);
@@ -164,9 +166,9 @@ describe('Correlated Customer replies', () => {
     assert.equal(reviewedAgain.body.unreadMessageCount, 0);
     assert.equal(reviewedAgain.body.processingVersion, 3);
 
-    graph.queue(reply);
+    mail.queue(mailboxPage(reply));
     await request(app.getHttpServer()).post('/customer-mailbox-sync/refresh').send({}).expect(201);
-    graph.queue({ ...reply, id: `${providerMessageReference}-reissued` });
+    mail.queue(mailboxPage({ ...reply, messageReference: `${providerMessageReference}-reissued` }));
     await request(app.getHttpServer()).post('/customer-mailbox-sync/refresh').send({}).expect(201);
     const replayed = await request(app.getHttpServer())
       .get(`/projects/${projectId}/customer-correspondences`)
@@ -177,15 +179,12 @@ describe('Correlated Customer replies', () => {
 
   it('retains an uncorrelated message for explicit triage without inferring a Project', async () => {
     const messageId = `unmatched-${Date.now()}-${Math.random()}`;
-    graph.queue({
-      id: messageId,
+    mail.queue(mailboxPage(inboundMessage(messageId, 'reply51@example.test', '2026-08-18T17:00:00.000Z', {
       internetMessageId: `<${messageId}@example.test>`,
-      from: { emailAddress: { address: 'forwarded-customer@example.test' } },
-      toRecipients: [{ emailAddress: { address: 'reply51@pte.hu' } }],
+      senderAddress: 'forwarded-customer@example.test',
       subject: 'Továbbított Customer kérdés',
-      body: { contentType: 'text', content: 'Ezt az üzenetet kézzel kell társítani.' },
-      receivedDateTime: '2026-08-18T17:00:00.000Z',
-    });
+      textContent: 'Ezt az üzenetet kézzel kell társítani.',
+    })));
 
     await request(app.getHttpServer()).post('/customer-mailbox-sync/refresh').send({}).expect(201);
 
@@ -212,36 +211,32 @@ describe('Correlated Customer replies', () => {
   });
 
   it('separates mail-system events, ignores self-originated loops, and keeps uncertain automation reviewable', async () => {
-    const target = await createSentCorrespondence(app, graph);
+    const target = await createSentCorrespondence(app, mail);
     const suffix = `${Date.now()}-${Math.random()}`;
-    graph.queue(
+    mail.queue(mailboxPage(
       {
         ...inboundMessage(`dsn-${suffix}`, target.replyToAddress, '2026-08-18T17:05:00.000Z'),
         internetMessageId: `<dsn-${suffix}@example.test>`,
-        internetMessageHeaders: [
-          { name: 'Content-Type', value: 'multipart/report; report-type=delivery-status' },
-        ],
+        automationKind: 'DELIVERY_REPORT',
       },
       {
         ...inboundMessage(`dsn-${suffix}-reissued`, target.replyToAddress, '2026-08-18T17:05:00.000Z'),
         internetMessageId: `<dsn-${suffix}@example.test>`,
-        internetMessageHeaders: [
-          { name: 'Content-Type', value: 'multipart/report; report-type=delivery-status' },
-        ],
+        automationKind: 'DELIVERY_REPORT',
       },
       {
         ...inboundMessage(`ooo-${suffix}`, target.replyToAddress, '2026-08-18T17:06:00.000Z'),
-        internetMessageHeaders: [{ name: 'Auto-Submitted', value: 'auto-replied' }],
+        automationKind: 'OUT_OF_OFFICE',
       },
       {
         ...inboundMessage(`loop-${suffix}`, target.replyToAddress, '2026-08-18T17:07:00.000Z'),
-        from: { emailAddress: { address: 'REPLY51@PTE.HU' } },
+        senderAddress: 'REPLY51@EXAMPLE.TEST',
       },
       {
         ...inboundMessage(`automated-${suffix}`, target.replyToAddress, '2026-08-18T17:08:00.000Z'),
-        internetMessageHeaders: [{ name: 'Auto-Submitted', value: 'auto-generated' }],
+        automationKind: 'UNKNOWN_AUTOMATION',
       },
-    );
+    ));
 
     await request(app.getHttpServer()).post('/customer-mailbox-sync/refresh').send({}).expect(201);
 
@@ -268,21 +263,18 @@ describe('Correlated Customer replies', () => {
   });
 
   it('links one unmatched message idempotently through an explicit correspondence command', async () => {
-    const target = await createSentCorrespondence(app, graph);
+    const target = await createSentCorrespondence(app, mail);
     const correspondenceWork = await request(app.getHttpServer())
       .get(`/projects/${target.projectId}/customer-correspondences`)
       .expect(200);
     const correspondenceId = correspondenceWork.body.correspondences[0].id as string;
     const messageId = `manual-link-${Date.now()}-${Math.random()}`;
-    graph.queue({
-      id: messageId,
+    mail.queue(mailboxPage(inboundMessage(messageId, 'reply51@example.test', '2026-08-18T17:15:00.000Z', {
       internetMessageId: `<${messageId}@example.test>`,
-      from: { emailAddress: { address: 'forwarded-customer@example.test' } },
-      toRecipients: [{ emailAddress: { address: 'reply51@pte.hu' } }],
+      senderAddress: 'forwarded-customer@example.test',
       subject: 'Kézzel társítandó Customer kérdés',
-      body: { contentType: 'text', content: 'A társítás után ez egy Customer válasz.' },
-      receivedDateTime: '2026-08-18T17:15:00.000Z',
-    });
+      textContent: 'A társítás után ez egy Customer válasz.',
+    })));
     await request(app.getHttpServer()).post('/customer-mailbox-sync/refresh').send({}).expect(201);
     const triage = await request(app.getHttpServer()).get('/customer-mail-triage').expect(200);
     assert.equal(
@@ -352,11 +344,11 @@ describe('Correlated Customer replies', () => {
     assert.equal(classified.body.status, 'Lezárva');
     assert.equal(classified.body.messages[0].classification, 'Elfogadva');
 
-    const audit = await request(app.getHttpServer())
-      .get(`/projects/${target.projectId}/audit-events`)
-      .expect(200);
-    const linkEvents = audit.body.events.filter(
-      (event: { eventType: string }) => event.eventType === 'CUSTOMER_UNMATCHED_MESSAGE_LINKED',
+    const linkEvents = await dataSource.query<Array<{ payload: Record<string, unknown> }>>(
+      `SELECT "payload"
+       FROM "audit_events"
+       WHERE "project_id" = $1 AND "event_type" = 'CUSTOMER_UNMATCHED_MESSAGE_LINKED'`,
+      [target.projectId],
     );
     assert.equal(linkEvents.length, 1);
     assert.equal(JSON.stringify(linkEvents).includes('A társítás után'), false);
@@ -365,15 +357,12 @@ describe('Correlated Customer replies', () => {
 
   it('dismisses an irrelevant unmatched message idempotently and removes it from active triage', async () => {
     const messageId = `dismiss-${Date.now()}-${Math.random()}`;
-    graph.queue({
-      id: messageId,
+    mail.queue(mailboxPage(inboundMessage(messageId, 'reply51@example.test', '2026-08-18T17:30:00.000Z', {
       internetMessageId: `<${messageId}@example.test>`,
-      from: { emailAddress: { address: 'newsletter@example.test' } },
-      toRecipients: [{ emailAddress: { address: 'reply51@pte.hu' } }],
+      senderAddress: 'newsletter@example.test',
       subject: 'Nem projektüzenet',
-      body: { contentType: 'text', content: 'Ez az üzenet nem tartozik projekthez.' },
-      receivedDateTime: '2026-08-18T17:30:00.000Z',
-    });
+      textContent: 'Ez az üzenet nem tartozik projekthez.',
+    })));
     await request(app.getHttpServer()).post('/customer-mailbox-sync/refresh').send({}).expect(201);
     const before = await request(app.getHttpServer()).get('/customer-mail-triage').expect(200);
     const unmatched = before.body.unmatchedMessages.find(
@@ -420,24 +409,20 @@ describe('Correlated Customer replies', () => {
     const handoffId = history.body[0].id as string;
     const preview = await request(app.getHttpServer())
       .post(`/projects/${projectId}/rounds/${roundId}/customer-handoffs/${handoffId}/preview`)
-      .send({ mode: 'CUSTOM', name: 'PO Péter', address: 'po.peter@pte.hu' })
+      .send({})
       .expect(201);
     await request(app.getHttpServer())
       .post(`/projects/${projectId}/rounds/${roundId}/customer-handoffs/${handoffId}/send`)
       .send(sendInput(preview.body))
       .expect(201);
-    const replyToAddress = graph.sent.at(-1)?.replyTo[0]?.emailAddress.address;
+    const replyToAddress = mail.sent.at(-1)?.replyToAddress;
     assert.ok(replyToAddress);
 
-    graph.queue({
-      id: `unmatched-${messageSuffix}`,
-      internetMessageHeaders: [{ name: 'In-Reply-To', value: '<outbound-2>' }],
-      from: { emailAddress: { address: 'intruder@example.test' } },
-      toRecipients: [{ emailAddress: { address: 'reply51+invalid@pte.hu' } }],
+    mail.queue(mailboxPage(inboundMessage(`unmatched-${messageSuffix}`, 'reply51+invalid@example.test', '2026-08-18T15:00:00.000Z', {
+      inReplyTo: '<outbound-2>',
       subject: preview.body.subject,
-      body: { contentType: 'text', content: `A tárgy és a header nem elegendő.` },
-      receivedDateTime: '2026-08-18T15:00:00.000Z',
-    });
+      textContent: 'A tárgy és a header nem elegendő.',
+    })));
     await request(app.getHttpServer()).post('/customer-mailbox-sync/refresh').send({}).expect(201);
     const withoutInference = await request(app.getHttpServer())
       .get(`/projects/${projectId}/customer-correspondences`)
@@ -445,7 +430,7 @@ describe('Correlated Customer replies', () => {
     assert.equal(withoutInference.body.newReplyCount, 0);
     assert.equal(withoutInference.body.correspondences[0].messages.length, 0);
 
-    graph.queue(inboundMessage(mismatchId, replyToAddress, '2026-08-18T16:00:00.000Z'));
+    mail.queue(mailboxPage(inboundMessage(mismatchId, replyToAddress, '2026-08-18T16:00:00.000Z')));
     await request(app.getHttpServer()).post('/customer-mailbox-sync/refresh').send({}).expect(201);
     const mismatch = await request(app.getHttpServer())
       .get(`/projects/${projectId}/customer-correspondences`)
@@ -467,7 +452,7 @@ describe('Correlated Customer replies', () => {
       .post(`/projects/${projectId}/customer-correspondences/${correspondenceId}/commands`)
       .send({ command: 'MARK_REVIEWED', expectedVersion: mismatch.body.correspondences[0].processingVersion + 1 })
       .expect(201);
-    graph.queue(inboundMessage(lateId, replyToAddress, '2026-08-18T17:00:00.000Z'));
+    mail.queue(mailboxPage(inboundMessage(lateId, replyToAddress, '2026-08-18T17:00:00.000Z')));
     await request(app.getHttpServer()).post('/customer-mailbox-sync/refresh').send({}).expect(201);
 
     const reopened = await request(app.getHttpServer())
@@ -491,14 +476,14 @@ describe('Correlated Customer replies', () => {
   });
 
   it('processes every reply explicitly without changing Project lifecycle state', async () => {
-    const { projectId, replyToAddress } = await createSentCorrespondence(app, graph);
+    const { projectId, replyToAddress } = await createSentCorrespondence(app, mail);
     const suffix = `${Date.now()}-${Math.random()}`;
-    graph.queue(
+    mail.queue(mailboxPage(
       inboundMessage(`accepted-${suffix}`, replyToAddress, '2026-08-18T18:00:00.000Z'),
       inboundMessage(`change-${suffix}`, replyToAddress, '2026-08-18T18:01:00.000Z'),
       inboundMessage(`question-${suffix}`, replyToAddress, '2026-08-18T18:02:00.000Z'),
       inboundMessage(`other-${suffix}`, replyToAddress, '2026-08-18T18:03:00.000Z'),
-    );
+    ));
     await request(app.getHttpServer()).post('/customer-mailbox-sync/refresh').send({}).expect(201);
     const initial = await request(app.getHttpServer())
       .get(`/projects/${projectId}/customer-correspondences`)
@@ -563,11 +548,16 @@ describe('Correlated Customer replies', () => {
       classifications,
     );
 
-    const cockpit = await request(app.getHttpServer()).get(`/projects/${projectId}/cockpit`).expect(200);
-    assert.equal(cockpit.body.status, 'DRAFT');
-    const audit = await request(app.getHttpServer()).get(`/projects/${projectId}/audit-events`).expect(200);
-    const processingEvents = audit.body.events.filter((event: { eventType: string }) =>
-      event.eventType.startsWith('CUSTOMER_'),
+    const projects = await request(app.getHttpServer()).get('/projects').expect(200);
+    assert.equal(
+      projects.body.find((project: { id: string }) => project.id === projectId)?.status,
+      'DRAFT',
+    );
+    const processingEvents = await dataSource.query<Array<{ event_type: string; payload: Record<string, unknown> }>>(
+      `SELECT "event_type", "payload"
+       FROM "audit_events"
+       WHERE "project_id" = $1 AND "event_type" LIKE 'CUSTOMER_%'`,
+      [projectId],
     );
     assert.equal(processingEvents.length >= 6, true);
     const serializedAudit = JSON.stringify(processingEvents);
@@ -601,19 +591,19 @@ describe('Correlated Customer replies', () => {
     const firstHandoffId = history.body[0].id as string;
     const firstPreview = await request(app.getHttpServer())
       .post(`/projects/${projectId}/rounds/${roundId}/customer-handoffs/${firstHandoffId}/preview`)
-      .send({ mode: 'CUSTOM', name: 'PO Péter', address: 'po.peter@pte.hu' })
+      .send({})
       .expect(201);
     const firstSent = await request(app.getHttpServer())
       .post(`/projects/${projectId}/rounds/${roundId}/customer-handoffs/${firstHandoffId}/send`)
       .send(sendInput(firstPreview.body))
       .expect(201);
-    const firstReplyTo = graph.sent.at(-1)?.replyTo[0]?.emailAddress.address;
+    const firstReplyTo = mail.sent.at(-1)?.replyToAddress;
     assert.ok(firstReplyTo);
 
-    graph.queue({
+    mail.queue(mailboxPage({
       ...inboundMessage(`change-request-${Date.now()}-${Math.random()}`, firstReplyTo, '2026-08-18T19:00:00.000Z'),
-      from: { emailAddress: { address: customerEmail } },
-    });
+      senderAddress: customerEmail,
+    }));
     await request(app.getHttpServer()).post('/customer-mailbox-sync/refresh').send({}).expect(201);
     const received = await request(app.getHttpServer())
       .get(`/projects/${projectId}/customer-correspondences`)
@@ -649,7 +639,7 @@ describe('Correlated Customer replies', () => {
       .expect(200);
     const secondPreview = await request(app.getHttpServer())
       .post(`/projects/${projectId}/rounds/${roundId}/customer-handoffs/${revision.body.id}/preview`)
-      .send({ mode: 'CUSTOM', name: 'PO Péter', address: 'po.peter@pte.hu' })
+      .send({})
       .expect(201);
     const secondSent = await request(app.getHttpServer())
       .post(`/projects/${projectId}/rounds/${roundId}/customer-handoffs/${revision.body.id}/send`)
@@ -700,22 +690,22 @@ describe('Correlated Customer replies', () => {
       .post(`/projects/${projectId}/follow-up/ping/preview`)
       .send({ expectedVersion: 2 })
       .expect(201);
-    graph.submitMode = 'UNKNOWN';
+    mail.submitMode = 'UNKNOWN';
     const unknown = await request(app.getHttpServer())
       .post(`/projects/${projectId}/follow-up/ping`)
       .send({ previewToken: preview.body.previewToken })
       .expect(503);
-    graph.submitMode = 'SUCCESS';
+    mail.submitMode = 'SUCCESS';
     assert.equal(unknown.body.code, 'FOLLOW_UP_DELIVERY_UNKNOWN');
     const stateBeforeReply = await request(app.getHttpServer()).get(`/projects/${projectId}/follow-up`).expect(200);
     const attemptId = stateBeforeReply.body.latestManualAttempt.attemptId as string;
-    const replyToAddress = graph.sent.at(-1)?.replyTo[0]?.emailAddress.address;
+    const replyToAddress = mail.sent.at(-1)?.replyToAddress;
     assert.ok(replyToAddress);
 
-    graph.queue({
+    mail.queue(mailboxPage({
       ...inboundMessage(`unknown-receipt-${suffix}`, replyToAddress, '2026-08-18T20:00:00.000Z'),
-      from: { emailAddress: { address: customerEmail } },
-    });
+      senderAddress: customerEmail,
+    }));
     await request(app.getHttpServer()).post('/customer-mailbox-sync/refresh').send({}).expect(201);
     const received = await request(app.getHttpServer())
       .get(`/projects/${projectId}/customer-correspondences`)
@@ -748,10 +738,10 @@ describe('Correlated Customer replies', () => {
       })
       .expect(201);
     await request(app.getHttpServer()).post(`/projects/${projectId}/archive`).send({}).expect(201);
-    graph.queue({
+    mail.queue(mailboxPage({
       ...inboundMessage(`archived-receipt-${suffix}`, replyToAddress, '2026-08-18T20:30:00.000Z'),
-      from: { emailAddress: { address: customerEmail } },
-    });
+      senderAddress: customerEmail,
+    }));
     await request(app.getHttpServer()).post('/customer-mailbox-sync/refresh').send({}).expect(201);
     const archived = await request(app.getHttpServer())
       .get(`/projects/${projectId}/customer-correspondences`)
@@ -784,21 +774,21 @@ describe('Correlated Customer replies', () => {
     const handoffId = history.body[0].id as string;
     const preview = await request(app.getHttpServer())
       .post(`/projects/${projectId}/rounds/${roundId}/customer-handoffs/${handoffId}/preview`)
-      .send({ mode: 'CUSTOM', name: 'PO Péter', address: 'po.peter@pte.hu' })
+      .send({})
       .expect(201);
-    graph.submitMode = 'UNKNOWN';
+    mail.submitMode = 'UNKNOWN';
     const unknown = await request(app.getHttpServer())
       .post(`/projects/${projectId}/rounds/${roundId}/customer-handoffs/${handoffId}/send`)
       .send(sendInput(preview.body))
       .expect(201);
-    graph.submitMode = 'SUCCESS';
+    mail.submitMode = 'SUCCESS';
     assert.equal(unknown.body.state, 'UNKNOWN');
-    const replyToAddress = graph.sent.at(-1)?.replyTo[0]?.emailAddress.address;
+    const replyToAddress = mail.sent.at(-1)?.replyToAddress;
     assert.ok(replyToAddress);
-    graph.queue({
+    mail.queue(mailboxPage({
       ...inboundMessage(`unknown-handoff-receipt-${suffix}`, replyToAddress, '2026-08-18T21:00:00.000Z'),
-      from: { emailAddress: { address: customerEmail } },
-    });
+      senderAddress: customerEmail,
+    }));
     await request(app.getHttpServer()).post('/customer-mailbox-sync/refresh').send({}).expect(201);
 
     const withReceipt = await request(app.getHttpServer())
@@ -806,12 +796,12 @@ describe('Correlated Customer replies', () => {
       .expect(200);
     assert.equal(withReceipt.body[0].state, 'UNKNOWN');
     assert.equal(withReceipt.body[0].receiptEvidence, true);
-    const submittedCount = graph.sent.length;
+    const submittedCount = mail.sent.length;
     await request(app.getHttpServer())
       .post(`/projects/${projectId}/rounds/${roundId}/customer-handoffs/${handoffId}/retry`)
       .send({ acknowledgeDuplicateRisk: true })
       .expect(409);
-    assert.equal(graph.sent.length, submittedCount);
+    assert.equal(mail.sent.length, submittedCount);
     const stillUnknown = await request(app.getHttpServer())
       .get(`/projects/${projectId}/rounds/${roundId}/customer-handoffs/${handoffId}`)
       .expect(200);
@@ -833,28 +823,52 @@ describe('Correlated Customer replies', () => {
   });
 });
 
-function inboundMessage(id: string, replyToAddress: string, receivedAt: string): GraphMailboxMessage {
+function inboundMessage(
+  messageReference: string,
+  replyToAddress: string,
+  receivedAt: string,
+  overrides: Partial<CustomerMailboxChange> = {},
+): CustomerMailboxChange {
   return {
-    id,
-    from: { emailAddress: { address: 'intruder@example.test' } },
-    toRecipients: [{ emailAddress: { address: replyToAddress } }],
+    changeType: 'UPSERTED',
+    automationKind: 'HUMAN',
+    messageReference,
+    internetMessageId: null,
+    inReplyTo: null,
+    senderAddress: 'intruder@example.test',
+    recipientAddresses: [replyToAddress],
     subject: 'Re: Projektösszefoglaló',
-    body: { contentType: 'text', content: `Válasz ${id}` },
-    receivedDateTime: receivedAt,
+    textContent: `Válasz ${messageReference}`,
+    receivedAt,
+    attachmentCount: 0,
+    attachments: [],
+    ...overrides,
+  };
+}
+
+function mailboxPage(...changes: readonly CustomerMailboxChange[]): CustomerMailboxChangePage {
+  return {
+    changes,
+    nextPageCheckpoint: null,
+    completedCheckpoint: { value: 'test-checkpoint' },
+  };
+}
+
+function emptyMailboxPage(checkpointVersion: number): CustomerMailboxChangePage {
+  return {
+    changes: [],
+    nextPageCheckpoint: null,
+    completedCheckpoint: { value: `checkpoint-${checkpointVersion}` },
   };
 }
 
 function sendInput(preview: {
   sourceContentVersion: number;
   previewDigest: string;
-  senderName: string;
-  senderAddress: string;
 }) {
   return {
     sourceContentVersion: preview.sourceContentVersion,
     previewDigest: preview.previewDigest,
-    senderName: preview.senderName,
-    senderAddress: preview.senderAddress,
   };
 }
 
@@ -887,7 +901,7 @@ async function createEndedInterview(app: INestApplication): Promise<{
 
 async function createSentCorrespondence(
   app: INestApplication,
-  graph: CustomerReplyGraphFake,
+  mail: CustomerReplyMailFake,
 ): Promise<{ projectId: string; replyToAddress: string }> {
   const { projectId, roundId } = await createEndedInterview(app);
   const history = await request(app.getHttpServer())
@@ -896,13 +910,13 @@ async function createSentCorrespondence(
   const handoffId = history.body[0].id as string;
   const preview = await request(app.getHttpServer())
     .post(`/projects/${projectId}/rounds/${roundId}/customer-handoffs/${handoffId}/preview`)
-    .send({ mode: 'CUSTOM', name: 'PO Péter', address: 'po.peter@pte.hu' })
+    .send({})
     .expect(201);
   await request(app.getHttpServer())
     .post(`/projects/${projectId}/rounds/${roundId}/customer-handoffs/${handoffId}/send`)
     .send(sendInput(preview.body))
     .expect(201);
-  const replyToAddress = graph.sent.at(-1)?.replyTo[0]?.emailAddress.address;
+  const replyToAddress = mail.sent.at(-1)?.replyToAddress;
   assert.ok(replyToAddress);
   return { projectId, replyToAddress };
 }

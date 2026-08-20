@@ -1,7 +1,10 @@
 export const mailSystemAcceptanceStates = ['ACCEPTED', 'REJECTED'] as const;
 export type MailSystemAcceptanceState = (typeof mailSystemAcceptanceStates)[number];
 
-export const exactPteCustomerSenderAddressPattern = /^[^@\s]+@pte\.hu$/i;
+export interface CorrespondenceMailboxIdentity {
+  readonly name: string;
+  readonly address: string;
+}
 
 export const mailboxChangeTypes = ['UPSERTED', 'DELETED'] as const;
 export type MailboxChangeType = (typeof mailboxChangeTypes)[number];

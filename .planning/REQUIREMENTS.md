@@ -3,8 +3,8 @@
 This is the current delivery baseline. Checked items are verified in the
 Angular/NestJS monorepo; unchecked items remain future delivery work.
 Current delivery status is maintained in [`docs/roadmap.md`](../docs/roadmap.md).
-The historical guided-intake execution record is preserved in the tracked
-[guided-intake plan](../docs/superpowers/plans/2026-08-06-guided-intake-persistence.md).
+The current implementation and delivery status are maintained in
+[the roadmap](../docs/roadmap.md) and the relevant source and test files.
 
 ## Foundation
 
@@ -22,7 +22,7 @@ The historical guided-intake execution record is preserved in the tracked
 - [x] **INTAKE-02:** Users can run the versioned guided interview/checklist and record answers. A published project question schema starts exactly one `OPEN` round, records answers and assessments, rejects duplicate open starts with HTTP 409, and always permits `OPEN → ENDED` once technical saves are settled. An ended round remains editable only through its one active customer-handoff draft; sent versions are immutable, later Initial Intake rounds are allowed, and archived projects are read-only.
 - [x] **INTAKE-06:** Ending an interview creates a versioned customer-handoff draft that can be previewed, explicitly emailed, retried with delivery-risk safeguards, revised into later immutable sent versions, and inspected as history. Named internal/customer ownership and archived read-only behavior are enforced by API and UI.
 - [x] **INTAKE-03:** Answers autosave and remain recoverable after restart. Verified for persisted answers in the first `INITIAL_INTAKE` slice: text autosaves after the 750 ms quiet period, discrete values save immediately, failed saves keep the draft and expose retry, reload/API restart/Compose-backed recovery return the same active round and answer from PostgreSQL.
-- [ ] **INTAKE-04:** Users can manage follow-ups with owner, due date, status, answer/decision, and next step.
+- [x] **INTAKE-04:** Users can manage follow-ups with owner, due date, status, answer/decision, next step, and optional Initial Intake source linkage.
 - [x] **INTAKE-05:** The UI provides Hungarian coaching content and deterministic answer-quality guidance. Verified for the first `INITIAL_INTAKE` slice: loading, blocked, save, retry, validation, completion, and round-state messages are Hungarian, and question coaching is rendered deterministically from persisted contract metadata without a model or keyword path.
 
 ## Customer communication

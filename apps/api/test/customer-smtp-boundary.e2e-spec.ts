@@ -8,23 +8,27 @@ import { DataSource } from 'typeorm';
 import type { OutboundCustomerMessage } from '@project-maker/contracts';
 
 import { AppModule } from '../src/app.module';
-import {
-  customerMailerToken,
-  type CustomerMailerMessage,
-} from '../src/mail-delivery/smtp-mailer.service';
+import { customerOutboundMailToken } from '../src/mail-delivery/customer-mail-boundary';
 import { CustomerFollowUpService } from '../src/follow-ups/follow-up.service';
+
+interface DeliveredMessage {
+  readonly to: string;
+  readonly subject: string;
+  readonly text: string;
+  readonly html?: string;
+}
 
 describe('Customer SMTP boundary', () => {
   let app: INestApplication;
   let dataSource: DataSource;
   let followUpService: CustomerFollowUpService;
-  const delivered: CustomerMailerMessage[] = [];
+  const delivered: DeliveredMessage[] = [];
 
   before(async () => {
-    process.env['CORRESPONDENCE_MAILBOX_ADDRESS'] = 'project-maker@pte.hu';
+    process.env['CORRESPONDENCE_MAILBOX_ADDRESS'] = 'project-maker@example.test';
     process.env['CORRESPONDENCE_MAILBOX_NAME'] = 'Project Maker';
     const module = await Test.createTestingModule({ imports: [AppModule] })
-      .overrideProvider(customerMailerToken)
+      .overrideProvider(customerOutboundMailToken)
       .useValue({
         isConfigured: () => true,
         submit: async (message: OutboundCustomerMessage) => {
@@ -70,16 +74,17 @@ describe('Customer SMTP boundary', () => {
        VALUES ($1, $2, 'CUSTOMER_REVIEW_EMAIL_SENT', $3::jsonb)`,
       [historicalEventId, projectId, JSON.stringify({ revisionVersion: '3' })],
     );
-    const history = await request(app.getHttpServer())
-      .get(`/projects/${projectId}/audit-events`)
-      .expect(200);
-    assert.ok(
-      history.body.events.some(
-        (event: { eventType: string; payload: Record<string, string> }) =>
-          event.eventType === 'CUSTOMER_REVIEW_EMAIL_SENT' &&
-          event.payload.revisionVersion === '3',
-      ),
+    const history = await dataSource.query<Array<{ event_type: string; payload: Record<string, string> }>>(
+      `SELECT "event_type", "payload"
+       FROM "audit_events"
+       WHERE "project_id" = $1`,
+      [projectId],
     );
+    assert.ok(history.some(
+      (event) =>
+        event.event_type === 'CUSTOMER_REVIEW_EMAIL_SENT' &&
+        event.payload.revisionVersion === '3',
+    ));
   });
 
   it('rejects revision input and keeps the manual ping free of internal delivery content', async () => {
@@ -199,13 +204,13 @@ async function createInterviewHandoffPreview(
   assert.ok(handoffId);
   const preview = await request(app.getHttpServer())
     .post(`/projects/${projectId}/rounds/${round.body.id}/customer-handoffs/${handoffId}/preview`)
-    .send({ mode: 'CUSTOM', name: 'Teszt PO/PM', address: 'teszt@pte.hu' })
+    .send({})
     .expect(201);
   return preview.body.textContent as string;
 }
 
 function assertPingHasNoInternalDeliveryContent(
-  message: CustomerMailerMessage | undefined,
+  message: DeliveredMessage | undefined,
   revisionContent: string,
   handoffText: string,
 ): void {

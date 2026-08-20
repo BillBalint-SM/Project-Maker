@@ -4,18 +4,11 @@ Ez az ellenőrzőlista a Project Maker átadásának két, egymástól függetle
 kapuját választja szét:
 
 1. az alkalmazás belső/VPN-környezetben történő élesítése;
-2. a Microsoft 365 projektügyfél-kommunikációs csatorna üzemeltető szervezeti
-   aktiválása.
+2. az üzemeltető szervezet TLS SMTP/IMAP levelezési gateway-ének aktiválása.
 
-> **Átmeneti állapot:** ez a második kapu a jelenlegi Microsoft Graph
-> implementációt dokumentálja. A célarchitektúrát az
-> [ADR 0003](adr/0003-use-operator-provided-mail-gateway.md) rögzíti: az
-> üzemeltető szervezet szabványos SMTP/IMAP gateway-t biztosít. A Graph-runbook
-> nem adható át végleges aktiválási modellként.
-
-Az első kapu teljesíthető a Microsoft 365 tenant aktiválása nélkül. Ilyenkor a
-projektmunka használható, a Microsoft 365 műveletek pedig konfiguráció hiányában
-zártan hibáznak. A levelezési funkció csak a második kapu után nevezhető
+Az első kapu teljesíthető a gateway aktiválása nélkül. Ilyenkor a projektmunka
+használható, a levelezési műveletek pedig konfiguráció hiányában zártan
+hibáznak. A projektügyfél-kommunikáció csak a második kapu után nevezhető
 produkcióban aktiváltnak.
 
 ## Átadási csomag
@@ -27,14 +20,14 @@ anyagokat kapja:
 - a [végfelhasználói útmutatót](user-guide.md);
 - az [üzemeltetési átadást](operations-handoff.md), benne a migrációs,
   mentési és visszaállítási eljárással;
-- a [Microsoft 365 csatorna runbookját](microsoft-365-channel.md) és a
-  `scripts/setup-m365-channel.ps1` interaktív wizardot;
-- a redaktált tenant-smoke sablont
-  (`docs/evidence/m365-tenant-smoke.json`) és annak fail-closed ellenőrzőjét;
+- az [Operator mail gateway runbookot](mail-gateway.md) és a
+  `scripts/setup-mail-gateway.ps1` interaktív wizardot;
+- a redaktált gateway-smoke sablont
+  (`docs/evidence/mail-gateway-smoke.json`) és annak fail-closed ellenőrzőjét;
 - ezt a döntési és aláírási ellenőrzőlistát.
 
-Valódi `.env`, jelszó, privát kulcs, hozzáférési token, postafiók-tartalom vagy
-projektügyfél-adat nem része az átadási csomagnak.
+Valódi `.env`, jelszó, ellenőrzőpont-titok, CA-tartalom,
+postafiók-tartalom vagy projektügyfél-adat nem része az átadási csomagnak.
 
 ## Felelősök és átadandó bizonyíték
 
@@ -45,10 +38,9 @@ projektügyfél-adat nem része az átadási csomagnak.
 | Deployment gazda | Runtime-konfiguráció és Compose-élesítés | Konfigurációellenőrzés, health eredmény |
 | Adatbázis-gazda | Mentés, visszaállíthatóság és adatmegőrzés | Mentés ideje, restore-drill eredménye |
 | Üzleti elfogadó | Szintetikus teljes Project-journey ellenőrzése | Elfogadás dátuma és eredménye |
-| Entra adminisztrátor | Single-tenant alkalmazás, publikus tanúsítvány, `Mail.Send` consent | Belső változásjegy vagy jóváhagyás |
-| Exchange adminisztrátor | Dedikált postafiók, plus addressing, szűkített `Application Mail.Read` | In-scope/out-of-scope ellenőrzés eredménye |
-| Deployment secret gazda | Privát kulcs és tenant-értékek biztonságos injektálása | Secret helyének belső hivatkozása, érték nélkül |
-| Tenant-smoke operátor | Kontrollált valós M365 próba | Kizárólag a redaktált evidence JSON |
+| Gateway gazda | Dedikált postafiók, plus-addressing, TLS SMTP/IMAP végpontok és hálózati elérés | Belső változásjegy vagy jóváhagyás |
+| Deployment secret gazda | SMTP/IMAP jelszavak, ellenőrzőpont-titok és opcionális CA biztonságos injektálása | Secret helyének belső hivatkozása, érték nélkül |
+| Gateway-smoke operátor | Kontrollált valós gateway-próba | Kizárólag a redaktált evidence JSON |
 
 ## 1. kapu — az alkalmazás élesítése
 
@@ -57,18 +49,18 @@ projektügyfél-adat nem része az átadási csomagnak.
 - [ ] A telepítési gazda rögzítette a pontos forrás-commitot; az élesítés nem
   egy közben változó branchből történik.
 - [ ] A commit `checkpoint` és `container-smoke` CI-kapuja zöld.
-- [ ] Az alkalmazás csak az üzemeltető szervezet belső hálózatán/VPN-jén vagy azzal
-  egyenértékű tűzfal és reverse proxy mögött érhető el.
+- [ ] Az alkalmazás csak az üzemeltető szervezet belső hálózatán/VPN-jén vagy
+  azzal egyenértékű tűzfal és reverse proxy mögött érhető el.
 - [ ] A külső végpont HTTPS-t használ, a `CORS_ORIGIN` pedig pontosan ezt az
   origint tartalmazza. Az alkalmazásban nincs saját bejelentkezés vagy
   jogosultság-ellenőrzés, ezért nyilvános internetes kitettség nem elfogadható.
-- [ ] A `.env` az üzemeltető szervezet jóváhagyott runtime/secret helyén van, nem került
-  Gitbe, ticketbe, chatbe vagy átadási dokumentumba.
+- [ ] A `.env` az üzemeltető szervezet jóváhagyott runtime/secret helyén van,
+  nem került Gitbe, ticketbe, chatbe vagy átadási dokumentumba.
 - [ ] Meglévő adatbázis frissítése előtt készült ellenőrzött PostgreSQL-mentés.
   Új, üres telepítésnél ezt az operátor kifejezetten `nem alkalmazható`ként
   rögzítette.
-- [ ] Az üzemeltető szervezet kijelölte a mentési megőrzés és a visszaállítási próba
-  felelősét. A restore eljárás az üzemeltetési átadás szerint, nem az éles
+- [ ] Az üzemeltető szervezet kijelölte a mentési megőrzés és a visszaállítási
+  próba felelősét. A restore eljárás az üzemeltetési átadás szerint, nem az éles
   adatbázison lett kipróbálva.
 
 ### Telepítési kapuk
@@ -81,8 +73,8 @@ projektügyfél-adat nem része az átadási csomagnak.
    pnpm test:e2e
    ```
 
-2. Töltsd ki az üzemeltető szervezet környezetének `.env` fájlját, majd ellenőrizd a Compose
-   konfigurációt anélkül, hogy annak tartalmát naplóznád:
+2. Töltsd ki az üzemeltető szervezet környezetének `.env` fájlját, majd
+   ellenőrizd a Compose konfigurációt anélkül, hogy annak tartalmát naplóznád:
 
    ```powershell
    pnpm compose:config
@@ -101,8 +93,8 @@ projektügyfél-adat nem része az átadási csomagnak.
 5. Ellenőrizd a migrációs állapotot az
    [üzemeltetési átadás dokumentált parancsával](operations-handoff.md#database-migrations-and-recovery).
    A `pending: false` és mind a 23 migráció megléte kötelező.
-6. Szintetikus adatokkal járd végig legalább ezt az üzleti smoke-ot:
-   projekt létrehozása és kilépés, visszatérés a Projektportfólióba, kérdésséma
+6. Szintetikus adatokkal járd végig legalább ezt az üzleti smoke-ot: projekt
+   létrehozása és kilépés, visszatérés a Projektportfólióba, kérdésséma
    elfogadása, felmérési válasz mentése, felmérés lezárása, Becslési
    felkészültség megnyitása, tisztázandó tétel létrehozása, Projektállapot
    ellenőrzése és pontos visszatérés a kiinduló listába.
@@ -113,39 +105,37 @@ projektügyfél-adat nem része az átadási csomagnak.
 ### Az első kapu eredménye
 
 Az alkalmazás akkor adható át üzleti használatra, ha minden fenti pont sikeres.
-Ha az M365 kapu még nincs kész, az átadási jegyzőkönyvben szerepeljen:
-`Az alkalmazás éles; a projektügyfél-kommunikáció jelenlegi Microsoft 365
-implementációja az üzemeltető szervezet tenantjában aktiválható, de még nem
-produkcióban aktivált.`
+Ha a gateway-kapu még nincs kész, az átadási jegyzőkönyvben szerepeljen:
+`Az alkalmazás éles; a projektügyfél-kommunikáció az üzemeltető szervezet
+gateway-ének aktiválása után lesz produkcióban használható.`
 
-## 2. kapu — Microsoft 365 aktiválás
+## 2. kapu — levelezési gateway aktiválás
 
-Ezt a kaput kizárólag az üzemeltető szervezet Entra-, Exchange-, deployment-secret- és
-üzemeltetési felelősei hajthatják végre. A szállító nem kap tenant-adminisztrátori
-hozzáférést, postafiók-hozzáférést, privát kulcsot vagy kitöltött `.env` fájlt.
+Ezt a kaput kizárólag az üzemeltető szervezet gateway-, deployment-secret- és
+üzemeltetési felelősei hajthatják végre. A szállító nem kap postafiók-
+hozzáférést, jelszót, ellenőrzőpont-titkot, CA-tartalmat vagy kitöltött `.env`
+fájlt.
 
-- [ ] Az adminisztrátorok az üzemeltető szervezet környezetében futtatták a
-  `scripts/setup-m365-channel.ps1` wizardot.
-- [ ] Entra oldalon csak a publikus tanúsítvány került feltöltésre; a privát
-  kulcs az üzemeltető szervezet secret store-jában maradt.
-- [ ] A tenant-wide `Mail.Send` consent dokumentáltan elfogadott.
-- [ ] Az Exchange `Application Mail.Read` csak a dedikált Project Maker
-  postafiókra érvényes; egy másik postafiók igazoltan kívül esik a scope-on, és
-  nincs korlátlan Entra `Mail.Read` grant.
-- [ ] A dedikált plus-címre küldött próba megérkezett. Sikertelenség esetén az
-  aktiválás leállt; tárgy- vagy levéltörzs-alapú korreláció nem használható.
-- [ ] A [kontrollált tenant-smoke](microsoft-365-channel.md#controlled-microsoft-365-tenant-smoke)
-  minden pozitív, negatív, retry-, reply- és deduplikációs ellenőrzése sikeres.
-- [ ] A redaktált evidence kizárólag a jóváhagyott mezőket tartalmazza, és a
-  következő parancs zöld:
+- [ ] A gateway gazda létrehozta vagy kijelölte a dedikált correspondence
+  mailboxot, és igazolta, hogy a plus-addressing ugyanabba az Inboxba érkezik.
+- [ ] Az SMTP és IMAP végpont csak `STARTTLS_REQUIRED` vagy `IMPLICIT_TLS`
+  módban érhető el, a tanúsítványlánc ellenőrzött, és TLS 1.2 vagy újabb
+  szükséges.
+- [ ] Az SMTP és IMAP külön hitelesítője a jóváhagyott secret store-ban van;
+  nincs plaintext, opportunista downgrade vagy fallback mód.
+- [ ] A `scripts/setup-mail-gateway.ps1` helyi konfigurációt készített a titkok
+  megjelenítése nélkül, majd a `pnpm compose:config` sikeres.
+- [ ] A konfigurált dedikált identity a tényleges SMTP envelope és `From`
+  feladó; személyes vagy alternatív feladó nem engedélyezett.
+- [ ] A [kontrollált gateway-smoke](mail-gateway.md#controlled-gateway-smoke)
+  minden küldési, Reply-To, IMAP, deduplikációs, hiba- és TLS-ellenőrzése
+  sikeres.
+- [ ] A redaktált evidence kizárólag a jóváhagyott mezőket tartalmazza, a
+  telepített forrás-commithoz tartozik, és a következő parancs zöld:
 
   ```powershell
-  pnpm verify:m365-tenant-smoke
+  pnpm verify:mail-gateway-smoke
   ```
-
-A végrehajtandó tenant-feladat és annak elfogadási kritériumai a
-[GitHub #95](https://github.com/BillBalint-SM/Project-Maker/issues/95) issue-ban
-maradnak nyitva a valós aktiválásig.
 
 ## Go/No-Go döntés
 
@@ -155,14 +145,14 @@ maradnak nyitva a valós aktiválásig.
 - a hálózati/VPN és HTTPS határ bizonyított;
 - meglévő adatnál van ellenőrzött mentés és visszaállítási felelős;
 - a health, migráció és szintetikus Project-journey sikeres;
-- az M365 státuszát pontosan, nem kész funkcióként kommunikálják, amíg a
+- a gateway státuszát pontosan, nem kész funkcióként kommunikálják, amíg a
   második kapu nincs lezárva.
 
-### Go — Microsoft 365 csatorna
+### Go — levelezési gateway
 
 - az alapalkalmazás Go állapotú;
-- a #95 minden kritériuma teljesült;
-- a redaktált tenant-smoke evidence a telepített forrás-commithoz tartozik és
+- a plus-addressing, a külön hitelesítők és a TLS-korlátok bizonyítottak;
+- a redaktált gateway-smoke evidence a telepített forrás-commithoz tartozik és
   az ellenőrző elfogadja.
 
 ### No-Go
@@ -171,15 +161,15 @@ maradnak nyitva a valós aktiválásig.
 - hiányzó mentés meglévő adat frissítése előtt;
 - sikertelen health vagy függő/sikertelen migráció;
 - valódi projektügyfél-adatokkal végzett első próba;
-- M365 aktiváltnak nevezett környezet `NOT_RUN` vagy sikertelen tenant-smoke
-  evidence mellett;
-- sikertelen plus-address vagy dedikált postafiókon kívülre is érvényes
-  `Mail.Read` jogosultság.
+- aktiváltnak nevezett gateway `NOT_RUN` vagy sikertelen smoke evidence mellett;
+- sikertelen plus-address, TLS-ellenőrzés gyengítése, vagy személyes/alternatív
+  küldő engedélyezése.
 
 ## Visszaállítás és visszavonás
 
 1. Állítsd le a web- és API-írásokat; a PostgreSQL volume-ot ne töröld.
-2. Rögzítsd a hiba idejét és a telepített commitot titok vagy projektügyfél-adat nélkül.
+2. Rögzítsd a hiba idejét és a telepített commitot titok vagy
+   projektügyfél-adat nélkül.
 3. Adatvesztési vagy migrációs probléma esetén az ellenőrzött mentésből, az
    [ellenőrzött restore eljárással](operations-handoff.md#controlled-restore)
    állíts vissza. Ne próbálj adatot törölni azért, hogy egy védett migration
@@ -187,10 +177,12 @@ maradnak nyitva a valós aktiválásig.
 4. Alkalmazásregressziónál az előre rögzített korábbi forrás/artifact és az
    ahhoz illeszkedő adatbázis-visszaállítási terv használható; mozgó branchből
    ne építs rollbacket.
-5. M365-incidensnél először vond vissza az Exchange role assignmentet és
-   resource scope-ot, majd szükség szerint a Graph consentet vagy a publikus
-   tanúsítványt; a Project Makerben megőrzött levelezési előzményt ne töröld.
-6. Újranyitás előtt ismételd meg a health, migrációs és releváns smoke-kapukat.
+5. Gateway-incidensnél állítsd le a levelezési funkció használatát, majd a
+   titokkezelőben vond vissza vagy cseréld a szükséges SMTP/IMAP hitelesítőt.
+   A megőrzött levelezési előzményt, ellenőrzőpontot és adatbázis-volumet ne
+   töröld.
+6. Újranyitás előtt ismételd meg a health-, migrációs és releváns
+   gateway-smoke kapukat.
 
 ## Átadási jegyzőkönyv
 
@@ -203,8 +195,8 @@ maradnak nyitva a valós aktiválásig.
 | Restore-drill eredménye | |
 | Alkalmazás-smoke dátuma és eredménye | |
 | Üzleti elfogadó | |
-| M365 státusz: `NINCS AKTIVÁLVA` / `AKTIVÁLVA` | |
-| M365 evidence commit és dátum | |
+| Gateway státusz: `NINCS AKTIVÁLVA` / `AKTIVÁLVA` | |
+| Gateway evidence commit és dátum | |
 | Nyitott üzemeltetési korlátozás | |
 
 Titkos vagy személyes érték nem írható ebbe a táblázatba.

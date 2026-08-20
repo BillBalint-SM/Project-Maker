@@ -1,11 +1,11 @@
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import type {
+  CorrespondenceMailboxIdentity,
   CustomerFollowUpPingDelivery,
   CustomerFollowUpPingPreview,
   CustomerFollowUpReferenceOption,
   CustomerFollowUpState,
-  InterviewHandoffSenderOptions,
   PreviewCustomerFollowUpPingInput,
   RetryFollowUpPingInput,
   SendFollowUpPingInput,
@@ -46,10 +46,10 @@ export class CustomerFollowUpApiService {
     );
   }
 
-  senderOptions(projectId: string): Observable<InterviewHandoffSenderOptions> {
+  senderIdentity(projectId: string): Observable<CorrespondenceMailboxIdentity> {
     return this.request(
-      this.http.get<InterviewHandoffSenderOptions>(`${this.route(projectId)}/sender-options`),
-      'betölteni az ügyfél-emlékeztető feladóit',
+      this.http.get<CorrespondenceMailboxIdentity>(`${this.route(projectId)}/sender-identity`),
+      'betölteni a levelezési postafiók feladóját',
     );
   }
 
@@ -162,7 +162,7 @@ export class CustomerFollowUpApiService {
       }
       return throwError(() =>
         new CustomerFollowUpApiError(
-          `Nem sikerült ${action}, mert az e-mail-küldés nem érhető el. Ellenőrizd a Microsoft 365 beállításait.`,
+          `Nem sikerült ${action}, mert az e-mail-küldés nem érhető el. Ellenőrizd a levelezési átjáró beállításait.`,
           code,
         ),
       );

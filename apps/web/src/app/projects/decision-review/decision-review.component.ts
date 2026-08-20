@@ -19,9 +19,9 @@ import type {
 } from '@project-maker/contracts';
 
 import {
-  COCKPIT_OPERATION_POLICY,
-  releaseCockpitOperationOnFinalize,
-} from '../cockpit-operation-policy';
+  PROJECT_OPERATION_POLICY,
+  releaseProjectOperationOnFinalize,
+} from '../project-operation-policy';
 import { DecisionReviewApiService } from './decision-review-api.service';
 
 const ratingLabels: Readonly<Record<DecisionReviewInputKey, string>> = {
@@ -55,7 +55,7 @@ export class DecisionReviewComponent {
 
   private readonly api = inject(DecisionReviewApiService);
   private readonly destroyRef = inject(DestroyRef);
-  readonly operationPolicy = inject(COCKPIT_OPERATION_POLICY);
+  readonly operationPolicy = inject(PROJECT_OPERATION_POLICY);
   private requestToken = 0;
 
   readonly loading = signal(false);
@@ -109,7 +109,7 @@ export class DecisionReviewComponent {
     this.api
       .save(this.projectId(), this.ratingForm.getRawValue() as UpdateDecisionReviewInput)
       .pipe(
-        releaseCockpitOperationOnFinalize(lease),
+        releaseProjectOperationOnFinalize(lease),
         takeUntilDestroyed(this.destroyRef),
       )
       .subscribe({

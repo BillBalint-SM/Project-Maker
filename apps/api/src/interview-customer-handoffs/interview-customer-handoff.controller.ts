@@ -12,9 +12,9 @@ export class InterviewCustomerHandoffController {
     return this.service.list(projectId, roundId);
   }
 
-  @Get('sender-options')
-  senderOptions(@Param('projectId') projectId: string, @Param('roundId') roundId: string) {
-    return this.service.senderOptions(projectId, roundId);
+  @Get('sender-identity')
+  senderIdentity(@Param('projectId') projectId: string, @Param('roundId') roundId: string) {
+    return this.service.senderIdentity(projectId, roundId);
   }
 
   @Get(':handoffId')
@@ -33,8 +33,8 @@ export class InterviewCustomerHandoffController {
   }
 
   @Post(':handoffId/preview')
-  preview(@Param('projectId') projectId: string, @Param('roundId') roundId: string, @Param('handoffId') handoffId: string, @Body() input: PreviewHandoffDto) {
-    return this.service.preview(projectId, roundId, handoffId, input);
+  preview(@Param('projectId') projectId: string, @Param('roundId') roundId: string, @Param('handoffId') handoffId: string, @Body() _input: PreviewHandoffDto) {
+    return this.service.preview(projectId, roundId, handoffId);
   }
 
   @Post(':handoffId/send')

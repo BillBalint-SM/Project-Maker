@@ -3,7 +3,7 @@ import { ActivatedRoute } from '@angular/router';
 import type { ProjectStatus } from '@project-maker/contracts';
 import { ButtonModule } from 'primeng/button';
 
-import { provideCockpitOperationPolicy } from './cockpit-operation-policy';
+import { provideProjectOperationPolicy } from './project-operation-policy';
 import { DiscoveryFollowUpsComponent } from './discovery-follow-ups/discovery-follow-ups.component';
 import { ProjectApiService } from './project-api.service';
 import { ReadinessReviewComponent } from './readiness-review/readiness-review.component';
@@ -11,7 +11,7 @@ import { ReadinessReviewComponent } from './readiness-review/readiness-review.co
 @Component({
   selector: 'app-readiness-page',
   imports: [ButtonModule, DiscoveryFollowUpsComponent, ReadinessReviewComponent],
-  providers: [provideCockpitOperationPolicy()],
+  providers: [provideProjectOperationPolicy()],
   templateUrl: './readiness.page.html',
   styleUrl: './readiness.page.scss',
 })
