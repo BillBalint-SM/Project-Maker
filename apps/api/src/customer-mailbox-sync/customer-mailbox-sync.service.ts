@@ -145,7 +145,10 @@ export class CustomerMailboxSyncService implements OnModuleInit, OnModuleDestroy
         ? { value: state.deltaCheckpoint }
         : null;
       for (;;) {
-        const page = await this.readPageWithRetry(checkpoint);
+        const page = await this.readPageWithRetry(
+          checkpoint,
+          recoveryCutoff?.toISOString() ?? null,
+        );
         if (state.baselineEstablished) {
           changes.push(...page.changes);
         } else if (recoveryCutoff) {
@@ -214,10 +217,11 @@ export class CustomerMailboxSyncService implements OnModuleInit, OnModuleDestroy
 
   private async readPageWithRetry(
     checkpoint: CustomerMailboxCheckpoint | null,
+    recoverySince: string | null,
   ): Promise<Awaited<ReturnType<CustomerMailboxChanges['readChanges']>>> {
     for (let attempt = 0; ; attempt += 1) {
       try {
-        return await this.mailbox.readChanges(checkpoint);
+        return await this.mailbox.readChanges(checkpoint, recoverySince);
       } catch (error) {
         const code = error instanceof CustomerMailBoundaryError
           ? error.code

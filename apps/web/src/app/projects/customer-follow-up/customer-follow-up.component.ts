@@ -13,17 +13,16 @@ import {
   signal,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { FormControl, FormGroup, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
+import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { RouterLink } from '@angular/router';
-import { exactPteCustomerSenderAddressPattern } from '@project-maker/contracts/customer-mail';
 import type {
+  CorrespondenceMailboxIdentity,
   CustomerFollowUpPingPreview,
   CustomerFollowUpManualAttempt,
   CustomerFollowUpReferenceOption,
   CustomerFollowUpState,
   FollowUpDeliveryStatus,
   UpdateCustomerFollowUpInput,
-  InterviewHandoffSenderOptions,
 } from '@project-maker/contracts';
 import { ButtonModule } from 'primeng/button';
 import { CardModule } from 'primeng/card';
@@ -51,7 +50,6 @@ import {
     DatePipe,
     DatePickerModule,
     InputTextModule,
-    FormsModule,
     MessageModule,
     ProgressSpinnerModule,
     ReactiveFormsModule,
@@ -81,10 +79,7 @@ export class CustomerFollowUpComponent implements OnInit {
   readonly preview = signal<CustomerFollowUpPingPreview | null>(null);
   readonly retryConfirmation = signal<CustomerFollowUpManualAttempt | null>(null);
   readonly referenceOptions = signal<readonly CustomerFollowUpReferenceOption[]>([]);
-  readonly senderOptions = signal<InterviewHandoffSenderOptions | null>(null);
-  senderMode: 'DEDICATED' | 'CUSTOM' = 'DEDICATED';
-  senderName = '';
-  senderAddress = '';
+  readonly senderIdentity = signal<CorrespondenceMailboxIdentity | null>(null);
   readonly saving = computed(
     () => this.operationPolicy.activeOperation() === 'customer-follow-up-save',
   );
@@ -175,7 +170,7 @@ export class CustomerFollowUpComponent implements OnInit {
           this.loading.set(false);
           if (this.mode() === 'work') {
             this.loadReferenceOptions();
-            this.loadSenderOptions();
+            this.loadSenderIdentity();
           }
         },
         error: (error: Error) => {
@@ -266,10 +261,6 @@ export class CustomerFollowUpComponent implements OnInit {
     this.api
       .preview(this.projectId(), {
         expectedVersion: current.draftVersion,
-        senderMode: this.senderMode,
-        ...(this.senderMode === 'CUSTOM'
-          ? { senderName: this.senderName, senderAddress: this.senderAddress }
-          : {}),
       })
       .pipe(
         releaseCockpitOperationOnFinalize(lease),
@@ -294,23 +285,6 @@ export class CustomerFollowUpComponent implements OnInit {
         injector: this.injector,
       });
     }
-  }
-
-  changeSenderMode(mode: 'DEDICATED' | 'CUSTOM'): void {
-    this.senderMode = mode;
-    this.preview.set(null);
-    this.sendResult.set(null);
-  }
-
-  changeSender(): void {
-    this.preview.set(null);
-    this.sendResult.set(null);
-  }
-
-  senderIsValid(): boolean {
-    return this.senderMode === 'DEDICATED'
-      || (this.senderName.trim().length > 0
-        && exactPteCustomerSenderAddressPattern.test(this.senderAddress.trim()));
   }
 
   sendPing(acknowledgeDuplicateRisk = false): void {
@@ -464,7 +438,7 @@ export class CustomerFollowUpComponent implements OnInit {
           if (!preserveActionError) this.actionError.set(null);
           if (this.mode() === 'work') {
             this.loadReferenceOptions();
-            this.loadSenderOptions();
+            this.loadSenderIdentity();
           }
           if (focusSelector) this.focusAfterNextRender(focusSelector);
         },
@@ -482,18 +456,11 @@ export class CustomerFollowUpComponent implements OnInit {
       });
   }
 
-  private loadSenderOptions(): void {
-    this.api.senderOptions(this.projectId())
+  private loadSenderIdentity(): void {
+    this.api.senderIdentity(this.projectId())
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
-        next: (options) => {
-          this.senderOptions.set(options);
-          if (options.lastUsedAddress && options.lastUsedName) {
-            this.senderMode = 'CUSTOM';
-            this.senderName = options.lastUsedName;
-            this.senderAddress = options.lastUsedAddress;
-          }
-        },
+        next: (identity) => this.senderIdentity.set(identity),
         error: (error: Error) => this.actionError.set(error.message),
       });
   }

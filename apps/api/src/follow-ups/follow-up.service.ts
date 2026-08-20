@@ -15,13 +15,13 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import type {
+  CorrespondenceMailboxIdentity,
   CustomerFollowUpReferenceOption,
   CustomerFollowUpManualAttempt,
   CustomerFollowUpPingDelivery,
   CustomerFollowUpPingPreview,
   CustomerFollowUpState,
   FollowUpDeliveryStatus,
-  InterviewHandoffSenderOptions,
   MailSubmissionResult,
 } from '@project-maker/contracts';
 import { loadGeneralPlaybookV1 } from '@project-maker/contracts/general-playbook-runtime';
@@ -50,9 +50,6 @@ import {
   customerMailDigest,
   customerReplyToAddress,
   dedicatedCustomerSender,
-  preferredCustomerSender,
-  rememberedCustomerSender,
-  resolveCustomerSender,
   type ResolvedCustomerSender,
 } from '../mail-delivery/customer-mail-identity';
 import { CustomerFollowUpEntity } from './follow-up.entity';
@@ -112,7 +109,7 @@ export class CustomerFollowUpService implements OnModuleInit, OnModuleDestroy {
 
   onModuleInit(): void {
     // Every API process may poll in a multi-replica deployment. Due rows are
-    // selected again under a PostgreSQL row lock before Graph submission, so only one
+    // selected again under a PostgreSQL row lock before mail-gateway submission, so only one
     // process can claim a due state at a time. This is intentionally bounded
     // polling, not a durable job queue; a queue is the next scaling step.
     if (!this.mailer.isConfigured()) {
@@ -256,11 +253,7 @@ export class CustomerFollowUpService implements OnModuleInit, OnModuleDestroy {
       const state = await findOrCreateLockedState(manager, projectId);
       requireCurrentDraftVersion(state, input.expectedVersion);
       const { reference, rendered } = await renderCurrentPing(manager, project, state);
-      const sender = resolveCustomerSender({
-        mode: input.senderMode ?? 'DEDICATED',
-        name: input.senderName,
-        address: input.senderAddress,
-      }, this.configService);
+      const sender = dedicatedCustomerSender(this.configService);
       const previewToken = randomBytes(32).toString('base64url');
       const expiresAt = new Date(now.getTime() + previewLifetimeMs);
       state.previewTokenDigest = digest(previewToken);
@@ -446,7 +439,7 @@ export class CustomerFollowUpService implements OnModuleInit, OnModuleDestroy {
       ) {
         throw new ConflictException({
           code: 'FOLLOW_UP_RETRY_STALE',
-          message: 'A korábbi kézbesítés tartós Microsoft 365 azonossága hiányos.',
+          message: 'A korábbi kézbesítés tartós levelezési azonossága hiányos.',
         });
       }
       const outbound = latestAttempt.outboundCommunicationId
@@ -459,11 +452,7 @@ export class CustomerFollowUpService implements OnModuleInit, OnModuleDestroy {
             project,
             latestAttempt,
             rendered,
-            preferredCustomerSender(
-              project.lastCustomerSenderName,
-              project.lastCustomerSenderAddress,
-              this.configService,
-            ),
+            dedicatedCustomerSender(this.configService),
             reference,
           );
       if (!outbound) throw new InternalServerErrorException('A tartós kimenő kommunikáció hiányzik.');
@@ -538,7 +527,6 @@ export class CustomerFollowUpService implements OnModuleInit, OnModuleDestroy {
       attempt.messageReference = result.messageReference;
       await manager.getRepository(CustomerFollowUpDeliveryAttemptEntity).save(attempt);
       await recordOutboundAttempt(manager, attempt, 'ACCEPTED', null, result.messageReference);
-      await rememberPingSender(manager, claimed.outbound);
       await markDeliverySuccess(manager, state, sentAt, state.enabled);
       await saveAuditEvent(manager, state.projectId, 'CUSTOMER_FOLLOW_UP_PING_SENT', {
         attemptId: attempt.id,
@@ -779,11 +767,7 @@ export class CustomerFollowUpService implements OnModuleInit, OnModuleDestroy {
         mailSystemAcceptance: null,
         messageReference: null,
       });
-      const sender = preferredCustomerSender(
-        project.lastCustomerSenderName,
-        project.lastCustomerSenderAddress,
-        this.configService,
-      );
+      const sender = dedicatedCustomerSender(this.configService);
       const outbound = await createPingCorrespondence(
         manager,
         this.configService,
@@ -825,19 +809,13 @@ export class CustomerFollowUpService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
-  async senderOptions(projectId: string): Promise<InterviewHandoffSenderOptions> {
+  async senderIdentity(projectId: string): Promise<CorrespondenceMailboxIdentity> {
     return this.dataSource.transaction(async (manager) => {
-      const project = await this.findProject(manager, projectId, false);
+      await this.findProject(manager, projectId, false);
       const dedicated = dedicatedCustomerSender(this.configService);
-      const remembered = rememberedCustomerSender(
-        project.lastCustomerSenderName,
-        project.lastCustomerSenderAddress,
-      );
       return {
-        dedicatedName: dedicated.name,
-        dedicatedAddress: dedicated.address,
-        lastUsedName: remembered?.name ?? null,
-        lastUsedAddress: remembered?.address ?? null,
+        name: dedicated.name,
+        address: dedicated.address,
       };
     });
   }
@@ -855,7 +833,6 @@ export class CustomerFollowUpService implements OnModuleInit, OnModuleDestroy {
       attempt.messageReference = result.messageReference;
       await manager.getRepository(CustomerFollowUpDeliveryAttemptEntity).save(attempt);
       await recordOutboundAttempt(manager, attempt, 'ACCEPTED', null, result.messageReference);
-      await rememberPingSender(manager, claimed.outbound);
       await markDeliverySuccess(manager, state, sentAt, state.enabled);
       await saveAuditEvent(manager, state.projectId, 'CUSTOMER_FOLLOW_UP_PING_SENT', {
         attemptId: attempt.id,
@@ -1027,16 +1004,6 @@ async function recordOutboundAttempt(
     failureCode,
     messageReference,
   });
-}
-
-async function rememberPingSender(
-  manager: EntityManager,
-  outbound: CustomerOutboundCommunicationEntity,
-): Promise<void> {
-  const project = await manager.getRepository(Project).findOneByOrFail({ id: outbound.projectId });
-  project.lastCustomerSenderName = outbound.senderName;
-  project.lastCustomerSenderAddress = outbound.senderAddress;
-  await manager.getRepository(Project).save(project);
 }
 
 async function requireClaimedScheduledState(

@@ -1,10 +1,10 @@
 import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post } from '@nestjs/common';
 import type {
+  CorrespondenceMailboxIdentity,
   CustomerFollowUpReferenceOption,
   CustomerFollowUpPingDelivery,
   CustomerFollowUpPingPreview,
   CustomerFollowUpState,
-  InterviewHandoffSenderOptions,
 } from '@project-maker/contracts';
 
 import {
@@ -42,11 +42,11 @@ export class CustomerFollowUpController {
     return this.customerFollowUpService.listReferenceOptions(projectId);
   }
 
-  @Get('follow-up/sender-options')
-  senderOptions(
+  @Get('follow-up/sender-identity')
+  senderIdentity(
     @Param('projectId', new ParseUUIDPipe()) projectId: string,
-  ): Promise<InterviewHandoffSenderOptions> {
-    return this.customerFollowUpService.senderOptions(projectId);
+  ): Promise<CorrespondenceMailboxIdentity> {
+    return this.customerFollowUpService.senderIdentity(projectId);
   }
 
   @Patch('follow-up/draft')

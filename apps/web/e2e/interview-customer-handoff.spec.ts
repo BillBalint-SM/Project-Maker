@@ -3,7 +3,7 @@ import { resolve } from 'node:path';
 
 import { expect, test, type APIRequestContext, type Page } from '@playwright/test';
 
-const graphFakeUrl = `http://127.0.0.1:${process.env.GRAPH_FAKE_PORT ?? '25260'}`;
+const gatewayFixtureUrl = `http://127.0.0.1:${process.env.MAIL_GATEWAY_FIXTURE_PORT ?? '25260'}`;
 const requireFromApi = createRequire(resolve(process.cwd(), '..', 'api', 'package.json'));
 const { Client } = requireFromApi('pg') as {
   readonly Client: new (configuration: { readonly connectionString: string }) => DatabaseClient;
@@ -18,7 +18,7 @@ interface DatabaseClient {
 test.describe.serial('interview customer handoff browser journey', () => {
   test.setTimeout(120_000);
 
-  test.beforeEach(async ({ request }) => { await request.post(`${graphFakeUrl}/__test/reset`); });
+  test.beforeEach(async ({ request }) => { await request.post(`${gatewayFixtureUrl}/__test/reset`); });
 
   test('finishes incomplete work, sends v1, edits v2, resends, and inspects immutable history', async ({ page, request }, testInfo) => {
     const fixture = await createOpenInterview(request, testInfo);
@@ -28,20 +28,14 @@ test.describe.serial('interview customer handoff browser journey', () => {
     await nativeButton(page, 'finish-interview-and-send-button').click();
     await expect(page.getByTestId('handoff-preview-button')).toBeVisible();
     await expect(page.getByText('1. verzió előnézete')).toBeVisible();
-    await page.getByLabel('Személyes postafiók').check();
-    await page.getByTestId('handoff-sender-name').fill('Teszt PO');
-    const invalidPreviewResponse = page.waitForResponse((response) => response.request().method() === 'POST' && response.url().endsWith('/preview'));
-    await page.getByTestId('handoff-sender-address').fill('x..y@pte.hu');
-    await nativeButton(page, 'handoff-preview-button').click();
-    expect((await invalidPreviewResponse).status()).toBe(400);
-    await expect(page.getByRole('alert')).toBeVisible();
-    await expect(page.locator('.preview')).toBeHidden();
-    await page.getByTestId('handoff-sender-address').fill('teszt.po@pte.hu');
-    await expect(page.locator('.preview')).toBeHidden();
-    await nativeButton(page, 'handoff-preview-button').click();
-    await expect(page.locator('.preview')).toContainText('Teszt PO <teszt.po@pte.hu>');
+    await expect(page.getByTestId('handoff-sender-identity'))
+      .toContainText('Project Maker <project-maker@pte.hu>');
+    await expect(page.getByText('Személyes postafiók')).toHaveCount(0);
+    await expect(page.getByTestId('handoff-sender-name')).toHaveCount(0);
+    await expect(page.getByTestId('handoff-sender-address')).toHaveCount(0);
+    await expect(page.locator('.preview')).toContainText('Project Maker <project-maker@pte.hu>');
     await sendCurrentPreview(page, fixture.projectId, fixture.roundId);
-    await expect.poll(() => graphMessages(request).then((items) => items.length)).toBe(1);
+    await expect.poll(() => sentMessages(request).then((items) => items.length)).toBe(1);
     await expect(page.getByRole('heading', { name: /Verzióelőzmények/ })).toBeVisible();
     await expect(page.getByTestId('handoff-version-heading-1')).toContainText('Átadva a levelezőrendszernek');
     await expect(page.getByTestId('handoff-version-heading-1')).toBeFocused();
@@ -78,26 +72,24 @@ test.describe.serial('interview customer handoff browser journey', () => {
     await nativeButton(page, 'handoff-preview-button').click();
     await expect(page.locator('.preview pre')).toContainText(answerAfterPreview);
     await sendCurrentPreview(page, fixture.projectId, fixture.roundId);
-    await expect.poll(() => graphMessages(request).then((items) => items.length)).toBe(2);
+    await expect.poll(() => sentMessages(request).then((items) => items.length)).toBe(2);
     await expect(page.getByTestId('handoff-version-heading-2')).toContainText('Átadva a levelezőrendszernek');
     await expect(page.getByTestId('handoff-version-heading-2')).toBeFocused();
-    const messages = await graphMessages(request);
+    const messages = await sentMessages(request);
     expect(JSON.stringify(messages[0])).not.toContain(answer);
     expect(JSON.stringify(messages[1])).toContain(answerAfterPreview);
     expect(JSON.stringify(messages[1])).toContain('Az ügyfél pontosította az elvárt eredményt.');
-    const firstGraphRequest = messages[0] as {
-      saveToSentItems?: unknown;
-      message?: {
-        from?: { emailAddress?: { name?: string; address?: string } };
-        replyTo?: Array<{ emailAddress?: { address?: string } }>;
-      };
+    const firstSubmission = messages[0] as {
+      envelope?: { from?: string | null };
+      from?: { name?: string; address?: string } | null;
+      replyToAddress?: string | null;
     };
-    expect(firstGraphRequest.saveToSentItems).toBe(true);
-    expect(firstGraphRequest.message?.from?.emailAddress).toEqual({
-      name: 'Teszt PO',
-      address: 'teszt.po@pte.hu',
+    expect(firstSubmission.envelope?.from).toBe('project-maker@pte.hu');
+    expect(firstSubmission.from).toEqual({
+      name: 'Project Maker',
+      address: 'project-maker@pte.hu',
     });
-    expect(firstGraphRequest.message?.replyTo?.[0]?.emailAddress?.address).toMatch(/^project-maker\+[a-f0-9]{48}@pte\.hu$/);
+    expect(firstSubmission.replyToAddress).toMatch(/^project-maker\+[a-f0-9]{48}@pte\.hu$/);
 
     await page.getByTestId('inspect-handoff-version-1').click();
     await expect(page.getByTestId('selected-handoff-recipient')).toContainText(`handoff-${fixture.suffix}@example.test`);
@@ -114,21 +106,21 @@ test.describe.serial('interview customer handoff browser journey', () => {
     await page.goto(`/projects/${fixture.projectId}/interview`);
     await nativeButton(page, 'finish-interview-and-send-button').click();
 
-    await request.post(`${graphFakeUrl}/__test/reject-next`);
+    await request.post(`${gatewayFixtureUrl}/__test/reject-next-submission`);
     await sendCurrentPreview(page, fixture.projectId, fixture.roundId);
     await expect(page.getByTestId('handoff-state-message')).toContainText('elutasította az átadást');
     await expect(page.getByTestId('handoff-version-heading-1')).toContainText('Sikertelen');
     await expect(page.getByTestId('handoff-version-heading-1')).toBeFocused();
 
     await nativeButton(page, 'retry-failed-handoff').click();
-    await expect.poll(() => graphMessages(request).then((items) => items.length)).toBe(1);
+    await expect.poll(() => sentMessages(request).then((items) => items.length)).toBe(1);
     await expect(page.getByTestId('handoff-version-heading-1')).toContainText('Átadva a levelezőrendszernek');
 
     await nativeButton(page, 'start-handoff-version').click();
     await page.getByTestId('handoff-modification-summary').fill('Az ügyfél további pontosítást kért.');
     await page.getByRole('button', { name: 'Módosítás leírásának mentése' }).click();
     await nativeButton(page, 'handoff-preview-button').click();
-    await request.post(`${graphFakeUrl}/__test/reject-next`);
+    await request.post(`${gatewayFixtureUrl}/__test/reject-next-submission`);
     await sendCurrentPreview(page, fixture.projectId, fixture.roundId);
     await expect(nativeButton(page, 'retry-failed-handoff')).toBeEnabled();
 
@@ -144,7 +136,7 @@ test.describe.serial('interview customer handoff browser journey', () => {
     const fixture = await createOpenInterview(request, testInfo);
     await page.goto(`/projects/${fixture.projectId}/interview`);
     await nativeButton(page, 'finish-interview-and-send-button').click();
-    await request.post(`${graphFakeUrl}/__test/reject-next`);
+    await request.post(`${gatewayFixtureUrl}/__test/reject-next-submission`);
     await sendCurrentPreview(page, fixture.projectId, fixture.roundId);
 
     const handoffs = await apiJson<readonly { id: string }[]>(request, 'GET', `/projects/${fixture.projectId}/rounds/${fixture.roundId}/customer-handoffs`);
@@ -161,7 +153,7 @@ test.describe.serial('interview customer handoff browser journey', () => {
 
     await retryTrigger.click();
     await page.getByRole('button', { name: 'Ellenőriztem, újrapróbálom' }).click();
-    await expect.poll(() => graphMessages(request).then((items) => items.length)).toBe(1);
+    await expect.poll(() => sentMessages(request).then((items) => items.length)).toBe(1);
     await expect(page.getByTestId('handoff-version-heading-1')).toContainText('Átadva a levelezőrendszernek');
     await expect(page.getByTestId('handoff-version-heading-1')).toBeFocused();
   });
@@ -231,7 +223,7 @@ function nativeButton(page: Page, testId: string) {
   return page.getByTestId(testId).locator('button');
 }
 
-async function graphMessages(request: APIRequestContext): Promise<unknown[]> {
-  const response = await request.get(`${graphFakeUrl}/__test/messages`);
+async function sentMessages(request: APIRequestContext): Promise<unknown[]> {
+  const response = await request.get(`${gatewayFixtureUrl}/__test/sent-messages`);
   return response.json() as Promise<unknown[]>;
 }

@@ -16,12 +16,20 @@ jobs:
     env:
       CORS_ORIGIN: http://localhost:8080
       DATABASE_URL: postgres://project_maker_app:ci-password@127.0.0.1:5432/project_maker_test
-      SMTP_HOST: ''
-      SMTP_PORT: '1025'
-      SMTP_SECURE: 'false'
-      SMTP_USER: ''
-      SMTP_PASSWORD: ''
-      SMTP_FROM: project-maker@localhost
+      CORRESPONDENCE_MAILBOX_NAME: Project Maker CI
+      CORRESPONDENCE_MAILBOX_ADDRESS: project-maker-ci@example.test
+      MAIL_GATEWAY_SMTP_HOST: 127.0.0.1
+      MAIL_GATEWAY_SMTP_PORT: '2525'
+      MAIL_GATEWAY_SMTP_SECURITY: STARTTLS_REQUIRED
+      MAIL_GATEWAY_SMTP_USERNAME: ci-smtp-user
+      MAIL_GATEWAY_SMTP_PASSWORD: ci-smtp-password
+      MAIL_GATEWAY_IMAP_HOST: 127.0.0.1
+      MAIL_GATEWAY_IMAP_PORT: '2143'
+      MAIL_GATEWAY_IMAP_SECURITY: STARTTLS_REQUIRED
+      MAIL_GATEWAY_IMAP_USERNAME: ci-imap-user
+      MAIL_GATEWAY_IMAP_PASSWORD: ci-imap-password
+      MAIL_GATEWAY_IMAP_FOLDER: INBOX
+      MAIL_GATEWAY_CHECKPOINT_SECRET: ci-checkpoint-secret-with-at-least-32-characters
     services:
       postgres:
         image: postgres:18.4-alpine3.24
@@ -69,17 +77,24 @@ jobs:
       COMPOSE_PROJECT_NAME: project-maker-container-smoke-${{ github.run_id }}-${{ github.run_attempt }}
       CORS_ORIGIN: http://localhost:8080
       CORRESPONDENCE_MAILBOX_ADDRESS: project-maker-ci-placeholder@pte.hu
+      CORRESPONDENCE_MAILBOX_NAME: Project Maker CI
       DATABASE_URL: postgres://project_maker_app:ci-password@postgres:5432/project_maker_container_smoke
+      MAIL_GATEWAY_SMTP_HOST: 127.0.0.1
+      MAIL_GATEWAY_SMTP_PORT: '2525'
+      MAIL_GATEWAY_SMTP_SECURITY: STARTTLS_REQUIRED
+      MAIL_GATEWAY_SMTP_USERNAME: ci-smtp-user
+      MAIL_GATEWAY_SMTP_PASSWORD: ci-smtp-password
+      MAIL_GATEWAY_IMAP_HOST: 127.0.0.1
+      MAIL_GATEWAY_IMAP_PORT: '2143'
+      MAIL_GATEWAY_IMAP_SECURITY: STARTTLS_REQUIRED
+      MAIL_GATEWAY_IMAP_USERNAME: ci-imap-user
+      MAIL_GATEWAY_IMAP_PASSWORD: ci-imap-password
+      MAIL_GATEWAY_IMAP_FOLDER: INBOX
+      MAIL_GATEWAY_CHECKPOINT_SECRET: ci-checkpoint-secret-with-at-least-32-characters
       POSTGRES_DB: project_maker_container_smoke
       POSTGRES_PASSWORD: ci-password
       POSTGRES_USER: project_maker_app
       WEB_PORT: '8080'
-      SMTP_HOST: ''
-      SMTP_PORT: '1025'
-      SMTP_SECURE: 'false'
-      SMTP_USER: ''
-      SMTP_PASSWORD: ''
-      SMTP_FROM: project-maker@localhost
 
     steps:
       - name: Checkout

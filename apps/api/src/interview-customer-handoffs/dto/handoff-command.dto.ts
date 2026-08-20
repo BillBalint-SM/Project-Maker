@@ -1,22 +1,6 @@
-import { IsBoolean, IsEmail, IsIn, IsInt, IsOptional, IsString, Length, Matches, Min, ValidateIf } from 'class-validator';
-import { exactPteCustomerSenderAddressPattern } from '@project-maker/contracts/customer-mail';
+import { IsBoolean, IsInt, IsOptional, IsString, Length, Matches, Min } from 'class-validator';
 
-export class PreviewHandoffDto {
-  @IsIn(['DEDICATED', 'CUSTOM'])
-  mode!: 'DEDICATED' | 'CUSTOM';
-
-  @ValidateIf((input: PreviewHandoffDto) => input.mode === 'CUSTOM')
-  @IsString()
-  @Length(1, 255)
-  name?: string;
-
-  @ValidateIf((input: PreviewHandoffDto) => input.mode === 'CUSTOM')
-  @IsString()
-  @Length(1, 320)
-  @IsEmail()
-  @Matches(exactPteCustomerSenderAddressPattern)
-  address?: string;
-}
+export class PreviewHandoffDto {}
 
 export class UpdateHandoffDraftDto {
   @IsOptional()
@@ -34,15 +18,6 @@ export class SendHandoffDto {
   @Matches(/^[a-f0-9]{64}$/)
   previewDigest!: string;
 
-  @IsString()
-  @Length(1, 255)
-  senderName!: string;
-
-  @IsString()
-  @Length(1, 320)
-  @IsEmail()
-  @Matches(exactPteCustomerSenderAddressPattern)
-  senderAddress!: string;
 }
 
 export class RetryHandoffDto {

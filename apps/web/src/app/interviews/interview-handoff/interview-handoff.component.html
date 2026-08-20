@@ -12,18 +12,11 @@
         <textarea pTextarea id="handoff-summary" [ngModel]="summary" (ngModelChange)="changeSummary($event)" rows="3" data-testid="handoff-modification-summary" [disabled]="readOnly()"></textarea>
         <p-button label="Módosítás leírásának mentése" [outlined]="true" [disabled]="busy() || readOnly()" (onClick)="saveSummary()" />
       }
-      @if (active.state === 'DRAFT' && senderOptions(); as options) {
-        <fieldset class="sender-selection" data-testid="handoff-sender-selection">
-          <legend>Feladó</legend>
-          <label><input type="radio" name="handoff-sender-mode" value="DEDICATED" [ngModel]="senderMode" (ngModelChange)="changeSenderMode($event)" /> Dedikált postafiók – {{ options.dedicatedName }} &lt;{{ options.dedicatedAddress }}&gt;</label>
-          <label><input type="radio" name="handoff-sender-mode" value="CUSTOM" [ngModel]="senderMode" (ngModelChange)="changeSenderMode($event)" /> Személyes postafiók</label>
-          @if (senderMode === 'CUSTOM') {
-            <label for="handoff-sender-name">Feladó neve</label>
-            <input id="handoff-sender-name" data-testid="handoff-sender-name" [ngModel]="senderName" (ngModelChange)="senderName = $event; changeSender()" />
-            <label for="handoff-sender-address">Feladó @pte.hu címe</label>
-            <input id="handoff-sender-address" type="email" data-testid="handoff-sender-address" [ngModel]="senderAddress" (ngModelChange)="senderAddress = $event; changeSender()" />
-          }
-        </fieldset>
+      @if (active.state === 'DRAFT' && senderIdentity(); as identity) {
+        <section class="sender-selection" aria-labelledby="handoff-sender-title" data-testid="handoff-sender-identity">
+          <h4 id="handoff-sender-title">Feladó</h4>
+          <p>Az üzemeltető szervezet dedikált levelezési postafiókja: {{ identity.name }} &lt;{{ identity.address }}&gt;</p>
+        </section>
       }
       @if (active.state === 'DRAFT') { <p-button label="Előnézet és küldés" [disabled]="busy() || readOnly()" data-testid="handoff-preview-button" (onClick)="preview()" /> }
       @if (active.state === 'FAILED') {

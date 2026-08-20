@@ -8,22 +8,6 @@ export const handoffVersionStatuses = [
 
 export type HandoffVersionStatus = (typeof handoffVersionStatuses)[number];
 
-export const outboundSenderModes = ['DEDICATED', 'CUSTOM'] as const;
-export type OutboundSenderMode = (typeof outboundSenderModes)[number];
-
-export interface InterviewHandoffSenderSelection {
-  readonly mode: OutboundSenderMode;
-  readonly name?: string;
-  readonly address?: string;
-}
-
-export interface InterviewHandoffSenderOptions {
-  readonly dedicatedName: string;
-  readonly dedicatedAddress: string;
-  readonly lastUsedName: string | null;
-  readonly lastUsedAddress: string | null;
-}
-
 export interface InterviewCustomerHandoffSummary {
   readonly id: string;
   readonly projectId: string;
@@ -77,8 +61,6 @@ export interface UpdateInterviewCustomerHandoffDraftInput {
 export interface SendInterviewCustomerHandoffInput {
   readonly sourceContentVersion: number;
   readonly previewDigest: string;
-  readonly senderName: string;
-  readonly senderAddress: string;
 }
 
 export interface RetryInterviewCustomerHandoffInput {

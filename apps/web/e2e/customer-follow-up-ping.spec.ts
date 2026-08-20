@@ -4,7 +4,7 @@ import { resolve } from 'node:path';
 
 import { expect, test, type APIRequestContext, type Page } from '@playwright/test';
 
-const graphFakeUrl = `http://127.0.0.1:${process.env.GRAPH_FAKE_PORT ?? '25260'}`;
+const gatewayFixtureUrl = `http://127.0.0.1:${process.env.MAIL_GATEWAY_FIXTURE_PORT ?? '25260'}`;
 const requireFromApi = createRequire(resolve(process.cwd(), '..', 'api', 'package.json'));
 const { Client } = requireFromApi('pg') as {
   readonly Client: new (configuration: { readonly connectionString: string }) => DatabaseClient;
@@ -16,7 +16,7 @@ interface DatabaseClient {
   query(sql: string, parameters?: readonly unknown[]): Promise<unknown>;
 }
 
-test.beforeEach(async ({ request }) => { await request.post(`${graphFakeUrl}/__test/reset`); });
+test.beforeEach(async ({ request }) => { await request.post(`${gatewayFixtureUrl}/__test/reset`); });
 
 test('authors, previews, cancels, and explicitly sends one referenced customer ping', async ({
   page,
@@ -47,16 +47,18 @@ test('authors, previews, cancels, and explicitly sends one referenced customer p
   await page.reload();
   await expect(page.getByTestId('follow-up-message-draft')).toHaveValue(message);
   await expect(page.getByTestId('follow-up-reference-select')).toHaveValue(reference.id);
-  await page.getByTestId('follow-up-sender-custom').check();
-  await page.getByTestId('follow-up-sender-name').fill('PO Ping');
-  await page.getByTestId('follow-up-sender-address').fill('po.ping@pte.hu');
+  await expect(page.getByTestId('follow-up-sender-identity'))
+    .toContainText('Project Maker <project-maker@pte.hu>');
+  await expect(page.getByTestId('follow-up-sender-selection')).toHaveCount(0);
+  await expect(page.getByTestId('follow-up-sender-name')).toHaveCount(0);
+  await expect(page.getByTestId('follow-up-sender-address')).toHaveCount(0);
 
   const previewTrigger = nativeButton(page, 'preview-follow-up-ping-button');
   await previewTrigger.focus();
   await previewTrigger.click();
   const preview = page.getByRole('alertdialog', { name: 'Ügyfél-emlékeztető előnézete' });
   await expect(preview).toContainText(project.customerContactEmail);
-  await expect(preview).toContainText('PO Ping <po.ping@pte.hu>');
+  await expect(preview).toContainText('Project Maker <project-maker@pte.hu>');
   await expect(preview).toContainText(message);
   await expect(preview).toContainText('Kérdés: Melyik jóváhagyás hiányzik?');
   await expect(preview).toContainText('Következő lépés: Az ügyfél elküldi a jóváhagyást.');
@@ -77,22 +79,18 @@ test('authors, previews, cancels, and explicitly sends one referenced customer p
   await expect(page.getByTestId('follow-up-last-delivery-status-value')).toContainText(
     'Sikeresen elküldve',
   );
-  const graphMessages = await graphMessagesFor(request);
-  const graphRequest = graphMessages[0] as {
-    saveToSentItems?: unknown;
-    __senderAddress?: string;
-    message?: {
-      from?: { emailAddress?: { name?: string; address?: string } };
-      replyTo?: Array<{ emailAddress?: { address?: string } }>;
-    };
+  const sent = await sentMessagesFor(request);
+  const submission = sent[0] as {
+    envelope?: { from?: string | null };
+    from?: { name?: string; address?: string } | null;
+    replyToAddress?: string | null;
   };
-  expect(graphRequest.saveToSentItems).toBe(true);
-  expect(graphRequest.__senderAddress).toBe('po.ping@pte.hu');
-  expect(graphRequest.message?.from?.emailAddress).toEqual({
-    name: 'PO Ping',
-    address: 'po.ping@pte.hu',
+  expect(submission.envelope?.from).toBe('project-maker@pte.hu');
+  expect(submission.from).toEqual({
+    name: 'Project Maker',
+    address: 'project-maker@pte.hu',
   });
-  expect(graphRequest.message?.replyTo?.[0]?.emailAddress?.address)
+  expect(submission.replyToAddress)
     .toMatch(/^project-maker\+[a-f0-9]{48}@pte\.hu$/);
 });
 
@@ -267,18 +265,18 @@ test('requires an explicit duplicate-risk acknowledgement after an expired deliv
   await expect(preview).toBeVisible();
   await forceExpiredCustomerPingAttempt(project.id, project.customerContactEmail);
 
-  const messagesBefore = await graphMessageCount(request);
+  const messagesBefore = await sentMessageCount(request);
   await page.getByRole('button', { name: 'Küldés az ügyfélnek' }).click();
   const warning = page.getByTestId('follow-up-unknown-recovery');
   await expect(warning).toContainText('bizonytalan');
   await expect(warning).toContainText('duplikált');
   await expect(preview).toBeHidden();
-  expect(await graphMessageCount(request)).toBe(messagesBefore);
+  expect(await sentMessageCount(request)).toBe(messagesBefore);
 
   await nativeButton(page, 'retry-unknown-follow-up-ping-button').click();
   await nativeButton(page, 'confirm-follow-up-retry-button').click();
   await expect(page.getByTestId('follow-up-send-result')).toContainText('Átadva a levelezőrendszernek');
-  expect(await graphMessageCount(request)).toBe(messagesBefore + 1);
+  expect(await sentMessageCount(request)).toBe(messagesBefore + 1);
 });
 
 test('recovers a failed ping after reload with cancel, Escape, and deterministic focus', async ({
@@ -318,7 +316,7 @@ test('recovers a failed ping after reload with cancel, Escape, and deterministic
   await expect(confirmation).toBeHidden();
   await expect(retryTrigger).toBeFocused();
 
-  const messagesBefore = await graphMessageCount(request);
+  const messagesBefore = await sentMessageCount(request);
   await retryTrigger.click();
   const confirm = nativeButton(page, 'confirm-follow-up-retry-button');
   await confirm.dblclick();
@@ -328,7 +326,7 @@ test('recovers a failed ping after reload with cancel, Escape, and deterministic
   releaseRetry();
   await expect(page.getByTestId('follow-up-send-result')).toContainText('Átadva a levelezőrendszernek');
   await expect(page.getByTestId('follow-up-send-result')).toBeFocused();
-  expect(await graphMessageCount(request)).toBe(messagesBefore + 1);
+  expect(await sentMessageCount(request)).toBe(messagesBefore + 1);
   expect(retryRequests).toBe(1);
 });
 
@@ -589,13 +587,13 @@ async function expireCustomerPingAttempt(attemptId: string): Promise<void> {
   }
 }
 
-async function graphMessageCount(request: APIRequestContext): Promise<number> {
-  const response = await request.get(`${graphFakeUrl}/__test/messages`);
+async function sentMessageCount(request: APIRequestContext): Promise<number> {
+  const response = await request.get(`${gatewayFixtureUrl}/__test/sent-messages`);
   return ((await response.json()) as unknown[]).length;
 }
 
-async function graphMessagesFor(request: APIRequestContext): Promise<unknown[]> {
-  const response = await request.get(`${graphFakeUrl}/__test/messages`);
+async function sentMessagesFor(request: APIRequestContext): Promise<unknown[]> {
+  const response = await request.get(`${gatewayFixtureUrl}/__test/sent-messages`);
   return await response.json() as unknown[];
 }
 

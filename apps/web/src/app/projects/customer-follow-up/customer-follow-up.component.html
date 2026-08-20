@@ -160,59 +160,11 @@
         </select>
       </div>
     </fieldset>
-    @if (senderOptions(); as options) {
-      <fieldset class="follow-up-fields" data-testid="follow-up-sender-selection" [disabled]="controlsDisabled()">
-        <legend>Feladó</legend>
-        <label>
-          <input
-            type="radio"
-            name="follow-up-sender-mode"
-            value="DEDICATED"
-            data-testid="follow-up-sender-dedicated"
-            [ngModel]="senderMode"
-            [ngModelOptions]="{ standalone: true }"
-            (ngModelChange)="changeSenderMode($event)"
-          />
-          Dedikált postafiók – {{ options.dedicatedName }} &lt;{{ options.dedicatedAddress }}&gt;
-        </label>
-        <label>
-          <input
-            type="radio"
-            name="follow-up-sender-mode"
-            value="CUSTOM"
-            data-testid="follow-up-sender-custom"
-            [ngModel]="senderMode"
-            [ngModelOptions]="{ standalone: true }"
-            (ngModelChange)="changeSenderMode($event)"
-          />
-          Személyes postafiók
-        </label>
-        @if (senderMode === 'CUSTOM') {
-          <div class="field">
-            <label for="follow-up-sender-name">Feladó neve</label>
-            <input
-              pInputText
-              id="follow-up-sender-name"
-              data-testid="follow-up-sender-name"
-              [ngModel]="senderName"
-              [ngModelOptions]="{ standalone: true }"
-              (ngModelChange)="senderName = $event; changeSender()"
-            />
-          </div>
-          <div class="field">
-            <label for="follow-up-sender-address">Feladó pontos @pte.hu címe</label>
-            <input
-              pInputText
-              id="follow-up-sender-address"
-              type="email"
-              data-testid="follow-up-sender-address"
-              [ngModel]="senderAddress"
-              [ngModelOptions]="{ standalone: true }"
-              (ngModelChange)="senderAddress = $event; changeSender()"
-            />
-          </div>
-        }
-      </fieldset>
+    @if (senderIdentity(); as identity) {
+      <section class="follow-up-fields" aria-labelledby="follow-up-sender-title" data-testid="follow-up-sender-identity">
+        <h3 id="follow-up-sender-title">Feladó</h3>
+        <p>Az üzemeltető szervezet dedikált levelezési postafiókja: {{ identity.name }} &lt;{{ identity.address }}&gt;</p>
+      </section>
     }
     <div class="follow-up-actions">
       <p-button
@@ -227,7 +179,7 @@
         label="Küldési előnézet"
         [outlined]="true"
         [loading]="previewing()"
-        [disabled]="controlsDisabled() || draftForm.dirty || !current.messageDraft || !senderIsValid()"
+        [disabled]="controlsDisabled() || draftForm.dirty || !current.messageDraft"
         data-testid="preview-follow-up-ping-button"
         (onClick)="previewPing()"
       />

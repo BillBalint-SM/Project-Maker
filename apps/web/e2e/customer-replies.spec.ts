@@ -1,33 +1,28 @@
 import { expect, test, type APIRequestContext } from '@playwright/test';
 
-const graphBaseUrl = 'http://127.0.0.1:25260';
+const gatewayFixtureUrl = `http://127.0.0.1:${process.env.MAIL_GATEWAY_FIXTURE_PORT ?? '25260'}`;
 
 test.beforeEach(async ({ request }) => {
-  await request.post(`${graphBaseUrl}/__test/reset`);
+  await request.post(`${gatewayFixtureUrl}/__test/reset`);
   await request.post('/api/customer-mailbox-sync/refresh');
 });
 
 test('surfaces one safe token-correlated Customer reply across global and Portfolio views', async ({ page, request }) => {
   const setup = await createSentHandoff(request);
-  const sent = await request.get(`${graphBaseUrl}/__test/messages`).then((response) => response.json()) as Array<{
-    message: { replyTo: Array<{ emailAddress: { address: string } }> };
-  }>;
-  const replyToAddress = sent.at(-1)?.message.replyTo[0]?.emailAddress.address;
+  const sent = await sentMessages(request);
+  const replyToAddress = sent.at(-1)?.replyToAddress;
   expect(replyToAddress).toBeTruthy();
-  await request.post(`${graphBaseUrl}/__test/queue-mailbox-message`, { data: {
-    id: `playwright-reply-${Date.now()}`,
+  await queueImapMessage(request, {
     internetMessageId: '<playwright-reply@example.test>',
-    from: { emailAddress: { address: setup.customerEmail } },
-    toRecipients: [{ emailAddress: { address: replyToAddress } }],
+    senderAddress: setup.customerEmail,
+    recipientAddresses: [replyToAddress],
     subject: 'Re: Projektösszefoglaló',
-    body: { contentType: 'html', content: '<p>Mehet tovább.</p><script>steal()</script><p>On Monday wrote:</p><blockquote>Korábbi tartalom</blockquote>' },
-    receivedDateTime: '2026-08-18T18:00:00.000Z',
+    contentType: 'text/html',
+    textContent: '<p>Mehet tovább.</p><script>steal()</script><p>On Monday wrote:</p><blockquote>Korábbi tartalom</blockquote>',
+    receivedAt: '2026-08-18T18:00:00.000Z',
     attachments: [{ name: 'scope.pdf', contentType: 'application/pdf', size: 2048 }],
-  } });
+  });
   await request.post('/api/customer-mailbox-sync/refresh');
-  const mailboxStats = await request.get(`${graphBaseUrl}/__test/mailbox-stats`)
-    .then((response) => response.json()) as { preferHeaders: Array<string | null> };
-  expect(mailboxStats.preferHeaders).toContain('IdType="ImmutableId"');
 
   await page.goto('/');
   await expect(page.getByTestId('global-customer-reply-count')).toHaveText('1');
@@ -76,14 +71,13 @@ test('surfaces one safe token-correlated Customer reply across global and Portfo
   await page.getByRole('button', { name: 'Lezárás' }).click();
   await expect(page.getByRole('heading', { name: 'Lezárva' })).toBeVisible();
 
-  await request.post(`${graphBaseUrl}/__test/queue-mailbox-message`, { data: {
-    id: `playwright-late-reply-${Date.now()}`,
-    from: { emailAddress: { address: setup.customerEmail } },
-    toRecipients: [{ emailAddress: { address: replyToAddress } }],
+  await queueImapMessage(request, {
+    senderAddress: setup.customerEmail,
+    recipientAddresses: [replyToAddress],
     subject: 'Re: Projektösszefoglaló',
-    body: { contentType: 'text', content: 'Újabb Customer válasz.' },
-    receivedDateTime: '2026-08-18T18:30:00.000Z',
-  } });
+    textContent: 'Újabb Customer válasz.',
+    receivedAt: '2026-08-18T18:30:00.000Z',
+  });
   await request.post('/api/customer-mailbox-sync/refresh');
   await page.reload();
   await expect(page.getByRole('heading', { name: 'Új válasz' })).toBeVisible();
@@ -117,15 +111,13 @@ test('opens the exact ping source without resolving it and retains UNKNOWN evide
   const preview = await request.post(`/api/projects/${project.id}/follow-up/ping/preview`, { data: {
     expectedVersion: 2,
   } }).then((response) => response.json()) as { previewToken: string };
-  await request.post(`${graphBaseUrl}/__test/unknown-next`);
+  await request.post(`${gatewayFixtureUrl}/__test/unknown-next-submission`);
   const unknown = await request.post(`/api/projects/${project.id}/follow-up/ping`, { data: {
     previewToken: preview.previewToken,
   } });
   expect(unknown.status()).toBe(503);
-  const sent = await request.get(`${graphBaseUrl}/__test/messages`).then((response) => response.json()) as Array<{
-    message: { replyTo: Array<{ emailAddress: { address: string } }> };
-  }>;
-  const replyToAddress = sent.at(-1)?.message.replyTo[0]?.emailAddress.address;
+  const sent = await sentMessages(request);
+  const replyToAddress = sent.at(-1)?.replyToAddress;
   expect(replyToAddress).toBeTruthy();
   await queueReply(request, `unknown-ping-${suffix}`, customerEmail, replyToAddress!, 'Átvettük, pontosítjuk.');
   await request.post('/api/customer-mailbox-sync/refresh');
@@ -159,59 +151,50 @@ test('opens the exact ping source without resolving it and retains UNKNOWN evide
 
 test('triages unmatched mail and separates automated mailbox events without creating false replies', async ({ page, request }) => {
   const setup = await createSentHandoff(request);
-  const sent = await request.get(`${graphBaseUrl}/__test/messages`).then((response) => response.json()) as Array<{
-    message: { replyTo: Array<{ emailAddress: { address: string } }> };
-  }>;
-  const replyToAddress = sent.at(-1)?.message.replyTo[0]?.emailAddress.address;
+  const sent = await sentMessages(request);
+  const replyToAddress = sent.at(-1)?.replyToAddress;
   expect(replyToAddress).toBeTruthy();
   const suffix = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
   const messages = [
     {
-      id: `unmatched-${suffix}`,
-      from: { emailAddress: { address: setup.customerEmail } },
-      toRecipients: [{ emailAddress: { address: 'project-maker@pte.hu' } }],
+      internetMessageId: `<unmatched-${suffix}@example.test>`,
+      senderAddress: setup.customerEmail,
+      recipientAddresses: ['project-maker@pte.hu'],
       subject: 'Kézzel társítandó levél',
-      body: { contentType: 'text', content: 'Ezt a levelet a megfelelő projekthez kell kapcsolni.' },
-      receivedDateTime: '2026-08-18T19:00:00.000Z',
+      textContent: 'Ezt a levelet a megfelelő projekthez kell kapcsolni.',
+      receivedAt: '2026-08-18T19:00:00.000Z',
     },
     {
-      id: `unknown-automation-${suffix}`,
-      from: { emailAddress: { address: 'automation@example.test' } },
-      toRecipients: [{ emailAddress: { address: replyToAddress } }],
+      internetMessageId: `<unknown-automation-${suffix}@example.test>`,
+      senderAddress: 'automation@example.test', recipientAddresses: [replyToAddress],
       subject: 'Ellenőrzendő automatikus levél',
-      body: { contentType: 'text', content: 'Bizonytalan automatikus tartalom.' },
-      receivedDateTime: '2026-08-18T19:01:00.000Z',
-      internetMessageHeaders: [{ name: 'Auto-Submitted', value: 'auto-generated' }],
+      textContent: 'Bizonytalan automatikus tartalom.', receivedAt: '2026-08-18T19:01:00.000Z',
+      headers: { 'Auto-Submitted': 'auto-generated' },
     },
     {
-      id: `dsn-${suffix}`,
-      from: { emailAddress: { address: 'mailer-daemon@example.test' } },
-      toRecipients: [{ emailAddress: { address: replyToAddress } }],
+      internetMessageId: `<dsn-${suffix}@example.test>`,
+      senderAddress: 'mailer-daemon@example.test', recipientAddresses: [replyToAddress],
       subject: 'Delivery status',
-      body: { contentType: 'text', content: 'Nem kézbesített belső részlet.' },
-      receivedDateTime: '2026-08-18T19:02:00.000Z',
-      internetMessageHeaders: [{ name: 'Content-Type', value: 'multipart/report; report-type=delivery-status' }],
+      textContent: 'Nem kézbesített belső részlet.', receivedAt: '2026-08-18T19:02:00.000Z',
+      contentType: 'message/delivery-status',
+      headers: { 'Content-Type': 'multipart/report; report-type=delivery-status' },
     },
     {
-      id: `ooo-${suffix}`,
-      from: { emailAddress: { address: setup.customerEmail } },
-      toRecipients: [{ emailAddress: { address: replyToAddress } }],
+      internetMessageId: `<ooo-${suffix}@example.test>`,
+      senderAddress: setup.customerEmail, recipientAddresses: [replyToAddress],
       subject: 'Out of office',
-      body: { contentType: 'text', content: 'Távolléti belső részlet.' },
-      receivedDateTime: '2026-08-18T19:03:00.000Z',
-      internetMessageHeaders: [{ name: 'Auto-Submitted', value: 'auto-replied' }],
+      textContent: 'Távolléti belső részlet.', receivedAt: '2026-08-18T19:03:00.000Z',
+      headers: { 'Auto-Submitted': 'auto-replied' },
     },
     {
-      id: `loop-${suffix}`,
-      from: { emailAddress: { address: 'PROJECT-MAKER@PTE.HU' } },
-      toRecipients: [{ emailAddress: { address: replyToAddress } }],
+      internetMessageId: `<loop-${suffix}@example.test>`,
+      senderAddress: 'PROJECT-MAKER@PTE.HU', recipientAddresses: [replyToAddress],
       subject: 'Saját levél',
-      body: { contentType: 'text', content: 'Ezt nem szabad megjeleníteni.' },
-      receivedDateTime: '2026-08-18T19:04:00.000Z',
+      textContent: 'Ezt nem szabad megjeleníteni.', receivedAt: '2026-08-18T19:04:00.000Z',
     },
   ];
   for (const message of messages) {
-    await request.post(`${graphBaseUrl}/__test/queue-mailbox-message`, { data: message });
+    await queueImapMessage(request, message);
   }
   await request.post('/api/customer-mailbox-sync/refresh');
 
@@ -254,13 +237,11 @@ async function createSentHandoff(request: APIRequestContext) {
   const handoffs = await request.get(`/api/projects/${project.id}/rounds/${round.id}/customer-handoffs`).then((response) => response.json()) as Array<{ id: string }>;
   const handoffId = handoffs[0]?.id;
   const preview = await request.post(`/api/projects/${project.id}/rounds/${round.id}/customer-handoffs/${handoffId}/preview`, {
-    data: { mode: 'CUSTOM', name: 'PO Péter', address: 'po.peter@pte.hu' },
-  }).then((response) => response.json()) as { sourceContentVersion: number; previewDigest: string; senderName: string; senderAddress: string };
+    data: {},
+  }).then((response) => response.json()) as { sourceContentVersion: number; previewDigest: string };
   const sent = await request.post(`/api/projects/${project.id}/rounds/${round.id}/customer-handoffs/${handoffId}/send`, { data: {
     sourceContentVersion: preview.sourceContentVersion,
     previewDigest: preview.previewDigest,
-    senderName: preview.senderName,
-    senderAddress: preview.senderAddress,
   } });
   expect(sent.ok()).toBe(true);
   const sentBody = await sent.json() as { correspondenceId: string };
@@ -275,17 +256,25 @@ async function createSentHandoff(request: APIRequestContext) {
 
 async function queueReply(
   request: APIRequestContext,
-  id: string,
+  _id: string,
   senderAddress: string,
   replyToAddress: string,
   content: string,
 ): Promise<void> {
-  await request.post(`${graphBaseUrl}/__test/queue-mailbox-message`, { data: {
-    id,
-    from: { emailAddress: { address: senderAddress } },
-    toRecipients: [{ emailAddress: { address: replyToAddress } }],
+  await queueImapMessage(request, {
+    senderAddress,
+    recipientAddresses: [replyToAddress],
     subject: 'Re: Customer follow-up',
-    body: { contentType: 'text', content },
-    receivedDateTime: new Date().toISOString(),
-  } });
+    textContent: content,
+    receivedAt: new Date().toISOString(),
+  });
+}
+
+interface SentMessage { readonly replyToAddress: string | null; }
+async function sentMessages(request: APIRequestContext): Promise<SentMessage[]> {
+  return request.get(`${gatewayFixtureUrl}/__test/sent-messages`).then((response) => response.json() as Promise<SentMessage[]>);
+}
+async function queueImapMessage(request: APIRequestContext, message: unknown): Promise<void> {
+  const response = await request.post(`${gatewayFixtureUrl}/__test/queue-imap-message`, { data: message });
+  expect(response.ok()).toBeTruthy();
 }

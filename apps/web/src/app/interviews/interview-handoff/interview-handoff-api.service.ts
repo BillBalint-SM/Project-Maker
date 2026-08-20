@@ -1,6 +1,6 @@
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
-import type { InterviewCustomerHandoffDetail, InterviewCustomerHandoffPreview, InterviewCustomerHandoffSummary, InterviewHandoffSenderOptions, InterviewHandoffSenderSelection } from '@project-maker/contracts';
+import type { CorrespondenceMailboxIdentity, InterviewCustomerHandoffDetail, InterviewCustomerHandoffPreview, InterviewCustomerHandoffSummary } from '@project-maker/contracts';
 import { catchError, Observable, throwError } from 'rxjs';
 
 @Injectable({ providedIn: 'root' })
@@ -10,12 +10,12 @@ export class InterviewHandoffApiService {
     return `/api/projects/${encodeURIComponent(projectId)}/rounds/${encodeURIComponent(roundId)}/customer-handoffs`;
   }
   list(projectId: string, roundId: string): Observable<readonly InterviewCustomerHandoffSummary[]> { return this.request(this.http.get<readonly InterviewCustomerHandoffSummary[]>(this.base(projectId, roundId)), 'betölteni az összefoglalókat'); }
-  senderOptions(projectId: string, roundId: string): Observable<InterviewHandoffSenderOptions> { return this.request(this.http.get<InterviewHandoffSenderOptions>(`${this.base(projectId, roundId)}/sender-options`), 'betölteni a feladókat'); }
+  senderIdentity(projectId: string, roundId: string): Observable<CorrespondenceMailboxIdentity> { return this.request(this.http.get<CorrespondenceMailboxIdentity>(`${this.base(projectId, roundId)}/sender-identity`), 'betölteni a levelezési postafiók feladóját'); }
   get(projectId: string, roundId: string, id: string): Observable<InterviewCustomerHandoffDetail> { return this.request(this.http.get<InterviewCustomerHandoffDetail>(`${this.base(projectId, roundId)}/${encodeURIComponent(id)}`), 'betölteni az összefoglalót'); }
   start(projectId: string, roundId: string): Observable<InterviewCustomerHandoffDetail> { return this.request(this.http.post<InterviewCustomerHandoffDetail>(this.base(projectId, roundId), {}), 'létrehozni az új verziót'); }
   update(projectId: string, roundId: string, id: string, modificationSummary: string | null): Observable<InterviewCustomerHandoffDetail> { return this.request(this.http.put<InterviewCustomerHandoffDetail>(`${this.base(projectId, roundId)}/${encodeURIComponent(id)}/draft`, { modificationSummary }), 'menteni a módosítás leírását'); }
-  preview(projectId: string, roundId: string, id: string, sender: InterviewHandoffSenderSelection): Observable<InterviewCustomerHandoffPreview> { return this.request(this.http.post<InterviewCustomerHandoffPreview>(`${this.base(projectId, roundId)}/${encodeURIComponent(id)}/preview`, sender), 'elkészíteni az előnézetet'); }
-  send(projectId: string, roundId: string, preview: InterviewCustomerHandoffPreview): Observable<InterviewCustomerHandoffDetail> { return this.request(this.http.post<InterviewCustomerHandoffDetail>(`${this.base(projectId, roundId)}/${encodeURIComponent(preview.handoffId)}/send`, { sourceContentVersion: preview.sourceContentVersion, previewDigest: preview.previewDigest, senderName: preview.senderName, senderAddress: preview.senderAddress }), 'elküldeni az összefoglalót'); }
+  preview(projectId: string, roundId: string, id: string): Observable<InterviewCustomerHandoffPreview> { return this.request(this.http.post<InterviewCustomerHandoffPreview>(`${this.base(projectId, roundId)}/${encodeURIComponent(id)}/preview`, {}), 'elkészíteni az előnézetet'); }
+  send(projectId: string, roundId: string, preview: InterviewCustomerHandoffPreview): Observable<InterviewCustomerHandoffDetail> { return this.request(this.http.post<InterviewCustomerHandoffDetail>(`${this.base(projectId, roundId)}/${encodeURIComponent(preview.handoffId)}/send`, { sourceContentVersion: preview.sourceContentVersion, previewDigest: preview.previewDigest }), 'elküldeni az összefoglalót'); }
   retry(projectId: string, roundId: string, id: string, acknowledgeDuplicateRisk: boolean): Observable<InterviewCustomerHandoffDetail> { return this.request(this.http.post<InterviewCustomerHandoffDetail>(`${this.base(projectId, roundId)}/${encodeURIComponent(id)}/retry`, { acknowledgeDuplicateRisk }), 'újrapróbálni a küldést'); }
   resume(projectId: string, roundId: string, id: string): Observable<InterviewCustomerHandoffDetail> { return this.request(this.http.post<InterviewCustomerHandoffDetail>(`${this.base(projectId, roundId)}/${encodeURIComponent(id)}/resume-editing`, {}), 'folytatni a szerkesztést'); }
 

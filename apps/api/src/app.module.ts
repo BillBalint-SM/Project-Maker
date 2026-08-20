@@ -13,8 +13,6 @@ import { HealthController } from './health.controller';
 import { InterviewsModule } from './interviews/interviews.module';
 import { MarkdownModule } from './markdown/markdown.module';
 import { MailDeliveryModule } from './mail-delivery/mail-delivery.module';
-import { graphMailClientToken } from './mail-delivery/graph-customer-mail-boundary';
-import { MicrosoftGraphMailClient } from './mail-delivery/microsoft-graph-mail.client';
 import { ProjectsModule } from './projects/projects.module';
 import { ProjectPreparationModule } from './project-preparation/project-preparation.module';
 import { QuestionBankModule } from './question-bank/question-bank.module';
@@ -25,7 +23,7 @@ import { ReadinessModule } from './readiness/readiness.module';
     ConfigModule.forRoot({ envFilePath: '../../.env', isGlobal: true }),
     TerminusModule,
     DatabaseModule,
-    MailDeliveryModule.graph({ provide: graphMailClientToken, useClass: MicrosoftGraphMailClient }),
+    MailDeliveryModule.gateway(),
     DecisionReviewModule,
     AuditModule,
     ProjectsModule,
