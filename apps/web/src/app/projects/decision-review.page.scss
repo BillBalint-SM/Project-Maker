@@ -1,3 +1,84 @@
 :host {
   display: block;
 }
+
+.formal-decision-card {
+  display: block;
+  margin-top: 1.5rem;
+}
+
+.formal-decision-form {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin: 1rem 0 1.25rem;
+}
+
+.field {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.field-wide {
+  grid-column: 1 / -1;
+}
+
+.field input,
+.field select,
+.field textarea {
+  border: 1px solid var(--p-content-border-color);
+  border-radius: 0.5rem;
+  padding: 0.65rem;
+  width: 100%;
+}
+
+.check-field {
+  align-items: center;
+  display: flex;
+  gap: 0.55rem;
+}
+
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.formal-decision-history {
+  display: grid;
+  gap: 0.9rem;
+  list-style: none;
+  margin: 1rem 0 0;
+  padding: 0;
+}
+
+.formal-decision-history li {
+  background: var(--p-content-hover-background);
+  border-radius: 0.65rem;
+  padding: 1rem;
+}
+
+.formal-decision-history p {
+  margin: 0.45rem 0 0;
+}
+
+.decision-heading {
+  align-items: center;
+  display: flex;
+  gap: 1rem;
+  justify-content: space-between;
+}
+
+.decision-heading span {
+  color: var(--p-text-muted-color);
+  font-size: 0.875rem;
+}
+
+@media (max-width: 36rem) {
+  .formal-decision-form {
+    grid-template-columns: 1fr;
+  }
+
+  .field-wide {
+    grid-column: auto;
+  }
+}

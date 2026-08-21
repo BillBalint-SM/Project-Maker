@@ -127,11 +127,11 @@ jobs:
       - name: Build shared contracts
         run: pnpm --filter @project-maker/contracts build
 
-      - name: Run database migrations
-        run: pnpm --filter @project-maker/api migration:run
+      - name: Test authenticated TLS SMTP and IMAP protocol boundaries
+        run: pnpm --filter @project-maker/api test:mail-gateway:protocol
 
-      - name: Test the controlled TLS SMTP/IMAP gateway at every application seam
-        run: pnpm test:mail-gateway:ci
+      - name: Test one reviewed send and correlated reply through the controlled TLS gateway
+        run: pnpm --filter @project-maker/web exec playwright test e2e/customer-follow-up-ping.spec.ts
 
   container-smoke:
     runs-on: ubuntu-latest
@@ -139,9 +139,13 @@ jobs:
       ACTIVE_PROJECT_QUEUE_CURSOR_SECRET: ci-cursor-secret-with-at-least-32-characters
       COMPOSE_PROJECT_NAME: project-maker-container-smoke-${{ github.run_id }}-${{ github.run_attempt }}
       CORS_ORIGIN: http://localhost:8080
+      CUSTOMER_RESPONSE_ORIGIN: http://localhost:8080
+      CUSTOMER_RESPONSE_PREVIEW_SECRET: ci-customer-response-preview-secret-at-least-32-characters
       CORRESPONDENCE_MAILBOX_ADDRESS: project-maker-container-smoke@example.test
       CORRESPONDENCE_MAILBOX_NAME: Project Maker CI
       DATABASE_URL: postgres://project_maker_app:ci-password@postgres:5432/project_maker_container_smoke
+      GIT_CREDENTIAL_ENCRYPTION_KEY: ci-git-credential-encryption-key-at-least-32-characters
+      GIT_HANDOFF_PREVIEW_SECRET: ci-git-handoff-preview-secret-at-least-32-characters
       MAIL_GATEWAY_SMTP_HOST: 127.0.0.1
       MAIL_GATEWAY_SMTP_PORT: '2525'
       MAIL_GATEWAY_SMTP_SECURITY: STARTTLS_REQUIRED

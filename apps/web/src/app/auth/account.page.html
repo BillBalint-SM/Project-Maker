@@ -1,0 +1,115 @@
+<section aria-labelledby="account-title">
+  <div class="page-heading">
+    <span class="eyebrow">Saját fiók</span>
+    <h1 id="account-title">Fiókbeállítások</h1>
+    <p>{{ user()?.email }}</p>
+  </div>
+
+  @if (actionError()) {
+    <p class="account-message error" role="alert">{{ actionError() }}</p>
+  }
+  @if (feedback()) {
+    <p class="account-message success" role="status">{{ feedback() }}</p>
+  }
+
+  <div class="account-grid">
+    <div class="mcp-connection">
+      <p-card>
+        <ng-template #title>Claude Code-kapcsolat</ng-template>
+        <ng-template #subtitle>A saját Claude Code előfizetésed közvetlenül éri el a Project Maker munkafolyamatait.</ng-template>
+
+        @if (mcpStatus(); as status) {
+          <p class="connection-status">
+            Állapot:
+            <strong>{{ status.configured ? 'Kapcsolati token aktív' : 'Nincs aktív token' }}</strong>
+            @if (status.createdAt) { <span> · létrehozva: {{ status.createdAt | date: 'yyyy. MM. dd. HH:mm' }}</span> }
+          </p>
+          <p>A kapcsolat ugyanazokat a műveleteket használja, mint a webapp. Nincs külön szerepkör, AI API-kulcs vagy fogyasztásalapú Project Maker-díj.</p>
+
+          @if (mcpCommand(); as command) {
+            <div class="connection-command">
+              <label for="mcp-command">Egyszer futtasd a saját gépeden</label>
+              <textarea id="mcp-command" rows="4" readonly [value]="command"></textarea>
+              <small>A token csak most látható. A parancs felhasználói szinten adja hozzá a Project Maker szervert a Claude Code-hoz.</small>
+            </div>
+            <p-button label="Parancs másolása" severity="secondary" [outlined]="true" (onClick)="copyMcpCommand()" />
+          }
+
+          <div class="connection-actions">
+            <p-button
+              [label]="status.configured ? 'Új token készítése' : 'Kapcsolati token készítése'"
+              [loading]="mcpPending()"
+              [disabled]="mcpPending()"
+              (onClick)="createMcpConnection()"
+            />
+            @if (status.configured) {
+              <p-button
+                label="Kapcsolat megszüntetése"
+                severity="danger"
+                [text]="true"
+                [disabled]="mcpPending()"
+                (onClick)="revokeMcpConnection()"
+              />
+            }
+          </div>
+          @if (status.configured && !mcpToken()) {
+            <small>Ha már nincs meg a korábbi token, készíts újat; ez automatikusan lecseréli a régit.</small>
+          }
+        } @else {
+          <p>Kapcsolat állapotának betöltése…</p>
+        }
+      </p-card>
+    </div>
+
+    <p-card>
+      <ng-template #title>Jelszó módosítása</ng-template>
+      <form [formGroup]="passwordForm" (ngSubmit)="changePassword()" novalidate>
+        <div class="field">
+          <label for="current-password">Jelenlegi jelszó</label>
+          <input
+            pInputText
+            id="current-password"
+            type="password"
+            class="full-width"
+            formControlName="currentPassword"
+            autocomplete="current-password"
+            required
+          />
+        </div>
+        <div class="field">
+          <label for="new-password">Új jelszó</label>
+          <input
+            pInputText
+            id="new-password"
+            type="password"
+            class="full-width"
+            formControlName="newPassword"
+            autocomplete="new-password"
+            aria-describedby="new-password-help"
+            required
+          />
+          <small id="new-password-help">Legalább 12 karakter.</small>
+        </div>
+        <p-button
+          type="submit"
+          label="Jelszó mentése"
+          [loading]="pending()"
+          [disabled]="pending()"
+        />
+      </form>
+    </p-card>
+
+    <p-card styleClass="deactivate-card">
+      <ng-template #title>Fiók letiltása</ng-template>
+      <p>A fiók és a korábbi munkád megmarad. Ugyanezzel az e-mail-címmel és jelszóval bármikor visszaállíthatod.</p>
+      <p-button
+        label="Fiók letiltása"
+        severity="danger"
+        [outlined]="true"
+        [loading]="pending()"
+        [disabled]="pending()"
+        (onClick)="deactivate()"
+      />
+    </p-card>
+  </div>
+</section>

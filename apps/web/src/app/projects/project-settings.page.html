@@ -75,6 +75,20 @@
 
       <app-customer-follow-up [projectId]="projectId" [archived]="isArchived()" mode="settings" />
 
+      <p-card data-testid="project-playbook-settings">
+        <ng-template #title>Felmérési playbook</ng-template>
+        <ng-template #subtitle>A playbook az első felmérési körig módosítható; utána a pontos verzió megmarad forrásként.</ng-template>
+        <form class="settings-form" [formGroup]="playbookForm" (ngSubmit)="savePlaybook()">
+          <label for="project-playbook-settings-select">Playbook</label>
+          <select id="project-playbook-settings-select" formControlName="playbook" [disabled]="busy() || isArchived()">
+            @for (playbook of playbooks(); track playbook.id + ':' + playbook.version) {
+              <option [value]="playbook.id + ':' + playbook.version">{{ playbook.name }} · v{{ playbook.version }}</option>
+            }
+          </select>
+          <p-button type="submit" label="Playbook mentése" [disabled]="busy() || isArchived()" />
+        </form>
+      </p-card>
+
       <p-card data-testid="project-lifecycle-settings">
         <ng-template #title>Adminisztratív projektfázis</ng-template>
         <ng-template #subtitle>A kézzel rögzített üzleti fázis azt jelzi, hol tart vagy mire vár a projekt; nem a számított becslési felkészültséget mutatja.</ng-template>

@@ -1,0 +1,136 @@
+<section aria-labelledby="discovery-title">
+  <div class="page-heading">
+    <span class="eyebrow">Bizonyíték-alapú discovery</span>
+    <h1 id="discovery-title">Felfedezések</h1>
+    <p>Kapcsolatok, célzott felmérési körök, források és az ezekből levont emberi insightok egy helyen.</p>
+  </div>
+
+  @if (error()) {
+    <p-message severity="error" role="alert">{{ error() }}</p-message>
+  }
+  @if (feedback()) {
+    <p-message severity="success" role="status">{{ feedback() }}</p-message>
+  }
+  @if (archived()) {
+    <p-message severity="info">Az archivált projekt discovery-tartalma csak olvasható.</p-message>
+  }
+
+  @if (loading()) {
+    <div class="state-panel" aria-live="polite">
+      <p-progress-spinner ariaLabel="Discovery betöltése" />
+      <p>Betöltjük a discovery munkaterületet…</p>
+    </div>
+  } @else {
+    <div class="discovery-grid">
+      <p-card>
+        <ng-template #title>Projektkapcsolatok</ng-template>
+        <ng-template #subtitle>Egyszerű elérhetőségi lista; nem jogosultság- vagy CRM-rendszer.</ng-template>
+        <form class="stack" (ngSubmit)="saveContact()">
+          <label>Név <input name="contactName" [(ngModel)]="contactName" required maxlength="255" data-testid="discovery-contact-name" /></label>
+          <label>E-mail <input name="contactEmail" [(ngModel)]="contactEmail" type="email" maxlength="320" /></label>
+          <label>Telefon <input name="contactPhone" [(ngModel)]="contactPhone" maxlength="100" /></label>
+          <label>Megjegyzés <textarea name="contactNote" [(ngModel)]="contactNote" rows="3" maxlength="2000"></textarea></label>
+          <div class="actions">
+            <p-button type="submit" [label]="contactId ? 'Kapcsolat frissítése' : 'Kapcsolat hozzáadása'" [disabled]="saving() || archived()" data-testid="save-discovery-contact" />
+            @if (contactId) {
+              <button type="button" class="text-button" (click)="contactId = null">Mégse</button>
+            }
+          </div>
+        </form>
+        <ul class="record-list">
+          @for (contact of contacts(); track contact.id) {
+            <li>
+              <div><strong>{{ contact.name }}</strong><small>{{ contact.email || contact.phone || 'Nincs további elérhetőség' }}</small></div>
+              <div class="actions"><button type="button" (click)="editContact(contact)">Szerkesztés</button><button type="button" (click)="deleteContact(contact.id)" [disabled]="archived()">Törlés</button></div>
+            </li>
+          } @empty { <li class="empty">Még nincs további projektkapcsolat.</li> }
+        </ul>
+      </p-card>
+
+      <p-card>
+        <ng-template #title>Célzott felmérési kör</ng-template>
+        <ng-template #subtitle>A Stakeholder és Tisztázó kör egymástól függetlenül maradhat nyitva.</ng-template>
+        <form class="stack" (ngSubmit)="startRound()">
+          <label>Típus
+            <select name="roundType" [(ngModel)]="roundType">
+              <option value="STAKEHOLDER">Stakeholder kör</option>
+              <option value="CLARIFICATION">Tisztázó kör</option>
+            </select>
+          </label>
+          <label>Kérdés a projekt sémájából
+            <select name="roundStableKey" [(ngModel)]="roundStableKey" data-testid="additional-round-question">
+              <option value="">Ne válassz banki kérdést</option>
+              @for (question of schema()?.questions ?? []; track question.stableKey) {
+                <option [value]="question.stableKey">{{ question.text }}</option>
+              }
+            </select>
+          </label>
+          @if (roundType === 'CLARIFICATION') {
+            <label>Ad-hoc téma <input name="adHocTopic" [(ngModel)]="adHocTopic" maxlength="255" /></label>
+            <label>Ad-hoc tisztázó kérdés <textarea name="adHocQuestion" [(ngModel)]="adHocQuestion" rows="3" maxlength="2000"></textarea></label>
+          }
+          <p-button type="submit" label="Kör indítása" [disabled]="saving() || archived() || !schema()" data-testid="start-additional-round" />
+        </form>
+        <ul class="record-list">
+          @for (round of rounds(); track round.id) {
+            <li>
+              <div><strong>{{ roundLabel(round.type) }}</strong><small>{{ round.status === 'OPEN' ? 'Nyitott' : 'Lezárt' }} · {{ round.questions.length }} kérdés</small></div>
+              <a [routerLink]="['/projects', projectId, 'interview']" [queryParams]="{ roundId: round.id, returnTo: '/projects/' + projectId + '/discovery' }">Megnyitás</a>
+            </li>
+          } @empty { <li class="empty">Még nincs felmérési kör.</li> }
+        </ul>
+      </p-card>
+
+      <p-card>
+        <ng-template #title>Bizonyítékalapú insight</ng-template>
+        <ng-template #subtitle>A forrás az insight mentése közben rögzül; nincs külön bizonyíték-adminisztrációs lépés.</ng-template>
+        <form class="stack" (ngSubmit)="saveInsight()">
+          <label>Megállapítás <textarea name="insightStatement" [(ngModel)]="insightStatement" required rows="4" maxlength="4000" data-testid="insight-statement"></textarea></label>
+          @if (!insightId) {
+            <label>Mentett felmérési válasz
+              <select name="insightAnswerSource" [(ngModel)]="insightAnswerSource" (ngModelChange)="insightEvidenceId = ''" data-testid="insight-answer-source">
+                <option value="">Válassz forrást</option>
+                @for (source of answerSources(); track source.key) { <option [value]="source.key">{{ source.label }}</option> }
+              </select>
+            </label>
+            <label>Vagy meglévő bizonyítékforrás újrahasználata
+              <select name="insightEvidenceId" [(ngModel)]="insightEvidenceId" (ngModelChange)="insightAnswerSource = ''">
+                <option value="">Válassz meglévő forrást</option>
+                @for (evidence of reusableEvidence(); track evidence.id) { <option [value]="evidence.id">{{ evidence.title }}</option> }
+              </select>
+            </label>
+          }
+          <p-button type="submit" [label]="insightId ? 'Insight frissítése' : 'Insight mentése'" [disabled]="saving() || archived()" data-testid="save-insight" />
+        </form>
+        <ul class="record-list">
+          @for (insight of insights(); track insight.id) {
+            <li><div><strong>{{ insight.statement }}</strong><small>v{{ insight.version }} · {{ insight.evidence.length }} forrás</small></div><button type="button" (click)="editInsight(insight)" [disabled]="archived()">Szerkesztés</button></li>
+          } @empty { <li class="empty">Még nincs rögzített insight.</li> }
+        </ul>
+      </p-card>
+
+      <p-card>
+        <ng-template #title>Discovery mellékletek</ng-template>
+        <ng-template #subtitle>PDF, PNG, JPEG vagy UTF-8 TXT, legfeljebb 50 MiB; PostgreSQL-ben, inerten tárolva.</ng-template>
+        @if (followUps().length > 0) {
+          <form class="stack" (ngSubmit)="uploadAttachment()">
+            <label>Tisztázandó tétel
+              <select name="attachmentOwnerId" [(ngModel)]="attachmentOwnerId">
+                @for (followUp of followUps(); track followUp.id) { <option [value]="followUp.id">{{ followUp.question }}</option> }
+              </select>
+            </label>
+            <label>Fájl <input type="file" accept=".pdf,.png,.jpg,.jpeg,.txt" (change)="chooseFile($event)" /></label>
+            <p-button type="submit" label="Melléklet feltöltése" [disabled]="saving() || archived() || !attachmentFile" />
+          </form>
+        } @else {
+          <p class="empty">Melléklethez előbb hozz létre egy tisztázandó tételt.</p>
+        }
+        <ul class="record-list">
+          @for (attachment of attachments(); track attachment.id) {
+            <li><div><strong>{{ attachment.originalName }}</strong><small>{{ attachment.contentType }} · {{ attachment.sizeBytes }} bájt</small></div><a [href]="attachmentUrl(attachment.id)">Letöltés</a></li>
+          } @empty { <li class="empty">Még nincs melléklet.</li> }
+        </ul>
+      </p-card>
+    </div>
+  }
+</section>

@@ -24,6 +24,13 @@ import { CustomerCorrespondenceProcessing0021CustomerCorrespondenceProcessing178
 import { ReceiptProvenHandoffRevision0022ReceiptProvenHandoffRevision1787731200000 } from '../migrations/0022-receipt-proven-handoff-revision';
 import { CustomerMailTriage0023CustomerMailTriage1787817600000 } from '../migrations/0023-customer-mail-triage';
 import { OperatorMailGatewaySender0024OperatorMailGatewaySender1787904000000 } from '../migrations/0024-operator-mail-gateway-sender';
+import { LocalIdentityAndAuditActor0025LocalIdentityAndAuditActor1787990400000 } from '../migrations/0025-local-identity-and-audit-actor';
+import { EvidenceBasedDiscovery0026EvidenceBasedDiscovery1788076800000 } from '../migrations/0026-evidence-based-discovery';
+import { DecisionAndPortfolio0027DecisionAndPortfolio1788163200000 } from '../migrations/0027-decision-and-portfolio';
+import { CustomerResponseAndNotifications0028CustomerResponseAndNotifications1788249600000 } from '../migrations/0028-customer-response-and-notifications';
+import { CustomerResponseEvidence0029CustomerResponseEvidence1788336000000 } from '../migrations/0029-customer-response-evidence';
+import { DeliveryAndGit0030DeliveryAndGit1788422400000 } from '../migrations/0030-delivery-and-git';
+import { ClaudeCodeMcpConnection0031ClaudeCodeMcpConnection1788508800000 } from '../migrations/0031-claude-code-mcp-connection';
 
 export type ApiMigration = new () => MigrationInterface;
 
@@ -52,6 +59,13 @@ export const migrationSequence: readonly ApiMigration[] = [
   ReceiptProvenHandoffRevision0022ReceiptProvenHandoffRevision1787731200000,
   CustomerMailTriage0023CustomerMailTriage1787817600000,
   OperatorMailGatewaySender0024OperatorMailGatewaySender1787904000000,
+  LocalIdentityAndAuditActor0025LocalIdentityAndAuditActor1787990400000,
+  EvidenceBasedDiscovery0026EvidenceBasedDiscovery1788076800000,
+  DecisionAndPortfolio0027DecisionAndPortfolio1788163200000,
+  CustomerResponseAndNotifications0028CustomerResponseAndNotifications1788249600000,
+  CustomerResponseEvidence0029CustomerResponseEvidence1788336000000,
+  DeliveryAndGit0030DeliveryAndGit1788422400000,
+  ClaudeCodeMcpConnection0031ClaudeCodeMcpConnection1788508800000,
 ];
 
 export function migrationsThrough(migrationName: string): readonly ApiMigration[] {

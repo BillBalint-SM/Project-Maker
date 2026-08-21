@@ -1,0 +1,99 @@
+.heading-row,
+.goal-card > header,
+.initiative-card > header {
+  align-items: flex-start;
+  display: flex;
+  gap: 1rem;
+  justify-content: space-between;
+}
+
+.roadmap-create-grid,
+.roadmap-layout {
+  display: grid;
+  gap: 1.25rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin: 1.25rem 0;
+}
+
+.roadmap-layout {
+  grid-template-columns: minmax(0, 2fr) minmax(16rem, 1fr);
+}
+
+form,
+.assignment-list,
+.goal-list,
+.initiative-list {
+  display: grid;
+  gap: 0.8rem;
+}
+
+form input,
+form select,
+form textarea,
+.assignment-list select {
+  border: 1px solid var(--p-content-border-color);
+  border-radius: 0.5rem;
+  padding: 0.65rem;
+  width: 100%;
+}
+
+form label span,
+p {
+  color: var(--p-text-muted-color);
+}
+
+.goal-card {
+  border: 1px solid var(--p-content-border-color);
+  border-radius: 0.75rem;
+  padding: 1rem;
+}
+
+.goal-card h3,
+.goal-card p,
+.initiative-card h4,
+.initiative-card p {
+  margin: 0;
+}
+
+.initiative-list {
+  margin-top: 1rem;
+}
+
+.initiative-card {
+  background: var(--p-content-hover-background);
+  border-radius: 0.6rem;
+  padding: 0.8rem;
+}
+
+.initiative-card ul {
+  margin-bottom: 0;
+}
+
+.item-actions {
+  display: flex;
+  gap: 0.4rem;
+}
+
+.item-actions button {
+  background: transparent;
+  border: 0;
+  color: var(--p-primary-color);
+  cursor: pointer;
+  padding: 0.25rem;
+}
+
+.assignment-list label {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.assignment-list label span {
+  font-weight: 700;
+}
+
+@media (max-width: 48rem) {
+  .roadmap-create-grid,
+  .roadmap-layout {
+    grid-template-columns: 1fr;
+  }
+}

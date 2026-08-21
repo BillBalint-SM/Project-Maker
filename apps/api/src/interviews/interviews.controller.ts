@@ -23,6 +23,13 @@ import { InterviewsService } from './interviews.service';
 export class InterviewsController {
   constructor(private readonly interviewsService: InterviewsService) {}
 
+  @Get()
+  list(
+    @Param('projectId', new ParseUUIDPipe()) projectId: string,
+  ): Promise<readonly InterviewRound[]> {
+    return this.interviewsService.list(projectId);
+  }
+
   @Get('active')
   async getActiveRound(
     @Param('projectId', new ParseUUIDPipe()) projectId: string,

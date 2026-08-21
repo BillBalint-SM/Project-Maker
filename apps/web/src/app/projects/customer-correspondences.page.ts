@@ -14,6 +14,8 @@ import { ButtonModule } from 'primeng/button';
 import { ProgressSpinnerModule } from 'primeng/progressspinner';
 
 import { CustomerRepliesApiService } from './customer-replies-api.service';
+import { CustomerResponseComponent } from './customer-response/customer-response.component';
+import { NotificationsApiService } from '../notifications/notifications-api.service';
 import { provideProjectOperationPolicy } from './project-operation-policy';
 import { CustomerFollowUpComponent } from './customer-follow-up/customer-follow-up.component';
 import { InterviewReplyOutcomeComponent } from '../interviews/interview-handoff/interview-reply-outcome.component';
@@ -23,6 +25,7 @@ import { DiscoveryReplyOutcomeComponent } from './discovery-follow-ups/discovery
   selector: 'app-customer-correspondences-page',
   imports: [
     CustomerFollowUpComponent,
+    CustomerResponseComponent,
     ButtonModule,
     DatePipe,
     DiscoveryReplyOutcomeComponent,
@@ -53,6 +56,7 @@ import { DiscoveryReplyOutcomeComponent } from './discovery-follow-ups/discovery
         @if (current.projectArchived) {
           <p role="status">Az archivált projekt levelezése olvasható. A feldolgozáshoz vagy a forrásfolyamat módosításához előbb állítsd vissza a projektet.</p>
         }
+        <app-customer-response [projectId]="projectId" [archived]="current.projectArchived" />
         <app-customer-follow-up
           [projectId]="projectId"
           [archived]="current.projectArchived"
@@ -156,6 +160,7 @@ export class CustomerCorrespondencesPage implements OnInit {
   private readonly api = inject(CustomerRepliesApiService);
   private readonly route = inject(ActivatedRoute);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly notifications = inject(NotificationsApiService);
   readonly projectId = this.route.snapshot.paramMap.get('projectId') ?? '';
   readonly correspondenceWork = signal<ProjectCustomerCorrespondenceWork | null>(null);
   readonly loading = signal(true);
@@ -227,6 +232,7 @@ export class CustomerCorrespondencesPage implements OnInit {
         }));
         this.busy.set(false);
         this.api.summary().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({ error: () => undefined });
+        this.notifications.load().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({ error: () => undefined });
       },
       error: () => {
         this.commandError.set('A művelet nem hajtható végre a jelenlegi adatokkal. Töltsd újra az adatokat, majd próbáld meg ismét.');

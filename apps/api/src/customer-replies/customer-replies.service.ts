@@ -18,12 +18,14 @@ interface CorrespondenceRow {
   status: CustomerCorrespondenceStatus;
   unread_message_count: number;
   processing_version: number;
-  source_type: 'INTERVIEW_HANDOFF' | 'CUSTOMER_FOLLOW_UP_PING';
+  source_type: 'INTERVIEW_HANDOFF' | 'CUSTOMER_FOLLOW_UP_PING' | 'CUSTOMER_RESPONSE_REQUEST';
   source_id: string;
   handoff_round_id: string | null;
   handoff_version: number | null;
   handoff_state: 'DRAFT' | 'SENDING' | 'SENT' | 'FAILED' | 'UNKNOWN' | null;
   ping_state: 'SENDING' | 'SENT' | 'FAILED' | 'UNKNOWN' | null;
+  response_state: 'OPEN' | 'SUBMITTED' | 'REVOKED' | null;
+  response_delivery_state: 'SENDING' | 'SENT' | 'FAILED' | 'UNKNOWN' | null;
   source_follow_up_id: string | null;
   source_follow_up_version: number | null;
   unknown_delivery_receipt_evidence: boolean;
@@ -88,6 +90,8 @@ export class CustomerRepliesService {
               outbound."source_type", outbound."source_id",
               handoff."round_id" AS "handoff_round_id", handoff."version" AS "handoff_version",
               handoff."state" AS "handoff_state", ping."state" AS "ping_state",
+              response_request."state" AS "response_state",
+              response_request."delivery_state" AS "response_delivery_state",
               (
                 EXISTS (
                   SELECT 1 FROM "customer_outbound_attempts" attempt
@@ -107,6 +111,8 @@ export class CustomerRepliesService {
          ON outbound."source_type" = 'INTERVIEW_HANDOFF' AND handoff."id" = outbound."source_id"
        LEFT JOIN "customer_follow_up_delivery_attempts" ping
          ON outbound."source_type" = 'CUSTOMER_FOLLOW_UP_PING' AND ping."id" = outbound."source_id"
+       LEFT JOIN "customer_response_requests" response_request
+         ON outbound."source_type" = 'CUSTOMER_RESPONSE_REQUEST' AND response_request."id" = outbound."source_id"
        WHERE correspondence."project_id" = $1
        ORDER BY correspondence."created_at", correspondence."id"`,
       [projectId],
@@ -318,6 +324,26 @@ function toCorrespondence(
         handoffId: row.source_id,
         version: row.handoff_version,
         state: row.handoff_state,
+      },
+      unknownDeliveryReceiptEvidence: row.unknown_delivery_receipt_evidence,
+      messages,
+    };
+  }
+  if (row.source_type === 'CUSTOMER_RESPONSE_REQUEST') {
+    if (row.response_state === null || row.response_delivery_state === null) {
+      throw new ConflictException('Customer correspondence response-request source is incomplete.');
+    }
+    return {
+      id: row.id,
+      predecessorId: row.predecessor_id,
+      status: row.status,
+      unreadMessageCount: row.unread_message_count,
+      processingVersion: row.processing_version,
+      source: {
+        type: row.source_type,
+        requestId: row.source_id,
+        state: row.response_state,
+        deliveryState: row.response_delivery_state,
       },
       unknownDeliveryReceiptEvidence: row.unknown_delivery_receipt_evidence,
       messages,

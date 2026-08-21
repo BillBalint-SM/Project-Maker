@@ -399,6 +399,16 @@ function toProjectWorkspace(project: Project): ProjectWorkspace {
     },
     nextAction: project.nextAction,
     dueAt: project.dueAt ? toIso(project.dueAt, 'project dueAt') : null,
+    playbook: {
+      id: project.playbookId,
+      version: project.playbookVersion,
+      name: project.playbookId === 'system-integration'
+        ? 'Rendszerintegráció'
+        : project.playbookId === 'data-migration'
+          ? 'Adatmigráció'
+          : 'Általános projektfelmérés',
+    },
+    initiativeId: project.initiativeId,
     createdAt: toIso(project.createdAt, 'project createdAt'),
     updatedAt: toIso(project.updatedAt, 'project updatedAt'),
   };

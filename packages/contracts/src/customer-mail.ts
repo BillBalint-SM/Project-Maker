@@ -113,6 +113,12 @@ export type CustomerCorrespondenceSource =
       readonly state: 'SENDING' | 'SENT' | 'FAILED' | 'UNKNOWN';
       readonly followUpId: string | null;
       readonly followUpVersion: number | null;
+    }
+  | {
+      readonly type: 'CUSTOMER_RESPONSE_REQUEST';
+      readonly requestId: string;
+      readonly state: 'OPEN' | 'SUBMITTED' | 'REVOKED';
+      readonly deliveryState: 'SENDING' | 'SENT' | 'FAILED' | 'UNKNOWN';
     };
 
 export interface CustomerCorrespondenceView {

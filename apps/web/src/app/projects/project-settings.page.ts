@@ -8,7 +8,7 @@ import {
   Validators,
 } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
-import type { ProjectStatus, ProjectWorkspace } from '@project-maker/contracts';
+import type { PackagedPlaybookSummary, ProjectStatus, ProjectWorkspace } from '@project-maker/contracts';
 import { ConfirmationService } from 'primeng/api';
 import { ButtonModule } from 'primeng/button';
 import { CardModule } from 'primeng/card';
@@ -68,6 +68,7 @@ export class ProjectSettingsPage implements OnInit {
   readonly lifecycleError = signal<string | null>(null);
   readonly lifecycleFeedback = signal<string | null>(null);
   readonly statusOptions = activeProjectStatusOptions;
+  readonly playbooks = signal<readonly PackagedPlaybookSummary[]>([]);
   readonly busy = this.operationPolicy.busy;
   readonly basicsSaving = computed(
     () => this.operationPolicy.activeOperation() === 'project-basics-save',
@@ -107,9 +108,38 @@ export class ProjectSettingsPage implements OnInit {
       validators: [Validators.required],
     }),
   });
+  readonly playbookForm = new FormGroup({
+    playbook: new FormControl('general:1', { nonNullable: true, validators: [Validators.required] }),
+  });
 
   ngOnInit(): void {
+    this.api.listPlaybooks().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: (playbooks) => this.playbooks.set(playbooks),
+      error: (error: Error) => this.actionError.set(error.message),
+    });
     this.loadSettings();
+  }
+
+  savePlaybook(): void {
+    if (this.busy() || this.isArchived()) return;
+    const [playbookId, versionText] = this.playbookForm.controls.playbook.value.split(':');
+    const lease = this.operationPolicy.tryAcquire('project-playbook-save');
+    if (!lease || !playbookId) return;
+    this.actionError.set(null);
+    this.feedback.set(null);
+    this.api.updateProjectPlaybook(this.projectId, {
+      playbookId,
+      playbookVersion: Number(versionText),
+    }).pipe(
+      releaseProjectOperationOnFinalize(lease),
+      takeUntilDestroyed(this.destroyRef),
+    ).subscribe({
+      next: (project) => {
+        this.applyProject(project);
+        this.feedback.set('A projekt playbookja mentve lett.');
+      },
+      error: (error: Error) => this.actionError.set(error.message),
+    });
   }
 
   loadSettings(): void {
@@ -292,6 +322,7 @@ export class ProjectSettingsPage implements OnInit {
     if (project.status !== 'ARCHIVED') {
       this.lifecycleForm.reset({ status: project.status });
     }
+    this.playbookForm.reset({ playbook: `${project.playbook.id}:${project.playbook.version}` });
   }
 }
 

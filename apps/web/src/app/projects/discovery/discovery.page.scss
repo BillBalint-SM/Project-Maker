@@ -1,0 +1,72 @@
+.discovery-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.stack {
+  display: grid;
+  gap: 0.8rem;
+}
+
+.stack label {
+  color: var(--p-text-color);
+  display: grid;
+  font-size: 0.88rem;
+  font-weight: 700;
+  gap: 0.35rem;
+}
+
+input,
+select,
+textarea {
+  border: 1px solid var(--p-content-border-color);
+  border-radius: 0.55rem;
+  padding: 0.65rem 0.75rem;
+  width: 100%;
+}
+
+.record-list {
+  display: grid;
+  gap: 0.55rem;
+  list-style: none;
+  margin: 1rem 0 0;
+  padding: 0;
+}
+
+.record-list li {
+  align-items: center;
+  border-top: 1px solid var(--p-content-border-color);
+  display: flex;
+  gap: 0.8rem;
+  justify-content: space-between;
+  padding-top: 0.75rem;
+}
+
+.record-list strong,
+.record-list small {
+  display: block;
+}
+
+.record-list small,
+.empty {
+  color: var(--p-text-muted-color);
+  margin-top: 0.2rem;
+}
+
+.actions {
+  align-items: center;
+  display: flex;
+  gap: 0.45rem;
+}
+
+button,
+.text-button {
+  cursor: pointer;
+}
+
+@media (max-width: 52rem) {
+  .discovery-grid {
+    grid-template-columns: 1fr;
+  }
+}

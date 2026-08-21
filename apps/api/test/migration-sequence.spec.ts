@@ -32,6 +32,13 @@ const expectedMigrationNames = [
   'ReceiptProvenHandoffRevision0022ReceiptProvenHandoffRevision1787731200000',
   'CustomerMailTriage0023CustomerMailTriage1787817600000',
   'OperatorMailGatewaySender0024OperatorMailGatewaySender1787904000000',
+  'LocalIdentityAndAuditActor0025LocalIdentityAndAuditActor1787990400000',
+  'EvidenceBasedDiscovery0026EvidenceBasedDiscovery1788076800000',
+  'DecisionAndPortfolio0027DecisionAndPortfolio1788163200000',
+  'CustomerResponseAndNotifications0028CustomerResponseAndNotifications1788249600000',
+  'CustomerResponseEvidence0029CustomerResponseEvidence1788336000000',
+  'DeliveryAndGit0030DeliveryAndGit1788422400000',
+  'ClaudeCodeMcpConnection0031ClaudeCodeMcpConnection1788508800000',
 ] as const;
 
 type MigrationConstructor = new () => { readonly name?: string };

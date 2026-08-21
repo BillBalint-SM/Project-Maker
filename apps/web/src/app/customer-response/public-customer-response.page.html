@@ -1,0 +1,38 @@
+<section class="public-response" aria-labelledby="public-response-title">
+  <header>
+    <span class="brand-mark" aria-hidden="true">PM</span>
+    <div><strong>Project Maker</strong><small>Biztonságos ügyfél-pontosítás</small></div>
+  </header>
+
+  @if (loading()) {
+    <div class="state-panel" aria-live="polite"><p-progress-spinner ariaLabel="Válaszkérés betöltése" /><p>A válaszkérés betöltése…</p></div>
+  } @else if (submitted()) {
+    <div class="state-panel success" role="status">
+      <h1>Köszönjük a választ!</h1>
+      <p>A válasz beérkezett a projektcsapathoz. Ezt az oldalt bezárhatod.</p>
+    </div>
+  } @else if (error() && !request()) {
+    <div class="state-panel" role="alert">
+      <h1>A válaszkérés nem érhető el</h1>
+      <p>A hivatkozás lejárt, visszavonták vagy már felhasználták. Kérj új hivatkozást a projekt kapcsolattartójától.</p>
+    </div>
+  } @else if (request(); as current) {
+    <main>
+      <span class="eyebrow">{{ current.projectName }}</span>
+      <h1 id="public-response-title">Pontosítás a projekthez</h1>
+      <p>Kérjük, válaszold meg az alábbi rövid kérdéseket. A válaszok csak egyben küldhetők el.</p>
+      <p class="expiry">A hivatkozás eddig használható: {{ current.expiresAt | date: 'yyyy. MM. dd. HH:mm' }}</p>
+      <form (submit)="$event.preventDefault(); submit()">
+        @for (prompt of current.prompts; track prompt.id) {
+          <label>
+            <span>{{ prompt.order }}. {{ prompt.topic }}</span>
+            <strong>{{ prompt.text }}</strong>
+            <textarea pTextarea rows="5" maxlength="10000" required data-testid="public-response-answer" [value]="answers()[prompt.id]" (input)="updateAnswer(prompt.id, $event)"></textarea>
+          </label>
+        }
+        @if (error()) { <p-message severity="error" role="alert">{{ error() }}</p-message> }
+        <p-button type="submit" label="Válaszok elküldése" [loading]="submitting()" [disabled]="!canSubmit() || submitting()" data-testid="submit-customer-response" />
+      </form>
+    </main>
+  }
+</section>

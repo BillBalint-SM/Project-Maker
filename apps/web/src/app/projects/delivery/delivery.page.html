@@ -1,0 +1,177 @@
+<section aria-labelledby="delivery-title">
+  <div class="heading-row">
+    <div class="page-heading">
+      <span class="eyebrow">Kimenet és átadás</span>
+      <h1 id="delivery-title">Fejlesztési csomag</h1>
+      <p>A kanonikus specifikációból szerkeszthető fejlesztési tételek, letölthető kimenetek és egyirányú Git-átadás.</p>
+    </div>
+    @if (deliveryPackage(); as currentPackage) {
+      <p-tag
+        [value]="currentPackage.provenance.state === 'HANDED_OFF' ? 'Gitbe átadva' : 'Szerkesztett változat'"
+        [severity]="currentPackage.provenance.state === 'HANDED_OFF' ? 'success' : 'info'"
+      />
+    }
+  </div>
+
+  @if (feedback()) { <p-message severity="success" role="status">{{ feedback() }}</p-message> }
+  @if (error(); as message) { <p-message severity="error" role="alert">{{ message }}</p-message> }
+  @if (archived()) { <p-message severity="info">Az archivált projekt fejlesztési csomagja csak olvasható, de a mentett kimenetek továbbra is letölthetők.</p-message> }
+
+  @if (loading()) {
+    <div class="state-panel" aria-live="polite"><p-progress-spinner ariaLabel="Fejlesztési csomag betöltése" /><p>Fejlesztési csomag betöltése…</p></div>
+  } @else if (revisions().length === 0) {
+    <div class="state-panel">
+      <h2>Előbb specifikációverzió szükséges</h2>
+      <p>A fejlesztési csomag mindig egy pontos, változatlan specifikációverzióból indul.</p>
+      <a pButton [routerLink]="['/projects', projectId, 'markdown']">Projekt-specifikáció megnyitása</a>
+    </div>
+  } @else {
+    <div class="delivery-layout">
+      <main class="delivery-main">
+        <p-card>
+          <ng-template #title>Fejlesztési csomag szerkesztése</ng-template>
+          <ng-template #subtitle>A mentés közös szerkesztett változatot hoz létre; nincs külön jóváhagyási kapu.</ng-template>
+          <form class="package-form" [formGroup]="packageForm" (ngSubmit)="savePackage()">
+            <label for="delivery-specification">Forrás specifikációverzió</label>
+            <select id="delivery-specification" formControlName="specificationRevisionId" data-testid="delivery-specification">
+              @for (revision of revisions(); track revision.id) {
+                <option [value]="revision.id">v{{ revision.version }} · {{ revision.createdAt | date: 'yyyy. MM. dd. HH:mm' }}</option>
+              }
+            </select>
+
+            <div formArrayName="items" class="package-items">
+              @for (item of packageForm.controls.items.controls; track item; let itemIndex = $index) {
+                <article class="package-item" [formGroupName]="itemIndex">
+                  <header>
+                    <h3>{{ itemIndex + 1 }}. tétel</h3>
+                    <p-button
+                      type="button"
+                      label="Tétel törlése"
+                      severity="danger"
+                      [text]="true"
+                      [disabled]="archived() || packageForm.controls.items.length === 1"
+                      (onClick)="removeItem(itemIndex)"
+                    />
+                  </header>
+
+                  <label [for]="'delivery-title-' + itemIndex">Cím</label>
+                  <input pInputText [id]="'delivery-title-' + itemIndex" formControlName="title" [attr.data-testid]="'delivery-item-title-' + itemIndex" />
+                  @if (item.controls.title.touched && item.controls.title.invalid) {
+                    <small class="field-error" role="alert">Adj címet a tételnek, legfeljebb 255 karakterben.</small>
+                  }
+
+                  <label [for]="'delivery-story-' + itemIndex">User story</label>
+                  <textarea pTextarea [id]="'delivery-story-' + itemIndex" rows="3" formControlName="userStory"></textarea>
+                  @if (item.controls.userStory.touched && item.controls.userStory.invalid) {
+                    <small class="field-error" role="alert">A user story nem maradhat üresen.</small>
+                  }
+
+                  <fieldset formArrayName="acceptanceCriteria">
+                    <legend>Elfogadási kritériumok</legend>
+                    @for (criterion of item.controls.acceptanceCriteria.controls; track criterion; let criterionIndex = $index) {
+                      <div class="repeatable-row">
+                        <div>
+                          <label class="sr-only" [for]="'delivery-criterion-' + itemIndex + '-' + criterionIndex">{{ criterionIndex + 1 }}. elfogadási kritérium</label>
+                          <textarea pTextarea [id]="'delivery-criterion-' + itemIndex + '-' + criterionIndex" rows="2" [formControlName]="criterionIndex" [attr.data-testid]="'delivery-criterion-' + itemIndex + '-' + criterionIndex"></textarea>
+                          @if (criterion.touched && criterion.invalid) { <small class="field-error" role="alert">A kritérium nem maradhat üresen.</small> }
+                        </div>
+                        <p-button type="button" label="Eltávolítás" severity="secondary" [text]="true" [disabled]="archived() || item.controls.acceptanceCriteria.length === 1" (onClick)="removeCriterion(itemIndex, criterionIndex)" />
+                      </div>
+                    }
+                    <p-button type="button" label="Kritérium hozzáadása" severity="secondary" [outlined]="true" [disabled]="archived()" (onClick)="addCriterion(itemIndex)" />
+                  </fieldset>
+
+                  <fieldset formArrayName="sourceExcerpts">
+                    <legend>Pontos forrásrészletek <span>(nem kötelező kézi szerkesztésnél)</span></legend>
+                    @for (source of item.controls.sourceExcerpts.controls; track source; let sourceIndex = $index) {
+                      <div class="repeatable-row">
+                        <div>
+                          <label class="sr-only" [for]="'delivery-source-' + itemIndex + '-' + sourceIndex">{{ sourceIndex + 1 }}. forrásrészlet</label>
+                          <textarea pTextarea [id]="'delivery-source-' + itemIndex + '-' + sourceIndex" rows="3" [formControlName]="sourceIndex"></textarea>
+                        </div>
+                        <p-button type="button" label="Eltávolítás" severity="secondary" [text]="true" [disabled]="archived()" (onClick)="removeSourceExcerpt(itemIndex, sourceIndex)" />
+                      </div>
+                    }
+                    <p-button type="button" label="Forrásrészlet hozzáadása" severity="secondary" [outlined]="true" [disabled]="archived()" (onClick)="addSourceExcerpt(itemIndex)" />
+                  </fieldset>
+                </article>
+              }
+            </div>
+
+            <div class="editor-actions">
+              <p-button type="button" label="Új tétel" severity="secondary" [outlined]="true" [disabled]="archived()" (onClick)="addItem()" />
+              <p-button type="submit" label="Fejlesztési csomag mentése" [loading]="saving()" [disabled]="archived()" data-testid="save-delivery-package" />
+            </div>
+          </form>
+        </p-card>
+
+      </main>
+
+      <aside class="delivery-side">
+        <p-card>
+          <ng-template #title>Kimenetek</ng-template>
+          @if (deliveryPackage(); as currentPackage) {
+            <p>Csomag v{{ currentPackage.version }} · specifikáció v{{ currentPackage.specification.version }}</p>
+            <div class="stacked-actions">
+              <a pButton [href]="markdownExportUrl()" download>Markdown letöltése</a>
+              <a pButton severity="secondary" [href]="csvExportUrl()" download>CSV letöltése</a>
+              <a pButton severity="secondary" [href]="printUrl()" target="_blank" rel="noopener">Nyomtatás / PDF</a>
+            </div>
+          } @else {
+            <p>Mentsd el az első fejlesztési csomagot a kimenetekhez.</p>
+          }
+        </p-card>
+
+        <p-card>
+          <ng-template #title>Git-átadás</ng-template>
+          <ng-template #subtitle>A mentett fejlesztési csomag pontos előnézet és külön megerősítés után kerül a remote-ba.</ng-template>
+          @if (gitSetups().length === 0) {
+            <p>Még nincs használható közös Git setup.</p>
+            <a pButton severity="secondary" routerLink="/settings/git-setups">Git setup létrehozása</a>
+          } @else {
+            <label for="delivery-git-setup">Cél setup</label>
+            <select id="delivery-git-setup" [formControl]="selectedGitSetupId">
+              @for (setup of gitSetups(); track setup.id) { <option [value]="setup.id">{{ setup.name }} · {{ setup.branch }}</option> }
+            </select>
+            @if (packageForm.dirty) { <p class="helper">Az előnézet előtt mentsd a fejlesztési csomag aktuális szerkesztését.</p> }
+            <div class="stacked-actions">
+              <p-button label="Git-előnézet készítése" [loading]="handoffPending()" [disabled]="archived() || !deliveryPackage() || packageForm.dirty" (onClick)="createHandoffPreview()" data-testid="preview-git-handoff" />
+              <a routerLink="/settings/git-setups">Közös Git setupok kezelése</a>
+            </div>
+          }
+        </p-card>
+
+        @if (preview(); as currentPreview) {
+          <p-card styleClass="preview-card">
+            <ng-template #title>Átadási előnézet</ng-template>
+            <dl>
+              <div><dt>Setup</dt><dd>{{ currentPreview.setup.name }}</dd></div>
+              <div><dt>Remote</dt><dd>{{ currentPreview.setup.remoteUrl }}</dd></div>
+              <div><dt>Branch</dt><dd>{{ currentPreview.setup.branch }}</dd></div>
+              <div><dt>Fájl</dt><dd>{{ currentPreview.artifactPath }}</dd></div>
+              <div><dt>Commit</dt><dd>{{ currentPreview.commitMessage }}</dd></div>
+            </dl>
+            <details><summary>Pontos átadandó tartalom</summary><pre>{{ currentPreview.artifact.content }}</pre></details>
+            <p-button label="Előnézet megerősítése és Gitbe küldése" [loading]="handoffPending()" [disabled]="archived()" (onClick)="confirmHandoff()" data-testid="confirm-git-handoff" />
+          </p-card>
+        }
+
+        <p-card>
+          <ng-template #title>Átadási történet</ng-template>
+          <ul class="handoff-list">
+            @for (handoff of handoffs(); track handoff.id) {
+              <li>
+                <div><strong>Csomag v{{ handoff.packageVersion }}</strong><span>{{ handoffLabel(handoff) }} · {{ handoff.updatedAt | date: 'yyyy. MM. dd. HH:mm' }}</span></div>
+                @if (handoff.commitSha) { <code>{{ shortSha(handoff.commitSha) }}</code> }
+                @if (handoff.repositoryBacklink) { <a [href]="handoff.repositoryBacklink" target="_blank" rel="noopener">Repository</a> }
+                @if (handoff.state === 'FAILED' || handoff.state === 'CONFLICT') {
+                  <p-button label="Újrapróbálás" severity="secondary" [text]="true" [disabled]="archived() || handoffPending()" (onClick)="retryHandoff(handoff)" />
+                }
+              </li>
+            } @empty { <li class="empty">Még nincs Git-átadás.</li> }
+          </ul>
+        </p-card>
+      </aside>
+    </div>
+  }
+</section>

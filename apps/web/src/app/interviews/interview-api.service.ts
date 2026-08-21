@@ -45,6 +45,12 @@ export class InterviewApiService {
       );
   }
 
+  listRounds(projectId: string): Observable<readonly InterviewRound[]> {
+    return this.http
+      .get<readonly InterviewRound[]>(`/api/projects/${encodeURIComponent(projectId)}/rounds`)
+      .pipe(catchError((error: unknown) => failApiRequest(error, 'betölteni a felmérési köröket')));
+  }
+
   getRound(projectId: string, roundId: string): Observable<InterviewRound> {
     const encodedProjectId = encodeURIComponent(projectId);
     const encodedRoundId = encodeURIComponent(roundId);

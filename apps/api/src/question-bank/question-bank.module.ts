@@ -22,5 +22,6 @@ import { QuestionBankService } from './question-bank.service';
   ],
   controllers: [BaseQuestionsController, ProjectQuestionSchemaController],
   providers: [QuestionBankService],
+  exports: [QuestionBankService],
 })
 export class QuestionBankModule {}

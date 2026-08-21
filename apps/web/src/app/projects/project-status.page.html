@@ -88,6 +88,84 @@
       }
     </p-card>
 
+    <p-card class="status-update-card" data-testid="project-status-updates">
+      <ng-template #title>Státuszjelentések</ng-template>
+      <ng-template #subtitle>Rövid emberi helyzetkép. A legfrissebb bejegyzés javítható, a korábbiak megmaradnak.</ng-template>
+
+      @if (isArchived()) {
+        <p class="card-state">Az archivált projekthez nem rögzíthető új státusz.</p>
+      } @else {
+        <form class="status-update-form" [formGroup]="statusForm" (ngSubmit)="saveStatusUpdate()">
+          <div class="field">
+            <label for="status-health">Egészség</label>
+            <select id="status-health" formControlName="health" data-testid="status-health">
+              @for (option of healthOptions; track option.value) {
+                <option [value]="option.value">{{ option.label }}</option>
+              }
+            </select>
+          </div>
+          <div class="field field-wide">
+            <label for="status-summary">Összefoglaló</label>
+            <textarea pTextarea id="status-summary" rows="3" formControlName="summary" data-testid="status-summary"></textarea>
+          </div>
+          <div class="field">
+            <label for="status-changes">Mi változott? <span>(nem kötelező)</span></label>
+            <textarea pTextarea id="status-changes" rows="3" formControlName="changes"></textarea>
+          </div>
+          <div class="field">
+            <label for="status-risks">Kockázatok <span>(nem kötelező)</span></label>
+            <textarea pTextarea id="status-risks" rows="3" formControlName="risks"></textarea>
+          </div>
+          <div class="field field-wide">
+            <label for="status-next-step">Következő lépés</label>
+            <textarea pTextarea id="status-next-step" rows="2" formControlName="nextStep" data-testid="status-next-step"></textarea>
+          </div>
+          <div class="form-actions field-wide">
+            @if (editingStatusId()) {
+              <button pButton type="button" class="p-button-outlined" (click)="cancelStatusEdit()">Mégse</button>
+            }
+            <p-button
+              type="submit"
+              [label]="editingStatusId() ? 'Státusz frissítése' : 'Státusz rögzítése'"
+              [loading]="statusSaving()"
+              [disabled]="statusForm.invalid || statusSaving()"
+              data-testid="save-status-update"
+            />
+          </div>
+        </form>
+      }
+
+      @if (statusFeedback()) {
+        <p-message severity="success" role="status">{{ statusFeedback() }}</p-message>
+      }
+      @if (statusUpdatesError(); as error) {
+        <p-message severity="error" role="alert">{{ error }}</p-message>
+      }
+      @if (statusUpdatesLoading()) {
+        <p class="card-state" aria-live="polite">A státusztörténet betöltése…</p>
+      } @else {
+        <ol class="status-update-history" data-testid="status-update-history">
+          @for (update of statusUpdates(); track update.id) {
+            <li>
+              <div class="status-update-heading">
+                <strong>{{ healthLabel(update.health) }}</strong>
+                <time [attr.datetime]="update.updatedAt">{{ update.updatedAt | date: 'yyyy. MM. dd. HH:mm' }}</time>
+              </div>
+              <p>{{ update.summary }}</p>
+              @if (update.changes) { <p><strong>Változás:</strong> {{ update.changes }}</p> }
+              @if (update.risks) { <p><strong>Kockázat:</strong> {{ update.risks }}</p> }
+              <p><strong>Következő lépés:</strong> {{ update.nextStep }}</p>
+              @if (update.editable && !isArchived()) {
+                <button pButton type="button" class="p-button-text" (click)="editStatusUpdate(update)">Legfrissebb szerkesztése</button>
+              }
+            </li>
+          } @empty {
+            <li class="empty-history">Még nincs státuszjelentés.</li>
+          }
+        </ol>
+      }
+    </p-card>
+
     <p-card class="activity-card" data-testid="project-status-activity">
       <ng-template #title>Legutóbbi aktivitás</ng-template>
       <ng-template #subtitle>Az utolsó öt, munkához szükséges projektváltozás.</ng-template>

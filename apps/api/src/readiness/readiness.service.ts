@@ -4,7 +4,7 @@ import type {
   ProjectReadiness,
   RoundQuestionSnapshot,
 } from '@project-maker/contracts';
-import { loadGeneralPlaybookV1 } from '@project-maker/contracts/general-playbook-runtime';
+import { loadPackagedPlaybook } from '@project-maker/contracts/general-playbook-runtime';
 import { DataSource, EntityManager, In } from 'typeorm';
 
 import { DiscoveryFollowUpEntity } from '../discovery-follow-ups/discovery-follow-up.entity';
@@ -73,8 +73,7 @@ export class ReadinessService {
 
     const roundIds = projectsWithRounds.map(({ sourceRound }) => sourceRound.id);
     const projectIds = projectsWithRounds.map(({ project }) => project.id);
-    const [policy, snapshots, answers, overrides, followUps, assessmentPolicy] = await Promise.all([
-      loadGeneralPlaybookV1(),
+    const [snapshots, answers, overrides, followUps, assessmentPolicy] = await Promise.all([
       manager.getRepository(RoundQuestionSnapshotEntity).find({
         where: { roundId: In(roundIds) },
         order: { roundId: 'ASC', order: 'ASC', id: 'ASC' },
@@ -96,8 +95,9 @@ export class ReadinessService {
 
     const result = new Map(unavailable);
     for (const { project, sourceRound } of projectsWithRounds) {
+      const policy = await loadPackagedPlaybook(project.playbookId, project.playbookVersion);
       const roundSnapshots = snapshots.filter((snapshot) => snapshot.roundId === sourceRound.id);
-      if (!hasCanonicalGeneralStableKeys(roundSnapshots, policy)) {
+      if (!policy || !hasCanonicalPlaybookStableKeys(roundSnapshots, policy)) {
         result.set(project.id, {
           available: false,
           projectId: project.id,
@@ -151,7 +151,7 @@ export class ReadinessService {
   }
 }
 
-function hasCanonicalGeneralStableKeys(
+function hasCanonicalPlaybookStableKeys(
   snapshots: readonly RoundQuestionSnapshotEntity[],
   policy: GeneralPlaybook,
 ): boolean {

@@ -16,6 +16,10 @@
     "src/markdown-templates.ts",
     "src/customer-mail.ts",
     "src/active-project-queue.ts",
-    "src/project-preparation-status.ts"
+    "src/project-preparation-status.ts",
+    "src/discovery.ts",
+    "src/decision-portfolio.ts",
+    "src/customer-response.ts",
+    "src/notifications.ts"
   ]
 }

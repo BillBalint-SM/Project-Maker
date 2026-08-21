@@ -25,7 +25,7 @@ describe('InterviewPage', () => {
       '[data-testid="round-answer-input-snapshot-1"]',
     ) as HTMLInputElement | null;
     const schemaCheckbox = page.nativeElement.querySelector(
-      '[data-testid="schema-question-company-goal"] input',
+      '[data-testid="schema-question-general-001"] input',
     ) as HTMLInputElement | null;
 
     expect(interviewApi.getActiveInitialIntake).toHaveBeenCalledWith('project-123');
@@ -760,21 +760,21 @@ describe('InterviewPage', () => {
     ).toBeNull();
   });
 
-  it('fails into a Hungarian page-level error state for an unsupported active round type', async () => {
+  it('renders a supported stakeholder round with its type label', async () => {
     const questionBankApi = createQuestionBankApi(null, null);
-    const interviewApi = createInterviewApi(buildUnsupportedRound(), null);
+    const interviewApi = createInterviewApi(null, null);
+    interviewApi.getRound.mockReturnValue(of(buildStakeholderRound()));
 
-    const page = await renderInterviewPage('project-789', questionBankApi, interviewApi);
-    const loadError = page.nativeElement.querySelector(
-      '[data-testid="interview-load-error-text"]',
-    ) as HTMLElement | null;
-
-    expect(loadError?.textContent?.trim()).toBe(
-      'Nem támogatott aktív felmérési kör érkezett. Frissítsd az oldalt, és ha a hiba megmarad, ellenőrizd a projekt felmérési állapotát.',
+    const page = await renderInterviewPage(
+      'project-789',
+      questionBankApi,
+      interviewApi,
+      'round-stakeholder',
     );
-    expect(
-      page.nativeElement.querySelector('[data-testid="active-round-resume-state"]'),
-    ).toBeNull();
+
+    expect(interviewApi.getRound).toHaveBeenCalledWith('project-789', 'round-stakeholder');
+    expect(page.nativeElement.querySelector('.round-type')?.textContent?.trim())
+      .toBe('Stakeholder kör');
   });
 
   it('preserves the specific Hungarian service error during initial load', async () => {
@@ -865,7 +865,10 @@ async function renderInterviewPage(
       {
         provide: ProjectApiService,
         useValue: {
-          loadProjectWorkspace: vi.fn().mockReturnValue(of({ status: 'DRAFT' })),
+          loadProjectWorkspace: vi.fn().mockReturnValue(of({
+            status: 'DRAFT',
+            playbook: { id: 'general', version: 1, name: 'Általános projekt' },
+          })),
         },
       },
     ],
@@ -988,10 +991,10 @@ function buildCompletedRound(question: RoundQuestionSnapshot): InterviewRound {
   };
 }
 
-function buildUnsupportedRound(): InterviewRound {
+function buildStakeholderRound(): InterviewRound {
   return {
     ...buildOpenRound(buildTextQuestion({})),
-    id: 'round-unsupported',
+    id: 'round-stakeholder',
     type: 'STAKEHOLDER',
   };
 }
@@ -999,7 +1002,7 @@ function buildUnsupportedRound(): InterviewRound {
 function buildBaseTextQuestion(): BaseQuestionBank['questions'][number] {
   return {
     id: 'base-question-1',
-    stableKey: 'company-goal',
+    stableKey: 'general-001',
     bankVersion: 3,
     topic: 'Cél',
     controlPoint: 'Üzleti cél',
@@ -1021,7 +1024,7 @@ function buildSchemaTextQuestion(): ProjectQuestionSchema['questions'][number] {
   return {
     id: 'schema-question-1',
     baseQuestionId: 'base-question-1',
-    stableKey: 'company-goal',
+    stableKey: 'general-001',
     topic: 'Cél',
     controlPoint: 'Üzleti cél',
     text: 'Mi a projekt célja?',
@@ -1038,7 +1041,7 @@ function buildTextQuestion(overrides: Partial<RoundQuestionSnapshot>): RoundQues
   return {
     id: 'snapshot-1',
     baseQuestionId: 'base-question-1',
-    stableKey: 'company-goal',
+    stableKey: 'general-001',
     topic: 'Cél',
     controlPoint: 'Üzleti cél',
     text: 'Mi a projekt célja?',
@@ -1068,7 +1071,7 @@ function buildBooleanQuestion(
   return {
     id: 'snapshot-boolean',
     baseQuestionId: 'base-question-boolean',
-    stableKey: 'needs-approval',
+    stableKey: 'general-002',
     topic: 'Döntés',
     controlPoint: 'Jóváhagyás',
     text: 'Szükséges vezetői jóváhagyás?',
@@ -1092,7 +1095,7 @@ function buildOptionalTextQuestion(
   return {
     id: 'snapshot-optional',
     baseQuestionId: 'base-question-optional',
-    stableKey: 'optional-detail',
+    stableKey: 'general-003',
     topic: 'Részlet',
     controlPoint: 'Kiegészítő információ',
     text: 'Van még fontos részlet?',
@@ -1116,7 +1119,7 @@ function buildLongTextQuestion(
   return {
     id: 'snapshot-long-text',
     baseQuestionId: 'base-question-long-text',
-    stableKey: 'current-situation',
+    stableKey: 'general-004',
     topic: 'Cél',
     controlPoint: 'Üzleti cél',
     text: 'Mi a jelenlegi helyzet, és mit szeretnétek elérni?',
@@ -1141,7 +1144,7 @@ function buildBooleanBank(): BaseQuestionBank {
       {
         ...buildBaseTextQuestion(),
         id: 'base-question-boolean',
-        stableKey: 'needs-approval',
+        stableKey: 'general-002',
         topic: 'Döntés',
         controlPoint: 'Jóváhagyás',
         text: 'Szükséges vezetői jóváhagyás?',
@@ -1160,7 +1163,7 @@ function buildOptionalTextBank(): BaseQuestionBank {
       {
         ...buildBaseTextQuestion(),
         id: 'base-question-optional',
-        stableKey: 'optional-detail',
+        stableKey: 'general-003',
         topic: 'Részlet',
         controlPoint: 'Kiegészítő információ',
         text: 'Van még fontos részlet?',
@@ -1183,7 +1186,7 @@ function buildBooleanSchema(): ProjectQuestionSchema {
       {
         id: 'schema-question-boolean',
         baseQuestionId: 'base-question-boolean',
-        stableKey: 'needs-approval',
+        stableKey: 'general-002',
         topic: 'Döntés',
         controlPoint: 'Jóváhagyás',
         text: 'Szükséges vezetői jóváhagyás?',
@@ -1209,7 +1212,7 @@ function buildOptionalTextSchema(): ProjectQuestionSchema {
       {
         id: 'schema-question-optional',
         baseQuestionId: 'base-question-optional',
-        stableKey: 'optional-detail',
+        stableKey: 'general-003',
         topic: 'Részlet',
         controlPoint: 'Kiegészítő információ',
         text: 'Van még fontos részlet?',
@@ -1230,7 +1233,7 @@ function buildLongTextBank(question: RoundQuestionSnapshot): BaseQuestionBank {
     questions: [
       {
         ...buildBaseTextQuestion(),
-        id: question.baseQuestionId,
+        id: question.baseQuestionId!,
         stableKey: question.stableKey,
         topic: question.topic,
         controlPoint: question.controlPoint,
@@ -1254,7 +1257,7 @@ function buildLongTextSchema(question: RoundQuestionSnapshot): ProjectQuestionSc
     questions: [
       {
         id: 'schema-question-long-text',
-        baseQuestionId: question.baseQuestionId,
+        baseQuestionId: question.baseQuestionId!,
         stableKey: question.stableKey,
         topic: question.topic,
         controlPoint: question.controlPoint,

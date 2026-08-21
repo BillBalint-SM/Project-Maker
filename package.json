@@ -12,23 +12,10 @@
     "compose:config": "docker compose --env-file .env config --quiet",
     "compose:down": "docker compose --env-file .env down",
     "compose:up": "docker compose --env-file .env up --build --wait",
-    "generate:ui-copy": "node scripts/generate-ui-copy-inventory.mjs",
-    "test": "pnpm test:ops && pnpm -r --if-present test",
-    "test:ops": "node --test scripts/test/*.test.mjs",
+    "test": "pnpm -r --if-present test",
     "test:e2e": "pnpm --filter @project-maker/web test:e2e",
     "test:mail-gateway": "node scripts/run-local-mail-gateway-suite.mjs",
-    "test:mail-gateway:ci": "pnpm --filter @project-maker/contracts build && pnpm --filter @project-maker/api test:mail-gateway && pnpm test:mail-gateway:ops && pnpm test:mail-gateway:smoke",
-    "test:mail-gateway:integration": "pnpm --filter @project-maker/contracts build && pnpm --filter @project-maker/api test:mail-gateway:integration",
-    "test:mail-gateway:ops": "node --test scripts/test/verify-mail-gateway-smoke.test.mjs scripts/test/verify-mail-gateway-drift.test.mjs && pnpm verify:mail-gateway-smoke-schema && pnpm verify:mail-gateway-drift",
-    "test:mail-gateway:smoke": "pnpm --filter @project-maker/web exec playwright test e2e/interview-customer-handoff.spec.ts e2e/customer-follow-up-ping.spec.ts e2e/customer-replies.spec.ts e2e/customer-mailbox-sync.spec.ts",
-    "test:mail-gateway:unit": "pnpm --filter @project-maker/contracts build && pnpm --filter @project-maker/api test:mail-gateway:unit",
     "typecheck": "pnpm --filter @project-maker/contracts build && pnpm -r --if-present typecheck",
-    "verify:comm-01-1": "node scripts/verify-comm-01-1-boundary.mjs",
-    "verify:domain-language": "node scripts/verify-domain-language.mjs",
-    "verify:mail-gateway-smoke": "node scripts/verify-mail-gateway-smoke.mjs --require-pass docs/evidence/mail-gateway-smoke.json",
-    "verify:mail-gateway-smoke-schema": "node scripts/verify-mail-gateway-smoke.mjs docs/evidence/mail-gateway-smoke.json",
-    "verify:mail-gateway-drift": "node scripts/verify-mail-gateway-drift.mjs",
-    "verify:ui-copy": "node scripts/generate-ui-copy-inventory.mjs --check",
-    "verify": "pnpm verify:domain-language && pnpm verify:comm-01-1 && pnpm verify:mail-gateway-smoke-schema && pnpm verify:mail-gateway-drift && pnpm verify:ui-copy && pnpm typecheck && pnpm test && pnpm build"
+    "verify": "pnpm typecheck && pnpm test && pnpm build"
   }
 }

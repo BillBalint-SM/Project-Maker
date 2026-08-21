@@ -6,6 +6,7 @@ import {
   createDatabaseConfiguration,
   createDatabaseDataSourceOptions,
 } from '../config/database.config';
+import { AuditActorSubscriber } from '../audit/audit-actor.subscriber';
 
 function createTypeOrmModuleOptions(configService: ConfigService): TypeOrmModuleOptions {
   return {
@@ -13,6 +14,7 @@ function createTypeOrmModuleOptions(configService: ConfigService): TypeOrmModule
       createDatabaseConfiguration(configService.get<string>('DATABASE_URL'))
     ),
     autoLoadEntities: true,
+    subscribers: [AuditActorSubscriber],
   };
 }
 

@@ -11,6 +11,26 @@ is never the Customer in Project Maker product language. Hungarian operations
 documentation calls it `üzemeltető szervezet`.
 _Avoid_: Customer, Customer tenant, Project Customer
 
+**Internal user**:
+A named employee of the Operator organization who reaches one Project Maker
+deployment through its VPN boundary and signs in with a local email-and-password
+account. Every Internal user has the same application capabilities across all
+Projects in that deployment. VPN access permits network reachability; the local
+account identifies the actor and grants the one shared internal access level.
+_Avoid_: Anonymous VPN user, Customer contact, Project Customer user
+
+**Internal user account**:
+The self-managed local email-and-password identity of one Internal user. Its
+owner creates, deactivates, and recovers it through the VPN-restricted
+application; retained audit history continues to identify a deactivated owner.
+_Avoid_: Administrator-provisioned account, application role, Customer account
+
+**VPN boundary**:
+The Operator organization-controlled network access boundary around one
+Project Maker deployment. It limits who can reach the application but never
+replaces Internal user authentication or actor-bound audit.
+_Avoid_: User identity, application role, project permission
+
 **Project Customer**:
 The external organization for which a project is being prepared. The shorter
 `Customer` qualifier is reserved for this organization and its correspondence;
@@ -23,6 +43,11 @@ The named person at the Project Customer who receives Project Customer
 communication and may own a project's next action. Employee-facing language
 calls the role `Ügyfélkapcsolattartó`.
 _Avoid_: Operator, internal project owner, infrastructure administrator
+
+**Project contact**:
+A named person retained only within one Project as relevant contact information.
+It has no stakeholder-role taxonomy and does not grant application access.
+_Avoid_: Global contact registry, application role, Customer account
 
 **Project preparation journey**:
 The primary employee journey for a PM, PO, or BA from selecting a project,
@@ -39,12 +64,29 @@ communication actions, and recent human-readable activity. It is not the
 container for every project workflow or for raw diagnostic data.
 _Avoid_: One-page project workspace, all-workflow editor
 
+**Project status update**:
+One human-authored periodic snapshot of a Project's health, summary, changes,
+risks, and next step. The latest update remains editable until a newer update is
+recorded; retained earlier updates form the history. It never replaces the
+server-derived Project preparation state or Human-readable project activity.
+_Avoid_: Project status, audit event, automatic progress report
+
 **Portfolio overview**:
 The application-level starting context for current projects, their preparation
 states, and the most important next actions. Its employee-facing name is
 `Projektportfólió`; it does not replace a selected project's working context or
 the active project queue.
 _Avoid_: Full project dossier, unfiltered project list
+
+**Business goal**:
+An Operator organization outcome used to group and explain related Initiatives.
+It supplies strategic context without becoming a delivery schedule.
+_Avoid_: Project, delivery milestone, Gantt item
+
+**Initiative**:
+A lightweight portfolio grouping of Projects that advance one Business goal.
+It is not a task container, capacity plan, or delivery backlog.
+_Avoid_: Project phase, sprint, epic
 
 **Active project queue**:
 A prioritized cross-project list of projects in active preparation, each with
@@ -61,8 +103,9 @@ _Avoid_: Implicit current project, global sticky project state
 
 **Project context navigation**:
 The compact navigation inside a Selected project context: Projektállapot,
-Felmérés, Becslési felkészültség, Döntési értékelés, Projekt-specifikáció, and
-Projektbeállítások. A context may explain a missing prerequisite but is not
+Felmérés, Felfedezések, Becslési felkészültség, Döntési értékelés,
+Projekt-specifikáció, Delivery package, and Projektbeállítások. A context may
+explain a missing prerequisite but is not
 hidden merely because the project is earlier in preparation.
 _Avoid_: Global application menu, scroll-only project navigation
 
@@ -140,6 +183,12 @@ _Avoid_: Raw inbound email, diagnostic audit text
 The organization-maintained, configurable source collection of available
 questions. It is administered separately from choosing a project's questions.
 _Avoid_: Project question schema, interview round
+
+**Published playbook version**:
+An immutable, reusable discovery policy and question structure for one class of
+Project. A materially changed policy or a different Project class receives a
+new published version; `general` v1 is never rewritten.
+_Avoid_: Mutable questionnaire, Project question schema, template
 
 **Published Question Bank version**:
 The immutable Question Bank state from which a new Project question schema may
@@ -232,6 +281,20 @@ versioned specification snapshots. Markdown remains the download format, not
 the employee-facing name of the context.
 _Avoid_: Markdown terv, editable live document
 
+**Delivery handoff**:
+A human-confirmed, one-way projection of the exact package shown in a delivery
+preview to an external Git repository. Confirmation retains the pushed snapshot,
+commit identifier, and backlink; external state never rewrites Project Maker's
+canonical source.
+_Avoid_: Two-way synchronization, canonical delivery backlog, Customer handoff
+
+**Delivery package**:
+A shared editable projection of one exact Specification version into delivery
+items and acceptance criteria. It may be exported while still being edited; the
+immutable historical record is created by a confirmed Delivery handoff, not by
+a separate approval workflow.
+_Avoid_: Second canonical specification, approval queue, delivery backlog
+
 **Specification version**:
 One immutable Project specification snapshot, shown as `specifikációverzió` and
 listed under `Verziótörténet`. It retains the selected published template and
@@ -323,6 +386,12 @@ automatic absence response received through the Correspondence mailbox.
 It may explain delivery state but is not a Customer reply.
 _Avoid_: Customer inbound message, Customer decision, unread reply
 
+**Internal notification**:
+An Internal user-facing notice created by a fixed, explainable Project Maker
+rule. It draws attention to existing Project work or operational state without
+creating hidden tasks, decisions, or automatic Customer communication.
+_Avoid_: Discovery follow-up, general automation rule, automatic retry
+
 **Discovery follow-up**:
 A project-owned accountable discovery work item shown to employees as a
 `tisztázandó tétel`, with a question, owner, due date, status, and next step.
@@ -360,6 +429,19 @@ relationship; a resolved follow-up retains it as readable provenance even when
 a later intake round becomes current. It is not part of the general editing
 slice.
 _Avoid_: Inferred link, general edit field
+
+**Evidence**:
+An immutable Project-owned reference or snapshot of an observable source such
+as an interview answer, Customer message excerpt, metric, link, or governed
+attachment. It can be captured or reused inline while an Insight is authored;
+employees do not have to prepare a separate Evidence record first.
+_Avoid_: Interpretation, automatically inferred fact, mutable source text
+
+**Insight**:
+A human-authored Project finding whose supporting sources are attached in the
+same workflow. It may inform questions, Discovery follow-ups, and formal
+decisions, but is never an automatic decision.
+_Avoid_: Evidence, AI conclusion, Decision recommendation
 
 **Current Initial Intake source**:
 The most recently created `OPEN` or `ENDED` Initial Intake round for a project,
@@ -427,3 +509,22 @@ A current available readiness gap classified by the selected policy as
 `Kritikus`. It takes precedence over a positive estimation recommendation and
 may be distinct from an estimate-blocking gap.
 _Avoid_: Estimate-blocking gap, any unresolved follow-up
+
+**Claude Code workspace connection**:
+An Internal user's actor-identified MCP connection from their own Claude Code
+session to the VPN-restricted Project Maker deployment. It exposes a small set
+of existing Project Maker business actions and keeps their current rules,
+including exact Git preview and a Claude Code-enforced fresh human confirmation.
+Project Maker never
+receives, shares, or uses the user's Claude subscription credentials and does
+not call a model API.
+_Avoid_: Embedded AI provider, shared Claude account, generic database access,
+anonymous VPN automation
+
+**MCP connection token**:
+The one self-managed Project Maker integration credential that identifies an
+Internal user when Claude Code calls the MCP endpoint. The owner can create,
+replace, or revoke it from their account; only its digest is retained. It is
+neither an application role nor an Anthropic API key and grants exactly the
+same application capabilities as that Internal user.
+_Avoid_: Permission scope, shared Operator token, Claude credential

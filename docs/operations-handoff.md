@@ -14,17 +14,17 @@ The runtime is a Docker Compose stack:
 
 | Service | Role | Network exposure |
 | --- | --- | --- |
-| `web` | Angular 22.1 + licensed PrimeNG 22.0.0 static application served by Nginx; proxies `/api/*` | Publishes `WEB_PORT` (default `8080`) |
+| `web` | Angular 22.1 + licensed PrimeNG 22.0.0 static application served by Nginx; proxies `/api/*` and `/mcp` | Publishes `WEB_PORT` (default `8080`) |
 | `api` | NestJS 11 API, TypeORM migrations, TLS SMTP/IMAP mail gateway boundary and follow-up timer | Internal only; port `3000` is exposed to the Compose network |
 | `postgres` | PostgreSQL 18.4 Alpine data store | Internal only; no host port |
 
 `project-maker-edge` is the browser-facing network and
-`project-maker-internal` is marked internal. The application currently has no
-authentication or VPN-awareness. The target deployment boundary is therefore
-the Operator organization’s internal network/VPN or an equivalent firewall/reverse-proxy
-policy. A deployment team must place the published Nginx endpoint behind that
-boundary before using real project data; the application itself does not prove
-that a request came through a VPN.
+`project-maker-internal` is marked internal. The deployment must place the
+published Nginx endpoint behind the Operator organization's VPN or equivalent
+network boundary. Local email/password sessions identify Internal users after
+network access; every active Internal user has the same capabilities and there
+are no roles, memberships, or project permissions. The application does not
+attempt to prove that a request came through a VPN.
 
 ## Start and stop the stack
 
@@ -114,6 +114,13 @@ ordered TypeORM migrations registered in
 22. `0022-receipt-proven-handoff-revision.ts` — allows a receipt-proven `UNKNOWN` handoff to keep its immutable outcome while a successor handoff draft is created; rollback refuses an incompatible superseded state.
 23. `0023-customer-mail-triage.ts` — unmatched-message link/dismiss decisions, mail-system event retention, supporting Internet Message-ID lookup, and guarded rollback for retained triage history.
 24. `0024-operator-mail-gateway-sender.ts` — removes the retired provider-domain restriction from persisted sender snapshots while retaining generic email-shape constraints and guarded rollback.
+25. `0025-local-identity-and-audit-actor.ts` — self-managed local Internal users, revocable sessions, and actor-bound audit history without roles.
+26. `0026-evidence-based-discovery.ts` — Project contacts, additional round sources, Insights, Evidence, attachments, and playbook provenance.
+27. `0027-decision-and-portfolio.ts` — formal decisions, status updates, Portfolio saved views, Business goals, and Initiatives.
+28. `0028-customer-response-and-notifications.ts` — bounded Customer response requests and the shared current-attention list.
+29. `0029-customer-response-evidence.ts` — immutable Customer response evidence linkage.
+30. `0030-delivery-and-git.ts` — editable Delivery packages, shared retained Git setups, and immutable preview-confirmed Git handoff snapshots.
+31. `0031-claude-code-mcp-connection.ts` — one replaceable MCP token digest and creation time per Internal user.
 
 The deployed API image contains the compiled migration classes, but not the
 TypeScript migration source tree used by the development-only
@@ -164,7 +171,7 @@ docker compose --env-file .env exec -T api node -e $migrationStatusScript
 
 `pending: false` means that all migration classes in the running image are
 recorded in the database. The `applied` array is the database's migration
-history; the twenty-four expected names are listed above.
+history; the thirty-one expected names are listed above.
 
 There is no safe arbitrary migration selector in the runtime image. A
 controlled revert can undo only the latest applied migration through a
@@ -233,7 +240,16 @@ running container. The dump remains on the host and is not committed:
 New-Item -ItemType Directory -Force .\backups | Out-Null
 $stamp = Get-Date -Format yyyyMMdd-HHmmss
 docker compose --env-file .env exec -T postgres sh -c 'PGPASSWORD="$POSTGRES_PASSWORD" pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" --format=custom' > ".\backups\project-maker-$stamp.dump"
+
+# A napi futás után csak a hét legújabb mentés maradjon meg.
+Get-ChildItem -LiteralPath .\backups -Filter 'project-maker-*.dump' -File |
+  Sort-Object LastWriteTime -Descending |
+  Select-Object -Skip 7 |
+  Remove-Item
 ```
+
+Ezt az Operator naponta egyszer futtatja a saját ütemezőjéből. Az alkalmazás
+nem tartalmaz külön backup schedulert vagy mentési felületet.
 
 ### Controlled restore
 
@@ -249,7 +265,54 @@ Get-Content .\backups\project-maker-YYYYMMDD-HHMMSS.dump -AsByteStream |
 Run the in-container migration status command above after a restore and
 perform the health/smoke gates before allowing normal users back in.
 
+Havonta egyszer a legújabb mentést egy külön, eldobható adatbázisba kell
+visszaállítani. A drill céladatbázisának neve tartalmazza a
+`project_maker_restore_drill` előtagot; éles adatbázis nem lehet célpont. A
+visszaállítás után az Operator ellenőrzi a `migrations`, `internal_users`,
+`audit_events`, `projects`, `customer_outbound_communications` és
+`customer_outbound_attempts` táblák olvashatóságát és reprezentatív
+rekordjait, majd kizárólag az eldobható drill-adatbázist törli. A drill
+eredményéből csak a dátum, a dump neve, az ellenőrzött táblák és a siker/hiba
+maradjon meg; Customer-tartalom és credential ne kerüljön bizonyítékba.
+
 ## Functional handoff
+
+### Internal identity and Claude Code MCP boundary
+
+The first application screen is Login / Sign up. Internal users create,
+deactivate, and restore their own local email/password account; all active
+users have the same application capability set. Unsafe browser requests use
+the authenticated session and exact `CORS_ORIGIN` boundary. Deactivation
+revokes both browser sessions and the user's MCP connection.
+
+The `Fiókbeállítások` page lets the signed-in user create, replace, or revoke
+one Project Maker MCP token. Only its SHA-256 digest and creation time are
+stored; the plaintext is returned once so the user can run:
+
+```text
+claude mcp add --transport http --scope user project-maker https://project-maker.example/mcp --header "Authorization: Bearer pm_mcp_..."
+```
+
+Replace the example origin with the VPN-reachable Nginx origin. No additional
+MCP environment variable, Claude API key, OAuth server, role, or scope setup is
+required. Replacing the token immediately invalidates the previous one.
+
+Nginx forwards `/mcp` to the internal API with buffering disabled. The remote
+Streamable HTTP server supports the current 2026-07-28 discovery/envelope path
+and the legacy 2025-06-18 initialization path used by older Claude Code
+runtimes. It exposes only bounded Project Maker tools for Project and
+Specification reads, deterministic Specification generation, Delivery package
+save, shared Git setup listing, exact Git preview and confirmation, Question
+Bank maintenance, and Markdown template draft/publish operations. Every write
+calls the same domain service as the webapp and retains the Internal user as
+audit actor. There is no generic database or filesystem tool.
+
+Project Maker never receives the user's Claude login/subscription credential
+and never calls a model API. Customer mail is not an MCP tool and remains a
+separate module. A Git push is still impossible without first receiving a
+fresh exact preview and then supplying that preview token to the separate
+confirmation tool. That confirmation tool also carries Claude Code's native
+`anthropic/requiresUserInteraction` marker, so every push asks the human again.
 
 ### Project and interview flow
 
@@ -357,8 +420,8 @@ module wiring, service behavior, manual delivery, and the due-state worker do
 not accept or import a Markdown revision, `.md` attachment, Claude instruction,
 or full Interview customer handoff. The removed legacy customer-review route
 stays absent; historical audit rows remain readable but cannot create a new
-delivery. `OUTPUT-01.1` is still planned and must deliver its internal Claude
-Code handoff without crossing this Customer mail gateway boundary.
+delivery. The MCP and Git handoff paths remain internal and do not cross this
+Customer mail gateway boundary.
 
 These are intentionally separate flows:
 
@@ -535,8 +598,8 @@ suite uses the controlled local mail-gateway fake to verify Project-start, hando
 ping, archive/restore, late-reply, UNKNOWN, classification, no-Markdown, and
 mailbox-recovery behavior without gateway credentials. This evidence does not
 prove production readiness. A separately authorized non-CI gateway run must
-follow the [Operator mail gateway runbook](mail-gateway.md), and its
-bounded evidence must pass `pnpm verify:mail-gateway-smoke`.
+follow the [Operator mail gateway runbook](mail-gateway.md), with its bounded
+result retained in the Operator organization's existing internal change ticket.
 
 The declared SCORE-01.1 browser evidence is:
 
@@ -573,9 +636,6 @@ that the complete product is finished.
 
 The following are deliberately not hidden in this handoff:
 
-- authentication, authorization, and request rate limiting before exposure
-  beyond the internal/VPN boundary;
 - provider message identifiers or delivery receipts for resolving an `UNKNOWN`
   interview-handoff attempt without operator evidence;
-- OUTPUT-02 and OUTPUT-03 acceptance-criteria/user-story derivation and PDF/spreadsheet exports;
 - backup retention/rotation and a restore drill owned by the deployment team.

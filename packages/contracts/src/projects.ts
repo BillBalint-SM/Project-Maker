@@ -44,6 +44,19 @@ export interface CreateProjectInput {
   readonly nextActionOwnerRole?: NextActionOwnerRole | null;
   readonly nextAction?: string | null;
   readonly dueAt?: string | null;
+  readonly playbookId?: string;
+  readonly playbookVersion?: number;
+}
+
+export interface ProjectPlaybookSelection {
+  readonly id: string;
+  readonly version: number;
+  readonly name: string;
+}
+
+export interface UpdateProjectPlaybookInput {
+  readonly playbookId: string;
+  readonly playbookVersion: number;
 }
 
 export interface UpdateProjectBasicsInput {
@@ -64,6 +77,8 @@ export interface ProjectWorkspace {
   readonly nextActionOwner: NextActionOwner;
   readonly nextAction: string | null;
   readonly dueAt: string | null;
+  readonly playbook: ProjectPlaybookSelection;
+  readonly initiativeId: string | null;
   readonly createdAt: string;
   readonly updatedAt: string;
 }

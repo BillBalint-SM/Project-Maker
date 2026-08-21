@@ -1,0 +1,107 @@
+<section aria-labelledby="roadmap-title">
+  <div class="heading-row">
+    <div class="page-heading">
+      <span class="eyebrow">Irány</span>
+      <h1 id="roadmap-title">Üzleti roadmap</h1>
+      <p>Egyszerű Goal → Initiative → Project csoportosítás, idővonal és automatikus átütemezés nélkül.</p>
+    </div>
+    <a pButton routerLink="/" severity="secondary">Projektportfólió</a>
+  </div>
+
+  <div class="roadmap-create-grid">
+    <p-card>
+      <ng-template #title>Új üzleti cél</ng-template>
+      <form [formGroup]="goalForm" (ngSubmit)="createGoal()">
+        <label for="new-goal-name">Név</label>
+        <input id="new-goal-name" type="text" formControlName="name" data-testid="new-goal-name" />
+        <label for="new-goal-description">Leírás <span>(nem kötelező)</span></label>
+        <textarea id="new-goal-description" rows="2" formControlName="description"></textarea>
+        <p-button type="submit" label="Cél létrehozása" [disabled]="goalForm.invalid || saving()" data-testid="create-goal" />
+      </form>
+    </p-card>
+
+    <p-card>
+      <ng-template #title>Új kezdeményezés</ng-template>
+      <form [formGroup]="initiativeForm" (ngSubmit)="createInitiative()">
+        <label for="initiative-goal">Üzleti cél</label>
+        <select id="initiative-goal" formControlName="goalId">
+          @for (goal of roadmap()?.goals ?? []; track goal.id) {
+            <option [value]="goal.id">{{ goal.name }}</option>
+          }
+        </select>
+        <label for="new-initiative-name">Név</label>
+        <input id="new-initiative-name" type="text" formControlName="name" data-testid="new-initiative-name" />
+        <label for="new-initiative-description">Leírás <span>(nem kötelező)</span></label>
+        <textarea id="new-initiative-description" rows="2" formControlName="description"></textarea>
+        <p-button type="submit" label="Kezdeményezés létrehozása" [disabled]="initiativeForm.invalid || saving()" data-testid="create-initiative" />
+      </form>
+    </p-card>
+  </div>
+
+  @if (feedback()) { <p-message severity="success" role="status">{{ feedback() }}</p-message> }
+  @if (error(); as message) { <p-message severity="error" role="alert">{{ message }}</p-message> }
+
+  @if (loading()) {
+    <div class="state-panel" aria-live="polite">A roadmap betöltése…</div>
+  } @else if (roadmap(); as currentRoadmap) {
+    <div class="roadmap-layout">
+      <section aria-labelledby="roadmap-goals-title">
+        <h2 id="roadmap-goals-title">Célok és kezdeményezések</h2>
+        <div class="goal-list" data-testid="roadmap-goals">
+          @for (goal of currentRoadmap.goals; track goal.id) {
+            <article class="goal-card">
+              <header>
+                <div><h3>{{ goal.name }}</h3>@if (goal.description) { <p>{{ goal.description }}</p> }</div>
+                <div class="item-actions">
+                  <button type="button" (click)="renameGoal(goal.id, goal.name, goal.description)">Átnevezés</button>
+                  <button type="button" (click)="deleteGoal(goal.id)">Törlés</button>
+                </div>
+              </header>
+              <div class="initiative-list">
+                @for (initiative of goal.initiatives; track initiative.id) {
+                  <section class="initiative-card">
+                    <header>
+                      <h4>{{ initiative.name }}</h4>
+                      <div class="item-actions">
+                        <button type="button" (click)="renameInitiative(initiative.id, initiative.name, initiative.description)">Átnevezés</button>
+                        <button type="button" (click)="deleteInitiative(initiative.id)">Törlés</button>
+                      </div>
+                    </header>
+                    @if (initiative.description) { <p>{{ initiative.description }}</p> }
+                    <ul>
+                      @for (project of initiative.projects; track project.id) {
+                        <li><a [routerLink]="['/projects', project.id, 'status']">{{ project.name }}</a></li>
+                      } @empty { <li>Nincs ide sorolt projekt.</li> }
+                    </ul>
+                  </section>
+                } @empty { <p>Még nincs kezdeményezés.</p> }
+              </div>
+            </article>
+          } @empty { <div class="state-panel">Hozd létre az első üzleti célt.</div> }
+        </div>
+      </section>
+
+      <aside aria-labelledby="project-assignment-title">
+        <h2 id="project-assignment-title">Projektek besorolása</h2>
+        <div class="assignment-list">
+          @for (item of projects(); track item.project.id) {
+            <label>
+              <span>{{ item.project.name }}</span>
+              <select
+                [value]="item.initiativeId ?? ''"
+                [disabled]="saving()"
+                data-testid="project-initiative-assignment"
+                (change)="assignProject(item.project, $event)"
+              >
+                <option value="">Nincs besorolva</option>
+                @for (initiative of initiatives(); track initiative.id) {
+                  <option [value]="initiative.id">{{ initiative.label.split(' / ')[1] }}</option>
+                }
+              </select>
+            </label>
+          } @empty { <p>Még nincs projekt.</p> }
+        </div>
+      </aside>
+    </div>
+  }
+</section>

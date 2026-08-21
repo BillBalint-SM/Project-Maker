@@ -46,4 +46,12 @@ export class CreateProjectDto {
   @IsISO8601({ strict: true })
   @Matches(utcIsoDatePattern)
   dueAt?: string | null;
+
+  @IsOptional()
+  @IsIn(['general', 'system-integration', 'data-migration'])
+  playbookId?: string;
+
+  @IsOptional()
+  @IsIn([1])
+  playbookVersion?: number;
 }

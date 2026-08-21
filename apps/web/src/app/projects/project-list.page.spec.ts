@@ -1,12 +1,14 @@
+import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { of } from 'rxjs';
 import { describe, expect, it, vi } from 'vitest';
-import type { CustomerMailboxSyncStatus, ProjectPortfolioEntry } from '@project-maker/contracts';
+import type { CustomerMailboxSyncStatus, PortfolioPage, ProjectPortfolioEntry } from '@project-maker/contracts';
 
+import { AuthApiService } from '../auth/auth-api.service';
 import { CustomerMailboxSyncApiService } from './customer-mailbox-sync-api.service';
 import { CustomerRepliesApiService } from './customer-replies-api.service';
-import { ProjectApiService } from './project-api.service';
+import { DecisionPortfolioApiService } from './decision-portfolio-api.service';
 import { ProjectListPage } from './project-list.page';
 
 describe('ProjectListPage correspondence mailbox synchronization', () => {
@@ -32,10 +34,8 @@ describe('ProjectListPage correspondence mailbox synchronization', () => {
       imports: [ProjectListPage],
       providers: [
         provideRouter([]),
-        {
-          provide: ProjectApiService,
-          useValue: { loadPortfolio: vi.fn().mockReturnValue(of([])) },
-        },
+        { provide: DecisionPortfolioApiService, useValue: { portfolio: vi.fn().mockReturnValue(of(emptyPortfolio())) } },
+        { provide: AuthApiService, useValue: { currentUser: signal({ id: 'user-1', email: 'po@example.test' }) } },
         { provide: CustomerMailboxSyncApiService, useValue: mailboxApi },
         {
           provide: CustomerRepliesApiService,
@@ -81,6 +81,8 @@ describe('ProjectListPage correspondence mailbox synchronization', () => {
         nextActionOwner: { role: 'INTERNAL_OWNER', displayName: 'PO Péter', complete: true },
         nextAction: 'Egyeztesd a pontosított terjedelmet.',
         dueAt: '2026-08-20T12:00:00.000Z',
+        playbook: { id: 'general', version: 1, name: 'Általános projekt' },
+        initiativeId: null,
         createdAt: '2026-08-18T08:00:00.000Z',
         updatedAt: '2026-08-19T08:00:00.000Z',
       },
@@ -106,16 +108,28 @@ describe('ProjectListPage correspondence mailbox synchronization', () => {
         },
       },
     };
-    const projectApi = {
-      loadPortfolio: vi.fn().mockReturnValue(of([entry])),
-      loadPreparationStatus: vi.fn(),
-      listProjects: vi.fn(),
+    const portfolioApi = {
+      portfolio: vi.fn().mockReturnValue(of({
+        ...emptyPortfolio(),
+        items: [{
+          ...entry,
+          readinessPercentage: null,
+          decisionScore: null,
+          latestDecision: null,
+          latestStatus: null,
+          goal: null,
+          initiative: null,
+        }],
+        totalCount: 1,
+        pageCount: 1,
+      } satisfies PortfolioPage)),
     };
     await TestBed.configureTestingModule({
       imports: [ProjectListPage],
       providers: [
         provideRouter([]),
-        { provide: ProjectApiService, useValue: projectApi },
+        { provide: DecisionPortfolioApiService, useValue: portfolioApi },
+        { provide: AuthApiService, useValue: { currentUser: signal({ id: 'user-1', email: 'po@example.test' }) } },
         {
           provide: CustomerMailboxSyncApiService,
           useValue: {
@@ -144,9 +158,7 @@ describe('ProjectListPage correspondence mailbox synchronization', () => {
     const card = fixture.nativeElement.querySelector(
       '[data-testid="project-card-11111111-1111-4111-8111-111111111111"]',
     ) as HTMLAnchorElement | null;
-    expect(projectApi.loadPortfolio).toHaveBeenCalledTimes(1);
-    expect(projectApi.listProjects).not.toHaveBeenCalled();
-    expect(projectApi.loadPreparationStatus).not.toHaveBeenCalled();
+    expect(portfolioApi.portfolio).toHaveBeenCalledTimes(1);
     const destination = new URL(
       card?.getAttribute('href') ?? '',
       'https://project-maker.test',
@@ -160,3 +172,7 @@ describe('ProjectListPage correspondence mailbox synchronization', () => {
     expect(card?.textContent).toContain('Új ügyfélválasz');
   });
 });
+
+function emptyPortfolio(): PortfolioPage {
+  return { items: [], totalCount: 0, page: 1, pageSize: 20, pageCount: 0 };
+}

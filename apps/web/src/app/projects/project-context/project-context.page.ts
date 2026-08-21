@@ -22,9 +22,11 @@ import { validatedProjectReturnTarget } from './project-return-target';
 const projectContextLinks = [
   { key: 'status', label: 'Projektállapot', path: 'status' },
   { key: 'interview', label: 'Felmérés', path: 'interview' },
+  { key: 'discovery', label: 'Felfedezések', path: 'discovery' },
   { key: 'readiness', label: 'Becslési felkészültség', path: 'readiness' },
   { key: 'decision-review', label: 'Döntési értékelés', path: 'decision-review' },
   { key: 'markdown', label: 'Projekt-specifikáció', path: 'markdown' },
+  { key: 'delivery', label: 'Fejlesztési csomag', path: 'delivery' },
   { key: 'settings', label: 'Projektbeállítások', path: 'settings' },
 ] as const;
 
