@@ -25,6 +25,7 @@ import { MarkdownService } from '../markdown/markdown.service';
 import { CreateProjectDto } from './dto/create-project.dto';
 import { UpdateProjectBasicsDto } from './dto/update-project-basics.dto';
 import { UpdateProjectWorkspaceDto } from './dto/update-project-workspace.dto';
+import { UpdateProjectPlaybookDto } from './dto/update-project-playbook.dto';
 import { Project } from './project.entity';
 
 const archivedStatus: ProjectStatus = 'ARCHIVED';
@@ -81,6 +82,8 @@ export class ProjectsService {
         ballOwner: null,
         nextAction: optionalText(input.nextAction, 'nextAction'),
         dueAt: parseDueAt(input.dueAt),
+        playbookId: input.playbookId ?? 'general',
+        playbookVersion: input.playbookVersion ?? 1,
       });
 
       synchronizeCompatibilityOwner(project);
@@ -181,6 +184,34 @@ export class ProjectsService {
       synchronizeCompatibilityOwner(project);
 
       return toWorkspace(await manager.getRepository(Project).save(project));
+    });
+  }
+
+  async updatePlaybook(
+    projectId: string,
+    input: UpdateProjectPlaybookDto,
+  ): Promise<ProjectWorkspace> {
+    return this.dataSource.transaction(async (manager) => {
+      const project = await findLockedProject(manager, projectId);
+      if (project.status === archivedStatus) {
+        throw new ConflictException('Archived projects cannot change playbook.');
+      }
+      if (await manager.getRepository(InterviewRoundEntity).existsBy({ projectId })) {
+        throw new ConflictException('Project playbook is frozen after the first interview round starts.');
+      }
+      if (project.playbookId === input.playbookId && project.playbookVersion === input.playbookVersion) {
+        return toWorkspace(project);
+      }
+      project.playbookId = input.playbookId;
+      project.playbookVersion = input.playbookVersion;
+      const saved = await manager.getRepository(Project).save(project);
+      await manager.getRepository(AuditEvent).save({
+        id: randomUUID(),
+        projectId,
+        eventType: 'PROJECT_PLAYBOOK_CHANGED',
+        payload: { playbookId: saved.playbookId, playbookVersion: String(saved.playbookVersion) },
+      });
+      return toWorkspace(saved);
     });
   }
 
@@ -355,9 +386,24 @@ export function toWorkspace(project: Project): ProjectWorkspace {
     nextActionOwner: toNextActionOwner(project),
     nextAction: project.nextAction,
     dueAt: toIsoOrNull(project.dueAt),
+    playbook: {
+      id: project.playbookId,
+      version: project.playbookVersion,
+      name: playbookName(project.playbookId, project.playbookVersion),
+    },
+    initiativeId: project.initiativeId,
     createdAt: toIso(project.createdAt, 'createdAt'),
     updatedAt: toIso(project.updatedAt, 'updatedAt'),
   };
+}
+
+function playbookName(id: string, version: number): string {
+  const names: Readonly<Record<string, string>> = {
+    'general:1': 'Általános projektfelmérés',
+    'system-integration:1': 'Rendszerintegráció',
+    'data-migration:1': 'Adatmigráció',
+  };
+  return names[`${id}:${version}`] ?? `${id} v${version}`;
 }
 
 function validateNextActionOwner(project: Project): void {

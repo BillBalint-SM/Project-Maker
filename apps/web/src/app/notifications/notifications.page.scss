@@ -1,0 +1,34 @@
+.heading-row,
+.notification-list li {
+  align-items: flex-start;
+  display: flex;
+  gap: 1rem;
+  justify-content: space-between;
+}
+
+.notification-list {
+  display: grid;
+  gap: 0.8rem;
+  list-style: none;
+  margin: 1.25rem 0 0;
+  padding: 0;
+}
+
+.notification-list li {
+  border: 1px solid var(--p-content-border-color);
+  border-left-width: 0.3rem;
+  border-radius: 0.7rem;
+  padding: 1rem;
+}
+
+.notification-list .severity-critical { border-left-color: var(--p-red-500); }
+.notification-list .severity-action_required { border-left-color: var(--p-orange-500); }
+.notification-list .severity-upcoming { border-left-color: var(--p-primary-color); }
+.notification-list h2, .notification-list p { margin: 0.25rem 0; }
+.notification-list time, .kind { color: var(--p-text-muted-color); font-size: 0.85rem; }
+.kind { font-weight: 700; }
+
+@media (max-width: 36rem) {
+  .heading-row,
+  .notification-list li { flex-direction: column; }
+}

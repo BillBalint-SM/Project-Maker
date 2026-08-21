@@ -229,7 +229,7 @@ describe('ProjectContextPage', () => {
     expect(root.querySelector('[role="alert"]')?.textContent).toContain(
       'A panel nem tölthető be.',
     );
-    expect(root.querySelectorAll('[data-testid^="project-context-nav-"]')).toHaveLength(6);
+    expect(root.querySelectorAll('[data-testid^="project-context-nav-"]')).toHaveLength(8);
   });
 });
 

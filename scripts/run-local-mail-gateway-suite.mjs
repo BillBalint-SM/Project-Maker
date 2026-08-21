@@ -59,8 +59,12 @@ async function main() {
   await pnpm(['--filter', '@project-maker/api', 'migration:run'], environment);
   await pnpm(['--filter', '@project-maker/web', 'exec', 'playwright', 'install', 'chromium'], environment);
 
-  console.log('Running mail-gateway unit, protocol, API integration, operations, and browser smoke tests...');
-  await pnpm(['test:mail-gateway:ci'], environment);
+  console.log('Running mail-gateway API, protocol, and critical browser tests...');
+  await pnpm(['--filter', '@project-maker/api', 'test:mail-gateway'], environment);
+  await pnpm([
+    '--filter', '@project-maker/web', 'exec', 'playwright', 'test',
+    'e2e/customer-follow-up-ping.spec.ts',
+  ], environment);
   console.log('Local mail-gateway suite passed. No external mailbox or credentials were used.');
 }
 

@@ -6,6 +6,8 @@ import { describe, expect, it, vi } from 'vitest';
 import { CustomerCorrespondencesPage } from './customer-correspondences.page';
 import { CustomerFollowUpApiService } from './customer-follow-up/customer-follow-up-api.service';
 import { CustomerRepliesApiService } from './customer-replies-api.service';
+import { CustomerResponseApiService } from './customer-response-api.service';
+import { NotificationsApiService } from '../notifications/notifications-api.service';
 
 describe('CustomerCorrespondencesPage', () => {
   it('renders reply text safely and keeps quoted history collapsed', async () => {
@@ -71,6 +73,14 @@ describe('CustomerCorrespondencesPage', () => {
             }),
             preview,
           },
+        },
+        {
+          provide: CustomerResponseApiService,
+          useValue: { eligible: () => of([]), list: () => of([]) },
+        },
+        {
+          provide: NotificationsApiService,
+          useValue: { load: () => of({ items: [], totalCount: 0, limit: 25 }) },
         },
       ],
     }).compileComponents();

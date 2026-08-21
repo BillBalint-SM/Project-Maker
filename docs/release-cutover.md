@@ -22,8 +22,6 @@ anyagokat kapja:
   mentési és visszaállítási eljárással;
 - az [Operator mail gateway runbookot](mail-gateway.md) és a
   `scripts/setup-mail-gateway.ps1` interaktív wizardot;
-- a redaktált gateway-smoke sablont
-  (`docs/evidence/mail-gateway-smoke.json`) és annak fail-closed ellenőrzőjét;
 - ezt a döntési és aláírási ellenőrzőlistát.
 
 Valódi `.env`, jelszó, ellenőrzőpont-titok, CA-tartalom,
@@ -40,7 +38,7 @@ postafiók-tartalom vagy projektügyfél-adat nem része az átadási csomagnak.
 | Üzleti elfogadó | Szintetikus teljes Project-journey ellenőrzése | Elfogadás dátuma és eredménye |
 | Gateway gazda | Dedikált postafiók, plus-addressing, TLS SMTP/IMAP végpontok és hálózati elérés | Belső változásjegy vagy jóváhagyás |
 | Deployment secret gazda | SMTP/IMAP jelszavak, ellenőrzőpont-titok és opcionális CA biztonságos injektálása | Secret helyének belső hivatkozása, érték nélkül |
-| Gateway-smoke operátor | Kontrollált valós gateway-próba | Kizárólag a redaktált evidence JSON |
+| Gateway-smoke operátor | Kontrollált valós gateway-próba | Dátum, commit és eredmény a meglévő belső változásjegyben |
 
 ## 1. kapu — az alkalmazás élesítése
 
@@ -130,12 +128,9 @@ fájlt.
 - [ ] A [kontrollált gateway-smoke](mail-gateway.md#controlled-gateway-smoke)
   minden küldési, Reply-To, IMAP, deduplikációs, hiba- és TLS-ellenőrzése
   sikeres.
-- [ ] A redaktált evidence kizárólag a jóváhagyott mezőket tartalmazza, a
-  telepített forrás-commithoz tartozik, és a következő parancs zöld:
-
-  ```powershell
-  pnpm verify:mail-gateway-smoke
-  ```
+- [ ] A futtatás dátuma, a telepített forrás-commit és a sikeres eredmény az
+  üzemeltető szervezet meglévő belső változásjegyében szerepel, titok vagy
+  projektügyfél-adat nélkül.
 
 ## Go/No-Go döntés
 
@@ -152,8 +147,7 @@ fájlt.
 
 - az alapalkalmazás Go állapotú;
 - a plus-addressing, a külön hitelesítők és a TLS-korlátok bizonyítottak;
-- a redaktált gateway-smoke evidence a telepített forrás-commithoz tartozik és
-  az ellenőrző elfogadja.
+- a kontrollált gateway-smoke eredménye a telepített forrás-commithoz tartozik.
 
 ### No-Go
 
@@ -161,7 +155,7 @@ fájlt.
 - hiányzó mentés meglévő adat frissítése előtt;
 - sikertelen health vagy függő/sikertelen migráció;
 - valódi projektügyfél-adatokkal végzett első próba;
-- aktiváltnak nevezett gateway `NOT_RUN` vagy sikertelen smoke evidence mellett;
+- aktiváltnak nevezett gateway dokumentált sikeres smoke nélkül;
 - sikertelen plus-address, TLS-ellenőrzés gyengítése, vagy személyes/alternatív
   küldő engedélyezése.
 
@@ -196,7 +190,7 @@ fájlt.
 | Alkalmazás-smoke dátuma és eredménye | |
 | Üzleti elfogadó | |
 | Gateway státusz: `NINCS AKTIVÁLVA` / `AKTIVÁLVA` | |
-| Gateway evidence commit és dátum | |
+| Gateway-smoke commit, dátum és eredmény | |
 | Nyitott üzemeltetési korlátozás | |
 
 Titkos vagy személyes érték nem írható ebbe a táblázatba.

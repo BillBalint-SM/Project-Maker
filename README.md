@@ -9,7 +9,7 @@ Project Maker is a web platform foundation built as a pnpm monorepo:
 
 The web baseline uses PrimeNG 22.0.0 with the supplied PrimeUI license and the latest compatible Angular 22.1 toolchain. The license is configured at the web application bootstrap; do not print or expose the token in documentation or logs. Future major upgrades require a separate compatibility review.
 
-Only Nginx publishes a host port. It serves the SPA and proxies `/api/*` to the internal API.
+Only Nginx publishes a host port. It serves the SPA and proxies `/api/*` and the bearer-authenticated `/mcp` endpoint to the internal API.
 
 The platform-neutral product workflow, vocabulary, domain data intent, general intake playbook, and scoring rules are preserved in [`docs/product-domain.md`](docs/product-domain.md). The current foundation does not yet implement all of that product behavior.
 
@@ -66,6 +66,12 @@ pnpm compose:up
 ```
 
 Open `http://localhost:8080`. The proxied API health endpoint is `http://localhost:8080/api/health`.
+
+After signing in, each Internal user can create their own Project Maker MCP
+token on the `Fiókbeállítások` page. The page shows the one-time `claude mcp
+add` command for connecting that user's existing Claude Code subscription to
+`http://localhost:8080/mcp`. Project Maker does not need or accept a Claude API
+key and does not call a model provider.
 
 Stop the stack without deleting the named PostgreSQL volume:
 

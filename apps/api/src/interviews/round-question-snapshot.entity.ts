@@ -11,8 +11,8 @@ export class RoundQuestionSnapshotEntity {
   @Column({ name: 'round_id', type: 'uuid' })
   roundId!: string;
 
-  @Column({ name: 'base_question_id', type: 'uuid' })
-  baseQuestionId!: string;
+  @Column({ name: 'base_question_id', type: 'uuid', nullable: true })
+  baseQuestionId!: string | null;
 
   @Column({ name: 'stable_key', type: 'varchar', length: 100 })
   stableKey!: string;

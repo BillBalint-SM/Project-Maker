@@ -9,6 +9,8 @@ import type {
   ProjectPreparationStatus,
   ProjectWorkState,
   ProjectWorkspace,
+  PackagedPlaybookSummary,
+  UpdateProjectPlaybookInput,
   UpdateProjectBasicsInput,
 } from '@project-maker/contracts';
 
@@ -37,6 +39,21 @@ export class ProjectApiService {
     return this.http
       .post<ProjectWorkspace>('/api/projects', input)
       .pipe(catchError((error: unknown) => this.fail(error, 'létrehozni a projektet')));
+  }
+
+  listPlaybooks(): Observable<readonly PackagedPlaybookSummary[]> {
+    return this.http
+      .get<readonly PackagedPlaybookSummary[]>('/api/playbooks')
+      .pipe(catchError((error: unknown) => this.fail(error, 'betölteni a playbookokat')));
+  }
+
+  updateProjectPlaybook(
+    projectId: string,
+    input: UpdateProjectPlaybookInput,
+  ): Observable<ProjectWorkspace> {
+    return this.http
+      .put<ProjectWorkspace>(`/api/projects/${encodeURIComponent(projectId)}/playbook`, input)
+      .pipe(catchError((error: unknown) => this.fail(error, 'menteni a projekt playbookját')));
   }
 
   updateProjectBasics(

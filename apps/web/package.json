@@ -7,6 +7,7 @@
     "start": "ng serve",
     "test": "ng test --watch=false",
     "test:e2e": "playwright test",
+    "test:e2e:auth": "playwright test --config auth.playwright.config.ts",
     "typecheck": "tsc --project tsconfig.app.json --noEmit"
   },
   "dependencies": {

@@ -29,7 +29,10 @@ async function main() {
   const api = spawnPnpm(['--dir', repositoryDirectory, '--filter', '@project-maker/api', 'start'], {
     env: {
       ...process.env,
+      NODE_ENV: 'test',
       CORS_ORIGIN: process.env.CORS_ORIGIN ?? 'http://127.0.0.1:4200',
+      CUSTOMER_RESPONSE_ORIGIN: process.env.CUSTOMER_RESPONSE_ORIGIN ?? 'http://127.0.0.1:4200',
+      CUSTOMER_RESPONSE_PREVIEW_SECRET: process.env.CUSTOMER_RESPONSE_PREVIEW_SECRET ?? 'playwright-customer-response-preview-secret',
       CORRESPONDENCE_MAILBOX_ADDRESS: process.env.CORRESPONDENCE_MAILBOX_ADDRESS ?? 'project-maker-e2e@example.test',
       CORRESPONDENCE_MAILBOX_NAME: process.env.CORRESPONDENCE_MAILBOX_NAME ?? 'Project Maker',
       MAIL_GATEWAY_SMTP_HOST: 'localhost', MAIL_GATEWAY_SMTP_PORT: String(gateway.smtpPort), MAIL_GATEWAY_SMTP_SECURITY: 'IMPLICIT_TLS', MAIL_GATEWAY_SMTP_USERNAME: 'playwright-smtp-user', MAIL_GATEWAY_SMTP_PASSWORD: 'playwright-smtp-password',

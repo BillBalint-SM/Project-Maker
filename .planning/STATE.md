@@ -10,12 +10,15 @@
 - Project preparation supports lifecycle management, Initial Intake, discovery
   follow-ups, readiness and Decision Review, customer handoffs, customer
   correspondence, and versioned project specifications.
+- Outputs and delivery support editable Specification-bound Delivery packages,
+  Markdown/CSV/print-PDF exports, shared Git setups, preview-confirmed Git
+  handoff, and the actor-bound Claude Code MCP connection.
 - Customer correspondence (`COMM-01.1`) uses the Operator organization's dedicated TLS
   SMTP/IMAP gateway. Configuration is fail-closed for mail only; unrelated
   workflows remain available when the gateway is incomplete. Gateway activation
   requires the controlled smoke evidence described in
   [mail-gateway.md](../docs/mail-gateway.md).
-- Database migration `0024` is the current schema baseline. Historical
+- Database migration `0031` is the current schema baseline. Historical
   migrations remain retained and must not be edited or removed.
 
 ## Verification
@@ -26,8 +29,8 @@ activation gate, not a substitute for local automated verification.
 
 ## Scope boundaries
 
-- The delivered interview slice is `INITIAL_INTAKE`; additional round types,
-  exports, imports, offline support, authentication/authorization, and live AI
-  remain separately planned.
+- Project Maker does not host a model or use a provider API. Internal users can
+  connect their own Claude Code subscription through the actor-bound MCP
+  endpoint; imports and offline support remain separate opportunities.
 - Customer mail is separate from internal Markdown or Claude Code handoffs.
 - Project Customers do not own or configure Operator infrastructure.

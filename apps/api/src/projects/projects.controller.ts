@@ -9,12 +9,14 @@ import {
   ParseUUIDPipe,
   Patch,
   Post,
+  Put,
 } from '@nestjs/common';
 import type { ProjectWorkspace } from '@project-maker/contracts';
 
 import { CreateProjectDto } from './dto/create-project.dto';
 import { UpdateProjectBasicsDto } from './dto/update-project-basics.dto';
 import { UpdateProjectWorkspaceDto } from './dto/update-project-workspace.dto';
+import { UpdateProjectPlaybookDto } from './dto/update-project-playbook.dto';
 import { ProjectsService } from './projects.service';
 
 @Controller('projects')
@@ -45,6 +47,14 @@ export class ProjectsController {
     @Body() input: UpdateProjectBasicsDto,
   ): Promise<ProjectWorkspace> {
     return this.projectsService.updateBasics(projectId, input);
+  }
+
+  @Put(':projectId/playbook')
+  updatePlaybook(
+    @Param('projectId', new ParseUUIDPipe()) projectId: string,
+    @Body() input: UpdateProjectPlaybookDto,
+  ): Promise<ProjectWorkspace> {
+    return this.projectsService.updatePlaybook(projectId, input);
   }
 
   @Post(':projectId/archive')

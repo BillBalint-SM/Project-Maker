@@ -16,11 +16,18 @@ export type AnswerValue = string | number | boolean | readonly string[];
 
 export interface CreateInterviewRoundInput {
   readonly type: InterviewRoundType;
+  readonly selectedStableKeys?: readonly string[];
+  readonly adHocQuestions?: readonly AdHocRoundQuestionInput[];
+}
+
+export interface AdHocRoundQuestionInput {
+  readonly text: string;
+  readonly topic: string;
 }
 
 export interface RoundQuestionSnapshot {
   readonly id: string;
-  readonly baseQuestionId: string;
+  readonly baseQuestionId: string | null;
   readonly stableKey: string;
   readonly topic: string;
   readonly controlPoint: string;

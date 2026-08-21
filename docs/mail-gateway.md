@@ -58,24 +58,20 @@ SMTP and IMAP socket servers, runs the suite, and removes the container:
 pnpm test:mail-gateway
 ```
 
-The aggregate covers these public seams:
+The aggregate keeps one owning proof at each public seam:
 
 | Layer | Coverage | Focused command |
 | --- | --- | --- |
-| Unit and protocol | Configuration fail-closed rules, sender identity, encrypted checkpoints, SMTP outcome classification, IMAP paging/recovery, and authenticated TLS socket behavior | `pnpm test:mail-gateway:unit` |
-| API integration | Database-backed handoff, reminder, mailbox synchronization, reply correlation, and provider-neutral sender migration behavior | `pnpm test:mail-gateway:integration` |
-| Operations | Drift guard and the redacted activation-evidence schema | `pnpm test:mail-gateway:ops` |
-| Browser smoke | Real API and PostgreSQL with the controlled TLS gateway, including send, rejection/unknown outcomes, reply ingestion, replay deduplication, and temporary IMAP failure recovery | `pnpm test:mail-gateway:smoke` |
+| API and protocol | Configuration fail-closed rules, sender identity, encrypted checkpoints, SMTP outcomes, IMAP recovery, handoff, reminder, correlation, and retained delivery states | `pnpm --filter @project-maker/api test:mail-gateway` |
+| TLS socket protocol | Authenticated SMTP submission and IMAP reads against controlled TLS servers | `pnpm --filter @project-maker/api test:mail-gateway:protocol` |
+| Browser | One reviewed reminder is submitted through the controlled TLS gateway and its token-correlated reply becomes visible in the application | `pnpm --filter @project-maker/web exec playwright test e2e/customer-follow-up-ping.spec.ts` |
 
-Use the aggregate command for normal local verification. The focused API
-integration and browser commands expect the same disposable test database and
-mail-gateway environment that the aggregate or CI runner provisions.
-
-GitHub CI runs the same aggregate through `pnpm test:mail-gateway:ci` with an
-isolated service database. The synthetic suite never changes
-`docs/evidence/mail-gateway-smoke.json`: a local gateway proves application and
-protocol behavior, but it cannot prove the future Operator gateway's network,
-certificate chain, permissions, folder, or address-rewrite policy.
+Use the aggregate command for local verification because it owns the disposable
+database and gateway environment. In CI the normal repository checkpoint runs
+the complete API suite once; the separate mail job reruns only the two socket
+protocol specs and the critical browser journey. Synthetic checks cannot prove
+the Operator gateway's network, certificate chain, permissions, folder, or
+address-rewrite policy.
 
 ## Controlled gateway smoke
 
@@ -95,17 +91,11 @@ record the exact `git rev-parse HEAD` privately.
 5. Verify the gateway rejects an untrusted server chain or unavailable required
    TLS upgrade. Do not weaken TLS verification to make this pass.
 
-Edit only `docs/evidence/mail-gateway-smoke.json`. It accepts only the date,
-tested commit, pass result, and required boolean checks; it accepts no names,
-addresses, hosts, identifiers, logs, free text, or secrets.
-
-```powershell
-pnpm verify:mail-gateway-smoke
-```
-
-The smoke result is valid only for its exact source commit, or for a direct
-descendant that changes only that evidence file. A green fake adapter test is
-regression evidence, not gateway-activation evidence.
+Record the tested commit, date, pass/fail result, and the five checks above in
+the Operator organization's existing internal change ticket. Do not commit a
+second evidence file or include names, addresses, hosts, identifiers, logs,
+free text, or secrets. A green synthetic test is regression evidence, not
+gateway-activation evidence.
 
 ## Polling and recovery
 

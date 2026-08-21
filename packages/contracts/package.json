@@ -44,6 +44,26 @@
       "types": "./dist/general-playbook-runtime.d.ts",
       "import": "./dist/general-playbook-runtime.js",
       "require": "./dist/runtime-cjs/general-playbook-runtime.js"
+    },
+    "./discovery-runtime": {
+      "types": "./dist/discovery.d.ts",
+      "import": "./dist/discovery.js",
+      "require": "./dist/runtime-cjs/discovery.js"
+    },
+    "./decision-portfolio-runtime": {
+      "types": "./dist/decision-portfolio.d.ts",
+      "import": "./dist/decision-portfolio.js",
+      "require": "./dist/runtime-cjs/decision-portfolio.js"
+    },
+    "./customer-response-runtime": {
+      "types": "./dist/customer-response.d.ts",
+      "import": "./dist/customer-response.js",
+      "require": "./dist/runtime-cjs/customer-response.js"
+    },
+    "./notifications-runtime": {
+      "types": "./dist/notifications.d.ts",
+      "import": "./dist/notifications.js",
+      "require": "./dist/runtime-cjs/notifications.js"
     }
   },
   "files": ["dist", "playbooks"],

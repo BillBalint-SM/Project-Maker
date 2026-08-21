@@ -8,7 +8,7 @@ import type {
   ProjectDecisionReview,
   UpdateDecisionReviewInput,
 } from '@project-maker/contracts';
-import { loadGeneralPlaybookV1 } from '@project-maker/contracts/general-playbook-runtime';
+import { loadPackagedPlaybook } from '@project-maker/contracts/general-playbook-runtime';
 import { DataSource, EntityManager, Repository } from 'typeorm';
 
 import { AuditEvent } from '../audit/audit-event.entity';
@@ -85,16 +85,17 @@ export class DecisionReviewService {
     projects: readonly Project[],
     sourceRoundsByProjectId: ReadonlyMap<string, InterviewRoundEntity>,
   ): Promise<ReadonlyMap<string, ProjectDecisionReview>> {
-    const [policy, readinessByProjectId] = await Promise.all([
-      loadGeneralPlaybookV1(),
-      this.readinessService.getReadinessForProjectsWithManager(
+    const readinessByProjectId = await this.readinessService.getReadinessForProjectsWithManager(
         manager,
         projects,
         sourceRoundsByProjectId,
-      ),
-    ]);
+      );
     const reviews = new Map<string, ProjectDecisionReview>();
     for (const project of projects) {
+        const policy = await loadPackagedPlaybook(project.playbookId, project.playbookVersion);
+        if (!policy) {
+          throw new TypeError(`Missing packaged playbook ${project.playbookId} v${project.playbookVersion}.`);
+        }
         const inputs = toInputs(project);
         const readiness = readinessByProjectId.get(project.id);
         if (!readiness) {

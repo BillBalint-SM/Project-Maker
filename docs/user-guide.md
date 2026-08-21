@@ -81,11 +81,11 @@ Az alkalmazás nem kényszerít végig egy varázslón. A jó minőségű adat �
 
 ### Működési és hozzáférési határ
 
-> **Biztonsági határ:** a jelenlegi alkalmazásban nincs bejelentkezés, felhasználói azonosítás vagy jogosultság-ellenőrzés. Csak a szervezet által kontrollált belső hálózaton vagy VPN-határon belül használd. Aki eléri a webappot, az projektadatot és a közös kérdésbankot is módosíthatja.
+> **Biztonsági határ:** az alkalmazást csak a szervezet által kontrollált belső hálózaton vagy VPN-határon belül használd. Minden dolgozó saját e-mail-címével és jelszavával regisztrál, majd ugyanazokat a belső képességeket kapja. Nincsenek szerepkörök, projektjogosultságok vagy külön adminfiókok.
 
-A `Kérdésbank` menüpont technikailag nincs adminszerephez kötve. Szervezetileg mégis csak a kijelölt kérdésbank-gazda használja, mert egyetlen mentés minden későbbi projektsémára ható új bankverziót hoz létre.
+A `Kérdésbank` menüpontot minden aktív belső felhasználó eléri. Egy mentés minden későbbi projektsémára ható új bankverziót hoz létre, ezért a csapat egyezzen meg arról, ki és mikor módosítja.
 
-Az alkalmazás nem mutatja meg, ki végzett egy műveletet. Egyezzetek meg a csapatban arról, ki a projekt operatív gazdája, és változtatás előtt ellenőrizzétek, hogy nem dolgozik-e valaki ugyanazon az adaton.
+Az auditnapló a bejelentkezett belső felhasználóhoz köti a műveleteket. Ez nem helyettesíti a csapaton belüli egyeztetést: változtatás előtt ellenőrizd, hogy nem dolgozik-e valaki ugyanazon az adaton.
 
 ### Adatbiztonsági alapszabályok
 
@@ -180,7 +180,7 @@ A felmérés értékelése után nyisd meg a projekt `Becslési felkészültség
 
 ### 5. Pillanatkép és kommunikáció
 
-Belső, kézi munkához generálhatsz friss specifikációverziót, majd megnézheted a forráspillanatképet és az előnézetet. A Project Makerben automatizált Claude Code átadás még nem érhető el, és a `.md` fájl nem ügyfélkommunikáció. Ügyfélnek a felmérési összefoglalót vagy a külön megírt ügyfél-emlékeztetőt küldd; egyik levél sem csatolja és nem másolja be a specifikációverziót.
+Belső munkához generálhatsz friss specifikációverziót, abból fejlesztési csomagot készíthetsz, majd letöltheted vagy pontos előnézet után Gitbe adhatod. Saját Claude Code előfizetésedet a `Fiókbeállítások` oldalon kapcsolhatod a Project Makerhez, így a specifikációt és a fejlesztési csomagot másolgatás nélkül kezelheted. A `.md` fájl és az MCP-kapcsolat nem ügyfélkommunikáció: ügyfélnek a felmérési összefoglalót vagy a külön megírt ügyfél-emlékeztetőt küldd.
 
 ### 6. Megőrzés
 
@@ -936,13 +936,62 @@ A globális navigáció `Specifikációs sablonok` oldalán több szervezeti spe
 
 A felsorolt helyőrzők zárt, dokumentált készletet alkotnak; a felület mindegyiknél jelzi a magyar megnevezést és azt, hogy az adat mindig rendelkezésre áll-e, vagy nem kötelezően elhagyható. A `?` jelölés (például `{{project.readiness?}}`) külön Markdown blokkban álló, nem kötelező teljes blokkot jelent; ismeretlen, hibás vagy szövegbe ágyazott nem kötelező helyőrzővel a piszkozat nem menthető vagy publikálható. A sablon nem futtat kódot és nem fér hozzá nyers belső eseményadatokhoz.
 
+## Fejlesztési csomag, Git-átadás és Claude Code
+
+### Fejlesztési csomag készítése
+
+A projekt `Fejlesztési csomag` oldalán válassz egy pontos specifikációverziót, majd szerkeszd a fejlesztési tételek címét, user story-ját és elfogadási kritériumait. A forrásrészlet nem kötelező kézi szerkesztésnél, de ha megadod, annak szó szerint szerepelnie kell a kiválasztott specifikációban. A mentés közös fejlesztési csomagot hoz létre; nincs külön jóváhagyási státusz vagy kötelező második személy.
+
+A mentett fejlesztési csomagból közvetlenül elérhető:
+
+- a Markdown letöltés;
+- a magyar karaktereket megtartó CSV;
+- a böngésző nyomtatási nézete, amelyből PDF menthető.
+
+Archivált projektben a megtartott fejlesztési csomag és kimenetei továbbra is olvashatók és letölthetők, de új mentéshez előbb vissza kell állítani a projektet.
+
+### Közös Git setup és átadás
+
+A globális `Git setupok` oldalon bármely belső felhasználó létrehozhatja és szerkesztheti a telepítés közös SSH- vagy HTTPS-beállításait. A név, remote, branch, opcionális repository-link és a credential menthető; a listában a credential tartalma nem jelenik meg. Nincs setup-tulajdonos vagy külön kezelői jogosultság.
+
+Git-átadáshoz:
+
+1. Mentsd a fejlesztési csomag aktuális változatát.
+2. Válaszd ki a közös Git setupot.
+3. Készíts `Git-előnézetet`, és ellenőrizd a remote-ot, branchet, fájlnevet, commitüzenetet és a teljes átadandó tartalmat.
+4. Csak ezután válaszd az `Előnézet megerősítése és Gitbe küldése` műveletet.
+5. Ellenőrizd az átadási történetben a sikeres állapotot és a commit SHA-t.
+
+Ha a fejlesztési csomag vagy a Git setup az előnézet után megváltozik, a megerősítés nem használja a régi előnézetet: készíts újat. Bizonytalan push-eredménynél a rendszer az elvárt commit SHA-val ellenőrzi a remote-ot; csak a meg nem erősített hiba marad kézzel újrapróbálható. Az ügyféllevelezés egyik ága sem használja ezt a fejlesztési csomagot vagy Git setupot.
+
+### Claude Code egyszeri összekapcsolása
+
+A Project Maker nem futtat AI-modellt, és nem kér Claude API-kulcsot. A saját Claude Code előfizetésed végzi a modellhasználatot; a Project Maker MCP-kapcsolata csak a meglévő alkalmazásműveleteket teszi elérhetővé.
+
+1. Jelentkezz be a webappba, és nyisd meg a `Fiókbeállítások` oldalt.
+2. A `Claude Code-kapcsolat` kártyán válaszd a `Kapcsolati token készítése` gombot.
+3. Másold ki és egyszer futtasd a mutatott `claude mcp add` parancsot a saját gépeden.
+4. Claude Code-ban a `/mcp` paranccsal vagy a `claude mcp get project-maker` paranccsal ellenőrizd a kapcsolatot.
+
+A token csak létrehozáskor látható. Ha elveszett, az `Új token készítése` azonnal lecseréli a régit; a `Kapcsolat megszüntetése` és a fiók letiltása érvényteleníti. Ez nem új szerepkör: mindenki pontosan a saját belső felhasználójaként, a webappal azonos képességekkel dolgozik.
+
+Claude Code a kapcsolaton keresztül tudja:
+
+- listázni a projekteket, lekérni a projektkontextust és olvasni vagy generálni a specifikációverziót;
+- menteni a fejlesztési csomagot;
+- listázni a közös Git setupokat, majd külön előnézetet kérni és annak tokenjével megerősíteni az átadást;
+- olvasni és módosítani a Question Bankot;
+- listázni, menteni és publikálni a Markdown sablonokat.
+
+Nincs általános adatbázis- vagy fájlrendszer-hozzáférés, és nincs ügyféllevél-küldő MCP művelet. A Git-átadás Claude Code-ból is ugyanazt a kétlépcsős előnézet–megerősítés szabályt használja: a megerősítő tool minden alkalommal külön emberi jóváhagyást kér, akkor is, ha más Project Maker toolokat korábban már engedélyeztél.
+
 ## Legutóbbi aktivitás és technikai audit
 
 A `Projektállapot` oldal `Legutóbbi aktivitás` kártyája az alkalmazotti munkához szükséges, legfeljebb öt legfrissebb üzleti eseményt mutatja magyar összefoglalóval és időponttal. A rendszer előbb kizárja a belső diagnosztikai eseményeket, és csak ezután választja ki az öt legfrissebbet.
 
 A teljes technikai audit továbbra is megmarad üzemeltetési és bizonyítási célra, de nem része az alkalmazotti felületnek. Nyers eseménykódot, technikai adattartalmat vagy ügyféltartalmat ne keress és ne másolj a napi projektmunkába. Ha részletes technikai bizonyíték szükséges, azt az üzemeltető a védett API- és adatbázis-határon ellenőrizze.
 
-A Project Maker auditja nem teljes mezőszintű módosításnapló és nem bizonyítja, ki kattintott. Ha szervezeti felelősség vagy jóváhagyó személy bizonyítása szükséges, azt külön szervezeti kontrollnak kell biztosítania.
+A Project Maker auditja azonosítja a bejelentkezett belső felhasználót, de nem teljes mezőszintű módosításnapló és nem formális jóváhagyási bizonyíték. Ha külön jóváhagyó személy vagy szervezeti felelősségi folyamat szükséges, azt továbbra is külön szervezeti kontrollnak kell biztosítania.
 
 ## Archiválás, visszaállítás és végleges törlés
 
@@ -1076,6 +1125,9 @@ Ezekben az esetekben előbb töltsd vissza a szerver által ismert állapotot va
 | Tisztázandó tétel | Külön számon tartott tisztázandó pont felelőssel, dátummal, következő lépéssel és végleges döntéssel |
 | Ügyfél-emlékeztető | E-mail-emlékeztetők automatikus ütemezése és kézi küldési állapota; nem tisztázási munkaelemlista |
 | Specifikációverzió | Változatlan, verziózott projekt- és felmérési pillanatkép előnézettel és Markdown-letöltéssel |
+| Fejlesztési csomag | Egy pontos specifikációverzióhoz kötött, közösen szerkesztett fejlesztési tételcsomag |
+| Git setup | A telepítés minden belső felhasználója által kezelhető közös remote-, branch- és credential-beállítás |
+| Claude Code-kapcsolat | A saját Claude Code és a Project Maker közötti, belső felhasználót azonosító MCP-kapcsolat; nem modell API |
 
 ### Adminisztratív projektfázisok röviden
 
@@ -1114,8 +1166,8 @@ Az alábbiak nem elrejtett funkciók és nem más menüpontban találhatók; a j
 
 ### Hozzáférés és együttműködés
 
-- Nincs authentication vagy authorization: nincs bejelentkezés, szerepkör, projektjogosultság vagy technikailag kikényszerített admin.
-- Nincs felhasználóhoz rendelt audit, ezért nem bizonyítható a webappból, ki végzett egy műveletet.
+- Nincs szerepkör, projektjogosultság, tagság vagy külön admin: minden aktív belső felhasználó ugyanazokat a képességeket kapja.
+- Nincs SSO vagy szervezeti felhasználó-provisioning; a VPN-en belüli dolgozók saját e-mail/jelszó fiókot kezelnek.
 - Nincs kiforrott többfelhasználós konfliktuskezelés vagy közös szerkesztési jelenlétjelzés.
 - Nincs projektkeresés, szűrés, csoportos művelet vagy külön archivált nézet.
 
@@ -1138,11 +1190,11 @@ Az alábbiak nem elrejtett funkciók és nem más menüpontban találhatók; a j
 ### Dokumentumok és intelligens funkciók
 
 - A Markdown nem tartalmaz tisztázandó tételt vagy ügyfél-emlékeztető állapotot.
-- Nincs automatikusan generált acceptance criteria- vagy user story-csomag.
-- Nincs PDF-, Excel- vagy más spreadsheet-export.
+- A Project Maker maga nem generál modellel user story-t vagy acceptance criteria-t; ezek kézzel vagy a saját Claude Code MCP-kapcsolaton keresztül kerülhetnek a fejlesztési csomagba.
+- Nincs natív `.xlsx` export; a fejlesztési csomag CSV-ként és nyomtatási/PDF nézetben érhető el.
 - Nincs telepíthető PWA vagy offline működés; a mentéshez hálózati kapcsolat kell.
-- Nincs live AI enrichment. A magyar útmutatás a verziózott, determinisztikus kérdésadatból származik.
-- Csak a `general` v1 playbook a szállított alap; további playbookok nem választhatók.
+- Nincs beágyazott live AI vagy provider API. A magyar útmutatás továbbra is verziózott és determinisztikus; a Claude Code a felhasználó saját előfizetésével, MCP-n dolgozik.
+- Nincs szabadon szerkeszthető playbook-készítő; csak a csomagolt, verziózott playbookok választhatók.
 
 ### Adminisztratív projektfázis és megőrzés
 

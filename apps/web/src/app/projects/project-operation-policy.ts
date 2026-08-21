@@ -11,6 +11,7 @@ export const projectOperationIds = [
   'workspace-save',
   'project-basics-save',
   'project-status-save',
+  'project-playbook-save',
   'customer-follow-up-save',
   'customer-follow-up-preview',
   'customer-follow-up-ping',

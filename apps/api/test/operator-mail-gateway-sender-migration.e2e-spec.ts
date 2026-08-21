@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { describe, it } from 'node:test';
 import { DataSource } from 'typeorm';
 
-import { migrationsForFreshDatabase } from './migration-harness';
+import { migrationsForHistoricalDatabase } from './migration-harness';
 
 describe('Operator mail gateway sender migration (PostgreSQL)', () => {
   it('accepts a valid non-provider sender and continues rejecting malformed addresses', async () => {
@@ -25,7 +25,11 @@ describe('Operator mail gateway sender migration (PostgreSQL)', () => {
       database = new DataSource({
         type: 'postgres',
         url: withDatabaseName(databaseUrl, databaseName),
-        migrations: [...migrationsForFreshDatabase()],
+        migrations: [
+          ...migrationsForHistoricalDatabase(
+            'OperatorMailGatewaySender0024OperatorMailGatewaySender1787904000000',
+          ),
+        ],
       });
       await database.initialize();
       await database.runMigrations();

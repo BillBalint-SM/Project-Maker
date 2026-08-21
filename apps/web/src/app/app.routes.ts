@@ -1,6 +1,8 @@
 import { Routes } from '@angular/router';
 
-export const routes: Routes = [
+import { requireInternalUser } from './auth/auth.guard';
+
+const protectedRoutes: Routes = [
   {
     path: '',
     loadComponent: () =>
@@ -65,6 +67,14 @@ export const routes: Routes = [
         title: 'Felmérés | Project Maker',
       },
       {
+        path: 'discovery',
+        loadComponent: () =>
+          import('./projects/discovery/discovery.page').then(
+            (module) => module.DiscoveryPage,
+          ),
+        title: 'Felfedezések | Project Maker',
+      },
+      {
         path: 'readiness',
         loadComponent: () =>
           import('./projects/readiness.page').then(
@@ -87,6 +97,14 @@ export const routes: Routes = [
             (module) => module.MarkdownPage,
           ),
         title: 'Projekt-specifikáció | Project Maker',
+      },
+      {
+        path: 'delivery',
+        loadComponent: () =>
+          import('./projects/delivery/delivery.page').then(
+            (module) => module.DeliveryPage,
+          ),
+        title: 'Fejlesztési csomag | Project Maker',
       },
       {
         path: 'customer-correspondences',
@@ -128,7 +146,53 @@ export const routes: Routes = [
     title: 'Specifikációs sablonok | Project Maker',
   },
   {
+    path: 'settings/git-setups',
+    loadComponent: () =>
+      import('./settings/git-setup.page').then((module) => module.GitSetupPage),
+    title: 'Git setupok | Project Maker',
+  },
+  {
+    path: 'roadmap',
+    loadComponent: () =>
+      import('./projects/roadmap.page').then((module) => module.RoadmapPage),
+    title: 'Üzleti roadmap | Project Maker',
+  },
+  {
+    path: 'notifications',
+    loadComponent: () =>
+      import('./notifications/notifications.page').then((module) => module.NotificationsPage),
+    title: 'Értesítések | Project Maker',
+  },
+  {
+    path: 'account',
+    loadComponent: () =>
+      import('./auth/account.page').then((module) => module.AccountPage),
+    title: 'Saját fiók | Project Maker',
+  },
+  {
     path: '**',
     redirectTo: '',
+  },
+];
+
+export const routes: Routes = [
+  {
+    path: 'respond',
+    loadComponent: () =>
+      import('./customer-response/public-customer-response.page').then(
+        (module) => module.PublicCustomerResponsePage,
+      ),
+    title: 'Ügyfél-pontosítás | Project Maker',
+  },
+  {
+    path: 'login',
+    loadComponent: () =>
+      import('./auth/login.page').then((module) => module.LoginPage),
+    title: 'Bejelentkezés | Project Maker',
+  },
+  {
+    path: '',
+    canActivateChild: [requireInternalUser],
+    children: protectedRoutes,
   },
 ];

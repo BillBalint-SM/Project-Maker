@@ -49,6 +49,7 @@ export class ProjectPreparationStatusService {
     const schemaProjectIds = new Set(schemas.map((schema) => schema.projectId));
     const latestRestorationByProjectId = new Map<string, AuditEvent>();
     for (const restoration of restorations) {
+      if (!restoration.projectId) continue;
       if (!latestRestorationByProjectId.has(restoration.projectId)) {
         latestRestorationByProjectId.set(restoration.projectId, restoration);
       }

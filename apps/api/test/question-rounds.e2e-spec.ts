@@ -179,7 +179,7 @@ describe('Question bank and interview rounds (PostgreSQL e2e)', () => {
   });
 
   it('rejects explicit whitespace-only TEXT and LONG_TEXT answers through the public API', async () => {
-    const { projectId } = await createProjectWithQuestionTypesSchema(
+    const { projectId, stableKeys } = await createProjectWithQuestionTypesSchema(
       app,
       `Assessment answer whitespace ${Date.now()}`,
       'assessment-answer-whitespace',
@@ -187,7 +187,7 @@ describe('Question bank and interview rounds (PostgreSQL e2e)', () => {
     );
     const createdRoundResponse = await request(app.getHttpServer())
       .post(`/projects/${projectId}/rounds`)
-      .send({ type: 'STAKEHOLDER' })
+      .send({ type: 'STAKEHOLDER', selectedStableKeys: stableKeys })
       .expect(201);
 
     const questions = createdRoundResponse.body.questions as Array<{
@@ -209,7 +209,7 @@ describe('Question bank and interview rounds (PostgreSQL e2e)', () => {
   });
 
   it('accepts the PostgreSQL-valid early calendar year through the public API', async () => {
-    const { projectId } = await createProjectWithQuestionTypesSchema(
+    const { projectId, stableKeys } = await createProjectWithQuestionTypesSchema(
       app,
       `Assessment early date ${Date.now()}`,
       'assessment-early-date',
@@ -217,7 +217,7 @@ describe('Question bank and interview rounds (PostgreSQL e2e)', () => {
     );
     const createdRoundResponse = await request(app.getHttpServer())
       .post(`/projects/${projectId}/rounds`)
-      .send({ type: 'STAKEHOLDER' })
+      .send({ type: 'STAKEHOLDER', selectedStableKeys: stableKeys })
       .expect(201);
     const snapshotId = createdRoundResponse.body.questions[0].id as string;
 
@@ -1342,7 +1342,7 @@ describe('Question bank and interview rounds (PostgreSQL e2e)', () => {
 
     assert.equal(
       duplicateStartResponse.body.message,
-      'An open initial intake round already exists for this project.',
+      'An open INITIAL_INTAKE round already exists for this project.',
     );
   });
 
@@ -1503,7 +1503,7 @@ describe('Question bank and interview rounds (PostgreSQL e2e)', () => {
 
     const secondRoundResponse = await request(app.getHttpServer())
       .post(`/projects/${projectId}/rounds`)
-      .send({ type: 'CLARIFICATION' })
+      .send({ type: 'CLARIFICATION', selectedStableKeys: [originalQuestion.stableKey] })
       .expect(201);
     const secondRoundId = secondRoundResponse.body.id as string;
     const secondSnapshotId = secondRoundResponse.body.questions[0].id as string;
@@ -1524,11 +1524,6 @@ describe('Question bank and interview rounds (PostgreSQL e2e)', () => {
     );
     assert.deepEqual(noOpClearAudit, [{ count: '0' }]);
 
-    const endedWithMissingResponse = await request(app.getHttpServer())
-      .post(`/projects/${projectId}/rounds/${secondRoundId}/complete`)
-      .expect(201);
-    assert.equal(endedWithMissingResponse.body.status, 'ENDED');
-
     await request(app.getHttpServer())
       .patch(`/projects/${projectId}/rounds/${secondRoundId}/answers/${secondSnapshotId}`)
       .send({ value: 'A required answer' })
@@ -1538,6 +1533,21 @@ describe('Question bank and interview rounds (PostgreSQL e2e)', () => {
       .post(`/projects/${projectId}/rounds/${secondRoundId}/complete`)
       .expect(201);
     assert.equal(completedResponse.body.status, 'ENDED');
+
+    const incompleteRoundResponse = await request(app.getHttpServer())
+      .post(`/projects/${projectId}/rounds`)
+      .send({ type: 'CLARIFICATION', selectedStableKeys: [originalQuestion.stableKey] })
+      .expect(201);
+    const endedWithMissingResponse = await request(app.getHttpServer())
+      .post(`/projects/${projectId}/rounds/${incompleteRoundResponse.body.id}/complete`)
+      .expect(201);
+    assert.equal(endedWithMissingResponse.body.status, 'ENDED');
+    await request(app.getHttpServer())
+      .patch(
+        `/projects/${projectId}/rounds/${incompleteRoundResponse.body.id}/answers/${incompleteRoundResponse.body.questions[0].id}`,
+      )
+      .send({ value: 'Ended additional rounds stay read-only.' })
+      .expect(409);
 
     await assert.rejects(
       dataSource.query('UPDATE "interview_rounds" SET "type" = \'STAKEHOLDER\' WHERE "id" = $1', [secondRoundId]),
@@ -1590,7 +1600,7 @@ describe('Question bank and interview rounds (PostgreSQL e2e)', () => {
     const dateBankResponse = await request(app.getHttpServer())
       .post('/settings/base-questions')
       .send({
-        stableKey: `r2-date-${Date.now()}`,
+        stableKey: `general-r2-date-${Date.now()}`,
         topic: 'R2 date proof',
         controlPoint: 'R2 date validation proof',
         text: 'When is the date?',
@@ -1621,7 +1631,7 @@ describe('Question bank and interview rounds (PostgreSQL e2e)', () => {
       .expect(201);
     const dateRoundResponse = await request(app.getHttpServer())
       .post(`/projects/${dateProjectId}/rounds`)
-      .send({ type: 'STAKEHOLDER' })
+      .send({ type: 'STAKEHOLDER', selectedStableKeys: [dateQuestion.stableKey] })
       .expect(201);
     await request(app.getHttpServer())
       .patch(
@@ -1936,13 +1946,13 @@ async function createProjectWithQuestionTypesSchema(
   projectName: string,
   emailPrefix: string,
   questionTypes: readonly ('DATE' | 'LONG_TEXT' | 'TEXT')[],
-): Promise<{ projectId: string }> {
+): Promise<{ projectId: string; stableKeys: readonly string[] }> {
   const stableKeys: string[] = [];
   for (const [index, questionType] of questionTypes.entries()) {
     const bankResponse = await request(app.getHttpServer())
       .get('/settings/base-questions')
       .expect(200);
-    const stableKey = `${emailPrefix}-${questionType.toLowerCase().replaceAll('_', '-')}-${Date.now()}-${index}`;
+    const stableKey = `general-${emailPrefix}-${questionType.toLowerCase().replaceAll('_', '-')}-${Date.now()}-${index}`;
     await request(app.getHttpServer())
       .post('/settings/base-questions')
       .send({
@@ -1982,7 +1992,7 @@ async function createProjectWithQuestionTypesSchema(
     })
     .expect(201);
 
-  return { projectId };
+  return { projectId, stableKeys };
 }
 
 async function createCanonicalReadinessRound(

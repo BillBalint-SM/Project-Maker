@@ -49,6 +49,7 @@ async function insertRound(
   schemaId: string,
   baseQuestionId: string,
   questionType: 'DATE' | 'LONG_TEXT' | 'TEXT',
+  roundType: 'CLARIFICATION' | 'STAKEHOLDER' = 'CLARIFICATION',
 ): Promise<{ roundId: string; snapshotId: string }> {
   const roundId = randomUUID();
   const snapshotId = randomUUID();
@@ -57,8 +58,8 @@ async function insertRound(
   await dataSource.query(
     `INSERT INTO "interview_rounds" (
       "id", "project_id", "project_schema_id", "type", "source"
-    ) VALUES ($1, $2, $3, 'CLARIFICATION', 'DIRECT_SQL_PROOF')`,
-    [roundId, projectId, schemaId],
+    ) VALUES ($1, $2, $3, $4, 'DIRECT_SQL_PROOF')`,
+    [roundId, projectId, schemaId, roundType],
   );
   await dataSource.query(
     `INSERT INTO "round_question_snapshots" (
@@ -220,7 +221,14 @@ async function insertMoveFixture(dataSource: DataSource): Promise<RoundFixture> 
     `R2 answer identity ${Date.now()}`,
   );
   const source = await insertRound(dataSource, projectId, schemaId, baseQuestionId, 'TEXT');
-  const destination = await insertRound(dataSource, projectId, schemaId, baseQuestionId, 'TEXT');
+  const destination = await insertRound(
+    dataSource,
+    projectId,
+    schemaId,
+    baseQuestionId,
+    'TEXT',
+    'STAKEHOLDER',
+  );
 
   await dataSource.query(
     'INSERT INTO "round_answers" ("id", "round_id", "snapshot_id", "value") VALUES ($1, $2, $3, $4)',
@@ -442,7 +450,7 @@ describe('Round integrity database boundary (PostgreSQL)', () => {
       ),
       (error: { code?: string; constraint?: string }) => {
         assert.equal(error.code, '23505');
-        assert.equal(error.constraint, 'uq_interview_rounds_open_initial_intake');
+        assert.equal(error.constraint, 'uq_interview_rounds_open_type');
         return true;
       },
     );
@@ -493,6 +501,7 @@ describe('Round integrity database boundary (PostgreSQL)', () => {
       schemaId,
       baseQuestionId,
       'TEXT',
+      'STAKEHOLDER',
     );
 
     await assert.rejects(

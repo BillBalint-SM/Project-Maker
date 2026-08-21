@@ -68,6 +68,15 @@ export class Project {
   @Column({ name: 'markdown_template_id', type: 'uuid', nullable: true })
   markdownTemplateId!: string | null;
 
+  @Column({ name: 'playbook_id', type: 'varchar', length: 100, default: 'general' })
+  playbookId!: string;
+
+  @Column({ name: 'playbook_version', type: 'integer', default: 1 })
+  playbookVersion!: number;
+
+  @Column({ name: 'initiative_id', type: 'uuid', nullable: true })
+  initiativeId!: string | null;
+
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt!: Date;
 

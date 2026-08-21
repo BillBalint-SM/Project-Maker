@@ -2,6 +2,7 @@ import { defineConfig } from '@playwright/test';
 
 export default defineConfig({
   testDir: './e2e',
+  testIgnore: 'auth.spec.ts',
   fullyParallel: false,
   retries: 0,
   workers: 1,
@@ -18,7 +19,7 @@ export default defineConfig({
       timeout: 120_000,
     },
     {
-      command: 'pnpm exec ng serve --host 127.0.0.1 --port 4200 --prebundle=false',
+      command: 'npx --yes pnpm@11.20.0 exec ng serve --host 127.0.0.1 --port 4200 --prebundle=false',
       url: 'http://127.0.0.1:4200',
       reuseExistingServer: false,
       timeout: 120_000,

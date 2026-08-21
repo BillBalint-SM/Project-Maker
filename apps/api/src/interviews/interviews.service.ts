@@ -38,7 +38,7 @@ import {
 import { RoundQuestionAssessmentOverrideEntity } from './round-question-assessment-override.entity';
 import { RoundQuestionSnapshotEntity } from './round-question-snapshot.entity';
 
-const openInitialIntakeConstraintName = 'uq_interview_rounds_open_initial_intake';
+const openRoundTypeConstraintName = 'uq_interview_rounds_open_type';
 
 @Injectable()
 export class InterviewsService {
@@ -58,6 +58,17 @@ export class InterviewsService {
     });
   }
 
+  async list(projectId: string): Promise<readonly InterviewRound[]> {
+    return this.dataSource.transaction(async (manager) => {
+      await requireProject(manager, projectId, false);
+      const rounds = await manager.getRepository(InterviewRoundEntity).find({
+        where: { projectId },
+        order: { createdAt: 'DESC', id: 'ASC' },
+      });
+      return Promise.all(rounds.map((round) => loadInterviewRound(manager, round)));
+    });
+  }
+
   async getRound(projectId: string, roundId: string): Promise<InterviewRound> {
     return this.dataSource.transaction(async (manager) => {
       await requireProject(manager, projectId, false);
@@ -73,6 +84,7 @@ export class InterviewsService {
     return this.dataSource.transaction(async (manager) => {
       const assessmentPolicy = await loadRoundQuestionAssessmentPolicy();
       await requireMutableProject(manager, projectId);
+      validateRoundInput(input);
       const schema = await manager.getRepository(ProjectQuestionSchemaEntity).findOne({
         where: { projectId },
         order: { schemaVersion: 'DESC' },
@@ -82,11 +94,9 @@ export class InterviewsService {
           'A published project question schema is required before creating a round.',
         );
       }
-      if (input.type === 'INITIAL_INTAKE') {
-        const activeRound = await findOpenInitialIntakeRound(manager, projectId);
-        if (activeRound) {
-          throwOpenInitialIntakeConflict();
-        }
+      const activeRound = await findOpenRound(manager, projectId, input.type);
+      if (activeRound) {
+        throwOpenRoundConflict(input.type);
       }
       const schemaQuestions = await manager.getRepository(ProjectSchemaQuestionEntity).find({
         where: { projectSchemaId: schema.id },
@@ -100,6 +110,17 @@ export class InterviewsService {
       );
       if (baseQuestions.length !== schemaQuestions.length) {
         throw new InternalServerErrorException('Stored project question schema is incomplete.');
+      }
+
+      const selectedKeys = new Set(input.selectedStableKeys ?? []);
+      const selectedSchemaQuestions = input.type === 'INITIAL_INTAKE'
+        ? schemaQuestions
+        : schemaQuestions.filter((schemaQuestion) => {
+            const baseQuestion = baseQuestionsById.get(schemaQuestion.baseQuestionId);
+            return baseQuestion ? selectedKeys.has(baseQuestion.stableKey) : false;
+          });
+      if (input.type !== 'INITIAL_INTAKE' && selectedSchemaQuestions.length !== selectedKeys.size) {
+        throw new BadRequestException('Additional round questions must come from the latest Project schema.');
       }
 
       const round = manager.getRepository(InterviewRoundEntity).create({
@@ -116,12 +137,12 @@ export class InterviewsService {
       try {
         await manager.getRepository(InterviewRoundEntity).save(round);
       } catch (error) {
-        if (input.type === 'INITIAL_INTAKE' && isOpenInitialIntakeUniqueViolation(error)) {
-          throwOpenInitialIntakeConflict();
+        if (isOpenRoundTypeUniqueViolation(error)) {
+          throwOpenRoundConflict(input.type);
         }
         throw error;
       }
-      const snapshots = schemaQuestions.map((schemaQuestion) => {
+      const snapshots = selectedSchemaQuestions.map((schemaQuestion, index) => {
         const baseQuestion = baseQuestionsById.get(schemaQuestion.baseQuestionId);
         if (!baseQuestion) {
           throw new InternalServerErrorException('Stored project question schema is incomplete.');
@@ -135,14 +156,32 @@ export class InterviewsService {
           controlPoint: baseQuestion.controlPoint,
           text: baseQuestion.text,
           type: baseQuestion.type,
-          required: schemaQuestion.required,
-          blocking: schemaQuestion.blocking,
-          order: schemaQuestion.order,
+          required: input.type === 'INITIAL_INTAKE' ? schemaQuestion.required : false,
+          blocking: input.type === 'INITIAL_INTAKE' ? schemaQuestion.blocking : false,
+          order: input.type === 'INITIAL_INTAKE' ? schemaQuestion.order : index + 1,
           hint: baseQuestion.hint,
           options: baseQuestion.options,
           createdAt: new Date(),
         });
       });
+      for (const [index, question] of (input.adHocQuestions ?? []).entries()) {
+        snapshots.push(manager.getRepository(RoundQuestionSnapshotEntity).create({
+          id: randomUUID(),
+          roundId: round.id,
+          baseQuestionId: null,
+          stableKey: `adhoc-${randomUUID()}`,
+          topic: question.topic.trim(),
+          controlPoint: question.text.trim(),
+          text: question.text.trim(),
+          type: 'LONG_TEXT',
+          required: false,
+          blocking: false,
+          order: selectedSchemaQuestions.length + index + 1,
+          hint: null,
+          options: null,
+          createdAt: new Date(),
+        }));
+      }
       await manager.getRepository(RoundQuestionSnapshotEntity).save(snapshots);
       await saveAuditEvent(manager, projectId, 'INTERVIEW_ROUND_CREATED', {
         roundId: round.id,
@@ -177,7 +216,7 @@ export class InterviewsService {
         snapshotId,
       );
       const round = await findLockedRound(manager, projectId, roundId);
-      await this.handoffService.requireEditableRound(manager, round);
+      await this.requireEditableRound(manager, round);
       if (!existingOverride) {
         existingOverride = await manager
           .getRepository(RoundQuestionAssessmentOverrideEntity)
@@ -267,7 +306,7 @@ export class InterviewsService {
           ? await findLockedRoundAnswer(manager, projectId, roundId, snapshotId)
           : null;
       const round = await findLockedRound(manager, projectId, roundId);
-      await this.handoffService.requireEditableRound(manager, round);
+      await this.requireEditableRound(manager, round);
       if (!existingOverride) {
         existingOverride = await manager
           .getRepository(RoundQuestionAssessmentOverrideEntity)
@@ -356,7 +395,7 @@ export class InterviewsService {
         snapshotId,
       );
       const round = await findLockedRound(manager, projectId, roundId);
-      await this.handoffService.requireEditableRound(manager, round);
+      await this.requireEditableRound(manager, round);
       if (!existingOverride) {
         existingOverride = await manager
           .getRepository(RoundQuestionAssessmentOverrideEntity)
@@ -383,14 +422,18 @@ export class InterviewsService {
       await requireMutableProject(manager, projectId);
       const round = await findLockedRound(manager, projectId, roundId);
       if (round.status === 'ENDED') {
-        await this.handoffService.establishFirstDraft(manager, projectId, roundId);
+        if (round.type === 'INITIAL_INTAKE') {
+          await this.handoffService.establishFirstDraft(manager, projectId, roundId);
+        }
         return loadInterviewRound(manager, round);
       }
       const answers = await manager.getRepository(RoundAnswerEntity).findBy({ roundId });
       round.status = 'ENDED';
       round.endedAt = new Date();
       await manager.getRepository(InterviewRoundEntity).save(round);
-      await this.handoffService.establishFirstDraft(manager, projectId, roundId);
+      if (round.type === 'INITIAL_INTAKE') {
+        await this.handoffService.establishFirstDraft(manager, projectId, roundId);
+      }
       await saveAuditEvent(manager, projectId, 'INTERVIEW_ROUND_ENDED', {
         roundId,
         schemaId: round.projectSchemaId,
@@ -398,6 +441,19 @@ export class InterviewsService {
       });
       return loadInterviewRound(manager, round);
     });
+  }
+
+  private async requireEditableRound(
+    manager: EntityManager,
+    round: InterviewRoundEntity,
+  ): Promise<void> {
+    if (round.type === 'INITIAL_INTAKE') {
+      await this.handoffService.requireEditableRound(manager, round);
+      return;
+    }
+    if (round.status !== 'OPEN') {
+      throw new ConflictException('Ended additional rounds are read-only.');
+    }
   }
 }
 
@@ -434,14 +490,15 @@ async function requireMutableProject(
   return project;
 }
 
-async function findOpenInitialIntakeRound(
+async function findOpenRound(
   manager: EntityManager,
   projectId: string,
+  type: InterviewRoundEntity['type'],
 ): Promise<InterviewRoundEntity | null> {
   return manager.getRepository(InterviewRoundEntity).findOne({
     where: {
       projectId,
-      type: 'INITIAL_INTAKE',
+      type,
       status: 'OPEN',
     },
     order: { createdAt: 'DESC', id: 'ASC' },
@@ -634,8 +691,8 @@ async function loadInterviewRound(
   );
 }
 
-function throwOpenInitialIntakeConflict(): never {
-  throw new ConflictException('An open initial intake round already exists for this project.');
+function throwOpenRoundConflict(type: InterviewRoundEntity['type']): never {
+  throw new ConflictException(`An open ${type} round already exists for this project.`);
 }
 
 function toInterviewRound(
@@ -679,7 +736,7 @@ function toIso(value: Date, field: string): string {
   return timestamp.toISOString();
 }
 
-function isOpenInitialIntakeUniqueViolation(error: unknown): boolean {
+function isOpenRoundTypeUniqueViolation(error: unknown): boolean {
   if (!(error instanceof QueryFailedError)) {
     return false;
   }
@@ -689,8 +746,25 @@ function isOpenInitialIntakeUniqueViolation(error: unknown): boolean {
   };
   return (
     driverError.code === '23505' &&
-    driverError.constraint === openInitialIntakeConstraintName
+    driverError.constraint === openRoundTypeConstraintName
   );
+}
+
+function validateRoundInput(input: CreateInterviewRoundDto): void {
+  const selectedCount = input.selectedStableKeys?.length ?? 0;
+  const adHocCount = input.adHocQuestions?.length ?? 0;
+  if (input.type === 'INITIAL_INTAKE') {
+    if (selectedCount > 0 || adHocCount > 0) {
+      throw new BadRequestException('Initial Intake always uses the complete Project schema.');
+    }
+    return;
+  }
+  if (selectedCount + adHocCount === 0) {
+    throw new BadRequestException('An additional round requires at least one selected or ad-hoc question.');
+  }
+  if (input.type === 'STAKEHOLDER' && adHocCount > 0) {
+    throw new BadRequestException('Ad-hoc questions belong to Clarification rounds.');
+  }
 }
 
 function throwAssessmentPersistenceError(error: QueryFailedError): never {

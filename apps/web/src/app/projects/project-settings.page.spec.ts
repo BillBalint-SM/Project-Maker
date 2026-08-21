@@ -97,6 +97,7 @@ describe('ProjectSettingsPage', () => {
 
 async function createPage(project: ProjectWorkspace) {
   const api = {
+    listPlaybooks: vi.fn().mockReturnValue(of([])),
     loadProjectSettings: vi.fn().mockReturnValue(of({ project, preparationStatus })),
     updateProjectBasics: vi.fn(),
     updateWorkspace: vi.fn().mockImplementation(
@@ -140,6 +141,8 @@ function projectFixture(status: ProjectWorkspace['status']): ProjectWorkspace {
     nextActionOwner: { role: 'INTERNAL_OWNER', displayName: 'PO Péter', complete: true },
     nextAction: 'Egyeztesd a következő lépést.',
     dueAt: null,
+    playbook: { id: 'general', version: 1, name: 'Általános projekt' },
+    initiativeId: null,
     createdAt: '2026-08-18T08:00:00.000Z',
     updatedAt: '2026-08-19T08:00:00.000Z',
   };

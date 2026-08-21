@@ -14,14 +14,39 @@ completion percentages, or effort calculations.
 - `OPPORTUNITY`: viable product possibility that is not committed for delivery.
 - `IMPROVEMENT`: security, reliability, usability, operations, or documentation hardening.
 
+## Accepted macro roadmap
+
+The [Wayfinder map](https://github.com/BillBalint-SM/Project-Maker/issues/116)
+groups the accepted work into five outcome-sized delivery batches. These are
+large planning and delivery groupings, not serial release gates, one-PR mandates,
+or a reason to create one implementation ticket per field, endpoint, or screen.
+Only the concrete prerequisites named below may block a slice in another batch.
+The batches carry no promised dates, effort percentages, or hidden work-item
+hierarchy.
+
+| Order | Macro batch | Included outcomes | Dependency boundary | Minimum affected-risk exit evidence |
+| --- | --- | --- | --- | --- |
+| `1` | [Trust and operability](https://github.com/BillBalint-SM/Project-Maker/issues/117) | VPN-restricted Login / Sign up; self-managed local email-and-password accounts; actor-bound audit; durable mail outbox; targeted conflict protection; backup/restore operations; authentication/public-boundary rate limiting; CSRF and accessibility baseline | Identity must precede general multi-user exposure. Mail recovery applies only to Customer sends. Backup drills run operationally in parallel and do not block unrelated features. | Authentication and actor-audit API evidence; outbox recovery only when mail changes; one representative keyboard/focus browser path |
+| `2` | [Evidence-based discovery](https://github.com/BillBalint-SM/Project-Maker/issues/118) | Editable Project contacts without roles; parallel `STAKEHOLDER` and `CLARIFICATION` rounds with frozen bank or ad-hoc questions; inline Evidence/Insight capture; bounded attachments; selectable versioned playbooks | Authentication protects production file access. Individual discovery slices need not wait for the whole trust batch or attachment scanner. | One focused contact/round/Insight API path; upload boundary checks only when attachment code changes; one short critical browser path |
+| `3` | [Decision and portfolio](https://github.com/BillBalint-SM/Project-Maker/issues/119) | Concise Go / Conditional Go / No-Go records; practical Portfolio filtering, sorting, archive access, and local saved views; editable-latest Project status updates; lightweight Business goal → Initiative → Project roadmap | Decision records may reference delivered Decision Review, Specification, or Insights, but none of the Portfolio/status/roadmap slices waits for Batch 2 as a whole. | One decision API path; independent filter/sort contracts without cross-products; one status-to-Portfolio browser path |
+| `4` | [Customer collaboration](https://github.com/BillBalint-SM/Project-Maker/issues/120) | Narrow Customer response links with browser-local draft recovery; multiple independent requests per Project; a small notification list for due work, new Customer responses, and failed delivery | The public response boundary needs identity separation, safe capability links, and the existing mail path. It does not depend on Portfolio, attachments, or Batch 3. | One invalid-link group, one request/submit/review path, and one check per retained notification family |
+| `5` | [Outputs and delivery](https://github.com/BillBalint-SM/Project-Maker/issues/121) | Editable Specification-derived delivery packages; Markdown, print/PDF, and CSV export from saved or archived content; shared retained Git setups; one preview-and-confirm Git handoff; actor-bound Project Maker MCP connection for each user's own Claude Code subscription | Package and exports depend only on delivered `OUTPUT-01`. MCP reuses existing Project Maker services; Git handoff additionally needs a saved package and Git setup. Customer collaboration is unrelated and is not exposed. | Package/output contracts; one local bare-Git preview/push/reconciliation path; one MCP handshake/tool-contract check plus the same Git preview-confirm path |
+
+Verification follows affected risk, not batch membership: test the changed
+domain/API contract and at most one short critical user journey. Add migration,
+restore, concurrency, idempotency, or external-reconciliation evidence only when
+that exact change touches durable data, concurrent high-value editing, or an
+external side effect. Security-negative paths and accessibility checks remain
+mandatory only at the boundary they protect. Unrelated suites are not release
+gates for a slice.
+
 ## Reconciliation note
 
-The `PLANNED` catalogue below was reconciled after the merged Discovery
-follow-up deep-module delivery. That delivery improved module ownership,
-independent loading failure recovery, and style locality for already-delivered
-follow-up workflows; it did not add a new business outcome. No `PLANNED` item
-therefore changes status in this reconciliation. Each row records the delivered
-foundation separately from the remaining accepted scope.
+The catalogue was reconciled after the Outputs and delivery implementation.
+`OUTPUT-01.1`, `OUTPUT-02`, `OUTPUT-03`, `GIT-01`, and `MCP-01` now have code
+and targeted evidence, so they moved from `PLANNED` to `DELIVERED`. The MCP
+connector replaces the earlier embedded/provider-AI proposal; it reuses the
+existing business services and the user's own Claude Code subscription.
 
 ## DELIVERED
 
@@ -42,55 +67,74 @@ foundation separately from the remaining accepted scope.
 | `AUDIT-01` | Explain important project changes | protected technical audit plus five allow-listed, human-readable Project-status activities | `d1043aa`, [operations handoff](operations-handoff.md) |
 | `OUTPUT-00` | Preserve revisioned project snapshots | manual and milestone-triggered Markdown revisions with download | `d1043aa`, [operations handoff](operations-handoff.md) |
 | `OUTPUT-01` | Generate the canonical structured Markdown specification | Organisation-level named template library with editable drafts, immutable published versions, safe required/optional placeholders, representative preview, a published Default template, remembered per-project selection, and immutable template provenance on generated revisions | [specification](https://github.com/BillBalint-SM/Project-Maker/issues/31), [API E2E](../apps/api/test/projects.e2e-spec.ts), [browser E2E](../apps/web/e2e/markdown-template-library.spec.ts), [employee guide](user-guide.md) |
-| `COMM-01.1` | Separate Customer SMTP from internal agent handoffs | Versioned Interview customer handoff plus authored, previewed and optionally referenced Customer follow-up ping delivery through the Operator organization's dedicated TLS SMTP/IMAP gateway. The configured correspondence identity is the fixed sender; every logical delivery owns immutable outbound, correspondence and central Reply-To identities. Manual and PostgreSQL-coordinated scheduled attempts survive reload, preserve identity across explicit retry, retain `FAILED`/`UNKNOWN` recovery semantics, and never retry automatically. Customer follow-up production code and contracts expose no Markdown revision, `.md`, or Claude delivery concept. | [issue](https://github.com/BillBalint-SM/Project-Maker/issues/40), [boundary verification](../scripts/verify-comm-01-1-boundary.mjs), [operations handoff](operations-handoff.md), [API E2E](../apps/api/test/customer-smtp-boundary.e2e-spec.ts), [browser E2E](../apps/web/e2e/customer-smtp-boundary.spec.ts) |
+| `OUTPUT-01.1` | Deliver a Specification-derived Markdown artifact through Git | The same internal artifact is downloadable, available to actor-bound MCP reads, and used unchanged by the confirmed Git handoff; Customer email cannot consume it. | [Delivery API E2E](../apps/api/test/delivery-package.e2e-spec.ts), [MCP E2E](../apps/api/test/mcp.e2e-spec.ts), [employee guide](user-guide.md) |
+| `OUTPUT-02` | Author a shared delivery package from the canonical Specification | One editable package is bound to an exact Specification version; its titles, stories, acceptance criteria, and optional excerpts remain editable, and each Git handoff retains an immutable snapshot. | [Delivery API E2E](../apps/api/test/delivery-package.e2e-spec.ts), [Delivery page](../apps/web/src/app/projects/delivery/delivery.page.ts) |
+| `OUTPUT-03` | Produce Hungarian-safe print/PDF and CSV exports | Saved active or archived packages export as Markdown, formula-safe UTF-8 CSV, and Hungarian print/PDF-ready HTML with draft or handed-off provenance. | [Delivery API E2E](../apps/api/test/delivery-package.e2e-spec.ts), [Delivery page](../apps/web/src/app/projects/delivery/delivery.page.html) |
+| `GIT-01` | Maintain shared Git setups and confirm one-way handoffs | Every Internal user can maintain and use shared SSH/HTTPS setups with retained credentials. Push needs an exact preview and confirmation, retains the package/target snapshot and commit SHA, and reconciles ambiguous results by expected SHA. | [Delivery API E2E](../apps/api/test/delivery-package.e2e-spec.ts), [local bare-Git integration](../apps/api/test/git-client.integration.spec.ts) |
+| `MCP-01` | Connect each user's Claude Code to Project Maker workflows | One self-managed token identifies the Internal user at the VPN-only Streamable HTTP endpoint. Thirteen bounded tools reuse Project, Specification, Delivery package, Question Bank, Markdown template, and Git preview-confirm services; Git confirmation always requests fresh human approval. There is no provider API, shared Claude account, role/scope system, generic data access, or Customer-mail tool. | [ADR-0006](adr/0006-connect-claude-code-through-project-maker-mcp.md), [MCP E2E](../apps/api/test/mcp.e2e-spec.ts), [operations handoff](operations-handoff.md) |
+| `COMM-01.1` | Separate Customer SMTP from internal agent handoffs | Versioned Interview customer handoff plus authored, previewed and optionally referenced Customer follow-up ping delivery through the Operator organization's dedicated TLS SMTP/IMAP gateway. The configured correspondence identity is the fixed sender; every logical delivery owns immutable outbound, correspondence and central Reply-To identities. Manual and PostgreSQL-coordinated scheduled attempts survive reload, preserve identity across explicit retry, retain `FAILED`/`UNKNOWN` recovery semantics, and never retry automatically. Customer follow-up production code and contracts expose no Markdown revision, `.md`, or Claude delivery concept. | [issue](https://github.com/BillBalint-SM/Project-Maker/issues/40), [operations handoff](operations-handoff.md), [API E2E](../apps/api/test/customer-smtp-boundary.e2e-spec.ts), [browser E2E](../apps/web/e2e/customer-smtp-boundary.spec.ts) |
 | `DOC-01` | Teach employees every stable delivered workflow | Hungarian business-functional guide for all current routes, actions, states, side effects, recovery branches, and limitations, supported by eleven sanitized screenshots and three workflow diagrams | [user guide](user-guide.md), [guided-intake E2E](../apps/web/e2e/guided-intake.spec.ts), [discovery E2E](../apps/web/e2e/discovery-follow-ups.spec.ts), [readiness E2E](../apps/web/e2e/readiness-review.spec.ts), [deletion E2E](../apps/web/e2e/project-delete.spec.ts) |
 | `SCORE-01.1` | Show completion, readiness, factors, and ordered remediation gaps | Delivered for the canonical current `general` v1 initial-intake schema: persisted effective checklist assessments, completion gating, readiness availability states, a dedicated Readiness page, and redacted remediation navigation. | [readiness E2E](../apps/web/e2e/readiness-review.spec.ts), [user guide](user-guide.md), [operations handoff](operations-handoff.md), `af6d81d` |
 | `SCORE-01.2` | Show Decision Score and recommendation | A server-derived Decision Review atomically retains six nullable 1–5 inputs and, only with canonical current readiness, returns the rounded weighted Score, label, recommendation, safe readiness/gap explanation, and policy weights/inversions. It is read-only while archived, has no client scoring copy, and excludes formal Go/Conditional Go/No-Go recording and stored derived snapshots. | [Decision Review API E2E](../apps/api/test/projects.e2e-spec.ts), [browser E2E](../apps/web/e2e/decision-review.spec.ts), [product domain](product-domain.md), [ADR-0002](adr/0002-pre-delivery-decision-score-policy-correction.md) |
 
 For `INTAKE-01`, `DELETE /projects/:projectId` returns `204` only for a bare
 `DRAFT`. Any retained activity maps to a generic `409` and the project must be
-archived instead. This is not a project-list bulk-delete capability.
+archived instead. This remains the delivered behavior, but `PROJECT-UX-01`
+accepts its simplification rather than treating an audit row as permanent
+business history.
 
 ## PLANNED
 
 | ID | Outcome | Current implementation state and remaining boundary | Source/dependency |
 | --- | --- | --- | --- |
-| `ATTACH-01` | Retain governed discovery attachments where employees use them | No retained file-content module exists. The final implementation plan adds versioned Question Bank reference files and Project work attachments on Initial Intake checklist snapshots and Discovery follow-ups, with bounded disk-spooled upload, strict type inspection, ClamAV scanning, idempotent retry, PostgreSQL integrity, safe download, lifecycle enforcement, measured performance, and recovery coverage. It does not create a general document library or retain Customer inbound attachment content from the Correspondence mailbox. Implementation can be tested with synthetic identity, but production routes and UI remain disabled until `SEC-01` supplies authenticated employee authorization and CSRF/rate-limit controls. | [final plan](attach-01-governed-discovery-attachments.md), [storage decision](adr/0005-store-bounded-attachments-in-postgresql.md), and [primary-source research](research/attach-01-file-upload-best-practices.md); implements a `DATA-02` migration slice, advances `DATA-01`/`DATA-03`, and depends on the `SEC-01` production-activation gate |
-| `OUTPUT-01.1` | Deliver a reviewed Markdown revision as an internal Claude Code handoff | No Claude Code handoff delivery exists. The `COMM-01.1` Customer SMTP separation prerequisite is satisfied; implementation must remain on an internal boundary and cannot add Markdown or `.md` input to Customer email. | [requirements](../.planning/REQUIREMENTS.md); depends on delivered `OUTPUT-01` and `COMM-01.1` |
-| `OUTPUT-02` | Derive acceptance criteria and user stories from the canonical specification | No derivation pipeline exists. It starts only after `OUTPUT-01` establishes the canonical source. | [requirements](../.planning/REQUIREMENTS.md); depends on `OUTPUT-01` |
-| `OUTPUT-03` | Produce Hungarian-safe PDF and spreadsheet exports | No PDF or spreadsheet export pipeline exists. It must derive from `OUTPUT-01`, not introduce a parallel authoring source. | [requirements](../.planning/REQUIREMENTS.md); depends on `OUTPUT-01` |
+| `PROJECT-UX-01` | Remove lifecycle dead ends from normal Project work | Project basics and the Customer contact remain editable after schema publication; previous outbound records retain their own snapshots. Restore returns the Project to its previous phase instead of `DRAFT`. Explicit deletion cascades internal-only draft data, while retained Customer communication or Git handoff requires archive. Archived Projects remain read-only but their retained outputs stay downloadable. | Accepted process audit; [delivered limitations](user-guide.md) and [project service](../apps/api/src/projects/projects.service.ts) |
+| `CONTACT-01` | Keep additional Project contacts lightweight | Add normal Project-scoped contact CRUD with actor audit and no role taxonomy, permission effect, organization directory, or forced optimistic-conflict ceremony. | [Batch 2](https://github.com/BillBalint-SM/Project-Maker/issues/118) |
+| `ROUNDS-02` | Support `STAKEHOLDER` and `CLARIFICATION` rounds | Permit one open round per type so the two workflows can proceed independently. A round may freeze Question Bank selections or employee-authored ad-hoc clarification questions; it does not introduce stakeholder roles or meeting management. | [Batch 2](https://github.com/BillBalint-SM/Project-Maker/issues/118), [requirements](../.planning/REQUIREMENTS.md) |
+| `INSIGHT-01` | Capture findings and their sources in one flow | The Insight form attaches or snapshots answer, message, metric, link, or governed-attachment sources inline. Evidence remains a reusable internal record, not a prerequisite screen or a generic knowledge graph. | [Batch 2](https://github.com/BillBalint-SM/Project-Maker/issues/118) |
+| `ATTACH-01` | Retain bounded discovery attachments safely | Keep authenticated access, size/type limits, safe names, inert PostgreSQL storage, safe download, and source lifecycle checks. Reuse an Operator-provided antivirus service when configured, but do not fail closed on its absence or block unrelated discovery work on ClamAV, format-specific parsers, performance drills, or a full restore gate. | [storage decision](adr/0005-store-bounded-attachments-in-postgresql.md), [Batch 2](https://github.com/BillBalint-SM/Project-Maker/issues/118) |
+| `PLAYBOOK-02` | Support additional versioned playbooks | Add system-integration and data-migration versions without mutating `general` v1. A Project may change its selection until its first interview round starts; the selection then freezes for provenance. | [Batch 2](https://github.com/BillBalint-SM/Project-Maker/issues/118), [product domain](product-domain.md) |
+| `DECISION-01` | Record concise formal human decisions | Retain outcome, date, decision maker, rationale, conditional fields, actor, and optional references to the applicable Decision Review, Insights, and Specification. Do not duplicate a full approval snapshot or require the recommendation to agree. | [Batch 3](https://github.com/BillBalint-SM/Project-Maker/issues/119) |
+| `STATUS-01` | Publish practical Project status updates | Record health, summary, changes, risks, and next step. The latest update is editable until another is published; older updates form readable history without correction-only entries. | [Batch 3](https://github.com/BillBalint-SM/Project-Maker/issues/119) |
+| `PORTFOLIO-01` | Filter and sort the Project portfolio | Provide the accepted fixed filters, sorts, archive scope, and browser-local saved views with ordinary bounded page/offset pagination. Add opaque cursor and query fingerprints only after measured scale requires them. | [Batch 3](https://github.com/BillBalint-SM/Project-Maker/issues/119) |
+| `ROADMAP-01` | Group Projects under Business goals and Initiatives | Keep the lightweight hierarchy. Confirmed Goal deletion removes its Initiatives and unassigns their Projects; confirmed Initiative deletion unassigns its Projects instead of forcing manual emptying. | [Batch 3](https://github.com/BillBalint-SM/Project-Maker/issues/119) |
+| `COLLAB-01` | Collect narrow Customer responses | Support several independent expiring/revocable requests per active Project. Send the exact frozen preview after one confirmation, preserve form answers in browser-local draft storage, and retain one immutable submitted response. | [Batch 4](https://github.com/BillBalint-SM/Project-Maker/issues/120) |
+| `NOTIFY-01` | Surface only immediate shared attention items | Start with due/overdue Project work, new Customer response or reply, and failed Customer delivery. Use one bounded current-state list without a signed cursor, rule engine, cadence reminder, or personal notification-preference system. | [Batch 4](https://github.com/BillBalint-SM/Project-Maker/issues/120) |
 | `DATA-01` | Preserve complete discovery and derived-state provenance | Current entities preserve the delivered project, intake, follow-up, and Markdown-revision slices. Storage for every future derived-state and provenance field is not yet proven. | [requirements](../.planning/REQUIREMENTS.md); depends on planned feature data |
-| `DATA-02` | Evolve the schema through explicit, versioned migrations with reversible intent | Twenty-four explicit migrations support the delivered slices. The current sequence retains versioned handoffs and pings, mailbox delta state, inbound Customer messages, correspondence processing, receipt-proven revision history, unmatched-mail triage, and provider-neutral Operator sender snapshots; guarded reversal refuses to discard retained communication evidence. A durable policy for every future evolution and reversal remains planned and must accompany the relevant schema change. | [requirements](../.planning/REQUIREMENTS.md); [operations handoff](operations-handoff.md); [supported-baseline migration proof](../apps/api/test/m365-channel-upgrade-migration.e2e-spec.ts) |
+| `DATA-02` | Evolve the schema through explicit forward migrations | Additive migrations and preservation of retained business data are required. A destructive down-migration and a guarded reversal test are not mandatory for every feature; use backup/forward correction when safe reversal is not realistic. | [requirements](../.planning/REQUIREMENTS.md), [operations handoff](operations-handoff.md) |
 | `DATA-03` | Implement and verify platform backup and restore | The operations handoff documents manual PostgreSQL backup and controlled restore commands, but retention, rotation, and a verified restore drill remain unproven. | [requirements](../.planning/REQUIREMENTS.md); [operations handoff](operations-handoff.md); operationalized by `OPS-01` |
 
 ## OPPORTUNITY
 
 | ID | Outcome | Boundary | Source/dependency |
 | --- | --- | --- | --- |
-| `ROUNDS-02` | Support `STAKEHOLDER` and `CLARIFICATION` rounds | Does not extend the delivered `INITIAL_INTAKE` slice yet | [requirements](../.planning/REQUIREMENTS.md), [product domain](product-domain.md) |
-| `PLAYBOOK-02` | Support additional versioned playbooks | Does not mutate `general` v1 | [product domain](product-domain.md) |
 | `MIG-01` | Import supported project exports idempotently | Import format and migration policy remain undecided | [requirements](../.planning/REQUIREMENTS.md) |
 | `PWA-01` | Support installable offline and update behavior | Does not imply offline queueing | [requirements](../.planning/REQUIREMENTS.md) |
-| `AI-01` | Offer consented, replaceable AI enrichment | The core workflow remains deterministic without AI | [requirements](../.planning/REQUIREMENTS.md) |
 
 ## IMPROVEMENT
 
 | ID | Outcome | Boundary | Source/dependency |
 | --- | --- | --- | --- |
-| `SEC-01` | Protect multi-user data access | Authentication, authorization, and rate limiting are required before exposure beyond an internal/VPN boundary | [requirements](../.planning/REQUIREMENTS.md), [operations handoff](operations-handoff.md) |
+| `SEC-01` | Protect named Internal user access | The VPN remains the reachability boundary. Add self-service local email/password identity, actor-bound audit, session/Origin protection, and rate limiting for authentication, recovery, and public Customer endpoints. Every authenticated Internal user has the same capabilities, with no SSO, RBAC, membership, tenant, or internal per-user security workflow. | [Batch 1](https://github.com/BillBalint-SM/Project-Maker/issues/117), [requirements](../.planning/REQUIREMENTS.md), [operations handoff](operations-handoff.md) |
 | `MAIL-01` | Make email delivery operationally robust | Durable outbox/idempotency remains separate hardening work; the current gateway activation uses controlled TLS SMTP/IMAP smoke evidence | [operations handoff](operations-handoff.md), [mail gateway](mail-gateway.md) |
-| `OPS-01` | Harden recovery operations | Retention, rotation, and a restore drill operationalize `DATA-03`; they do not replace the backup implementation | [operations handoff](operations-handoff.md), `DATA-03` |
-| `CONC-01` | Define multi-client conflict handling | Current single-user persistence does not imply collaboration safety | [requirements](../.planning/REQUIREMENTS.md) |
+| `OPS-01` | Harden recovery operations | Retention, rotation, and a representative restore drill operationalize `DATA-03` as an Operator task running in parallel with product delivery, not as a gate for unrelated slices. | [operations handoff](operations-handoff.md), `DATA-03` |
+| `CONC-01` | Protect high-loss concurrent edits where needed | Apply optimistic version conflicts only to observed/high-value shared editing where overwriting would lose meaningful work. Ordinary internal CRUD uses normal saves, timestamps, and actor audit. | [Batch 1](https://github.com/BillBalint-SM/Project-Maker/issues/117), [requirements](../.planning/REQUIREMENTS.md) |
 | `DOC-02` | Keep product and operational documentation current | Link health and delivery-state reconciliation are part of every documentation change | [documentation index](README.md), [roadmap](roadmap.md) |
 
-## Dependencies and gates
+## Actual dependencies
 
 ```text
-INTAKE-01 + INTAKE-02/03/05 → INTAKE-06 → INTAKE-04 → SCORE-01 → OUTPUT-01 → OUTPUT-02/03
+SEC-01 → general multi-user production exposure
+OUTPUT-01 → OUTPUT-02 → OUTPUT-03
+OUTPUT-02 + saved Git setup → confirmed GIT-01 handoff
+Internal user token + existing services → MCP-01
+ROUNDS-02 or an unresolved follow-up → optional COLLAB-01 prompt source
 ```
 
-`SEC-01`, `MAIL-01`, and `OPS-01` are cross-cutting exposure and reliability
-gates. They do not postpone their underlying security or operational needs.
+These are slice-level prerequisites. A batch never waits for another batch as a
+whole. `MAIL-01` is required only when a changed flow sends Customer email;
+`OPS-01` runs as parallel Operator work. Project Maker feature delivery uses the
+repository's normal issue/branch/PR flow and targeted verification; no separate
+Delivery Control evaluator or feature-dispatch stop applies.
 
 ## Documentation lifecycle
 

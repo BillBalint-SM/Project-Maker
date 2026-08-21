@@ -7,6 +7,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { ProjectApiService } from './project-api.service';
 import { ProjectContextState } from './project-context/project-context.state';
+import { DecisionPortfolioApiService } from './decision-portfolio-api.service';
 import { ProjectStatusPage } from './project-status.page';
 
 const projectId = '11111111-1111-4111-8111-111111111111';
@@ -45,6 +46,8 @@ describe('ProjectStatusPage', () => {
       nextActionOwner: workState.nextActionOwner,
       nextAction: workState.nextAction,
       dueAt: workState.dueAt,
+      playbook: { id: 'general', version: 1, name: 'Általános projekt' },
+      initiativeId: null,
       createdAt: '2026-08-18T08:00:00.000Z',
       updatedAt: '2026-08-19T08:00:00.000Z',
     };
@@ -67,6 +70,7 @@ describe('ProjectStatusPage', () => {
           },
         },
         { provide: ProjectApiService, useValue: api },
+        { provide: DecisionPortfolioApiService, useValue: { statusUpdates: () => of([]) } },
         { provide: ProjectContextState, useValue: context },
       ],
     }).compileComponents();
@@ -128,6 +132,7 @@ describe('ProjectStatusPage', () => {
           },
         },
         { provide: ProjectApiService, useValue: api },
+        { provide: DecisionPortfolioApiService, useValue: { statusUpdates: () => of([]) } },
         { provide: ProjectContextState, useValue: projectContextWith(workState) },
       ],
     }).compileComponents();
@@ -178,6 +183,8 @@ describe('ProjectStatusPage', () => {
       nextActionOwner: workState.nextActionOwner,
       nextAction: workState.nextAction,
       dueAt: null,
+      playbook: { id: 'general', version: 1, name: 'Általános projekt' },
+      initiativeId: null,
       createdAt: '2026-08-18T08:00:00.000Z',
       updatedAt: '2026-08-19T08:00:00.000Z',
     };
@@ -207,6 +214,7 @@ describe('ProjectStatusPage', () => {
           },
         },
         { provide: ProjectApiService, useValue: api },
+        { provide: DecisionPortfolioApiService, useValue: { statusUpdates: () => of([]) } },
         { provide: ProjectContextState, useValue: context },
       ],
     }).compileComponents();

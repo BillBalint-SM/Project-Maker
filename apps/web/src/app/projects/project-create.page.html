@@ -33,6 +33,23 @@
       </div>
 
       <div class="field">
+        <label for="project-playbook">Felmérési playbook</label>
+        <select
+          id="project-playbook"
+          class="full-width"
+          formControlName="playbook"
+          data-testid="project-playbook-select"
+        >
+          @for (playbook of playbooks(); track playbook.id + ':' + playbook.version) {
+            <option [value]="playbook.id + ':' + playbook.version">
+              {{ playbook.name }} · v{{ playbook.version }}
+            </option>
+          }
+        </select>
+        <small>A projekt első felmérési köre után ez a verzió rögzül.</small>
+      </div>
+
+      <div class="field">
         <label for="internal-owner-name">Belső projektgazda neve</label>
         <input
           pInputText

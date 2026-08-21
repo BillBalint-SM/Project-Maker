@@ -24,7 +24,6 @@ import { ProjectApiService } from '../projects/project-api.service';
 import { QuestionBankApiService } from '../settings/question-bank-api.service';
 import { baseQuestionTypeLabel } from '../base-question-type-label';
 
-const supportedRoundType = 'INITIAL_INTAKE';
 const textAutosaveDelayMs = 750;
 const completionBlockedByAnswerErrorMessage =
   'A felmérési kör nem zárható le, amíg van sikertelen válaszmentés. Mentsd újra a hibás válaszokat, majd próbáld újra.';
@@ -99,6 +98,7 @@ export class InterviewPage implements OnInit, OnDestroy {
   readonly endedEditable = signal(false);
   readonly previewAfterFinish = signal(false);
   readonly projectArchived = signal(false);
+  readonly projectPlaybookId = signal('general');
   readonly handoffContentRevision = signal(0);
 
   ngOnInit(): void {
@@ -137,21 +137,14 @@ export class InterviewPage implements OnInit, OnDestroy {
       project: this.projectApi.loadProjectWorkspace(this.projectId),
     }).subscribe({
       next: ({ bank, schema, activeRound, project }) => {
-        if (activeRound && activeRound.type !== supportedRoundType) {
-          this.loadError.set(
-            'Nem támogatott aktív felmérési kör érkezett. Frissítsd az oldalt, és ha a hiba megmarad, ellenőrizd a projekt felmérési állapotát.',
-          );
-          this.loading.set(false);
-          return;
-        }
-
         this.bank.set(bank);
         this.schema.set(schema);
         this.round.set(activeRound);
         this.projectArchived.set(project.status === 'ARCHIVED');
+        this.projectPlaybookId.set(project.playbook.id);
         this.answerStates.set(buildAnswerStates(activeRound));
         this.assessmentStates.set(buildAssessmentStates(activeRound));
-        this.selectedKeys.set(this.buildSelectedKeys(bank, schema, activeRound));
+        this.selectedKeys.set(this.buildSelectedKeys(bank, schema, activeRound, project.playbook.id));
         this.loading.set(false);
         this.focusRequestedHandoffAfterNextRender(activeRound);
       },
@@ -163,7 +156,10 @@ export class InterviewPage implements OnInit, OnDestroy {
   }
 
   activeQuestions(): readonly BaseQuestion[] {
-    return this.bank()?.questions.filter((question) => question.active) ?? [];
+    const prefix = `${this.projectPlaybookId()}-`;
+    return this.bank()?.questions.filter(
+      (question) => question.active && question.stableKey.startsWith(prefix),
+    ) ?? [];
   }
 
   isSelected(stableKey: string): boolean {
@@ -584,10 +580,13 @@ export class InterviewPage implements OnInit, OnDestroy {
         this.round.set(endedRound);
         this.answerStates.set(buildAnswerStates(endedRound));
         this.assessmentStates.set(buildAssessmentStates(endedRound));
-        this.endedEditable.set(true);
-        this.previewAfterFinish.set(sendNow);
+        const initialRound = endedRound.type === 'INITIAL_INTAKE';
+        this.endedEditable.set(initialRound);
+        this.previewAfterFinish.set(initialRound && sendNow);
         this.completing.set(false);
-        if (!sendNow) {
+        if (!initialRound) {
+          void this.router.navigate(['/projects', this.projectId, 'discovery']);
+        } else if (!sendNow) {
           const returnTo = this.route.snapshot.queryParamMap.get('returnTo');
           void this.router.navigate(
             ['/projects', this.projectId, 'readiness'],
@@ -677,7 +676,14 @@ export class InterviewPage implements OnInit, OnDestroy {
   }
 
   roundTypeLabel(): string {
+    const type = this.round()?.type;
+    if (type === 'STAKEHOLDER') return 'Stakeholder kör';
+    if (type === 'CLARIFICATION') return 'Tisztázó kör';
     return 'Kezdő felmérés';
+  }
+
+  isInitialRound(): boolean {
+    return this.round()?.type === 'INITIAL_INTAKE';
   }
 
   readonly questionTypeLabel = baseQuestionTypeLabel;
@@ -713,6 +719,7 @@ export class InterviewPage implements OnInit, OnDestroy {
     bank: BaseQuestionBank,
     schema: ProjectQuestionSchema | null,
     activeRound: InterviewRound | null,
+    playbookId: string,
   ): readonly string[] {
     if (activeRound) {
       return activeRound.questions.map((question) => question.stableKey);
@@ -720,14 +727,16 @@ export class InterviewPage implements OnInit, OnDestroy {
 
     const activeKeys = new Set(
       bank.questions
-        .filter((question) => question.active)
+        .filter((question) => question.active && question.stableKey.startsWith(`${playbookId}-`))
         .map((question) => question.stableKey),
     );
     return (
       schema?.questions
         .map((question) => question.stableKey)
         .filter((stableKey) => activeKeys.has(stableKey)) ??
-      bank.questions.filter((question) => question.active).map((question) => question.stableKey)
+      bank.questions
+        .filter((question) => question.active && question.stableKey.startsWith(`${playbookId}-`))
+        .map((question) => question.stableKey)
     );
   }
 

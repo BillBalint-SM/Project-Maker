@@ -1,0 +1,106 @@
+<section aria-labelledby="git-setups-title">
+  <div class="page-heading">
+    <span class="eyebrow">Üzemeltetői közös beállítás</span>
+    <h1 id="git-setups-title">Git setupok</h1>
+    <p>Bármely belső felhasználó létrehozhat és karbantarthat egy, az egész telepítésen használható Git célkapcsolatot.</p>
+  </div>
+
+  @if (feedback()) { <p-message severity="success" role="status">{{ feedback() }}</p-message> }
+  @if (error(); as message) { <p-message severity="error" role="alert">{{ message }}</p-message> }
+
+  <div class="setup-layout">
+    <p-card>
+      <ng-template #title>
+        <h2 id="git-setup-form-title" tabindex="-1">{{ editingId() ? 'Git setup szerkesztése' : 'Új Git setup' }}</h2>
+      </ng-template>
+      <form class="setup-form" [formGroup]="form" (ngSubmit)="save()">
+        <label for="git-setup-name">Név</label>
+        <input pInputText id="git-setup-name" formControlName="name" data-testid="git-setup-name" />
+        @if (form.controls.name.touched && form.controls.name.invalid) {
+          <small class="field-error" role="alert">Adj rövid, egyedi nevet a setupnak.</small>
+        }
+
+        <label for="git-remote-url">Git remote URL</label>
+        <input pInputText id="git-remote-url" formControlName="remoteUrl" placeholder="https://git.example.local/team/repo.git" data-testid="git-remote-url" />
+        <small>HTTPS vagy SSH remote. A credentialt ne írd az URL-be.</small>
+
+        <div class="two-columns">
+          <div class="field-block">
+            <label for="git-branch">Cél branch</label>
+            <input pInputText id="git-branch" formControlName="branch" data-testid="git-branch" />
+          </div>
+          <div class="field-block">
+            <label for="git-auth-mode">Kapcsolódás</label>
+            <p-select
+              inputId="git-auth-mode"
+              formControlName="authenticationMode"
+              [options]="authenticationOptions"
+              optionLabel="label"
+              optionValue="value"
+              appendTo="body"
+            />
+          </div>
+        </div>
+
+        <label for="git-username">Felhasználónév <span>(nem kötelező)</span></label>
+        <input pInputText id="git-username" formControlName="username" />
+
+        @if (form.controls.authenticationMode.value === 'HTTPS_TOKEN') {
+          <label for="git-access-token">Hozzáférési token</label>
+          <input pInputText id="git-access-token" type="password" autocomplete="new-password" formControlName="accessToken" data-testid="git-access-token" />
+        } @else {
+          <label for="git-private-key">SSH privát kulcs</label>
+          <textarea pTextarea id="git-private-key" rows="7" formControlName="privateKey" data-testid="git-private-key"></textarea>
+          <label for="git-passphrase">Kulcs jelszava <span>(nem kötelező)</span></label>
+          <input pInputText id="git-passphrase" type="password" autocomplete="new-password" formControlName="passphrase" />
+        }
+        @if (editingId()) {
+          <small>A credential mezőt hagyd üresen, ha a már mentett értéket megtartod.</small>
+        }
+
+        <label for="git-web-url">Repository webcím <span>(nem kötelező)</span></label>
+        <input pInputText id="git-web-url" type="url" formControlName="repositoryWebUrl" placeholder="https://git.example.local/team/repo" />
+
+        <div class="form-actions">
+          <p-button type="submit" [label]="editingId() ? 'Setup mentése' : 'Setup létrehozása'" [loading]="saving()" data-testid="save-git-setup" />
+          @if (editingId()) {
+            <p-button type="button" label="Mégse" severity="secondary" [disabled]="saving()" (onClick)="cancelEdit()" />
+          }
+        </div>
+      </form>
+    </p-card>
+
+    <section aria-labelledby="saved-git-setups-title">
+      <h2 id="saved-git-setups-title">Mentett setupok</h2>
+      @if (loading()) {
+        <div class="state-panel" aria-live="polite"><p-progress-spinner ariaLabel="Git setupok betöltése" /><p>Git setupok betöltése…</p></div>
+      } @else {
+        <div class="setup-list" data-testid="git-setup-list">
+          @for (setup of setups(); track setup.id) {
+            <article class="setup-card">
+              <header>
+                <div><h3>{{ setup.name }}</h3><p>{{ setup.authenticationMode === 'HTTPS_TOKEN' ? 'HTTPS token' : 'SSH kulcs' }} · {{ setup.branch }}</p></div>
+                <span class="version">v{{ setup.version }}</span>
+              </header>
+              <dl>
+                <div><dt>Remote</dt><dd>{{ setup.remoteUrl }}</dd></div>
+                <div><dt>Credential</dt><dd>{{ setup.credentialConfigured ? 'Mentve' : 'Hiányzik' }}</dd></div>
+                <div><dt>Frissítve</dt><dd>{{ setup.updatedAt | date: 'yyyy. MM. dd. HH:mm' }}</dd></div>
+              </dl>
+              @if (testResults()[setup.id]; as result) {
+                <p-message [severity]="result.ok ? 'success' : 'error'" role="status">{{ result.message }}</p-message>
+              }
+              <div class="card-actions">
+                <p-button label="Kapcsolat tesztelése" severity="secondary" [loading]="testingId() === setup.id" [disabled]="!!testingId()" (onClick)="test(setup)" />
+                <p-button label="Szerkesztés" severity="secondary" [disabled]="saving()" (onClick)="edit(setup)" />
+                <p-button label="Törlés" severity="danger" [outlined]="true" [disabled]="saving()" (onClick)="remove(setup)" />
+              </div>
+            </article>
+          } @empty {
+            <div class="state-panel"><p>Még nincs közös Git setup.</p></div>
+          }
+        </div>
+      }
+    </section>
+  </div>
+</section>

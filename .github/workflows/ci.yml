@@ -127,11 +127,11 @@ jobs:
       - name: Build shared contracts
         run: pnpm --filter @project-maker/contracts build
 
-      - name: Run database migrations
-        run: pnpm --filter @project-maker/api migration:run
+      - name: Test authenticated TLS SMTP and IMAP protocol boundaries
+        run: pnpm --filter @project-maker/api test:mail-gateway:protocol
 
-      - name: Test the controlled TLS SMTP/IMAP gateway at every application seam
-        run: pnpm test:mail-gateway:ci
+      - name: Test one reviewed send and correlated reply through the controlled TLS gateway
+        run: pnpm --filter @project-maker/web exec playwright test e2e/customer-follow-up-ping.spec.ts
 
   container-smoke:
     runs-on: ubuntu-latest

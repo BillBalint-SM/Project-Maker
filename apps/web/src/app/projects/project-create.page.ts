@@ -1,4 +1,4 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, inject, OnInit, signal } from '@angular/core';
 import {
   AbstractControl,
   FormControl,
@@ -11,6 +11,7 @@ import { ButtonModule } from 'primeng/button';
 import { CardModule } from 'primeng/card';
 import { InputTextModule } from 'primeng/inputtext';
 import { MessageModule } from 'primeng/message';
+import type { PackagedPlaybookSummary } from '@project-maker/contracts';
 
 import { ProjectApiService } from './project-api.service';
 
@@ -27,12 +28,13 @@ import { ProjectApiService } from './project-api.service';
   templateUrl: './project-create.page.html',
   styleUrl: './project-create.page.scss',
 })
-export class ProjectCreatePage {
+export class ProjectCreatePage implements OnInit {
   private readonly api = inject(ProjectApiService);
   private readonly router = inject(Router);
 
   readonly createError = signal<string | null>(null);
   readonly saving = signal(false);
+  readonly playbooks = signal<readonly PackagedPlaybookSummary[]>([]);
   private readonly creationRequestId = crypto.randomUUID();
 
   readonly createForm = new FormGroup({
@@ -56,7 +58,18 @@ export class ProjectCreatePage {
       nonNullable: true,
       validators: [nonBlankValidator, Validators.maxLength(255)],
     }),
+    playbook: new FormControl('general:1', {
+      nonNullable: true,
+      validators: [Validators.required],
+    }),
   });
+
+  ngOnInit(): void {
+    this.api.listPlaybooks().subscribe({
+      next: (playbooks) => this.playbooks.set(playbooks),
+      error: (error: Error) => this.createError.set(error.message),
+    });
+  }
 
   createProject(destination: 'portfolio' | 'schema'): void {
     this.createForm.markAllAsTouched();
@@ -65,6 +78,7 @@ export class ProjectCreatePage {
     }
 
     const value = this.createForm.getRawValue();
+    const [playbookId, versionText] = value.playbook.split(':');
     this.saving.set(true);
     this.createError.set(null);
     this.api
@@ -75,6 +89,8 @@ export class ProjectCreatePage {
         customerContactEmail: value.customerContactEmail.trim(),
         internalOwnerName: value.internalOwnerName.trim(),
         nextActionOwnerRole: 'INTERNAL_OWNER',
+        playbookId,
+        playbookVersion: Number(versionText),
       })
       .subscribe({
         next: (project) => {

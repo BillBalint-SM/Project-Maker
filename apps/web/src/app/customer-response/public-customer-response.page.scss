@@ -1,0 +1,35 @@
+:host {
+  display: block;
+  margin: -1.5rem auto 0;
+  max-width: 46rem;
+}
+
+.public-response {
+  background: var(--p-content-background);
+  border: 1px solid var(--p-content-border-color);
+  border-radius: 1rem;
+  box-shadow: 0 1rem 3rem color-mix(in srgb, var(--pm-deep-navy) 12%, transparent);
+  overflow: hidden;
+}
+
+header {
+  align-items: center;
+  background: var(--pm-deep-navy);
+  color: white;
+  display: flex;
+  gap: 0.75rem;
+  padding: 1rem 1.25rem;
+}
+
+header strong,
+header small { display: block; }
+header small { opacity: 0.8; }
+.brand-mark { align-items: center; background: var(--p-primary-color); border-radius: 0.6rem; display: flex; font-weight: 800; height: 2.25rem; justify-content: center; width: 2.25rem; }
+main, .state-panel { padding: 1.5rem; }
+.state-panel { display: grid; justify-items: start; }
+.state-panel.success { border-left: 0.3rem solid var(--p-green-500); }
+.expiry { color: var(--p-text-muted-color); font-size: 0.9rem; }
+form { display: grid; gap: 1.25rem; margin-top: 1.5rem; }
+label { display: grid; gap: 0.45rem; }
+label span { color: var(--p-primary-color); font-weight: 700; }
+textarea { width: 100%; }

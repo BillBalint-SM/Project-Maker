@@ -14,6 +14,12 @@ export * from './project-preparation-status.js';
 export * from './project-activity.js';
 export * from './customer-mail.js';
 export * from './active-project-queue.js';
+export * from './discovery.js';
+export * from './decision-portfolio.js';
+export * from './customer-response.js';
+export * from './notifications.js';
+export * from './delivery.js';
+export * from './mcp.js';
 
 export const generalPlaybookV1SourcePath = 'playbooks/general.v1.json' as const;
 
@@ -108,6 +114,12 @@ export interface GeneralPlaybook {
   readonly statuses: PlaybookStatuses;
   readonly scoring: GeneralPlaybookScoring;
   readonly items: readonly PlaybookItem[];
+}
+
+export interface PackagedPlaybookSummary {
+  readonly id: string;
+  readonly version: number;
+  readonly name: string;
 }
 
 type UnknownRecord = Record<string, unknown>;
@@ -446,6 +458,54 @@ function deepFreeze<Value>(value: Value): Value {
 }
 
 export const generalPlaybookV1 = deepFreeze(validateGeneralPlaybook(generalPlaybookData));
+
+function specializedPlaybook(
+  id: 'system-integration' | 'data-migration',
+  name: string,
+  questionPrefix: string,
+  guidancePrefix: string,
+): GeneralPlaybook {
+  return deepFreeze({
+    ...generalPlaybookV1,
+    id,
+    name,
+    items: generalPlaybookV1.items.map((item) => ({
+      ...item,
+      exampleQuestion: `${questionPrefix}: ${item.exampleQuestion}`,
+      hint: `${guidancePrefix} ${item.hint}`,
+    })),
+  });
+}
+
+export const systemIntegrationPlaybookV1 = specializedPlaybook(
+  'system-integration',
+  'Rendszerintegráció',
+  'Integrációs nézőpont',
+  'Térj ki a forrás- és célrendszer kapcsolatára.',
+);
+
+export const dataMigrationPlaybookV1 = specializedPlaybook(
+  'data-migration',
+  'Adatmigráció',
+  'Migrációs nézőpont',
+  'Térj ki az adatminőségre, leképezésre és visszaállíthatóságra.',
+);
+
+export const packagedPlaybooks = deepFreeze([
+  generalPlaybookV1,
+  systemIntegrationPlaybookV1,
+  dataMigrationPlaybookV1,
+] as const);
+
+export const packagedPlaybookSummaries: readonly PackagedPlaybookSummary[] = packagedPlaybooks.map(
+  ({ id, version, name }) => ({ id, version, name }),
+);
+
+export function findPackagedPlaybook(id: string, version: number): GeneralPlaybook | null {
+  return packagedPlaybooks.find(
+    (playbook) => playbook.id === id && playbook.version === version,
+  ) ?? null;
+}
 
 export const resolvedDiscoveryFollowUpStatuses =
   generalPlaybookV1.scoring.readiness.resolvedFollowUpStatuses;
