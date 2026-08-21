@@ -1,6 +1,24 @@
 import assert from 'node:assert/strict';
 
 const apiBaseUrl = process.env['API_BASE_URL'] ?? 'http://127.0.0.1:3000';
+const appOrigin = process.env['CORS_ORIGIN'] ?? 'http://localhost:8080';
+
+const signUpResponse = await fetch(`${apiBaseUrl}/auth/signup`, {
+  method: 'POST',
+  headers: { 'content-type': 'application/json', origin: appOrigin },
+  body: JSON.stringify({
+    email: 'internal-container-smoke@example.test',
+    password: 'container-smoke-password-42',
+  }),
+});
+const signUpPayload = await signUpResponse.json().catch(() => null);
+assert.equal(
+  signUpResponse.status,
+  201,
+  `POST /auth/signup returned ${String(signUpResponse.status)}: ${JSON.stringify(signUpPayload)}`,
+);
+const sessionCookie = (signUpResponse.headers.get('set-cookie') ?? '').split(';', 1)[0];
+assert.match(sessionCookie, /^pm_session=/);
 
 const project = await requestJson(201, 'POST', '/projects', {
   name: 'Container smoke project',
@@ -50,7 +68,11 @@ console.log('Container smoke passed: canonical runtime policy loaded through dis
 async function requestJson(expectedStatus, method, path, body) {
   const response = await fetch(`${apiBaseUrl}${path}`, {
     method,
-    headers: body === undefined ? undefined : { 'content-type': 'application/json' },
+    headers: {
+      cookie: sessionCookie,
+      origin: appOrigin,
+      ...(body === undefined ? {} : { 'content-type': 'application/json' }),
+    },
     body: body === undefined ? undefined : JSON.stringify(body),
   });
   const payload = await response.json().catch(() => null);
