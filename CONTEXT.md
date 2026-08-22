@@ -7,8 +7,9 @@ The domain language used to describe discovery projects, intake work, and their 
 **Operator organization**:
 The organization that owns and operates a Project Maker deployment and employs
 its internal users. It supplies runtime infrastructure and configuration; it
-is never the Customer in Project Maker product language. Hungarian operations
-documentation calls it `üzemeltető szervezet`; this is not an employee-facing UI label.
+is never the Customer in Project Maker product language. Historical Hungarian
+material may call it `üzemeltető szervezet`; this is a legacy term, not an
+employee-facing UI label.
 _Avoid_: Customer, Customer tenant, Project Customer
 
 **Internal user**:
@@ -34,9 +35,9 @@ _Avoid_: User identity, application role, project permission
 **Project Customer**:
 The external organization for which a project is being prepared. The shorter
 `Customer` qualifier is reserved for this organization and its correspondence;
-it never denotes the Operator organization. Hungarian product language calls
-it `projektügyfél`, or `ügyfél` where the Project context is unambiguous; these
-are Hungarian documentation terms, not employee-facing UI labels.
+it never denotes the Operator organization. Historical Hungarian material may
+call it `projektügyfél`, or `ügyfél` where the Project context is unambiguous;
+these are legacy terms, not employee-facing UI labels.
 _Avoid_: Operator organization, deployment owner, application customer
 
 **Customer contact**:
@@ -310,7 +311,7 @@ _Avoid_: Second canonical specification, approval queue, delivery backlog
 One immutable Project specification snapshot, shown as `Specification version` and
 listed under `Version history`. It retains the selected published template and
 source snapshot; later project or template changes do not rewrite it.
-_Avoid_: Markdown-revízió, live project state, editable historical snapshot
+_Avoid_: Markdown revision, live project state, editable historical snapshot
 
 **Default Markdown template**:
 The initial published Markdown template available from the Markdown template
@@ -405,11 +406,12 @@ _Avoid_: Discovery follow-up, general automation rule, automatic retry
 
 **Discovery follow-up**:
 A project-owned accountable discovery work item shown to employees as a
-`tisztázandó tétel`, with a question, owner, due date, status, and next step.
+`Discovery follow-up`, with a question, owner, due date, status, and next step.
 _Avoid_: Customer email follow-up, task
 
 **Open discovery follow-up**:
-A discovery follow-up in the `Nyitott` state; it remains eligible for general editing.
+A discovery follow-up in the Open state (legacy stored value `Nyitott`); it
+remains eligible for general editing.
 _Avoid_: Resolved follow-up, editable lifecycle state
 
 **Editing a discovery follow-up**:

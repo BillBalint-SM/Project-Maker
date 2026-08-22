@@ -15,7 +15,7 @@ The canonical workflow is:
 5. Review current completion, readiness, factors, and ordered remediation gaps after relevant edits; these results do not prevent the meeting from ending.
 6. Resolve the highest-severity gaps through the Readiness page's explicit remediation target.
 7. Review the server-derived Decision Score and recommendation; recording a formal Go, Conditional Go, or No-Go decision remains a later workflow.
-8. Generate the canonical Markdown specification, then derive human-readable exports from it when the future output workflows are delivered.
+8. Generate the canonical Markdown specification, author a Delivery Package from an exact Specification version, and produce Markdown, formula-safe CSV, and print/PDF-ready outputs.
 9. Archive inactive projects; deletion remains a distinct, explicit operation.
 
 ## Domain terminology
@@ -35,13 +35,13 @@ The canonical workflow is:
 - **Interview revision draft:** the single editable next handoff version based on the current working interview and latest sent version.
 - **Modification summary:** the customer-visible explanation of what changed in an interview handoff after version one.
 - **Completion:** progress through relevant playbook items. Items marked not relevant are excluded from the denominator.
-- **Effective checklist status:** the current status derived from a valid answer unless a persisted assessment overrides it: `Nincs meg`, `Kész`, `Részben megvan`, or justified `Nem releváns`.
+- **Effective checklist status:** the current status derived from a valid answer unless a persisted assessment overrides it: Missing, Complete, Partially complete, or a justified Not applicable. The canonical v1 contract retains the legacy stored values `Nincs meg`, `Kész`, `Részben megvan`, and `Nem releváns`; presentation surfaces map them to professional English.
 - **Readiness:** the delivered weighted measure of current base information, business clarification, ownership, relevant checklist status, and discovery-follow-up resolution.
-- **Readiness gap / gap list:** a redacted remediation item classified as `Kritikus`, `Fontos`, or `Pontosítás`, with only its category, generic message, next step, and explicit target.
+- **Readiness gap / gap list:** a redacted remediation item classified as Critical, Important, or Clarification, with only its category, generic message, next step, and explicit target. The canonical contract retains the corresponding legacy stored values `Kritikus`, `Fontos`, and `Pontosítás`.
 - **Decision input rating:** a project-level 1–5 assessment of business value, strategic alignment, urgency, confidence, complexity, or risk. Complexity and risk are inverted when scoring; no value is inferred from an intake answer.
 - **Decision Score:** the delivered, explainable decision-support result from the six Decision input ratings and current available readiness. It is not a formal Go, Conditional Go, or No-Go decision.
 - **Decision recommendation:** the delivered policy-derived guidance to clarify, prepare an estimate, or treat the project as ready for estimation. It is not an approval.
-- **Estimate-blocking gap:** a current Initial Intake checklist item marked `requiredForEstimate` whose effective status is neither `Kész` nor `Nem releváns`. It is distinct from a critical readiness gap and from a generic open follow-up.
+- **Estimate-blocking gap:** a current Initial Intake checklist item marked `requiredForEstimate` whose effective status is neither Complete nor Not applicable. It is distinct from a critical readiness gap and from a generic open follow-up.
 - **Project status:** the daily work hub for canonical work state, coordination, Customer communication entry, and recent business activity.
 - **Project settings:** the administrative surface for basics, Project Customer contact and reminder configuration, lifecycle state, and destructive actions; it does not configure the Operator organization's mail gateway.
 - **Readiness:** the delivered review surface for readiness, factors, prioritized gaps, and Discovery follow-ups; Decision Review remains a separate page.
@@ -78,15 +78,15 @@ requires archive.
 
 Each answer preserves `status`, `owner`, `dueDate`, free-text `answer`, `openQuestion`, `nextStep`, and `updatedAt`.
 
-For the delivered initial-intake assessment, a valid answer is effectively `Kész`; no valid answer is `Nincs meg`. `Részben megvan` may be set only when a valid answer exists and remains a readiness gap. `Nem releváns` requires a nonblank rationale and excludes the item from completion and checklist readiness denominators. The rationale is retained with the assessment but is not exposed in readiness gaps or assessment audit payloads.
+For the delivered Initial Intake assessment, a valid answer is effectively Complete; no valid answer is Missing. Partially complete may be set only when a valid answer exists and remains a readiness gap. Not applicable requires a nonblank rationale and excludes the item from completion and checklist-readiness denominators. These English labels map to the canonical v1 legacy stored values; the rationale is retained with the assessment but is not exposed in readiness gaps or assessment audit payloads.
 
 Ending the interview meeting is never gated by these business states: an `OPEN` round becomes `ENDED` after pending writes settle, even when answers are missing, partial, or not relevant. Meeting lifecycle is independent from handoff-version state. The ended working interview is editable while preparing version one or an explicitly started later revision. Readiness and Decision Score continue to report information quality independently.
 
 ### Interview customer handoff
 
-Each handoff uses the project's currently configured customer contact as its fixed recipient. Before preview, the application shows the configured Operator organization-controlled dedicated correspondence identity. Preview and submission bind that fixed sender, recipient, content, and source version into one digest. Every logical version creates one immutable outbound communication, one high-entropy plus-addressed Reply-To identity, and one Customer correspondence in `Válaszra vár`. Retries append mail-system attempt results without changing that identity. A later numbered version creates a successor correspondence and never rewrites prior history.
+Each handoff uses the project's currently configured Customer contact as its fixed recipient. Before preview, the application shows the configured Operator organization-controlled dedicated correspondence identity. Preview and submission bind that fixed sender, recipient, content, and source version into one digest. Every logical version creates one immutable outbound communication, one high-entropy plus-addressed Reply-To identity, and one Customer correspondence in Awaiting response (legacy stored value `Válaszra vár`). Retries append mail-system attempt results without changing that identity. A later numbered version creates a successor correspondence and never rewrites prior history.
 
-`SENT` in the storage state means `Átadva a levelezőrendszernek`: it records mail-system acceptance, not delivery, opening, or customer approval. Known rejection remains retryable; uncertain submission requires explicit duplicate-risk acknowledgement.
+`SENT` in storage means Accepted by the mail system (the former presentation text was `Átadva a levelezőrendszernek`). It records mail-system acceptance, not delivery, opening, or Customer approval. Known rejection remains retryable; uncertain submission requires explicit duplicate-risk acknowledgement.
 
 The handoff is distinct from Customer email follow-up scheduling. It excludes raw IDs, audit payloads, readiness and Decision Score internals, unrelated follow-ups, and credentials.
 
@@ -104,6 +104,6 @@ Readiness uses the latest `OPEN` or `ENDED` `INITIAL_INTAKE` round for a project
 
 ## Canonical playbook contract
 
-The framework-neutral, immutable source of truth for the `general` v1 template is [`packages/contracts/playbooks/general.v1.json`](../packages/contracts/playbooks/general.v1.json). It contains the 30 stable question IDs, Hungarian labels and hints, required/blocking metadata, status vocabularies, and readiness and decision-scoring policy.
+The framework-neutral, immutable source of truth for the `general` v1 template is [`packages/contracts/playbooks/general.v1.json`](../packages/contracts/playbooks/general.v1.json). It contains the 30 stable question IDs, legacy Hungarian canonical labels and status values, required/blocking metadata, and readiness and decision-scoring policy. Current employee and Customer surfaces map that immutable compatibility vocabulary to professional English.
 
-NestJS, Angular, and future workers should consume the typed, immutable `generalPlaybookV1` export from `@project-maker/contracts`; they must not duplicate or adapt these values in framework, persistence, or UI code. The contract is stable for the current playbook version, not a claim that the policy is final. The agreed correction to the unshipped Decision Score policy is the narrow pre-delivery exception documented in [ADR-0002](adr/0002-pre-delivery-decision-score-policy-correction.md). After the policy has been delivered for use, a material change requires a new playbook version and explicit treatment of historical project data.
+NestJS, Angular, and future workers should consume the typed, immutable `generalPlaybookV1` export from `@project-maker/contracts`; they must not duplicate or adapt these values in framework, persistence, or UI code. The contract is stable for the current playbook version, not a claim that the policy is final. [ADR-0002](adr/0002-pre-delivery-decision-score-policy-correction.md) records the narrow correction made before the Decision Score policy was first delivered. Any later material policy change requires a new playbook version and explicit treatment of historical Project data.

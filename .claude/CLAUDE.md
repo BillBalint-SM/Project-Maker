@@ -3,18 +3,24 @@
 ## Current architecture
 
 - `apps/web`: Angular 22.1 standalone client with PrimeNG 22.0.0.
-- `apps/api`: NestJS 11 API with TypeORM and PostgreSQL access.
-- `packages/contracts`: shared TypeScript contracts and canonical playbook data.
-- Compose runs Nginx, the API, and PostgreSQL on separated edge and internal networks.
-- Only Nginx publishes a host port.
+- `apps/api`: NestJS 11 API with TypeORM and PostgreSQL.
+- `packages/contracts`: shared TypeScript contracts and canonical versioned playbook data.
+- Nginx is the only Compose service that publishes a host port; the API and PostgreSQL stay internal.
+- The supported migration sequence is `0001 -> 0036`.
+
+## Product and access model
+
+Project Maker is a VPN-restricted internal product-discovery and project-preparation application. Internal users authenticate with self-managed local email-and-password accounts and share one capability level. Do not introduce roles, memberships, administrators, or per-Project permissions without an explicit product decision. Public Customer response links and actor-bound MCP tokens are narrow boundaries, not alternate general accounts.
 
 ## Source map
 
-- Angular routes and pages: `apps/web/src/app/`
-- API modules and migrations: `apps/api/src/`
-- Shared contracts: `packages/contracts/`
-- Runtime and operator handoff: `docs/operations-handoff.md`
-- Product/domain model: `docs/product-domain.md`
+- Angular routes, pages, and frontend tests: `apps/web/`
+- API modules, migrations, and API tests: `apps/api/`
+- Shared contracts and playbooks: `packages/contracts/`
+- Product vocabulary and behavior: `docs/product-domain.md` and `CONTEXT.md`
+- Environment configuration: `docs/configuration.md`
+- Runtime and Operator handoff: `docs/operations-handoff.md`
+- Delivered and remaining capability: `docs/roadmap.md`
 
 ## Commands
 
@@ -22,28 +28,25 @@
 pnpm install --frozen-lockfile
 pnpm verify
 pnpm test:e2e
+pnpm test:mail-gateway
 pnpm compose:config
 pnpm compose:up
 pnpm compose:down
 ```
 
-Use the exact package-manager and Node versions declared in the root
-`package.json`. Keep the lockfile synchronized with both workspace manifests
-and Docker build inputs.
+Use the Node and pnpm versions declared in the root `package.json`. Keep the lockfile synchronized with workspace manifests and Docker build inputs.
 
 ## Change boundaries
 
-- Keep the Angular, API, and contract boundaries explicit.
-- Treat contract and migration changes as compatibility-sensitive.
-- Keep API and PostgreSQL internal to Compose; expose only the web gateway.
-- Keep authentication, authorization, and production deployment controls out of
-  the foundation until they are separately designed and verified.
-- Never commit `.env`, credentials, or database dumps. Keep the application
-  license configuration intentional and out of documentation and logs.
-- Run focused checks first, then the full relevant gate before completion.
+- Keep Angular, API, and contracts responsibilities explicit.
+- Treat contract and forward-only migration changes as compatibility-sensitive.
+- Preserve the VPN plus local-identity model and the shared Internal-user capability level.
+- Keep Customer mail, Git handoff, MCP, attachments, and general Project work as bounded modules.
+- Never commit `.env`, credentials, tokens, Customer data, attachment bytes, or database dumps.
+- Keep application license registration intentional and out of documentation, diagnostics, and generated output.
+- Use professional software-development and project-management English for engineering artifacts and product copy. Preserve user-authored content and legacy wire/storage values; translate legacy values at presentation boundaries.
+- Keep validation proportional to the change. Verify directly affected behavior and the most significant risks.
 
 ## Documentation
 
-Engineering and operational documentation is English. End-user product copy
-may be Hungarian. Keep documentation current and describe only the approved
-platform, verified behavior, and active delivery boundaries.
+Update documentation in the same change as behavior or configuration. `docs/roadmap.md` is the delivery-status source, `docs/user-guide.md` is the current user workflow manual, and ADRs preserve architectural decision history rather than current delivery status.

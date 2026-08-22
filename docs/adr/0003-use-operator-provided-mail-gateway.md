@@ -15,8 +15,13 @@ Here, Operator organization means the company that receives and operates the
 Project Maker application. It does not mean any external Project Customer for
 whom that company manages a project.
 
-The current Microsoft Graph transport is a transitional implementation and
-must be replaced behind the existing mail seam. Activation evidence will prove
-the configured sender, plus-address reply correlation, SMTP submission, IMAP
-ingestion, duplicate-safe recovery, and fail-closed behavior using only the
-gateway endpoints and credentials supplied by the Operator organization.
+## Implementation status
+
+Delivered. The TLS SMTP/IMAP gateway replaced the former transitional
+Microsoft Graph transport behind the existing mail seam. Activation evidence
+proves the configured sender, plus-address reply correlation, SMTP submission,
+IMAP ingestion, duplicate-safe recovery, and fail-closed behavior using only
+the gateway endpoints and credentials supplied by the Operator organization.
+
+The earlier Graph implementation remains relevant only as decision history; it
+is not a supported runtime or provisioning path.

@@ -73,9 +73,9 @@ limits remain mandatory with or without a scanner.
 
 ## Dependencies
 
-- `SEC-01` authentication and actor identity must exist before production
-  exposure. This does not require roles, per-owner permissions, rate limiting on
-  every internal upload mutation, or completion of the whole Trust batch.
+- Delivered `SEC-01` authentication and actor identity protect production file
+  access. This does not require roles, per-owner permissions, rate limiting on
+  every internal upload mutation, or completion of unrelated Trust work.
 - Schema migration and ordinary platform backup cover the retained rows. A
   dedicated timed restore drill, weekly digest job, object-storage benchmark, or
   performance gate is not part of this feature.
@@ -86,7 +86,7 @@ limits remain mandatory with or without a scanner.
   read-only behavior.
 - A small table covers unauthenticated access, excessive size, disallowed or
   mismatched type, unsafe filename, and wrong-Project ownership.
-- One browser path uploads, downloads, and removes a representative Hungarian
+- One browser path uploads, downloads, and removes a representative UTF-8
   filename using keyboard-operable controls.
 - If optional antivirus integration is implemented, one adapter check proves a
   clean and a rejected result. No real-scanner CI environment is required.

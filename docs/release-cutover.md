@@ -1,76 +1,53 @@
-# Project Maker átadási és élesítési ellenőrzőlista
+# Project Maker release and cutover checklist
 
-Ez az ellenőrzőlista a Project Maker átadásának két, egymástól független
-kapuját választja szét:
+This checklist separates two independent release gates:
 
-1. az alkalmazás belső/VPN-környezetben történő élesítése;
-2. az üzemeltető szervezet TLS SMTP/IMAP levelezési gateway-ének aktiválása.
+1. deploying Project Maker for internal use on the Operator organization's private network or VPN; and
+2. activating the Operator organization's TLS SMTP/IMAP Customer-mail gateway.
 
-Az első kapu teljesíthető a gateway aktiválása nélkül. Ilyenkor a projektmunka
-használható, a levelezési műveletek pedig konfiguráció hiányában zártan
-hibáznak. A projektügyfél-kommunikáció csak a második kapu után nevezhető
-produkcióban aktiváltnak.
+The application gate can be completed without activating the mail gateway. Project work remains available; Customer-mail actions stay unavailable or fail closed until the gateway gate is complete.
 
-## Átadási csomag
+## Handover package
 
-Az átvevő, egyben üzemeltető szervezet a következő, egymásra hivatkozó
-anyagokat kapja:
+The receiving Operator organization receives:
 
-- a telepítendő, pontos Git commitot és annak zöld GitHub CI-eredményét;
-- a [végfelhasználói útmutatót](user-guide.md);
-- az [üzemeltetési átadást](operations-handoff.md), benne a migrációs,
-  mentési és visszaállítási eljárással;
-- az [Operator mail gateway runbookot](mail-gateway.md) és a
-  `scripts/setup-mail-gateway.ps1` interaktív wizardot;
-- ezt a döntési és aláírási ellenőrzőlistát.
+- the exact deployment commit and its successful GitHub CI result;
+- the [user guide](user-guide.md);
+- the [operations handoff](operations-handoff.md), including migration, backup, and restore procedures;
+- the [runtime configuration reference](configuration.md);
+- the [Operator mail gateway runbook](mail-gateway.md) and the `scripts/setup-mail-gateway.ps1` interactive helper; and
+- this decision and sign-off checklist.
 
-Valódi `.env`, jelszó, CA-tartalom, postafiók-tartalom vagy
-projektügyfél-adat nem része az átadási csomagnak.
+A populated `.env`, passwords, private CA material, mailbox contents, and Project Customer data are never part of the handover package.
 
-## Felelősök és átadandó bizonyíték
+## Owners and retained evidence
 
-| Felelős | Feladat | Megőrzött, nem titkos bizonyíték |
+| Owner | Responsibility | Retained non-secret evidence |
 | --- | --- | --- |
-| Repository gazda | A telepítendő commit és a zöld CI rögzítése | 40 karakteres commit és CI-link |
-| Hálózati/biztonsági gazda | Belső/VPN-elérés, HTTPS/TLS és tűzfalszabály | Jóváhagyott belső URL és dátum |
-| Deployment gazda | Runtime-konfiguráció és Compose-élesítés | Konfigurációellenőrzés, health eredmény |
-| Adatbázis-gazda | Mentés, visszaállíthatóság és adatmegőrzés | Mentés ideje, restore-drill eredménye |
-| Üzleti elfogadó | Szintetikus teljes Project-journey ellenőrzése | Elfogadás dátuma és eredménye |
-| Gateway gazda | Dedikált postafiók, plus-addressing, TLS SMTP/IMAP végpontok és hálózati elérés | Belső változásjegy vagy jóváhagyás |
-| Deployment secret gazda | SMTP/IMAP jelszavak és opcionális CA biztonságos injektálása | Secret helyének belső hivatkozása, érték nélkül |
-| Gateway-smoke operátor | Kontrollált valós gateway-próba | Dátum, commit és eredmény a meglévő belső változásjegyben |
+| Repository owner | Record the deployment commit and successful CI. | Commit SHA and CI link. |
+| Network/security owner | Provide private-network or VPN access, HTTPS/TLS, and firewall controls. | Approved internal URL and date. |
+| Deployment owner | Apply runtime configuration and start Compose. | Configuration validation and health result. |
+| Database owner | Own backup retention and restore verification. | Backup time and restore-drill result. |
+| Business acceptor | Validate a synthetic end-to-end Project journey. | Acceptance date and result. |
+| Gateway owner | Provide the dedicated mailbox, TLS SMTP/IMAP endpoints, plus-addressing, and network reachability. | Existing internal change record or approval. |
+| Secret owner | Inject SMTP/IMAP credentials and optional CA material securely. | Internal secret-location reference, without values. |
+| Gateway-smoke operator | Run the controlled real-gateway smoke. | Date, commit, and result in the existing internal change record. |
 
-## 1. kapu — az alkalmazás élesítése
+## Gate 1 — application deployment
 
-### Előfeltételek
+### Preconditions
 
-- [ ] A telepítési gazda rögzítette a pontos forrás-commitot; az élesítés nem
-  egy közben változó branchből történik.
-- [ ] A commit `checkpoint`, `mail-gateway` és `container-smoke` CI-kapuja
-  zöld.
-- [ ] Az alkalmazás csak az üzemeltető szervezet belső hálózatán/VPN-jén vagy
-  azzal egyenértékű tűzfal és reverse proxy mögött érhető el.
-- [ ] A külső végpont HTTPS-t használ, a `CORS_ORIGIN` pedig pontosan ezt az
-  origint tartalmazza. Az alkalmazás saját email/jelszó alapú, önkiszolgáló
-  Internal-user bejelentkezést használ. Minden aktív Internal user azonos
-  képességekkel rendelkezik; nincsenek szerepkörök vagy projektjogosultságok.
-  A VPN továbbra is az elérési határ, ezért nyilvános internetes kitettség nem
-  elfogadható.
-- [ ] A `.env` az üzemeltető szervezet jóváhagyott runtime/secret helyén van,
-  nem került Gitbe, ticketbe, chatbe vagy átadási dokumentumba.
-- [ ] Meglévő adatbázis frissítése előtt készült ellenőrzött PostgreSQL-mentés.
-  Új, üres telepítésnél ezt az operátor kifejezetten `nem alkalmazható`ként
-  rögzítette.
-- [ ] Az üzemeltető szervezet kijelölte a mentési megőrzés és a visszaállítási
-  próba felelősét. A restore eljárás az üzemeltetési átadás szerint, nem az éles
-  adatbázison lett kipróbálva.
+- [ ] The deployment owner has recorded a fixed source commit; deployment does not originate from a moving branch.
+- [ ] The commit passed the `checkpoint`, `mail-gateway`, and `container-smoke` GitHub CI jobs.
+- [ ] The application is reachable only on the Operator organization's private network/VPN or behind an equivalent firewall and reverse proxy.
+- [ ] The external endpoint uses HTTPS and `CORS_ORIGIN` is exactly that origin. Project Maker uses self-service local email/password accounts for Internal users. All active Internal users have the same capabilities: there are no roles or per-Project permissions. The VPN remains the access boundary; public internet exposure is unacceptable.
+- [ ] The populated `.env` is in the Operator-approved runtime/secret location, not in Git, tickets, chat, or handover material.
+- [ ] Before upgrading an existing database, a verified PostgreSQL backup exists. For a new empty deployment, record this as not applicable.
+- [ ] The Operator has assigned owners for backup retention and restore drills.
 
-### Telepítési kapuk
+### Deployment checks
 
-1. Futtasd a pontos forrás-checkoutban a három CI-kapunak megfelelő helyi
-   ellenőrzéseket. A `migration:run` és a `pnpm verify` kizárólag erre kijelölt,
-   nem produkciós teszt-adatbázist használhat; a másik két parancs saját
-   eldobható környezetet hoz létre és takarít el:
+1. In the exact source checkout, run the local equivalents of the three CI gates. `migration:run` and `pnpm verify` must use a dedicated, non-production test database; the other commands own disposable resources.
 
    ```powershell
    pnpm install --frozen-lockfile
@@ -80,125 +57,88 @@ projektügyfél-adat nem része az átadási csomagnak.
    node scripts/run-container-smoke.mjs
    ```
 
-2. Töltsd ki az üzemeltető szervezet környezetének `.env` fájlját, majd
-   ellenőrizd a Compose konfigurációt anélkül, hogy annak tartalmát naplóznád:
+2. Populate the deployment `.env` according to the [configuration reference](configuration.md), then validate Compose without printing its contents:
 
    ```powershell
    pnpm compose:config
    ```
 
-3. Meglévő adat frissítésekor készíts mentést az
-   [üzemeltetési átadás PostgreSQL backup](operations-handoff.md#postgresql-backup)
-   szakasza szerint. Ezután indítsd a stacket:
+3. For an upgrade with retained data, create a backup using the [PostgreSQL backup procedure](operations-handoff.md#postgresql-backup), then start the stack:
 
    ```powershell
    pnpm compose:up
    ```
 
-4. Ellenőrizd a belső HTTPS URL-en a webalkalmazást és a proxyn át elérhető
-   `/api/health` végpontot.
-5. Ellenőrizd a migrációs állapotot az
-   [üzemeltetési átadás dokumentált parancsával](operations-handoff.md#database-migrations-and-recovery).
-   A `pending: false` és mind a 36 migráció megléte kötelező.
-6. Szintetikus adatokkal járd végig legalább ezt az üzleti smoke-ot: projekt
-   létrehozása és kilépés, visszatérés a `Portfolio` oldalra, kérdésséma
-   elfogadása, felmérési válasz mentése, felmérés lezárása, `Estimation
-   Readiness` megnyitása, tisztázandó tétel létrehozása, `Project Status`
-   ellenőrzése és pontos visszatérés a kiinduló listába.
-7. Ellenőrizd legalább 1024 képpont széles támogatott asztali nézetben és
-   billentyűzettel a globális és a Project-navigációt, az elsődleges feladatot,
-   valamint a hiba utáni újrapróbálást.
+4. Verify the internal HTTPS application URL and the proxied `/api/health` endpoint.
+5. Inspect migration status using the [documented running-container command](operations-handoff.md#database-migrations-and-recovery). `pending: false` and all 36 migrations through `0036` are required.
+6. With synthetic data, complete this business smoke: create a Project and exit it; return to Portfolio; accept a question schema; save an assessment answer; close the assessment; open Estimation Readiness; create a clarification item; open Project Status; and return precisely to the originating list.
+7. At a supported desktop width of at least 1024 pixels, verify keyboard navigation, global and Project navigation, the primary task, and retry after an error.
 
-### Az első kapu eredménye
+### Gate 1 outcome
 
-Az alkalmazás akkor adható át üzleti használatra, ha minden fenti pont sikeres.
-Ha a gateway-kapu még nincs kész, az átadási jegyzőkönyvben szerepeljen:
-`Az alkalmazás éles; a projektügyfél-kommunikáció az üzemeltető szervezet
-gateway-ének aktiválása után lesz produkcióban használható.`
+The application may be handed over for business use when every item above passes. If Gate 2 is not complete, record:
 
-## 2. kapu — levelezési gateway aktiválás
+> The application is live; Project Customer communication becomes available in production after the Operator organization's mail gateway is activated.
 
-Ezt a kaput kizárólag az üzemeltető szervezet gateway-, deployment-secret- és
-üzemeltetési felelősei hajthatják végre. A szállító nem kap postafiók-
-hozzáférést, jelszót, CA-tartalmat vagy kitöltött `.env` fájlt.
+## Gate 2 — Customer-mail gateway activation
 
-- [ ] A gateway gazda létrehozta vagy kijelölte a dedikált correspondence
-  mailboxot, és igazolta, hogy a plus-addressing ugyanabba az Inboxba érkezik.
-- [ ] Az SMTP és IMAP végpont csak `STARTTLS_REQUIRED` vagy `IMPLICIT_TLS`
-  módban érhető el, a tanúsítványlánc ellenőrzött, és TLS 1.2 vagy újabb
-  szükséges.
-- [ ] Az SMTP és IMAP külön hitelesítője a jóváhagyott secret store-ban van;
-  nincs plaintext, opportunista downgrade vagy fallback mód.
-- [ ] A `scripts/setup-mail-gateway.ps1` helyi konfigurációt készített a titkok
-  megjelenítése nélkül, majd a `pnpm compose:config` sikeres.
-- [ ] A konfigurált dedikált identity a tényleges SMTP envelope és `From`
-  feladó; személyes vagy alternatív feladó nem engedélyezett.
-- [ ] A [kontrollált gateway-smoke](mail-gateway.md#controlled-gateway-smoke)
-  minden küldési, Reply-To, IMAP, deduplikációs, hiba- és TLS-ellenőrzése
-  sikeres.
-- [ ] A futtatás dátuma, a telepített forrás-commit és a sikeres eredmény az
-  üzemeltető szervezet meglévő belső változásjegyében szerepel, titok vagy
-  projektügyfél-adat nélkül.
+Only the Operator organization's gateway, secret, and operations owners may complete this gate. The supplier does not receive mailbox access, passwords, private CA material, or a populated `.env` file.
 
-## Go/No-Go döntés
+- [ ] The gateway owner created or selected the dedicated correspondence mailbox and proved that plus-addressed replies arrive in the same inbox.
+- [ ] SMTP and IMAP use only `STARTTLS_REQUIRED` or `IMPLICIT_TLS`; the certificate chain is trusted and TLS 1.2 or later is required.
+- [ ] SMTP and IMAP credentials are maintained independently in the approved secret store; plaintext, downgrade, and fallback modes are not enabled.
+- [ ] The local configuration helper completed without displaying secrets and `pnpm compose:config` succeeds.
+- [ ] The configured dedicated identity is the actual SMTP envelope and `From` sender; personal or alternate senders are not allowed.
+- [ ] The [controlled gateway smoke](mail-gateway.md#controlled-gateway-smoke) passes all send, Reply-To, IMAP, deduplication, error, and TLS checks.
+- [ ] The run date, deployment commit, and result are recorded in the existing internal change record without secrets or Project Customer data.
 
-### Go — alapalkalmazás
+## Go / no-go decision
 
-- minden első kapus ellenőrzés zöld;
-- a hálózati/VPN és HTTPS határ bizonyított;
-- meglévő adatnál van ellenőrzött mentés és visszaállítási felelős;
-- a health, migráció és szintetikus Project-journey sikeres;
-- a gateway státuszát pontosan, nem kész funkcióként kommunikálják, amíg a
-  második kapu nincs lezárva.
+### Go — application
 
-### Go — levelezési gateway
+- every Gate 1 check passed;
+- the private-network/VPN and HTTPS boundary is evidenced;
+- an existing-data deployment has a verified backup and restore owner;
+- health, migrations, and the synthetic Project journey passed; and
+- the mail-gateway status is communicated accurately until Gate 2 is closed.
 
-- az alapalkalmazás Go állapotú;
-- a plus-addressing, a külön hitelesítők és a TLS-korlátok bizonyítottak;
-- a kontrollált gateway-smoke eredménye a telepített forrás-commithoz tartozik.
+### Go — Customer-mail gateway
 
-### No-Go
+- Gate 1 is in Go state;
+- plus-addressing, separate credentials, and TLS constraints are evidenced; and
+- the controlled gateway smoke result belongs to the deployed commit.
 
-- nyilvános vagy nem kontrollált hálózati kitettség a VPN-határ megkerülésével;
-- hiányzó mentés meglévő adat frissítése előtt;
-- sikertelen health vagy függő/sikertelen migráció;
-- valódi projektügyfél-adatokkal végzett első próba;
-- aktiváltnak nevezett gateway dokumentált sikeres smoke nélkül;
-- sikertelen plus-address, TLS-ellenőrzés gyengítése, vagy személyes/alternatív
-  küldő engedélyezése.
+### No-go
 
-## Visszaállítás és visszavonás
+- public or uncontrolled network exposure bypassing the VPN boundary;
+- no verified backup before an existing-data upgrade;
+- failed health check or pending/failed migration;
+- first testing with real Project Customer data;
+- claiming the gateway is active without a documented successful smoke; or
+- weakening TLS verification, failed plus-addressing, or a personal/alternate sender.
 
-1. Állítsd le a web- és API-írásokat; a PostgreSQL volume-ot ne töröld.
-2. Rögzítsd a hiba idejét és a telepített commitot titok vagy
-   projektügyfél-adat nélkül.
-3. Adatvesztési vagy migrációs probléma esetén az ellenőrzött mentésből, az
-   [ellenőrzött restore eljárással](operations-handoff.md#controlled-restore)
-   állíts vissza. Ne próbálj adatot törölni azért, hogy egy védett migration
-   rollback lefusson.
-4. Alkalmazásregressziónál az előre rögzített korábbi forrás/artifact és az
-   ahhoz illeszkedő adatbázis-visszaállítási terv használható; mozgó branchből
-   ne építs rollbacket.
-5. Gateway-incidensnél állítsd le a levelezési funkció használatát, majd a
-   titokkezelőben vond vissza vagy cseréld a szükséges SMTP/IMAP hitelesítőt.
-   A megőrzött levelezési előzményt, ellenőrzőpontot és adatbázis-volumet ne
-   töröld.
-6. Újranyitás előtt ismételd meg a health-, migrációs és releváns
-   gateway-smoke kapukat.
+## Recovery and rollback
 
-## Átadási jegyzőkönyv
+1. Stop web and API writes; do not remove the PostgreSQL volume.
+2. Record the incident time and deployed commit without secrets or Project Customer data.
+3. For data loss or migration issues, restore the verified backup through the [controlled restore procedure](operations-handoff.md#controlled-restore). Do not delete data to force a guarded migration rollback.
+4. For an application regression, use the previously recorded source/artifact together with its compatible database recovery plan; never build a rollback from a moving branch.
+5. For a gateway incident, stop using mail functions and revoke or rotate the required SMTP/IMAP credential in the secret store. Do not delete retained correspondence, checkpoints, or the database volume.
+6. Before reopening, repeat health, migration, and relevant gateway-smoke checks.
 
-| Mező | Érték |
+## Handover record
+
+| Field | Value |
 | --- | --- |
-| Telepített commit | |
-| CI futás | |
-| Környezet és belső HTTPS URL | |
-| Adatbázis-mentés / új telepítés jelölése | |
-| Restore-drill eredménye | |
-| Alkalmazás-smoke dátuma és eredménye | |
-| Üzleti elfogadó | |
-| Gateway státusz: `NINCS AKTIVÁLVA` / `AKTIVÁLVA` | |
-| Gateway-smoke commit, dátum és eredmény | |
-| Nyitott üzemeltetési korlátozás | |
+| Deployed commit | |
+| CI run | |
+| Environment and internal HTTPS URL | |
+| Database backup / new-installation marker | |
+| Restore-drill result | |
+| Application-smoke date and result | |
+| Business acceptor | |
+| Gateway status: `NOT ACTIVATED` / `ACTIVATED` | |
+| Gateway-smoke commit, date, and result | |
+| Open operational limitation | |
 
-Titkos vagy személyes érték nem írható ebbe a táblázatba.
+Do not enter secrets or personal values in this record.
