@@ -5,7 +5,7 @@ import { tabTo } from './keyboard-assertions';
 test('an Internal user creates an account, enters the application, and signs out', async ({ page }) => {
   const email = `playwright-${crypto.randomUUID()}@example.test`;
 
-  await page.setViewportSize({ width: 390, height: 844 });
+  await page.setViewportSize({ width: 1280, height: 720 });
   await page.goto('/');
   await expect(page).toHaveURL(/\/login\?returnUrl=%2F$/);
   await expect(page.getByRole('heading', { name: 'Sign in' })).toBeVisible();

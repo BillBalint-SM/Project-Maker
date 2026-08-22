@@ -14,5 +14,7 @@ test-results/
 .DS_Store
 desktop.ini
 .superpowers/
+.playwright-cli/
+output/
 .env.*
 !.env.example

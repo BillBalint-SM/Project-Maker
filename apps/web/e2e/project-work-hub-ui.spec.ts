@@ -1,4 +1,4 @@
-import { expect, test, type Locator, type Page } from '@playwright/test';
+import { expect, test } from '@playwright/test';
 import path from 'node:path';
 
 import {
@@ -107,7 +107,7 @@ test('exposes the exact global navigation and sends the reply count to the filte
   await expect(page.getByRole('checkbox', { name: 'New Customer reply' })).toBeChecked();
 });
 
-test('recovers the global follow-up list, reflows at 390 px, and returns to its exact context', async ({
+test('recovers the global follow-up list and returns to its exact context', async ({
   page,
 }) => {
   const suffix = captureScreenshots
@@ -148,7 +148,7 @@ test('recovers the global follow-up list, reflows at 390 px, and returns to its 
     }
     await route.continue();
   });
-  await page.setViewportSize({ width: 390, height: 844 });
+  await page.setViewportSize({ width: 1280, height: 720 });
   await page.goto('/follow-ups');
 
   await expect(
@@ -162,18 +162,6 @@ test('recovers the global follow-up list, reflows at 390 px, and returns to its 
   await expect(row).toBeVisible();
   await expect(row.getByRole('term')).toHaveText(['Owner', 'Due date', 'Next action']);
   await expect(row).toContainText(projectName);
-  expect(
-    await page.evaluate(
-      () => document.documentElement.scrollWidth <= document.documentElement.clientWidth,
-    ),
-  ).toBe(true);
-  if (captureScreenshots) {
-    await page.screenshot({
-      path: path.join(screenshotDirectory, '12-project-work-hub-narrow.png'),
-      fullPage: true,
-    });
-  }
-
   const openAction = row.getByTestId('open-follow-up-action');
   await tabTo(page, openAction);
   await page.keyboard.press('Enter');
@@ -187,103 +175,3 @@ test('recovers the global follow-up list, reflows at 390 px, and returns to its 
   await expect(page).toHaveURL('/follow-ups');
   await expect(page.getByTestId('open-follow-up-row').filter({ hasText: question })).toBeVisible();
 });
-
-test('keeps every Project journey context usable at 390 px', async ({ page }) => {
-  const uniquePart = `narrow-journey-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-  const createdProject = await page.request.post('/api/projects', {
-    data: {
-      name: `Keskeny projektút ${uniquePart}`,
-      customerContactName: 'Minta Kapcsolattartó',
-      customerContactEmail: `${uniquePart}@example.test`,
-      internalOwnerName: 'Kovács Anna',
-      nextActionOwnerRole: 'INTERNAL_OWNER',
-      nextAction: 'Készítsd elő a következő egyeztetést.',
-    },
-  });
-  expect(createdProject.status()).toBe(201);
-  const project = (await createdProject.json()) as { readonly id: string };
-
-  await page.setViewportSize({ width: 390, height: 844 });
-
-  await page.goto('/');
-  await expectNarrowPage(
-    page,
-    'Portfolio Overview',
-    page.getByTestId('active-project-queue-link'),
-  );
-
-  await page.goto(`/projects/active?q=${encodeURIComponent(uniquePart)}`);
-  await expectNarrowPage(
-    page,
-    'Active Project Queue',
-    page.getByTestId(`queue-action-${project.id}`),
-  );
-  await expect(page.getByTestId(`queue-project-${project.id}`)).toBeVisible();
-
-  await page.goto(`/projects/${project.id}/status`);
-  await expectNarrowPage(
-    page,
-    'Project Status',
-    page.getByTestId('project-status-edit-coordination'),
-  );
-
-  await page.goto(`/projects/${project.id}/interview`);
-  await expectNarrowPage(
-    page,
-    'Initial Intake',
-    page.getByTestId('publish-project-schema-button').locator('button'),
-  );
-
-  await page.goto(`/projects/${project.id}/readiness`);
-  await expectNarrowPage(
-    page,
-    'Estimation Readiness',
-    page.getByTestId('project-context-primary-action'),
-  );
-  await expect(
-    page.getByTestId('readiness-review-unavailable-no-initial-intake'),
-  ).toBeVisible();
-
-  await page.goto(`/projects/${project.id}/decision-review`);
-  await expectNarrowPage(
-    page,
-    'Decision Review',
-    page.getByTestId('save-decision-review-button').locator('button'),
-  );
-
-  await page.goto(`/projects/${project.id}/markdown`);
-  await expectNarrowPage(
-    page,
-    'Project Specification',
-    page.getByTestId('generate-markdown-button'),
-  );
-
-  await page.goto(`/projects/${project.id}/settings`);
-  await expectNarrowPage(
-    page,
-    'Project Settings',
-    page.getByTestId('save-project-basics').locator('button'),
-  );
-});
-
-async function expectNarrowPage(
-  page: Page,
-  heading: string,
-  reachableAction: Locator,
-): Promise<void> {
-  await expect(page.getByRole('heading', { name: heading, exact: true })).toBeVisible();
-  await reachableAction.scrollIntoViewIfNeeded();
-  await expect(reachableAction).toBeVisible();
-  await expect(reachableAction).toBeInViewport();
-
-  const viewportWidth = await page.evaluate(() => window.innerWidth);
-  const actionBox = await reachableAction.boundingBox();
-  expect(actionBox).not.toBeNull();
-  expect(actionBox!.x).toBeGreaterThanOrEqual(0);
-  expect(actionBox!.x + actionBox!.width).toBeLessThanOrEqual(viewportWidth);
-  expect(
-    await page.evaluate(
-      () => document.documentElement.scrollWidth <= document.documentElement.clientWidth,
-    ),
-  ).toBe(true);
-}

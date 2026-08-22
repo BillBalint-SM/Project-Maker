@@ -32,22 +32,6 @@ function Write-Step {
     Write-Host $Message
 }
 
-function Open-StepUrl {
-    [CmdletBinding()]
-    param(
-        [Parameter(Mandatory)]
-        [ValidatePattern('^https?://')]
-        [string]$Uri
-    )
-
-    try {
-        Start-Process -FilePath $Uri -ErrorAction Stop
-    }
-    catch {
-        throw "Could not open the browser URL. Open it manually: $Uri. Cause: $($_.Exception.Message)"
-    }
-}
-
 function Read-PublicValue {
     [CmdletBinding()]
     param(
@@ -126,60 +110,6 @@ function Set-DotEnvValue {
 
     [IO.File]::WriteAllLines($fullPath, $lines, [Text.UTF8Encoding]::new($false))
     Write-Host "Updated $Name in $fullPath" -ForegroundColor Green
-}
-
-function Assert-GitHubCli {
-    [CmdletBinding()]
-    param()
-
-    if (-not (Get-Command -Name 'gh' -ErrorAction SilentlyContinue)) {
-        throw 'GitHub CLI (gh) is required but was not found on PATH.'
-    }
-
-    & gh auth status 2>$null
-    if ($LASTEXITCODE -ne 0) {
-        throw 'GitHub CLI is not authenticated. Run gh auth login, then rerun the wizard.'
-    }
-}
-
-function Set-GitHubSecret {
-    [CmdletBinding()]
-    param(
-        [Parameter(Mandatory)]
-        [ValidatePattern('^[A-Z][A-Z0-9_]*$')]
-        [string]$Name,
-
-        [Parameter(Mandatory)]
-        [AllowEmptyString()]
-        [string]$Value
-    )
-
-    Assert-GitHubCli
-    $Value | & gh secret set $Name
-    if ($LASTEXITCODE -ne 0) {
-        throw "GitHub CLI failed to set secret '$Name'. The secret value was not displayed."
-    }
-    Write-Host "Updated GitHub secret $Name" -ForegroundColor Green
-}
-
-function Set-GitHubVariable {
-    [CmdletBinding()]
-    param(
-        [Parameter(Mandatory)]
-        [ValidatePattern('^[A-Z][A-Z0-9_]*$')]
-        [string]$Name,
-
-        [Parameter(Mandatory)]
-        [AllowEmptyString()]
-        [string]$Value
-    )
-
-    Assert-GitHubCli
-    & gh variable set $Name --body $Value
-    if ($LASTEXITCODE -ne 0) {
-        throw "GitHub CLI failed to set variable '$Name'."
-    }
-    Write-Host "Updated GitHub variable $Name" -ForegroundColor Green
 }
 
 function Confirm-Step {

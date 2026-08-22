@@ -49,10 +49,6 @@
     "./customer-response-runtime": {
       "types": "./dist/customer-response.d.ts",
       "default": "./dist/customer-response.js"
-    },
-    "./notifications-runtime": {
-      "types": "./dist/notifications.d.ts",
-      "default": "./dist/notifications.js"
     }
   },
   "files": ["dist", "playbooks"],

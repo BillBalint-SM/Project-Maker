@@ -52,7 +52,7 @@ focus, and one or two focal elements per view.
   `ui-monospace`, `Cascadia Code`, `Consolas`, monospace.
 - Page title: `clamp(2rem, 4.5vw, 3.5rem)`, tight leading and tracking.
 - Section title: 1.125–1.375rem, semibold.
-- UI body: 0.925–1rem; never below 1rem for mobile body content.
+- UI body: 0.925–1rem for desktop and laptop workspaces.
 - Metadata: 0.75–0.8125rem, uppercase only for short labels.
 - Numbers used for comparison use tabular figures.
 
@@ -88,7 +88,8 @@ Git, and diagnostic content use a dedicated inset code surface.
 
 Every flex/grid content child that may contain user data gets `min-width: 0`.
 Long names and identifiers wrap; truncation is allowed only when a visible full
-value path exists. Tables scroll or turn into record cards on narrow screens.
+value path exists. Tables preserve their information hierarchy with contained
+horizontal scrolling when needed in compact desktop and laptop windows.
 
 ## Navigation
 
@@ -127,6 +128,9 @@ Motion communicates navigation, selection, save state, or hierarchy.
   surface.
 
 ## Accessibility and performance guardrails
+
+The supported product surface is desktop and laptop browsers at 1024px wide or
+larger. Mobile-specific layouts and interaction patterns are out of scope.
 
 - Keyboard focus is always visible and never hidden under sticky UI.
 - Pointer targets are at least 24×24 CSS px; primary controls target 44px for comfortable desktop use.
