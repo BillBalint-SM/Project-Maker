@@ -10,7 +10,7 @@ import { NotificationsApiService } from './notifications/notifications-api.servi
 import { CustomerRepliesApiService } from './projects/customer-replies-api.service';
 
 describe('AppComponent', () => {
-  it('renders the accepted Hungarian global navigation and reply entry point', async () => {
+  it('renders the global navigation and Customer-reply entry point', async () => {
     await TestBed.configureTestingModule({
       imports: [AppComponent],
       providers: [
@@ -36,7 +36,7 @@ describe('AppComponent', () => {
           provide: NotificationsApiService,
           useValue: {
             current: signal(null),
-            load: () => of({ items: [], totalCount: 0, limit: 25 }),
+            load: () => of({ items: [], totalCount: 0 }),
           },
         },
       ],
@@ -53,15 +53,15 @@ describe('AppComponent', () => {
       fixture.nativeElement.querySelectorAll('[data-nav-label]') as NodeListOf<HTMLElement>,
     ).map((item) => item.textContent?.trim());
     expect(navigationLabels).toEqual([
-      'Projektportfólió',
+      'Portfolio',
       'Roadmap',
-      'Értesítések',
-      'Új projekt',
-      'Aktív munkasor',
-      'Tisztázandó tételek',
-      'Specifikációs sablonok',
-      'Git setupok',
-      'Kérdésbank',
+      'Notifications',
+      'New project',
+      'Active project queue',
+      'Discovery follow-ups',
+      'Specification templates',
+      'Git connections',
+      'Question Bank',
     ]);
 
     const replyEntry = fixture.nativeElement.querySelector(
@@ -72,7 +72,29 @@ describe('AppComponent', () => {
     );
     expect(replyEntry?.textContent).toContain('3');
     expect(replyEntry?.getAttribute('aria-label')).toBe(
-      '3 új ügyfélválasz megnyitása',
+      'Open 3 new Customer replies',
     );
+
+    const navigationToggle = fixture.nativeElement.querySelector(
+      '[data-testid="navigation-toggle"]',
+    ) as HTMLButtonElement | null;
+    const navigationPanel = fixture.nativeElement.querySelector(
+      '[data-testid="navigation-panel"]',
+    ) as HTMLElement | null;
+
+    expect(navigationToggle?.getAttribute('aria-expanded')).toBe('false');
+    expect(navigationPanel?.classList.contains('open')).toBe(false);
+
+    navigationToggle?.click();
+    fixture.detectChanges();
+
+    expect(navigationToggle?.getAttribute('aria-expanded')).toBe('true');
+    expect(navigationPanel?.classList.contains('open')).toBe(true);
+
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+    fixture.detectChanges();
+
+    expect(navigationToggle?.getAttribute('aria-expanded')).toBe('false');
+    expect(navigationPanel?.classList.contains('open')).toBe(false);
   });
 });

@@ -1,27 +1,27 @@
 <section class="public-response" aria-labelledby="public-response-title">
   <header>
-    <span class="brand-mark" aria-hidden="true">PM</span>
-    <div><strong>Project Maker</strong><small>Biztonságos ügyfél-pontosítás</small></div>
+    <img src="/project-maker-mark.svg" alt="" width="42" height="42" />
+    <div><strong>Project Maker</strong><small>Secure Customer clarification</small></div>
   </header>
 
   @if (loading()) {
-    <div class="state-panel" aria-live="polite"><p-progress-spinner ariaLabel="Válaszkérés betöltése" /><p>A válaszkérés betöltése…</p></div>
+    <div class="state-panel" aria-live="polite"><p-progress-spinner ariaLabel="Loading clarification request" /><p>Loading clarification request…</p></div>
   } @else if (submitted()) {
     <div class="state-panel success" role="status">
-      <h1>Köszönjük a választ!</h1>
-      <p>A válasz beérkezett a projektcsapathoz. Ezt az oldalt bezárhatod.</p>
+      <h1>Thank you for your response.</h1>
+      <p>Your response has been received by the project team. You may close this page.</p>
     </div>
   } @else if (error() && !request()) {
     <div class="state-panel" role="alert">
-      <h1>A válaszkérés nem érhető el</h1>
-      <p>A hivatkozás lejárt, visszavonták vagy már felhasználták. Kérj új hivatkozást a projekt kapcsolattartójától.</p>
+      <h1>This clarification request is unavailable</h1>
+      <p>The link has expired, been revoked, or has already been used. Request a new link from your Project contact.</p>
     </div>
   } @else if (request(); as current) {
     <main>
       <span class="eyebrow">{{ current.projectName }}</span>
-      <h1 id="public-response-title">Pontosítás a projekthez</h1>
-      <p>Kérjük, válaszold meg az alábbi rövid kérdéseket. A válaszok csak egyben küldhetők el.</p>
-      <p class="expiry">A hivatkozás eddig használható: {{ current.expiresAt | date: 'yyyy. MM. dd. HH:mm' }}</p>
+      <h1 id="public-response-title">Project clarification</h1>
+      <p>Please answer the short questions below. Responses must be submitted together.</p>
+      <p class="expiry">This link is valid until {{ current.expiresAt | date: 'dd MMM yyyy, HH:mm' }}</p>
       <form (submit)="$event.preventDefault(); submit()">
         @for (prompt of current.prompts; track prompt.id) {
           <label>
@@ -31,7 +31,7 @@
           </label>
         }
         @if (error()) { <p-message severity="error" role="alert">{{ error() }}</p-message> }
-        <p-button type="submit" label="Válaszok elküldése" [loading]="submitting()" [disabled]="!canSubmit() || submitting()" data-testid="submit-customer-response" />
+        <p-button type="submit" label="Submit responses" [loading]="submitting()" [disabled]="!canSubmit() || submitting()" data-testid="submit-customer-response" />
       </form>
     </main>
   }

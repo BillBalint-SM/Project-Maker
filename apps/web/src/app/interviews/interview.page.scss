@@ -17,7 +17,7 @@
 .interview-grid {
   display: grid;
   gap: 1.25rem;
-  grid-template-columns: minmax(18rem, 0.8fr) minmax(28rem, 1.2fr);
+  grid-template-columns: minmax(19rem, 0.74fr) minmax(0, 1.26fr);
 }
 
 .question-selection {
@@ -36,6 +36,7 @@
 }
 
 .selection-row {
+  background: color-mix(in oklch, var(--pm-surface-2) 56%, transparent);
   align-items: flex-start;
   border: 1px solid var(--p-content-border-color);
   border-radius: 0.65rem;
@@ -46,8 +47,9 @@
 }
 
 .selection-row:has(input:checked) {
-  background: color-mix(in srgb, var(--p-primary-color) 7%, transparent);
-  border-color: color-mix(in srgb, var(--p-primary-color) 55%, var(--p-content-border-color));
+  background: linear-gradient(125deg, color-mix(in oklch, var(--pm-blue) 13%, var(--pm-surface-2)), color-mix(in oklch, var(--pm-magenta) 7%, var(--pm-surface-1)));
+  border-color: var(--pm-blue);
+  box-shadow: inset 3px 0 0 var(--pm-magenta), var(--pm-glow-blue);
 }
 
 .selection-copy {
@@ -114,8 +116,8 @@
 }
 
 .resume-state {
-  background: color-mix(in srgb, var(--p-primary-color) 8%, transparent);
-  border: 1px solid color-mix(in srgb, var(--p-primary-color) 25%, var(--p-content-border-color));
+  background: color-mix(in oklch, var(--pm-blue) 8%, var(--pm-surface-2));
+  border: 1px solid color-mix(in oklch, var(--pm-blue) 28%, var(--pm-surface-3));
   border-radius: 0.8rem;
   margin-bottom: 1rem;
   padding: 1rem;
@@ -144,8 +146,9 @@
 }
 
 .round-question {
-  border: 1px solid var(--p-content-border-color);
-  border-radius: 0.8rem;
+  background: color-mix(in oklch, var(--pm-surface-2) 62%, transparent);
+  border: 1px solid var(--pm-border);
+  border-radius: var(--pm-radius-md);
   padding: 1rem;
 }
 
@@ -222,7 +225,7 @@
 }
 
 .answer-save-state--error {
-  color: var(--p-red-600, #b91c1c);
+  color: var(--pm-danger);
 }
 
 .assessment-block {
@@ -255,7 +258,7 @@
 }
 
 .assessment-save-state--error {
-  color: var(--p-red-600, #b91c1c);
+  color: var(--pm-danger);
 }
 
 .complete-row {
@@ -270,7 +273,7 @@
   padding: 1rem;
 }
 
-@media (max-width: 62rem) {
+@media (max-width: 75rem) {
   .interview-grid {
     grid-template-columns: 1fr;
   }

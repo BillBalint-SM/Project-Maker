@@ -13,17 +13,21 @@ const screenshotDirectory = path.resolve(
 );
 
 const globalNavigationLabels = [
-  'Projektportfólió',
-  'Új projekt',
-  'Aktív munkasor',
-  'Tisztázandó tételek',
-  'Specifikációs sablonok',
-  'Kérdésbank',
+  'Portfolio',
+  'Roadmap',
+  'Notifications',
+  'New project',
+  'Active project queue',
+  'Discovery follow-ups',
+  'Specification templates',
+  'Git connections',
+  'Question Bank',
 ] as const;
 
 test('exposes the exact global navigation and sends the reply count to the filtered work list', async ({
   page,
 }) => {
+  await page.setViewportSize({ width: 1280, height: 720 });
   await page.route('**/api/customer-correspondences/summary', async (route) => {
     await route.fulfill({
       contentType: 'application/json',
@@ -49,7 +53,7 @@ test('exposes the exact global navigation and sends the reply count to the filte
 
   await expect(page.locator('[data-nav-label]')).toHaveText(globalNavigationLabels);
   const replyCount = page.getByTestId('global-customer-reply-count');
-  await expect(replyCount).toHaveAccessibleName('3 új ügyfélválasz megnyitása');
+  await expect(replyCount).toHaveAccessibleName('Open 3 new Customer replies');
   if (captureScreenshots) {
     await expect(page.getByText('Weboldal megújítás', { exact: true })).toBeVisible();
     await page.screenshot({
@@ -57,23 +61,36 @@ test('exposes the exact global navigation and sends the reply count to the filte
       fullPage: true,
     });
   }
-  const mainNavigation = page.getByRole('navigation', { name: 'Fő navigáció' });
+  const mainNavigation = page.getByRole('navigation', { name: 'Main navigation' });
+  const navigationToggle = page.getByTestId('navigation-toggle');
+  await expect(navigationToggle).toHaveAttribute('aria-expanded', 'false');
+  await tabTo(
+    page,
+    page.getByRole('link', { name: 'Project Maker portfolio overview' }),
+  );
+  await tabTo(page, navigationToggle);
+  await page.keyboard.press('Enter');
+  await expect(navigationToggle).toHaveAttribute('aria-expanded', 'true');
+  await expect(mainNavigation).toBeVisible();
+
   const focusSequence = [
-    page.getByRole('link', { name: 'Project Maker projektportfólió' }),
-    mainNavigation.getByRole('link', { name: 'Projektportfólió', exact: true }),
-    mainNavigation.getByRole('link', { name: 'Új projekt', exact: true }),
+    mainNavigation.getByRole('link', { name: 'Portfolio', exact: true }),
+    mainNavigation.getByRole('link', { name: 'Roadmap', exact: true }),
+    mainNavigation.getByRole('link', { name: 'Notifications', exact: true }),
+    mainNavigation.getByRole('link', { name: 'New project', exact: true }),
     mainNavigation.getByRole('link', {
-      name: 'Aktív munkasor',
+      name: 'Active project queue',
       exact: true,
     }),
     replyCount,
-    mainNavigation.getByRole('link', { name: 'Tisztázandó tételek', exact: true }),
+    mainNavigation.getByRole('link', { name: 'Discovery follow-ups', exact: true }),
     mainNavigation.getByRole('link', {
-      name: 'Specifikációs sablonok',
+      name: 'Specification templates',
       exact: true,
     }),
+    mainNavigation.getByRole('link', { name: 'Git connections', exact: true }),
     mainNavigation.getByRole('link', {
-      name: 'Kérdésbank',
+      name: 'Question Bank',
       exact: true,
     }),
     page.getByTestId('active-project-queue-link'),
@@ -81,13 +98,13 @@ test('exposes the exact global navigation and sends the reply count to the filte
   for (const target of focusSequence) {
     await tabTo(page, target);
   }
-  for (let step = 0; step < 4; step += 1) {
+  for (let step = 0; step < 7; step += 1) {
     await page.keyboard.press('Shift+Tab');
   }
   await expectVisibleKeyboardFocus(replyCount);
   await page.keyboard.press('Enter');
   await expect(page).toHaveURL('/projects/active?urgency=CUSTOMER_REPLY');
-  await expect(page.getByRole('checkbox', { name: 'Új ügyfélválasz' })).toBeChecked();
+  await expect(page.getByRole('checkbox', { name: 'New Customer reply' })).toBeChecked();
 });
 
 test('recovers the global follow-up list, reflows at 390 px, and returns to its exact context', async ({
@@ -135,7 +152,7 @@ test('recovers the global follow-up list, reflows at 390 px, and returns to its 
   await page.goto('/follow-ups');
 
   await expect(
-    page.getByRole('heading', { name: 'A tisztázandó tételek most nem tölthetők be' }),
+    page.getByRole('heading', { name: 'Discovery follow-ups could not be loaded' }),
   ).toBeVisible();
   const retry = page.getByTestId('follow-ups-retry');
   await tabTo(page, retry);
@@ -143,7 +160,7 @@ test('recovers the global follow-up list, reflows at 390 px, and returns to its 
 
   const row = page.getByTestId('open-follow-up-row').filter({ hasText: question });
   await expect(row).toBeVisible();
-  await expect(row.getByRole('term')).toHaveText(['Felelős', 'Határidő', 'Következő lépés']);
+  await expect(row.getByRole('term')).toHaveText(['Owner', 'Due date', 'Next action']);
   await expect(row).toContainText(projectName);
   expect(
     await page.evaluate(
@@ -164,7 +181,7 @@ test('recovers the global follow-up list, reflows at 390 px, and returns to its 
     `/projects/${project.id}/readiness?returnTo=%2Ffollow-ups#discovery-follow-ups`,
   );
   const returnLink = page.getByTestId('project-context-return');
-  await expect(returnLink).toContainText('Vissza a tisztázandó tételekhez');
+  await expect(returnLink).toContainText('Back to Discovery Follow-ups');
   await tabTo(page, returnLink);
   await page.keyboard.press('Enter');
   await expect(page).toHaveURL('/follow-ups');
@@ -191,14 +208,14 @@ test('keeps every Project journey context usable at 390 px', async ({ page }) =>
   await page.goto('/');
   await expectNarrowPage(
     page,
-    'Projektportfólió',
+    'Portfolio Overview',
     page.getByTestId('active-project-queue-link'),
   );
 
   await page.goto(`/projects/active?q=${encodeURIComponent(uniquePart)}`);
   await expectNarrowPage(
     page,
-    'Aktív munkasor',
+    'Active Project Queue',
     page.getByTestId(`queue-action-${project.id}`),
   );
   await expect(page.getByTestId(`queue-project-${project.id}`)).toBeVisible();
@@ -206,21 +223,21 @@ test('keeps every Project journey context usable at 390 px', async ({ page }) =>
   await page.goto(`/projects/${project.id}/status`);
   await expectNarrowPage(
     page,
-    'Projektállapot',
+    'Project Status',
     page.getByTestId('project-status-edit-coordination'),
   );
 
   await page.goto(`/projects/${project.id}/interview`);
   await expectNarrowPage(
     page,
-    'Felmérés',
+    'Initial Intake',
     page.getByTestId('publish-project-schema-button').locator('button'),
   );
 
   await page.goto(`/projects/${project.id}/readiness`);
   await expectNarrowPage(
     page,
-    'Becslési felkészültség',
+    'Estimation Readiness',
     page.getByTestId('project-context-primary-action'),
   );
   await expect(
@@ -230,21 +247,21 @@ test('keeps every Project journey context usable at 390 px', async ({ page }) =>
   await page.goto(`/projects/${project.id}/decision-review`);
   await expectNarrowPage(
     page,
-    'Döntési értékelés',
+    'Decision Review',
     page.getByTestId('save-decision-review-button').locator('button'),
   );
 
   await page.goto(`/projects/${project.id}/markdown`);
   await expectNarrowPage(
     page,
-    'Projekt-specifikáció',
+    'Project Specification',
     page.getByTestId('generate-markdown-button'),
   );
 
   await page.goto(`/projects/${project.id}/settings`);
   await expectNarrowPage(
     page,
-    'Projektbeállítások',
+    'Project Settings',
     page.getByTestId('save-project-basics').locator('button'),
   );
 });

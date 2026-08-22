@@ -1,5 +1,11 @@
 <section class="auth-page" aria-labelledby="auth-title">
-  <div class="auth-brand" aria-hidden="true">PM</div>
+  <div class="auth-brand">
+    <img src="/project-maker-mark.svg" alt="" width="112" height="112" />
+    <span class="eyebrow">Project intelligence</span>
+    <strong>Turn uncertainty into an executable project.</strong>
+    <p>Structure discovery, decisions, specifications, and delivery handoffs in one focused workspace.</p>
+    <small>DISCOVERY <i></i> DECISIONS <i></i> DELIVERY</small>
+  </div>
   <p-card styleClass="auth-card">
     <ng-template #title>
       <span class="eyebrow">Project Maker</span>
@@ -7,24 +13,24 @@
     </ng-template>
     <ng-template #subtitle>{{ description() }}</ng-template>
 
-    <div class="mode-switch" aria-label="Fiókművelet">
+    <div class="mode-switch" aria-label="Account action">
       <button
         type="button"
         [class.active]="mode() === 'login'"
         [attr.aria-pressed]="mode() === 'login'"
         (click)="selectMode('login')"
-      >Bejelentkezés</button>
+      >Sign in</button>
       <button
         type="button"
         [class.active]="mode() === 'signup'"
         [attr.aria-pressed]="mode() === 'signup'"
         (click)="selectMode('signup')"
-      >Regisztráció</button>
+      >Create account</button>
     </div>
 
     <form [formGroup]="authForm" (ngSubmit)="submit()" novalidate>
       <div class="field">
-        <label for="auth-email">E-mail-cím</label>
+        <label for="auth-email">Email address</label>
         <input
           pInputText
           id="auth-email"
@@ -37,12 +43,12 @@
           [attr.aria-describedby]="authForm.controls.email.invalid && authForm.controls.email.touched ? 'auth-email-error' : null"
         />
         @if (authForm.controls.email.invalid && authForm.controls.email.touched) {
-          <small id="auth-email-error" class="field-error">Adj meg egy érvényes e-mail-címet.</small>
+          <small id="auth-email-error" class="field-error">Enter a valid email address.</small>
         }
       </div>
 
       <div class="field">
-        <label for="auth-password">Jelszó</label>
+        <label for="auth-password">Password</label>
         <input
           pInputText
           id="auth-password"
@@ -54,9 +60,9 @@
           [attr.aria-invalid]="authForm.controls.password.invalid && authForm.controls.password.touched"
           [attr.aria-describedby]="authForm.controls.password.invalid && authForm.controls.password.touched ? 'auth-password-error' : 'auth-password-help'"
         />
-        <small id="auth-password-help">Legalább 12 karakter.</small>
+        <small id="auth-password-help">At least 12 characters.</small>
         @if (authForm.controls.password.invalid && authForm.controls.password.touched) {
-          <small id="auth-password-error" class="field-error">A jelszó legalább 12, legfeljebb 128 karakter legyen.</small>
+          <small id="auth-password-error" class="field-error">Password must be 12–128 characters.</small>
         }
       </div>
 
@@ -74,7 +80,7 @@
     </form>
 
     <button class="restore-link" type="button" (click)="selectMode('restore')">
-      Letiltott fiók visszaállítása
+      Restore deactivated account
     </button>
   </p-card>
 </section>

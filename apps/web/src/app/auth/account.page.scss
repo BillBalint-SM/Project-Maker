@@ -28,10 +28,10 @@
 }
 
 .connection-command textarea {
-  background: var(--pm-deep-navy);
-  border: 0;
-  border-radius: 0.65rem;
-  color: white;
+  background: var(--pm-canvas-deep);
+  border: 1px solid var(--pm-border);
+  border-radius: var(--pm-radius-sm);
+  color: var(--pm-text);
   font: 0.82rem/1.5 ui-monospace, SFMono-Regular, Consolas, monospace;
   padding: 0.85rem;
   resize: vertical;
@@ -58,13 +58,15 @@ form {
 }
 
 .account-message.error {
-  background: var(--p-red-50);
-  color: var(--p-red-700);
+  background: color-mix(in oklch, var(--pm-danger) 12%, var(--pm-surface-2));
+  border: 1px solid color-mix(in oklch, var(--pm-danger) 36%, var(--pm-surface-3));
+  color: color-mix(in oklch, var(--pm-danger) 72%, var(--pm-text));
 }
 
 .account-message.success {
-  background: var(--p-green-50);
-  color: var(--p-green-700);
+  background: color-mix(in oklch, var(--pm-success) 11%, var(--pm-surface-2));
+  border: 1px solid color-mix(in oklch, var(--pm-success) 34%, var(--pm-surface-3));
+  color: color-mix(in oklch, var(--pm-success) 72%, var(--pm-text));
 }
 
 .deactivate-card p {
