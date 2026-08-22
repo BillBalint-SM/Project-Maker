@@ -734,10 +734,13 @@ A csatolmány nem általános dokumentumtár. Két külön típus használható:
 - a `Projekt munka-csatolmány` egy projekten belül egy Kezdeti felmérés
   ellenőrzőlista-kérdéshez vagy egy tisztázandó tételhez tartozik.
 
-Projektmunka-csatolmány feltöltésekor csak PDF, PNG, JPEG és egyszerű UTF-8 TXT
-fájl fogadható el. Az alapértelmezett felső határ 50 MiB; a telepítés ezt
-alacsonyabb értékre állíthatja. A fájlnév, kiterjesztés és tartalom nem kerül
-szabadon értelmezésre: a letöltés mindig fájlletöltésként indul.
+Projektmunka-csatolmányként PDF; Word-, RTF- és OpenDocument-szöveg (`.doc`,
+`.docx`, `.rtf`, `.odt`); Excel-, CSV- és OpenDocument-táblázat (`.xls`, `.xlsx`,
+`.csv`, `.ods`); PowerPoint- és OpenDocument-bemutató (`.ppt`, `.pptx`, `.odp`);
+UTF-8 TXT és Markdown (`.txt`, `.md`); PNG és JPEG; valamint Microsoft Project
+és Visio (`.mpp`, `.vsdx`) tölthető fel. Az alapértelmezett felső határ 50 MiB;
+a telepítés ezt alacsonyabb értékre állíthatja. A generikus archívumok és futtatható
+fájlok nem engedélyezettek, a letöltés pedig mindig fájlletöltésként indul.
 
 Archivált projektben új munka-csatolmány feltöltése vagy eltávolítása nem
 lehetséges, de a megőrzött munka-csatolmány letölthető marad. A Question Bank

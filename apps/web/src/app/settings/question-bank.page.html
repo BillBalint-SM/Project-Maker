@@ -306,7 +306,7 @@
                   Fájl
                   <input
                     type="file"
-                    accept=".pdf,.png,.jpg,.jpeg,.txt"
+                    accept=".pdf,.doc,.docx,.rtf,.odt,.xls,.xlsx,.csv,.ods,.ppt,.pptx,.odp,.txt,.md,.png,.jpg,.jpeg,.mpp,.vsdx"
                     [disabled]="referenceSavingId() !== null"
                     [attr.data-testid]="'question-reference-file-' + question.id"
                     (change)="chooseReferenceFile(question.id, $event)"

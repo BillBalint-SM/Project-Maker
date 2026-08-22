@@ -303,10 +303,12 @@ confirmation tool. That confirmation tool also carries Claude Code's native
 `ATTACHMENT_MAX_MIB` is an Operator deployment value. It defaults to 50 MiB and
 can only be reduced. Nginx accepts a 51 MiB API request so the 50 MiB hard file
 maximum plus multipart overhead can reach the API; the API enforces the exact
-configured file cap. Only PDF, PNG, JPEG, and inert UTF-8 TXT content are
-accepted. The feature uses one PostgreSQL-backed durable path and does not
-provision a scanner, object store, preview service, OCR, or a separate recovery
-process.
+configured file cap. Accepted files are PDF; Word, RTF, and OpenDocument text;
+Excel, CSV, and OpenDocument spreadsheets; PowerPoint and OpenDocument
+presentations; UTF-8 TXT and Markdown; PNG and JPEG; and Microsoft Project and
+Visio. Generic archives, executables, HTML, and SVG remain rejected. The feature
+uses one PostgreSQL-backed durable path and does not provision a parser, scanner,
+object store, preview service, OCR, or a separate recovery process.
 
 Question Bank reference files belong to the Operator organization's immutable
 Question Bank question revision. Published Question Bank versions and Project
