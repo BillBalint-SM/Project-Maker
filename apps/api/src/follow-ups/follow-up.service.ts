@@ -538,10 +538,19 @@ export class CustomerFollowUpService implements OnModuleInit, OnModuleDestroy {
         );
         const currentReferenceId = reference?.id ?? null;
         const currentReferenceVersion = reference?.version ?? null;
+        const storedOutbound = latestAttempt.outboundCommunicationId
+          ? await manager
+              .getRepository(CustomerOutboundCommunicationEntity)
+              .findOneBy({ id: latestAttempt.outboundCommunicationId })
+          : null;
+        const storedRecipient =
+          storedOutbound?.recipientAddress ?? latestAttempt.legacyRecipientEmail;
         if (
           state.draftVersion !== latestAttempt.draftVersion ||
           currentReferenceId !== latestAttempt.referencedFollowUpId ||
-          currentReferenceVersion !== latestAttempt.referencedFollowUpVersion
+          currentReferenceVersion !== latestAttempt.referencedFollowUpVersion ||
+          (storedRecipient !== null &&
+            rendered.recipientEmail !== storedRecipient)
         ) {
           throw new ConflictException({
             code: 'FOLLOW_UP_RETRY_STALE',
@@ -561,11 +570,7 @@ export class CustomerFollowUpService implements OnModuleInit, OnModuleDestroy {
           });
         }
         const outbound = latestAttempt.outboundCommunicationId
-          ? await manager
-              .getRepository(CustomerOutboundCommunicationEntity)
-              .findOneBy({
-                id: latestAttempt.outboundCommunicationId,
-              })
+          ? storedOutbound
           : await createPingCorrespondence(
               manager,
               this.configService,
