@@ -438,6 +438,49 @@ describe('Customer follow-up ping draft and manual delivery', () => {
     });
   });
 
+  it('rejects a retry after the Customer contact email changes', async () => {
+    const projectId = await createProject(app, 'changed-recipient-retry');
+    await request(app.getHttpServer())
+      .patch(`/projects/${projectId}/follow-up/draft`)
+      .send({
+        messageDraft: 'Csak az ellenőrzött címzettnek küldhető üzenet',
+        referencedFollowUpId: null,
+        expectedVersion: 1,
+      })
+      .expect(200);
+    const preview = await request(app.getHttpServer())
+      .post(`/projects/${projectId}/follow-up/ping/preview`)
+      .send({ expectedVersion: 2 })
+      .expect(201);
+
+    deliveryMode = 'FAILED';
+    await request(app.getHttpServer())
+      .post(`/projects/${projectId}/follow-up/ping`)
+      .send({ previewToken: preview.body.previewToken })
+      .expect(503);
+    const failed = await request(app.getHttpServer())
+      .get(`/projects/${projectId}/follow-up`)
+      .expect(200);
+
+    await dataSource.query(
+      'UPDATE projects SET customer_contact_email = $2 WHERE id = $1',
+      [projectId, 'changed-retry-recipient@example.test'],
+    );
+    deliveryMode = 'SUCCESS';
+    const retry = await request(app.getHttpServer())
+      .post(`/projects/${projectId}/follow-up/ping/retry`)
+      .send({ attemptId: failed.body.latestManualAttempt.attemptId })
+      .expect(409);
+
+    assert.equal(retry.body.code, 'FOLLOW_UP_RETRY_STALE');
+    assert.equal(delivered.length, 0);
+    assert.equal(submitted.length, 1);
+    const unchanged = await request(app.getHttpServer())
+      .get(`/projects/${projectId}/follow-up`)
+      .expect(200);
+    assert.equal(unchanged.body.latestManualAttempt.state, 'FAILED');
+  });
+
   it('creates durable outbound identity when retrying a pre-0018 failed attempt', async () => {
     const projectId = await createProject(app, 'legacy-failed-retry');
     await request(app.getHttpServer())
