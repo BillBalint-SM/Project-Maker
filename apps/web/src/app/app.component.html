@@ -77,6 +77,12 @@
                   (click)="closeNavigation()"
                 >{{ notificationCount() }}</a>
               }
+              @if (notificationLoadError(); as error) {
+                <div class="shell-load-error" role="alert" data-testid="notification-load-error">
+                  <span>{{ error }}</span>
+                  <button type="button" (click)="retryNotifications()" data-testid="retry-notifications">Retry Notifications</button>
+                </div>
+              }
             </li>
             <li>
               <a
@@ -104,6 +110,12 @@
                   [attr.aria-label]="'Open ' + newReplyCount() + ' new Customer replies'"
                   (click)="closeNavigation()"
                 >{{ newReplyCount() }}</a>
+              }
+              @if (customerReplyLoadError(); as error) {
+                <div class="shell-load-error" role="alert" data-testid="customer-reply-load-error">
+                  <span>{{ error }}</span>
+                  <button type="button" (click)="retryCustomerReplySummary()" data-testid="retry-customer-reply-summary">Retry Customer-reply summary</button>
+                </div>
               }
             </li>
             <li>
@@ -155,8 +167,13 @@
             (click)="closeNavigation()"
           >{{ user.email }}</a>
           <button type="button" [disabled]="loggingOut()" (click)="logout()">
-            {{ loggingOut() ? 'Signing out…' : 'Sign out' }}
+            {{ loggingOut() ? 'Signing out…' : (logoutError() ? 'Retry sign out' : 'Sign out') }}
           </button>
+          @if (logoutError(); as error) {
+            <div class="logout-error" role="alert" data-testid="logout-error">
+              {{ error }}
+            </div>
+          }
         </div>
       </div>
     </div>

@@ -9,17 +9,15 @@ import type {
   SaveDeliveryPackageInput,
   SaveGitSetupInput,
 } from '@project-maker/contracts';
-import { catchError, Observable, of, throwError } from 'rxjs';
+import { catchError, Observable, throwError } from 'rxjs';
 
 @Injectable({ providedIn: 'root' })
 export class DeliveryApiService {
   private readonly http = inject(HttpClient);
 
   loadPackage(projectId: string): Observable<DeliveryPackage | null> {
-    return this.http.get<DeliveryPackage>(`${projectBase(projectId)}/delivery-package`).pipe(
-      catchError((error: unknown) => error instanceof HttpErrorResponse && error.status === 404
-        ? of(null)
-        : fail(error, 'load the Delivery Package')),
+    return this.http.get<DeliveryPackage | null>(`${projectBase(projectId)}/delivery-package`).pipe(
+      catchError((error: unknown) => fail(error, 'load the Delivery Package')),
     );
   }
 
@@ -43,7 +41,7 @@ export class DeliveryApiService {
 
   updateGitSetup(id: string, input: SaveGitSetupInput): Observable<GitSetup> {
     return this.http.put<GitSetup>(`/api/git-setups/${encodeURIComponent(id)}`, input).pipe(
-      catchError((error: unknown) => fail(error, 'menteni a Git setupot')),
+      catchError((error: unknown) => fail(error, 'save the Git setup')),
     );
   }
 

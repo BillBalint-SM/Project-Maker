@@ -7,7 +7,7 @@ Budget note: the work spans independent Angular, runtime, database, and document
 
 - Interfaces: existing HTTP, Angular, database, Customer-mail, Specification, queue, navigation, and MCP contracts remain externally unchanged.
 - Data ownership: Customer-mail history, correlation identity, audit, Customer inbound messages, Specifications, and Git handoff data must not be lost; schema changes require an explicit forward migration.
-- Naming and conventions: the vocabulary in `CONTEXT.md`, Hungarian user-facing copy, Nest/Angular repository conventions, and the pnpm 11.20.0 toolchain are authoritative.
+- Naming and conventions: the vocabulary in `CONTEXT.md`, professional-English user-facing copy, Nest/Angular repository conventions, and the pnpm 11.20.0 toolchain are authoritative.
 - Error convention: diagnostics never reach the UI; the shared HTTP mapper handles only generic failures, while feature-specific 409/recovery copy remains local.
 - Concurrency: concurrent leaves own disjoint files. Persistence leaves that depend on each other run sequentially.
 - Verification: each leaf uses focused evidence only; full `pnpm verify` and the container smoke run at root integration.
@@ -116,3 +116,114 @@ recorded base; actionlint and all referenced action tags pass; the intended
 91-path worktree contains no token-shaped added content or generated test
 output; `git diff --check` passes. Only the separately authorized remote
 push/PR/merge gate remains open.
+
+## UX audit remediation — `UX-AUDIT-001` through `UX-AUDIT-006`
+
+Depth: tree 4   Mode: orchestrated
+Budget note: six proven runtime/UX defects across the Angular shell, Project
+workflows, two HTTP contracts, product copy, and authoritative documentation.
+
+### Contract
+
+- Interfaces:
+  - Customer-reply and Notification shell loads have independent state and an
+    explicit retry; no polling or real-time channel is introduced.
+  - Logout failure keeps the authenticated session, reports a controlled safe
+    English message, and permits one deliberate retry.
+  - Follow-up Settings links to
+    `/projects/:projectId/customer-correspondences#customer-communication` and
+    cannot enable automation before a non-empty draft exists; the API guard
+    remains authoritative.
+  - Formal Decision renders mutation controls only after Project state is
+    proven active; loading/error/archived states fail closed and retain the API
+    archive guard.
+  - `GET` of an optional Question Schema or Delivery Package returns `200` with
+    JSON `null` for a known Project with no resource. A missing Project remains
+    `404`; export, handoff, and mutation prerequisites remain strict.
+  - Employee-facing runtime copy uses professional software-development and
+    project-management English. Current operating documentation quotes the
+    same English UI labels; explanatory prose may remain in its intended
+    reader language. Stored legacy values, user-authored content, and immutable
+    history are unchanged.
+- Data ownership: no persistence migration and no new role, permission,
+  credential, retry daemon, or cross-feature state manager.
+- Naming and errors: Angular signals and existing feature-local services;
+  accessible `role="alert"` recovery; safe English errors; command-local
+  pending state per ADR-0007.
+- Shared surfaces: the driver owns `PLAN.md`, branch/root gate files, the audit
+  backlog status, root integration, and final documentation reconciliation in
+  `PLAN.md`; each leaf owns only its named leaf gate plus its disjoint
+  application paths.
+
+### Leaf queue
+
+| ID | Deliverable | Owns | Needs | Tier | Gates |
+| --- | --- | --- | --- | --- | --- |
+| 2.1.1 | `UX-AUDIT-001/002`: recoverable shell attention loads and visible logout failure | `apps/web/src/app/app.component.{ts,html,scss,spec.ts}` | none | default | `gates/ux-audit-shell.md` |
+| 2.1.2 | `UX-AUDIT-003/004`: follow-up prerequisite path and fail-closed Formal Decision state | `apps/web/src/app/projects/customer-follow-up/**`, `apps/web/src/app/projects/decision-review.page.*` | none | default | `gates/ux-audit-project-safety.md` |
+| 2.2.1 | `UX-AUDIT-005/006`: successful optional-resource absence plus complete professional English | Question Schema and Delivery Package API/controller/tests; related web adapters/tests; Delivery/Discovery copy; `README.md`, `CONTEXT.md`, `docs/roadmap.md`, `docs/user-guide.md`, `docs/adr/0007-command-local-pending-state.md` | none | default | `gates/ux-audit-contract-english.md` |
+
+### Tree
+
+- 2 Resolve `UX-AUDIT-001` through `UX-AUDIT-006` ........ `gates/ux-audit-root.md`
+  - 2.1 Runtime recovery and workflow safety .............. `gates/ux-audit-node-runtime.md`
+    - 2.1.1 Shell recovery and logout ...................... `gates/ux-audit-shell.md`
+    - 2.1.2 Project workflow safety ........................ `gates/ux-audit-project-safety.md`
+  - 2.2 Contract and language correctness ................. `gates/ux-audit-node-quality.md`
+    - 2.2.1 Optional-resource contract and English ......... `gates/ux-audit-contract-english.md`
+
+### Dispatch schedule
+
+- Initial ready set: 2.1.1, 2.1.2, and 2.2.1.
+- Parent-force each returned leaf immediately against its own gate file.
+- After 2.1.1 and 2.1.2 are parent-verified: run the runtime branch gates.
+- After 2.2.1 is parent-verified: run the contract/language branch gates.
+- After both branches pass: reconcile the audit ledger, run root gates once,
+  then perform one independent final code review.
+
+### UX audit remediation status log
+
+- 2026-08-22: contract, disjoint ownership, TDD seams, leaf gates, branch
+  gates, and root completion gates recorded before implementation.
+- 2026-08-22: leaves 2.1.1, 2.1.2, and 2.2.1 dispatched concurrently with
+  disjoint file ownership and red-first gate requirements.
+- 2026-08-22: leaf 2.1.2 parent-verified — Follow-up Settings enforces and
+  links the saved-draft prerequisite; Formal Decision fails closed across
+  loading/error/archived state; focused tests and all 6/6 leaf gates pass.
+- 2026-08-22: leaf 2.1.1 parent-verified — independent shell resource recovery,
+  stale-user suppression, and visible retryable logout failure pass all 6/6
+  leaf gates.
+- 2026-08-22: leaf 2.2.1 parent-verified — known-empty optional reads return
+  200/null while unknown Projects remain 404; confirmed mixed-language copy
+  and owned documentation are aligned; focused tests and all 8/8 leaf gates
+  pass. A full reused-database test exposed unrelated reference-file fixture
+  accumulation, so the leaf gate remains correctly scoped to the two new
+  nullable cases; full adjacent files are reserved for a fresh branch database.
+- 2026-08-22: adversarial composition reopened two incomplete leaves before
+  branch validation. Shell cancellation now preserves later feature-local
+  badge updates and keeps failed-logout recovery visible; the missed Delivery
+  side-panel title and all explicitly identified current-language declarations
+  are corrected. Formal Decision coverage now proves retry-to-archived and the
+  proven-active creation control path.
+- 2026-08-22: all 20 leaf gates were parent-forced after the corrections. The
+  runtime branch passed 5/5 gates, including the full Angular component suite
+  and production build. The contract/language branch passed 5/5 gates,
+  including both complete adjacent API E2E files on a freshly migrated
+  database.
+- 2026-08-22: first-pass independent Standards/Spec review reopened final
+  closure for unsafe logout diagnostics and stale documentation labels. A
+  follow-up adversarial shell review also found that feature-local requests
+  from a previous session could race the next user's badges. Red tests proved
+  both cross-session races; badge publications and Notification snapshots are
+  now session-scoped, while the shell retains the last valid current-user
+  count and ignores stale updates. Final review and re-measurement were still
+  open at this checkpoint.
+- 2026-08-22: final adversarial review reopened `UX-AUDIT-004` for overlapping
+  Formal Decision availability retries. A red out-of-order detector proved
+  that an older active result could replace a newer archived result. The page
+  now accepts only the latest availability request, keeping the UI fail-closed.
+- 2026-08-22: independent adversarial and specification re-reviews of the
+  complete `4632fe5...07c875b` range found no unresolved P1/P2. Final
+  measurement: 20/20 leaf gates, 10/10 branch gates, 31/31 web test files,
+  104/104 component tests, 5/5 adjacent API tests, 4/4 browser recoveries, and
+  9/9 root gates.

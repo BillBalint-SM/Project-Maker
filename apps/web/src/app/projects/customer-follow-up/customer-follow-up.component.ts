@@ -89,6 +89,7 @@ export class CustomerFollowUpComponent implements OnInit {
       && attemptState !== 'SENDING'
       && attemptState !== 'UNKNOWN';
   });
+  readonly hasSavedDraft = computed(() => Boolean(this.state()?.messageDraft?.trim()));
   private previewFocusReturn: HTMLElement | null = null;
   private retryFocusReturn: HTMLElement | null = null;
   private recoveredPendingRefreshHandle: ReturnType<typeof setTimeout> | null = null;
@@ -171,7 +172,12 @@ export class CustomerFollowUpComponent implements OnInit {
 
   saveSettings(): void {
     this.settingsForm.markAllAsTouched();
-    if (this.settingsForm.invalid || this.controlsDisabled() || !this.state()) {
+    if (
+      this.settingsForm.invalid ||
+      this.controlsDisabled() ||
+      !this.state() ||
+      (this.settingsForm.controls.enabled.value && !this.hasSavedDraft())
+    ) {
       return;
     }
     const value = this.settingsForm.getRawValue();
@@ -455,6 +461,11 @@ export class CustomerFollowUpComponent implements OnInit {
         intervalMinutes: state.intervalMinutes,
         expiresAt: state.expiresAt ? new Date(state.expiresAt) : null,
       });
+    }
+    if (state.messageDraft?.trim()) {
+      this.settingsForm.controls.enabled.enable({ emitEvent: false });
+    } else {
+      this.settingsForm.controls.enabled.disable({ emitEvent: false });
     }
     if (!options.preserveDraft) {
       this.draftForm.reset(

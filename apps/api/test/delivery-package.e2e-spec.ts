@@ -54,6 +54,17 @@ describe('Delivery package and exports (e2e)', () => {
 
   after(async () => app.close());
 
+  it('returns null with 200 when no Delivery Package exists for a known Project and 404 for a missing Project', async () => {
+    const project = await request(app.getHttpServer()).post('/projects').send({
+      name: `Package-free Project ${randomUUID()}`,
+      customerContactName: 'Customer', customerContactEmail: `package-free-${Date.now()}@example.test`,
+      internalOwnerName: 'Owner', nextActionOwnerRole: 'INTERNAL_OWNER',
+    }).expect(201);
+    const absent = await request(app.getHttpServer()).get(`/projects/${project.body.id as string}/delivery-package`).expect(200);
+    assert.equal(absent.body, null);
+    await request(app.getHttpServer()).get(`/projects/${randomUUID()}/delivery-package`).expect(404);
+  });
+
   it('binds one editable package to an immutable Specification and exports the saved content after archive', async () => {
     const project = await request(app.getHttpServer()).post('/projects').send({
       name: `Átadási projekt ${randomUUID()}`,

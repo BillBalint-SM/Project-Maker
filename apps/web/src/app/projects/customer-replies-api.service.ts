@@ -1,22 +1,31 @@
 import { HttpClient } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import type { CustomerCorrespondenceCommand, CustomerCorrespondenceView, CustomerReplySummary, ProjectCustomerCorrespondenceWork } from '@project-maker/contracts';
-import { BehaviorSubject, catchError, Observable, tap, throwError } from 'rxjs';
+import { catchError, Observable, Subject, tap, throwError } from 'rxjs';
+
+import { AuthApiService } from '../auth/auth-api.service';
+
+export interface CustomerReplySummaryUpdate {
+  readonly userId: string;
+  readonly summary: CustomerReplySummary;
+}
 
 @Injectable({ providedIn: 'root' })
 export class CustomerRepliesApiService {
   private readonly http = inject(HttpClient);
-  private readonly summarySubject = new BehaviorSubject<CustomerReplySummary>({
-    newReplyCount: 0,
-    projectCount: 0,
-    projects: [],
-  });
+  private readonly auth = inject(AuthApiService);
+  private readonly summarySubject = new Subject<CustomerReplySummaryUpdate>();
   readonly summaryChanges = this.summarySubject.asObservable();
 
   summary(): Observable<CustomerReplySummary> {
+    const userId = this.auth.currentUser()?.id ?? null;
     return this.http.get<CustomerReplySummary>('/api/customer-correspondences/summary')
       .pipe(
-        tap((summary) => this.summarySubject.next(summary)),
+        tap((summary) => {
+          if (userId && this.auth.currentUser()?.id === userId) {
+            this.summarySubject.next({ userId, summary });
+          }
+        }),
         catchError(() => this.failure()),
       );
   }

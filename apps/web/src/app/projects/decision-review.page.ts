@@ -1,5 +1,5 @@
 import { DatePipe } from '@angular/common';
-import { Component, DestroyRef, inject, OnInit, signal } from '@angular/core';
+import { Component, computed, DestroyRef, inject, OnInit, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
@@ -36,6 +36,7 @@ export class DecisionReviewPage implements OnInit {
   private readonly destroyRef = inject(DestroyRef);
   private readonly api = inject(DecisionPortfolioApiService);
   private readonly projects = inject(ProjectApiService);
+  private availabilityRequestId = 0;
 
   readonly projectId = this.route.snapshot.paramMap.get('projectId') ?? '';
   readonly decisions = signal<readonly FormalDecision[]>([]);
@@ -43,7 +44,11 @@ export class DecisionReviewPage implements OnInit {
   readonly error = signal<string | null>(null);
   readonly saving = signal(false);
   readonly feedback = signal<string | null>(null);
-  readonly archived = signal(false);
+  readonly projectAvailability = signal<ProjectAvailability>({ state: 'loading' });
+  readonly projectAvailabilityError = computed(() => {
+    const availability = this.projectAvailability();
+    return availability.state === 'error' ? availability.message : null;
+  });
   readonly outcomeOptions = [
     { value: 'GO' as const, label: 'Go' },
     { value: 'CONDITIONAL_GO' as const, label: 'Conditional Go' },
@@ -67,11 +72,35 @@ export class DecisionReviewPage implements OnInit {
 
   ngOnInit(): void {
     this.loadDecisions();
+    this.loadProjectAvailability();
+  }
+
+  loadProjectAvailability(): void {
+    const requestId = ++this.availabilityRequestId;
+    if (!this.projectId) {
+      this.projectAvailability.set({
+        state: 'error',
+        message: 'The project identifier is missing from the route.',
+      });
+      return;
+    }
+    this.projectAvailability.set({ state: 'loading' });
     this.projects.loadProjectWorkspace(this.projectId).pipe(
       takeUntilDestroyed(this.destroyRef),
     ).subscribe({
-      next: (project) => this.archived.set(project.status === 'ARCHIVED'),
-      error: () => undefined,
+      next: (project) => {
+        if (requestId !== this.availabilityRequestId) return;
+        this.projectAvailability.set(project.status === 'ARCHIVED'
+          ? { state: 'archived' }
+          : { state: 'active' });
+      },
+      error: () => {
+        if (requestId !== this.availabilityRequestId) return;
+        this.projectAvailability.set({
+          state: 'error',
+          message: 'Project availability could not be confirmed. Retry before recording a formal decision.',
+        });
+      },
     });
   }
 
@@ -101,7 +130,7 @@ export class DecisionReviewPage implements OnInit {
     if (
       this.decisionForm.invalid ||
       this.saving() ||
-      this.archived() ||
+      this.projectAvailability().state !== 'active' ||
       (value.outcome === 'CONDITIONAL_GO' && (!value.conditions.trim() || !value.reviewDate))
     ) return;
 
@@ -145,6 +174,12 @@ export class DecisionReviewPage implements OnInit {
     return this.outcomeOptions.find((option) => option.value === outcome)?.label ?? outcome;
   }
 }
+
+type ProjectAvailability =
+  | { readonly state: 'loading' }
+  | { readonly state: 'active' }
+  | { readonly state: 'archived' }
+  | { readonly state: 'error'; readonly message: string };
 
 function today(): string {
   const now = new Date();

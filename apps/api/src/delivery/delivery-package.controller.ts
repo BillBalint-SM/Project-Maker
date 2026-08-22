@@ -15,8 +15,8 @@ export class DeliveryPackageController {
   }
 
   @Get()
-  get(@Param('projectId', new ParseUUIDPipe()) projectId: string): Promise<DeliveryPackage> {
-    return this.service.get(projectId);
+  async get(@Param('projectId', new ParseUUIDPipe()) projectId: string, @Res() response: Response): Promise<void> {
+    response.json(await this.service.find(projectId));
   }
 
   @Get('artifact')

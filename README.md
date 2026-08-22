@@ -22,7 +22,7 @@ activation.
 ## Documentation
 
 For day-to-day business use, start with the
-[Hungarian end-user guide](docs/user-guide.md). The
+[end-user guide](docs/user-guide.md). The
 [documentation index](docs/README.md) connects the remaining sources: the
 [roadmap](docs/roadmap.md) is the current delivery-status record, the
 [product domain](docs/product-domain.md) describes intended behavior, and the
@@ -62,7 +62,7 @@ database; see [`docs/mail-gateway.md`](docs/mail-gateway.md#local-synthetic-gate
 pnpm test:mail-gateway
 ```
 
-The production API image and fresh `0001 -> 0035` migration path have one
+The production API image and fresh `0001 -> 0036` migration path have one
 isolated local/CI smoke command:
 
 ```powershell
@@ -85,7 +85,7 @@ pnpm compose:up
 Open `http://localhost:8080`. The proxied API health endpoint is `http://localhost:8080/api/health`.
 
 After signing in, each Internal user can create their own Project Maker MCP
-token on the `Fiókbeállítások` page. The page shows the one-time `claude mcp
+token on the `Account settings` page. The page shows the one-time `claude mcp
 add` command for connecting that user's existing Claude Code subscription to
 `http://localhost:8080/mcp`. Project Maker does not need or accept a Claude API
 key and does not call a model provider.
