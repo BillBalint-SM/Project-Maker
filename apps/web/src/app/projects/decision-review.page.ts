@@ -36,6 +36,7 @@ export class DecisionReviewPage implements OnInit {
   private readonly destroyRef = inject(DestroyRef);
   private readonly api = inject(DecisionPortfolioApiService);
   private readonly projects = inject(ProjectApiService);
+  private availabilityRequestId = 0;
 
   readonly projectId = this.route.snapshot.paramMap.get('projectId') ?? '';
   readonly decisions = signal<readonly FormalDecision[]>([]);
@@ -75,6 +76,7 @@ export class DecisionReviewPage implements OnInit {
   }
 
   loadProjectAvailability(): void {
+    const requestId = ++this.availabilityRequestId;
     if (!this.projectId) {
       this.projectAvailability.set({
         state: 'error',
@@ -86,13 +88,19 @@ export class DecisionReviewPage implements OnInit {
     this.projects.loadProjectWorkspace(this.projectId).pipe(
       takeUntilDestroyed(this.destroyRef),
     ).subscribe({
-      next: (project) => this.projectAvailability.set(project.status === 'ARCHIVED'
-        ? { state: 'archived' }
-        : { state: 'active' }),
-      error: () => this.projectAvailability.set({
-        state: 'error',
-        message: 'Project availability could not be confirmed. Retry before recording a formal decision.',
-      }),
+      next: (project) => {
+        if (requestId !== this.availabilityRequestId) return;
+        this.projectAvailability.set(project.status === 'ARCHIVED'
+          ? { state: 'archived' }
+          : { state: 'active' });
+      },
+      error: () => {
+        if (requestId !== this.availabilityRequestId) return;
+        this.projectAvailability.set({
+          state: 'error',
+          message: 'Project availability could not be confirmed. Retry before recording a formal decision.',
+        });
+      },
     });
   }
 

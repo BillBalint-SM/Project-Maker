@@ -61,6 +61,33 @@ describe('DecisionReviewPage', () => {
     expect(portfolio.createDecision).not.toHaveBeenCalled();
   });
 
+  it('ignores an older retry result when a newer availability check confirms the Project is archived', async () => {
+    const olderRetry = new Subject<ProjectWorkspace>();
+    const newerRetry = new Subject<ProjectWorkspace>();
+    const { fixture, portfolio, projects } = await createPage(of(projectFixture('DRAFT')));
+    projects.loadProjectWorkspace.mockReset()
+      .mockReturnValueOnce(throwError(() => new Error('Metadata unavailable')))
+      .mockReturnValueOnce(olderRetry)
+      .mockReturnValueOnce(newerRetry);
+
+    fixture.detectChanges();
+    await fixture.whenStable();
+    const retry = fixture.nativeElement.querySelector(
+      '[data-testid="retry-formal-decision-availability"] button',
+    ) as HTMLButtonElement;
+    retry.click();
+    retry.click();
+    newerRetry.next(projectFixture('ARCHIVED'));
+    olderRetry.next(projectFixture('DRAFT'));
+    await fixture.whenStable();
+
+    expect(projects.loadProjectWorkspace).toHaveBeenCalledTimes(3);
+    expect(fixture.nativeElement.querySelector('[data-testid="formal-decision-availability-archived"]')).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('[data-testid="formal-decision-form"]')).toBeNull();
+    fixture.componentInstance.saveDecision();
+    expect(portfolio.createDecision).not.toHaveBeenCalled();
+  });
+
   it('keeps the formal decision form unavailable for an archived Project', async () => {
     const { fixture, portfolio } = await createPage(of(projectFixture('ARCHIVED')));
 

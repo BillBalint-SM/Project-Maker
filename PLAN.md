@@ -217,3 +217,7 @@ workflows, two HTTP contracts, product copy, and authoritative documentation.
   both cross-session races; badge publications and Notification snapshots are
   now session-scoped, while the shell retains the last valid current-user
   count and ignores stale updates. Final review and re-measurement remain open.
+- 2026-08-22: final adversarial review reopened `UX-AUDIT-004` for overlapping
+  Formal Decision availability retries. A red out-of-order detector proved
+  that an older active result could replace a newer archived result. The page
+  now accepts only the latest availability request, keeping the UI fail-closed.
