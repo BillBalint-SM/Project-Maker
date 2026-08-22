@@ -24,7 +24,7 @@ export class DiscoveryApiService {
 
   updateContact(projectId: string, contactId: string, input: SaveProjectContactInput): Observable<ProjectContact> {
     return this.http.patch<ProjectContact>(this.url(projectId, `contacts/${encodeURIComponent(contactId)}`), input)
-      .pipe(catchError((error: unknown) => fail(error, 'menteni a projektkapcsolatot')));
+      .pipe(catchError((error: unknown) => fail(error, 'save the Project contact')));
   }
 
   deleteContact(projectId: string, contactId: string): Observable<void> {
@@ -38,7 +38,7 @@ export class DiscoveryApiService {
 
   createInsight(projectId: string, input: CreateInsightInput): Observable<Insight> {
     return this.http.post<Insight>(this.url(projectId, 'insights'), input)
-      .pipe(catchError((error: unknown) => fail(error, 'menteni az insightot')));
+      .pipe(catchError((error: unknown) => fail(error, 'save the Insight')));
   }
 
   updateInsight(projectId: string, insightId: string, input: UpdateInsightInput): Observable<Insight> {

@@ -10,10 +10,30 @@
     <ng-template #title>Formal decisions</ng-template>
     <ng-template #subtitle>A concise, human-authored decision log. Recording a decision does not overwrite project data or trigger automation.</ng-template>
 
-    @if (archived()) {
-      <p>New decisions cannot be recorded for an archived project.</p>
-    } @else {
-      <form class="formal-decision-form" [formGroup]="decisionForm" (ngSubmit)="saveDecision()">
+    @switch (projectAvailability().state) {
+      @case ('loading') {
+        <p data-testid="formal-decision-availability-loading" aria-live="polite">
+          Confirming whether this Project is active before enabling formal decisions…
+        </p>
+      }
+      @case ('archived') {
+        <p data-testid="formal-decision-availability-archived" role="status">
+          New decisions cannot be recorded for an archived project. Restore the Project to make changes.
+        </p>
+      }
+      @case ('error') {
+        <div data-testid="formal-decision-availability-error" role="alert">
+          <p>{{ projectAvailabilityError() }}</p>
+          <p-button
+            type="button"
+            label="Retry"
+            data-testid="retry-formal-decision-availability"
+            (onClick)="loadProjectAvailability()"
+          />
+        </div>
+      }
+      @case ('active') {
+      <form class="formal-decision-form" [formGroup]="decisionForm" (ngSubmit)="saveDecision()" data-testid="formal-decision-form">
         <div class="field">
           <label for="formal-decision-outcome">Outcome</label>
           <select id="formal-decision-outcome" formControlName="outcome" data-testid="formal-decision-outcome">
@@ -52,6 +72,7 @@
           <p-button type="submit" label="Record decision" [loading]="saving()" [disabled]="decisionForm.invalid || saving()" data-testid="save-formal-decision" />
         </div>
       </form>
+      }
     }
 
     @if (feedback()) { <p-message severity="success" role="status">{{ feedback() }}</p-message> }

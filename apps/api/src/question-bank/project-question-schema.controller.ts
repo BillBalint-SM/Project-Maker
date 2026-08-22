@@ -1,5 +1,6 @@
-import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post } from '@nestjs/common';
+import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post, Res } from '@nestjs/common';
 import type { ProjectQuestionSchema } from '@project-maker/contracts';
+import type { Response } from 'express';
 
 import { PublishProjectQuestionSchemaDto } from './dto/publish-project-question-schema.dto';
 import { QuestionBankService } from './question-bank.service';
@@ -9,10 +10,11 @@ export class ProjectQuestionSchemaController {
   constructor(private readonly questionBankService: QuestionBankService) {}
 
   @Get()
-  get(
+  async get(
     @Param('projectId', new ParseUUIDPipe()) projectId: string,
-  ): Promise<ProjectQuestionSchema> {
-    return this.questionBankService.getProjectSchema(projectId);
+    @Res() response: Response,
+  ): Promise<void> {
+    response.json(await this.questionBankService.getProjectSchema(projectId));
   }
 
   @Post()

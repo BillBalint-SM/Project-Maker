@@ -22,6 +22,18 @@ describe('Question Bank reference files (e2e)', () => {
 
   after(async () => app.close());
 
+  it('returns null with 200 when no schema exists for a known Project and 404 for a missing Project', async () => {
+    const project = await request(app.getHttpServer()).post('/projects').send({
+      name: `Schema-free Project ${randomUUID()}`,
+      customerContactName: 'Customer', customerContactEmail: `schema-free-${Date.now()}@example.test`,
+      internalOwnerName: 'Owner', nextActionOwnerRole: 'INTERNAL_OWNER',
+    }).expect(201);
+    const missingProjectId = randomUUID();
+    const absent = await request(app.getHttpServer()).get(`/projects/${project.body.id as string}/question-schema`).expect(200);
+    assert.equal(absent.body, null);
+    await request(app.getHttpServer()).get(`/projects/${missingProjectId}/question-schema`).expect(404);
+  });
+
   it('publishes exact reference-file sets without copying unchanged bytes', async () => {
     const initialBank = await request(app.getHttpServer())
       .get('/settings/base-questions')

@@ -22,7 +22,7 @@ activation.
 ## Documentation
 
 For day-to-day business use, start with the
-[Hungarian end-user guide](docs/user-guide.md). The
+[end-user guide](docs/user-guide.md). The
 [documentation index](docs/README.md) connects the remaining sources: the
 [roadmap](docs/roadmap.md) is the current delivery-status record, the
 [product domain](docs/product-domain.md) describes intended behavior, and the

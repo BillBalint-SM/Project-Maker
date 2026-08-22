@@ -64,16 +64,22 @@ export class DeliveryPackageService {
     return this.get(projectId);
   }
 
-  async get(projectId: string): Promise<DeliveryPackage> {
+  async find(projectId: string): Promise<DeliveryPackage | null> {
     const project = await requireProject(this.dataSource.manager, projectId, false);
     const deliveryPackage = await this.dataSource.getRepository(DeliveryPackageEntity).findOneBy({ projectId });
-    if (!deliveryPackage) throw new NotFoundException('This Project does not have a Delivery package yet.');
+    if (!deliveryPackage) return null;
     const revision = await this.dataSource.getRepository(MarkdownRevisionEntity).findOneBy({
       id: deliveryPackage.specificationRevisionId,
       projectId,
     });
     if (!revision) throw new NotFoundException('The source specification for this Delivery package could not be found.');
     return toView(project, deliveryPackage, revision, await this.provenance(deliveryPackage));
+  }
+
+  async get(projectId: string): Promise<DeliveryPackage> {
+    const deliveryPackage = await this.find(projectId);
+    if (!deliveryPackage) throw new NotFoundException('This Project does not have a Delivery package yet.');
+    return deliveryPackage;
   }
 
   async artifact(projectId: string): Promise<DeliveryPackageArtifact> {

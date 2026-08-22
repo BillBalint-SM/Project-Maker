@@ -266,12 +266,10 @@ export class QuestionBankService {
     return content;
   }
 
-  async getProjectSchema(projectId: string): Promise<ProjectQuestionSchema> {
+  async getProjectSchema(projectId: string): Promise<ProjectQuestionSchema | null> {
     await requireProject(this.dataSource.manager, projectId, false);
     const schema = await findLatestProjectSchema(this.dataSource.manager, projectId);
-    if (!schema) {
-      throw new NotFoundException('Project question schema not found.');
-    }
+    if (!schema) return null;
     return loadProjectSchema(this.dataSource.manager, schema);
   }
 

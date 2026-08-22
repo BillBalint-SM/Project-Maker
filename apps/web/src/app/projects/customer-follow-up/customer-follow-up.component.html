@@ -261,10 +261,21 @@
           id="follow-up-enabled"
           type="checkbox"
           formControlName="enabled"
+          [attr.aria-describedby]="!hasSavedDraft() ? 'follow-up-draft-prerequisite' : null"
           data-testid="follow-up-enabled-input"
         />
         <label for="follow-up-enabled">Enable automated Customer follow-ups</label>
       </div>
+      @if (!hasSavedDraft()) {
+        <p id="follow-up-draft-prerequisite" class="follow-up-prerequisite">
+          Save a non-empty Customer follow-up draft before enabling automation.
+          <a
+            [routerLink]="['/projects', projectId(), 'customer-correspondences']"
+            fragment="customer-communication"
+            data-testid="open-follow-up-draft-composer"
+          >Open the Customer follow-up draft composer</a>.
+        </p>
+      }
 
       <div class="field">
         <label for="follow-up-interval">Delivery interval (minutes)</label>

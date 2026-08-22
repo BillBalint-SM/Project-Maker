@@ -40,8 +40,8 @@ _Avoid_: Operator organization, deployment owner, application customer
 
 **Customer contact**:
 The named person at the Project Customer who receives Project Customer
-communication and may own a project's next action. Employee-facing language
-calls the role `Ügyfélkapcsolattartó`.
+communication and may own a project's next action. The employee-facing label is
+`Customer contact`.
 _Avoid_: Operator, internal project owner, infrastructure administrator
 
 **Project contact**:
@@ -74,7 +74,7 @@ _Avoid_: Project status, audit event, automatic progress report
 **Portfolio overview**:
 The application-level starting context for current projects, their preparation
 states, and the most important next actions. Its employee-facing name is
-`Projektportfólió`; it does not replace a selected project's working context or
+`Portfolio overview`; it does not replace a selected project's working context or
 the active project queue.
 _Avoid_: Full project dossier, unfiltered project list
 
@@ -90,7 +90,7 @@ _Avoid_: Project phase, sprint, epic
 
 **Active project queue**:
 A prioritized cross-project list of projects in active preparation, each with
-one clear next action. Its employee-facing name is `Aktív munkasor`; it is
+one clear next action. Its employee-facing name is `Active project queue`; it is
 distinct from a queue of individual discovery follow-ups.
 _Avoid_: Discovery follow-up queue, project archive
 
@@ -102,9 +102,9 @@ areas.
 _Avoid_: Implicit current project, global sticky project state
 
 **Project context navigation**:
-The compact navigation inside a Selected project context: Projektállapot,
-Felmérés, Felfedezések, Becslési felkészültség, Döntési értékelés,
-Projekt-specifikáció, Delivery package, and Projektbeállítások. A context may
+The compact navigation inside a Selected project context: Project Status,
+Initial Intake, Discoveries, Estimation Readiness, Decision Review,
+Project Specification, Delivery Package, and Project Settings. A context may
 explain a missing prerequisite but is not
 hidden merely because the project is earlier in preparation.
 _Avoid_: Global application menu, scroll-only project navigation

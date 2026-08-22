@@ -1,6 +1,6 @@
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
-import { Observable, of, throwError } from 'rxjs';
+import { Observable, throwError } from 'rxjs';
 import { catchError } from 'rxjs/operators';
 import type {
   BaseQuestionBank,
@@ -58,15 +58,8 @@ export class QuestionBankApiService {
   loadProjectSchema(projectId: string): Observable<ProjectQuestionSchema | null> {
     const encodedProjectId = encodeURIComponent(projectId);
     return this.http
-      .get<ProjectQuestionSchema>(`/api/projects/${encodedProjectId}/question-schema`)
-      .pipe(
-        catchError((error: unknown) => {
-          if (error instanceof HttpErrorResponse && error.status === 404) {
-            return of(null);
-          }
-          return failApiRequest(error, 'load the Project question schema');
-        }),
-      );
+      .get<ProjectQuestionSchema | null>(`/api/projects/${encodedProjectId}/question-schema`)
+      .pipe(catchError((error: unknown) => failApiRequest(error, 'load the Project question schema')));
   }
 
   createProjectSchema(

@@ -34,7 +34,7 @@ Ha még nem dolgoztál a Project Makerrel, olvasd végig a [vezetett gyorsindít
 
 A leírás elsődleges olvasója PM, PO, BA vagy más projektmunkatárs. A [közös kérdésbank](#a-közös-kérdésbank-kezelése) fejezete annak a kijelölt szervezeti gazdának is szól, aki a minden projektre ható kérdéskészletet gondozza.
 
-Az alkalmazás felülete magyar. A kézikönyv a képernyőn látható gomb- és mezőfeliratokat `ilyen formában` idézi. Mindig a művelet üzleti hatását ellenőrizd, ne csak a gomb helyét jegyezd meg.
+The application interface uses professional English. This guide quotes visible button and field labels in `this format`. Always verify the business effect of an action, not only the location of its button.
 
 Minden részletes workflow ugyanarra a hét kérdésre válaszol:
 
