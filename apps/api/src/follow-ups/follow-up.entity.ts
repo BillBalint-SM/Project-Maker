@@ -75,6 +75,17 @@ export class CustomerFollowUpEntity {
   @Column({ name: 'next_ping_at', type: 'timestamptz', nullable: true })
   nextPingAt!: Date | null;
 
+  @Column({
+    name: 'paused_remaining_milliseconds',
+    type: 'bigint',
+    nullable: true,
+    transformer: {
+      to: (value: number | null) => value === null ? null : String(value),
+      from: (value: string | null) => value === null ? null : Number(value),
+    },
+  })
+  pausedRemainingMilliseconds!: number | null;
+
   // Legacy fallback for installations predating delivery-attempt history.
   // New canonical rows leave this retained value untouched; projections prefer
   // customer_outbound_attempts whenever one exists.

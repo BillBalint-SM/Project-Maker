@@ -121,6 +121,8 @@ ordered TypeORM migrations registered in
 30. `0030-delivery-and-git.ts` — editable Delivery packages, shared retained Git setups, and immutable preview-confirmed Git handoff snapshots.
 31. `0031-claude-code-mcp-connection.ts` — one replaceable MCP token digest and creation time per Internal user.
 32. `0032-canonical-customer-mail-persistence.ts` — canonical outbound, correspondence, and append-only attempt persistence for Interview handoff and Customer follow-up delivery; incomplete pre-canonical records remain readable as legacy history rather than being fabricated or removed.
+33. `0033-project-archive-resume.ts` — retained pre-archive Project phase and paused automatic-reminder cadence for side-effect-free workflow resume.
+34. `0034-project-draft-deletion.ts` — internal Project-owned draft data cascades on explicit Project deletion while Customer communication and Git handoff history retain restrictive foreign keys.
 
 The deployed API image contains the compiled migration classes, but not the
 TypeScript migration source tree used by the development-only
@@ -171,10 +173,10 @@ docker compose --env-file .env exec -T api node -e $migrationStatusScript
 
 `pending: false` means that all migration classes in the running image are
 recorded in the database. The `applied` array is the database's migration
-history; the thirty-two expected names are listed above.
+history; the thirty-four expected names are listed above.
 
 The supported migration policy is no-squash forward evolution from the oldest
-supported `0001` schema through `0032`. Do not use `undoLastMigration()` or an
+supported `0001` schema through `0034`. Do not use `undoLastMigration()` or an
 arbitrary runtime downgrade as a normal recovery procedure: a down migration
 can destroy retained business history and is not a deployment workflow. Take a
 backup, diagnose the affected state, and ship a reviewed forward correction.
@@ -285,9 +287,14 @@ confirmation tool. That confirmation tool also carries Claude Code's native
 - Project creation requires a named internal owner. The next-action owner is a
   role selecting either that concrete internal owner or the concrete customer
   contact; the legacy free-form `ball_owner` value is compatibility storage only.
-- Project settings can archive and restore a project. It exposes permanent deletion
-  only for an eligible bare `DRAFT`; a project with persisted activity is
-  retained and must be archived.
+- Project basics and Customer-contact data remain editable on every active
+  Project, including after Project question-schema publication. Archived
+  Projects must be restored before those current values can change; retained
+  outbound and handoff snapshots are never rewritten.
+- Project settings can archive and restore a Project. Permanent deletion remains
+  limited to administrative `DRAFT`, but migration `0034` cascades its internal
+  Project-owned working data. Any Customer communication or Git handoff history,
+  including failed or uncertain attempts, returns `409` and requires archive.
 
 ### Discovery follow-up semantics
 
@@ -332,9 +339,9 @@ The explicit resolution command returns `200`, accepts only canonical terminal
 statuses, and requires a persisted nonblank answer/decision. It rejects an
 already-resolved work item. Its `DISCOVERY_FOLLOW_UP_RESOLVED` audit payload has
 only `followUpId` and `status`, so the answer/decision and other free text are
-not copied into audit history. A persisted discovery follow-up is retained
-project activity, so a `DRAFT` project with one cannot be permanently deleted
-and the database foreign key also restricts a late deletion race.
+not copied into audit history. A discovery follow-up is internal Project-owned
+working data: explicit deletion of an otherwise eligible `DRAFT` cascades it,
+while archive retains it unchanged.
 
 ### Canonical Markdown specification revisions
 
@@ -460,8 +467,9 @@ POST  /api/projects/{projectId}/rounds/{roundId}/customer-handoffs/{handoffId}/r
 POST  /api/projects/{projectId}/rounds/{roundId}/customer-handoffs/{handoffId}/resume-editing
 ```
 
-Archived projects cannot send customer email. Expired or archived follow-up
-states are disabled and unscheduled by the worker.
+Archived projects cannot start customer email. An enabled automatic follow-up is
+paused without a catch-up send and resumes its retained remaining delay after
+restore; expiry still disables and unschedules it.
 
 ### SCORE-01.1 readiness operational surface
 
@@ -526,9 +534,9 @@ weighted contributions. The server, not the Angular client, owns every
 calculation and recommendation rule.
 
 Archived projects continue to return their retained inputs and derived review
-but mark it read-only; `PUT` returns `409` until restore. Any persisted rating
-is project activity, so an otherwise bare `DRAFT` cannot be physically deleted
-and must be archived. When a later Initial Intake becomes current, the retained
+but mark it read-only; `PUT` returns `409` until restore. Decision ratings are
+internal Project-owned working data and therefore cascade with an explicitly
+deleted eligible `DRAFT`. When a later Initial Intake becomes current, retained
 inputs are recomputed against that source on the next read.
 
 ## Verification gates for this handoff
@@ -555,7 +563,7 @@ paths, and one reviewed send/reply browser journey without external credentials.
 
 The `container-smoke` job builds the production API image, proves the packaged
 contracts runtime import and the absence of build tooling, migrates a fresh
-database through `0001 -> 0032`, then checks health and an authenticated
+database through `0001 -> 0034`, then checks health and an authenticated
 canonical-policy consumer. The script owns and removes its temporary Compose
 project and volume.
 

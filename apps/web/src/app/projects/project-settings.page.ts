@@ -24,7 +24,7 @@ import { CustomerFollowUpComponent } from './customer-follow-up/customer-follow-
 import type { ProjectSettingsView } from './project-api.models';
 import { ProjectApiService } from './project-api.service';
 import { ProjectContextState } from './project-context/project-context.state';
-import { activeProjectStatusOptions } from './project-status-label';
+import { activeProjectStatusOptions, projectStatusLabel } from './project-status-label';
 
 type ActiveProjectStatus = Exclude<ProjectStatus, 'ARCHIVED'>;
 
@@ -166,9 +166,8 @@ export class ProjectSettingsPage implements OnInit {
   }
 
   canEditBasics(): boolean {
-    const view = this.view();
-    return view?.project.status !== 'ARCHIVED'
-      && view?.preparationStatus.state === 'SCHEMA_REQUIRED';
+    const project = this.view()?.project;
+    return project !== undefined && project.status !== 'ARCHIVED';
   }
 
   saveProjectBasics(): void {
@@ -235,7 +234,7 @@ export class ProjectSettingsPage implements OnInit {
     this.confirmationService.confirm({
       key: 'project-archive',
       header: 'Projekt archiválása',
-      message: 'Az archivált projekt kikerül az aktív munkából, és a módosításai letiltásra kerülnek. Az adatok olvashatók és később visszaállíthatók maradnak.',
+      message: 'A projekt aktív munkája és automatikus ügyfél-emlékeztetője szünetel. Minden mentett állapot és történet megmarad; visszaállításkor ugyaninnen folytatható, korábbi esemény vagy küldés megismétlése nélkül.',
       defaultFocus: 'none',
       accept: () => this.archiveProject(),
     });
@@ -274,7 +273,9 @@ export class ProjectSettingsPage implements OnInit {
     ).subscribe({
       next: (project) => {
         if (!this.applyProjectStatus(project, intent)) return;
-        this.feedback.set('A projekt visszaállt az Előkészítés alatt adminisztratív projektfázisba.');
+        this.feedback.set(
+          `A projekt az archiválás előtti állapotban, az ${projectStatusLabel(project.status)} fázisban folytatható. Korábbi esemény vagy küldés nem ismétlődött meg.`,
+        );
         this.projectContext?.reload();
       },
       error: (error: Error) => {
@@ -290,7 +291,7 @@ export class ProjectSettingsPage implements OnInit {
     this.confirmationService.confirm({
       key: 'project-delete',
       header: 'Projekt végleges törlése',
-      message: 'A törlés nem vonható vissza, és csak mentett projektmunka nélküli piszkozatnál hajtható végre.',
+      message: 'A DRAFT projekttel együtt minden belső munkaadat végleg törlődik. Ügyfélkommunikációs vagy Git-átadási előzmény esetén a rendszer megtagadja a törlést.',
       defaultFocus: 'none',
       accept: () => this.deleteProject(),
     });

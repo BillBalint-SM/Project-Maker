@@ -69,8 +69,10 @@ The model below records semantic intent, not a database schema. Stable IDs and e
 | Intake | Checklist answers keyed by playbook item ID and a list of follow-ups |
 | Derived state | Delivered completion, readiness, factors, ordered redacted readiness gaps, Decision Score, recommendation, and safe explanation; all are derived on read and are not stored as a snapshot |
 
-Any persisted Decision input rating is project activity: a Draft project with one
-is no longer a bare Draft and must be archived rather than physically deleted.
+Decision input ratings are internal Project-owned working data. They are retained
+by archive and cascade only when an eligible administrative `DRAFT` is explicitly
+and permanently deleted; Customer communication or Git handoff history still
+requires archive.
 
 ### Checklist answer
 

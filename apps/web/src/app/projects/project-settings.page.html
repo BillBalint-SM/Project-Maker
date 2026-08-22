@@ -19,7 +19,7 @@
 
     @if (current.project.status === 'ARCHIVED') {
       <p-message severity="secondary" role="status">
-        Az archivált projekt beállításai olvashatók. Módosításhoz előbb állítsd vissza a projektet.
+        A projekt archiválva van. A teljes mentett munkafolyamat és történet olvasható; módosítás, automatikus emlékeztető és új külső művelet a visszaállításig szünetel.
       </p-message>
     }
     @if (actionError()) {
@@ -34,9 +34,9 @@
         <ng-template #title>Projekt alapadatai</ng-template>
         <ng-template #subtitle>
           @if (canEditBasics()) {
-            A kérdésséma elfogadásáig az alapadatok még módosíthatók.
+            Aktív projektben az alapadatok és az ügyfélkapcsolattartó adatai módosíthatók.
           } @else {
-            Az elfogadott kérdésséma után az alapadatok csak olvashatók.
+            Archivált projektben az alapadatok csak olvashatók; visszaállítás után ismét módosíthatók.
           }
         </ng-template>
         <form class="settings-form" [formGroup]="basicsForm" (ngSubmit)="saveProjectBasics()">
@@ -133,19 +133,19 @@
 
       @if (isArchived()) {
         <div class="danger-action">
-          <div><h2>Projekt visszaállítása</h2><p>A napi munka és a módosítások ismét elérhetővé válnak.</p></div>
+          <div><h2>Projekt visszaállítása</h2><p>A projekt az archiválás előtti mentett munkafolyamat-állapotban folytatódik. Korábbi esemény vagy küldés nem ismétlődik meg.</p></div>
           <p-button label="Projekt visszaállítása" [loading]="transitioning()" [disabled]="transitioning()" data-testid="restore-project-button" (onClick)="restoreProject()" />
         </div>
       } @else {
         <div class="danger-action">
-          <div><h2>Projekt archiválása</h2><p>Az adatok megmaradnak, de a projekt kikerül az aktív munkából és csak olvasható lesz.</p></div>
+          <div><h2>Projekt archiválása</h2><p>A mentett munkafolyamat megmarad, de a projekt kikerül az aktív munkából, csak olvasható lesz, és az automatikus ügyfél-emlékeztető szünetel.</p></div>
           <p-button label="Projekt archiválása" severity="danger" [outlined]="true" [loading]="transitioning()" [disabled]="transitioning()" data-testid="archive-project-button" (onClick)="requestProjectArchive()" />
         </div>
       }
 
       @if (isDeletableDraft()) {
         <div class="danger-action">
-          <div><h2>Projekt végleges törlése</h2><p>Csak mentett projektmunka nélküli piszkozat törölhető. A művelet nem vonható vissza.</p></div>
+          <div><h2>Projekt végleges törlése</h2><p>A DRAFT projekttel együtt a belső munkaadatok is végleg törlődnek. Ügyfélkommunikáció vagy Git-átadás után archiválni kell.</p></div>
           <p-button label="Projekt végleges törlése" severity="danger" [outlined]="true" [loading]="deleting()" [disabled]="deleting()" data-testid="delete-project-button" (onClick)="requestProjectDeletion()" />
         </div>
       }

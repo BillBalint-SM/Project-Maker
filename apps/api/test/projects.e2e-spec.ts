@@ -85,7 +85,7 @@ describe('ProjectsController (e2e)', () => {
     );
   });
 
-  it('updates valid Project basics only before the first question schema is accepted', async () => {
+  it('updates valid Project basics after schema publication but not while archived', async () => {
     const projectId = await createProject('editable-basics');
     const acceptedBasics = {
       name: `Updated Project basics ${projectId}`,
@@ -116,17 +116,33 @@ describe('ProjectsController (e2e)', () => {
       .send({ questions: [{ stableKey, required: true, blocking: true }] })
       .expect(201);
 
-    const rejectedName = `Rejected Project basics ${projectId}`;
+    const postSchemaBasics = {
+      ...acceptedBasics,
+      name: `Post-schema Project basics ${projectId}`,
+      customerContactName: 'Post-schema Customer',
+      customerContactEmail: 'post-schema-customer@example.test',
+    };
+    const postSchemaUpdate = await request(app.getHttpServer())
+      .patch(`/projects/${projectId}/basics`)
+      .send(postSchemaBasics)
+      .expect(200);
+    assert.equal(postSchemaUpdate.body.name, postSchemaBasics.name);
+    assert.equal(postSchemaUpdate.body.customerContactName, postSchemaBasics.customerContactName);
+    assert.equal(postSchemaUpdate.body.customerContactEmail, postSchemaBasics.customerContactEmail);
+
+    await request(app.getHttpServer()).post(`/projects/${projectId}/archive`).expect(201);
     await request(app.getHttpServer())
       .patch(`/projects/${projectId}/basics`)
-      .send({ ...acceptedBasics, name: rejectedName })
+      .send({ ...postSchemaBasics, name: `Archived Project basics ${projectId}` })
       .expect(409);
 
     const listResponse = await request(app.getHttpServer()).get('/projects').expect(200);
     const retainedProject = listResponse.body.find(
       (project: { id: string }) => project.id === projectId,
     );
-    assert.equal(retainedProject.name, acceptedBasics.name);
+    assert.equal(retainedProject.name, postSchemaBasics.name);
+    assert.equal(retainedProject.customerContactName, postSchemaBasics.customerContactName);
+    assert.equal(retainedProject.customerContactEmail, postSchemaBasics.customerContactEmail);
   });
 
   it('keeps a basics-only Project-start draft eligible for guarded deletion', async () => {
@@ -427,6 +443,10 @@ describe('ProjectsController (e2e)', () => {
 
     await request(app.getHttpServer()).post(`/projects/${projectId}/archive`).expect(201);
     await request(app.getHttpServer())
+      .get(`/projects/${projectId}/markdown-revisions/${optionalRevision.body.id as string}/download`)
+      .expect('Content-Disposition', /attachment/)
+      .expect(200);
+    await request(app.getHttpServer())
       .post(`/projects/${projectId}/markdown-revisions`)
       .send({ reason: 'MANUAL' })
       .expect(409)
@@ -632,7 +652,7 @@ describe('ProjectsController (e2e)', () => {
     });
   });
 
-  it('restarts preparation at schema selection after restoring retained intake history', async () => {
+  it('resumes the retained preparation state after restoration', async () => {
     const projectId = await createProject('preparation-status-after-restoration');
     const roundId = await createCanonicalDecisionReviewRound(projectId);
     await request(app.getHttpServer())
@@ -647,11 +667,11 @@ describe('ProjectsController (e2e)', () => {
 
     assert.deepEqual(response.body, {
       projectId,
-      state: 'SCHEMA_REQUIRED',
-      label: 'Kérdésséma szükséges',
+      state: 'DECISION_REVIEW_REQUIRED',
+      label: 'Döntési értékelés szükséges',
       primaryAction: {
-        label: 'Felmérés megnyitása',
-        target: 'INTERVIEW',
+        label: 'Döntési értékelés megnyitása',
+        target: 'DECISION_REVIEW',
       },
     });
   });
@@ -1058,7 +1078,7 @@ describe('ProjectsController (e2e)', () => {
     ]);
   });
 
-  it('rejects Decision Review writes for an archived project and blocks deletion after any persisted input', async () => {
+  it('rejects Decision Review writes for an archived project and retains inputs through restore', async () => {
     const projectId = await createProject('decision-review-lifecycle');
     const inputs = {
       businessValue: 3,
@@ -1073,7 +1093,6 @@ describe('ProjectsController (e2e)', () => {
       .put(`/projects/${projectId}/decision-review`)
       .send(inputs)
       .expect(200);
-    await request(app.getHttpServer()).delete(`/projects/${projectId}`).expect(409);
     await request(app.getHttpServer()).post(`/projects/${projectId}/archive`).expect(201);
     await request(app.getHttpServer())
       .put(`/projects/${projectId}/decision-review`)
@@ -1144,7 +1163,7 @@ describe('ProjectsController (e2e)', () => {
     }
   });
 
-  it('updates workspace fields, archives, and restores to DRAFT', async () => {
+  it('restores the administrative phase captured before archiving', async () => {
     const projectId = await createProject('archive-flow');
     const workspaceResponse = await request(app.getHttpServer())
       .patch(`/projects/${projectId}/workspace`)
@@ -1166,7 +1185,7 @@ describe('ProjectsController (e2e)', () => {
     const restoredResponse = await request(app.getHttpServer())
       .post(`/projects/${projectId}/restore`)
       .expect(201);
-    assertProjectResponse(restoredResponse.body, 'DRAFT');
+    assertProjectResponse(restoredResponse.body, 'WAITING_INTERNAL');
 
     const auditEvents = await dataSource.query<
       Array<{ event_type: string; payload: Record<string, unknown> }>
@@ -1181,7 +1200,7 @@ describe('ProjectsController (e2e)', () => {
       },
       {
         event_type: 'PROJECT_RESTORED',
-        payload: { fromStatus: 'ARCHIVED', toStatus: 'DRAFT' },
+        payload: { fromStatus: 'ARCHIVED', toStatus: 'WAITING_INTERNAL' },
       },
     ]);
     assert.doesNotMatch(JSON.stringify(auditEvents), /Ada Lovelace|ada@example\.test/);
@@ -2947,98 +2966,188 @@ describe('ProjectsController (e2e)', () => {
     assert.equal(listResponse.body.some((project: { id: string }) => project.id === projectId), false);
   });
 
-  it('rejects deletion for a non-DRAFT project and for a DRAFT with audit history', async () => {
+  it('rejects deletion for a non-DRAFT project', async () => {
     const nonDraftProjectId = await createProject('delete-non-draft');
     await request(app.getHttpServer())
       .patch(`/projects/${nonDraftProjectId}/workspace`)
       .send({ status: 'WAITING_INTERNAL' })
       .expect(200);
     await expectProjectDeletionConflict(nonDraftProjectId);
-
-    const retainedProjectId = await createProject('delete-audit-history');
-    await request(app.getHttpServer()).post(`/projects/${retainedProjectId}/archive`).expect(201);
-    await request(app.getHttpServer()).post(`/projects/${retainedProjectId}/restore`).expect(201);
-    await expectProjectDeletionConflict(retainedProjectId);
   });
 
-  it('rejects deletion for DRAFT projects with Markdown and follow-up persistence', async () => {
-    const markdownProjectId = await createProject('delete-markdown');
-    await request(app.getHttpServer())
-      .patch(`/projects/${markdownProjectId}/workspace`)
-      .send({ status: 'READY_FOR_PLANNING' })
-      .expect(200);
-    await request(app.getHttpServer())
-      .patch(`/projects/${markdownProjectId}/workspace`)
-      .send({ status: 'DRAFT' })
-      .expect(200);
-    await expectProjectDeletionConflict(markdownProjectId);
-
-    const followUpProjectId = await createProject('delete-follow-up');
-    await request(app.getHttpServer())
-      .patch(`/projects/${followUpProjectId}/follow-up`)
-      .send({ enabled: false, intervalMinutes: 10_080, expiresAt: null })
-      .expect(200);
-    await clearProjectAuditEvents(followUpProjectId);
-    await expectProjectDeletionConflict(followUpProjectId);
-  });
-
-  it('rejects deletion for a DRAFT project with a persisted discovery follow-up before issuing DELETE', async () => {
-    const projectId = await createProject('delete-discovery-follow-up');
-    await request(app.getHttpServer())
-      .post(`/projects/${projectId}/discovery-follow-ups`)
-      .send({
-        category: 'SECURITY',
-        question: 'Which security approval is required?',
-        owner: 'Security lead',
-        dueDate: '2026-09-20',
-        nextStep: 'Schedule the review.',
-      })
-      .expect(201);
-    await clearProjectAuditEvents(projectId);
-
-    try {
-      await dataSource.query(`
-        CREATE OR REPLACE FUNCTION "e2e_fail_discovery_follow_up_project_delete"()
-        RETURNS trigger
-        LANGUAGE plpgsql
-        AS $$
-        BEGIN
-          RAISE EXCEPTION 'Discovery follow-up deletion guard did not stop DELETE' USING ERRCODE = '55000';
-        END;
-        $$
-      `);
-      await dataSource.query(`
-        CREATE TRIGGER "trg_e2e_fail_discovery_follow_up_project_delete"
-        BEFORE DELETE ON "projects"
-        FOR EACH ROW
-        EXECUTE FUNCTION "e2e_fail_discovery_follow_up_project_delete"()
-      `);
-
-      await expectProjectDeletionConflict(projectId);
-    } finally {
-      await dataSource.query(
-        'DROP TRIGGER IF EXISTS "trg_e2e_fail_discovery_follow_up_project_delete" ON "projects"',
-      );
-      await dataSource.query(
-        'DROP FUNCTION IF EXISTS "e2e_fail_discovery_follow_up_project_delete"()',
-      );
-    }
-  });
-
-  it('rejects deletion for a project with a published question schema', async () => {
-    const projectId = await createProject('delete-schema');
+  it('deletes a DRAFT and cascades its internal-only workflow data', async () => {
+    const projectId = await createProject('delete-internal-draft-data');
     const bankResponse = await request(app.getHttpServer()).get('/settings/base-questions').expect(200);
     const stableKey = bankResponse.body.questions[0]?.stableKey as string | undefined;
     if (!stableKey) {
       throw new Error('The seeded question bank did not return a stable key.');
     }
-
     await request(app.getHttpServer())
       .post(`/projects/${projectId}/question-schema`)
-      .send({ questions: [{ stableKey, required: true, blocking: true }] })
+      .send({ questions: [{ stableKey, required: false, blocking: false }] })
       .expect(201);
-    await clearProjectAuditEvents(projectId);
-    await expectProjectDeletionConflict(projectId);
+    const round = await request(app.getHttpServer())
+      .post(`/projects/${projectId}/rounds`)
+      .send({ type: 'INITIAL_INTAKE' })
+      .expect(201);
+    const snapshot = round.body.questions[0] as DecisionReviewSnapshot | undefined;
+    if (!snapshot) {
+      throw new Error('The draft round did not return its frozen question.');
+    }
+    await request(app.getHttpServer())
+      .patch(`/projects/${projectId}/rounds/${round.body.id as string}/answers/${snapshot.id}`)
+      .send({ value: decisionReviewAnswer(snapshot) })
+      .expect(200);
+    const handoffId = randomUUID();
+    await dataSource.query(
+      `INSERT INTO "interview_customer_handoffs"
+         ("id", "project_id", "round_id", "version", "state")
+       VALUES ($1, $2, $3, 1, 'DRAFT')`,
+      [handoffId, projectId, round.body.id],
+    );
+    const revision = await request(app.getHttpServer())
+      .post(`/projects/${projectId}/markdown-revisions`)
+      .send({ reason: 'MANUAL' })
+      .expect(201);
+    await dataSource.query(
+      `INSERT INTO "formal_decisions" (
+         "id", "project_id", "version", "outcome", "decision_date",
+         "decision_maker", "rationale", "specification_revision_id", "actor_id"
+       ) VALUES ($1, $2, 1, 'GO', '2026-08-22', 'Internal board',
+                 'Internal draft decision.', $3, 'system')`,
+      [randomUUID(), projectId, revision.body.id],
+    );
+    await dataSource.query(
+      `INSERT INTO "project_status_updates" (
+         "id", "project_id", "version", "health", "summary", "next_step", "actor_id"
+       ) VALUES ($1, $2, 1, 'ON_TRACK', 'Internal draft status.',
+                 'Continue internal preparation.', 'system')`,
+      [randomUUID(), projectId],
+    );
+    await request(app.getHttpServer())
+      .put(`/projects/${projectId}/delivery-package`)
+      .send({
+        specificationRevisionId: revision.body.id,
+        items: [{
+          title: 'Belső draft átadási tétel',
+          userStory: 'PO-ként a még át nem adott belső csomagot szeretném eldobni.',
+          acceptanceCriteria: ['A projekt explicit törlésével együtt megszűnik.'],
+        }],
+      })
+      .expect(200);
+    await request(app.getHttpServer())
+      .patch(`/projects/${projectId}/follow-up`)
+      .send({ enabled: false, intervalMinutes: 10_080, expiresAt: null })
+      .expect(200);
+    const discoveryFollowUp = await request(app.getHttpServer())
+      .post(`/projects/${projectId}/discovery-follow-ups`)
+      .send({
+        category: 'SECURITY',
+        question: 'Which internal approval is still needed?',
+        owner: 'Security lead',
+        dueDate: '2026-09-20',
+        nextStep: 'Schedule the review.',
+      })
+      .expect(201);
+    await request(app.getHttpServer())
+      .post(`/projects/${projectId}/attachments`)
+      .field('ownerKind', 'DISCOVERY_FOLLOW_UP')
+      .field('ownerId', discoveryFollowUp.body.id as string)
+      .attach('file', Buffer.from('internal draft evidence', 'utf8'), {
+        filename: 'internal-draft.txt',
+        contentType: 'text/plain',
+      })
+      .expect(201);
+    await request(app.getHttpServer())
+      .post(`/projects/${projectId}/contacts`)
+      .send({ name: 'Internal draft contact', email: 'internal-contact@example.test' })
+      .expect(201);
+    await request(app.getHttpServer())
+      .post(`/projects/${projectId}/insights`)
+      .send({
+        statement: 'Internal-only draft insight.',
+        sources: [{
+          kind: 'HTTPS_LINK',
+          title: 'Internal draft source',
+          url: 'https://example.test/internal-draft',
+        }],
+      })
+      .expect(201);
+
+    await assert.rejects(
+      dataSource.query('DELETE FROM "interview_customer_handoffs" WHERE "id" = $1', [handoffId]),
+      /Interview handoff history cannot be deleted/,
+    );
+
+    await request(app.getHttpServer()).delete(`/projects/${projectId}`).expect(204);
+
+    const retained = await dataSource.query<Array<{ retained: string }>>(
+      `SELECT (
+         (SELECT COUNT(*) FROM "audit_events" WHERE "project_id" = $1)
+         + (SELECT COUNT(*) FROM "project_question_schemas" WHERE "project_id" = $1)
+         + (SELECT COUNT(*) FROM "interview_rounds" WHERE "project_id" = $1)
+         + (SELECT COUNT(*) FROM "interview_customer_handoffs" WHERE "project_id" = $1)
+         + (SELECT COUNT(*) FROM "markdown_revisions" WHERE "project_id" = $1)
+         + (SELECT COUNT(*) FROM "customer_follow_ups" WHERE "project_id" = $1)
+         + (SELECT COUNT(*) FROM "discovery_follow_ups" WHERE "project_id" = $1)
+         + (SELECT COUNT(*) FROM "project_contacts" WHERE "project_id" = $1)
+         + (SELECT COUNT(*) FROM "governed_attachments" WHERE "project_id" = $1)
+         + (SELECT COUNT(*) FROM "evidence" WHERE "project_id" = $1)
+         + (SELECT COUNT(*) FROM "insights" WHERE "project_id" = $1)
+         + (SELECT COUNT(*) FROM "formal_decisions" WHERE "project_id" = $1)
+         + (SELECT COUNT(*) FROM "project_status_updates" WHERE "project_id" = $1)
+         + (SELECT COUNT(*) FROM "delivery_packages" WHERE "project_id" = $1)
+       )::text AS "retained"`,
+      [projectId],
+    );
+    assert.equal(retained[0]?.retained, '0');
+  });
+
+  it('requires archive for Customer communication or Git handoff history', async () => {
+    const customerProjectId = await createProject('delete-customer-history');
+    await dataSource.query(
+      `INSERT INTO "customer_follow_up_delivery_attempts"
+         ("id", "project_id", "draft_version", "state", "attempted_at")
+       VALUES ($1, $2, 1, 'FAILED', CURRENT_TIMESTAMP)`,
+      [randomUUID(), customerProjectId],
+    );
+    await expectProjectDeletionConflict(customerProjectId);
+
+    const gitProjectId = await createProject('delete-git-history');
+    const revision = await request(app.getHttpServer())
+      .post(`/projects/${gitProjectId}/markdown-revisions`)
+      .send({ reason: 'MANUAL' })
+      .expect(201);
+    const deliveryPackage = await request(app.getHttpServer())
+      .put(`/projects/${gitProjectId}/delivery-package`)
+      .send({
+        specificationRevisionId: revision.body.id,
+        items: [{
+          title: 'Git history blocker',
+          userStory: 'PO-ként meg szeretném őrizni az átadási történetet.',
+          acceptanceCriteria: ['A projekt csak archiválható.'],
+        }],
+      })
+      .expect(200);
+    await dataSource.query(
+      `INSERT INTO "delivery_handoffs" (
+         "id", "project_id", "delivery_package_id", "package_version", "preview_id",
+         "target_digest", "target_snapshot", "package_snapshot", "artifact_path",
+         "artifact_content", "artifact_digest", "commit_message", "state", "created_by"
+       ) VALUES ($1, $2, $3, $4, $5, $6, '{}'::jsonb, '{}'::jsonb,
+                 'project-maker-handoffs/draft.md', '# Draft', $7,
+                 'Project Maker handoff', 'PENDING', 'system')`,
+      [
+        randomUUID(),
+        gitProjectId,
+        deliveryPackage.body.id,
+        deliveryPackage.body.version,
+        randomUUID(),
+        'a'.repeat(64),
+        'b'.repeat(64),
+      ],
+    );
+    await expectProjectDeletionConflict(gitProjectId);
   });
 
   it('serializes concurrent deletes to one 204 and one 404', async () => {
@@ -3085,8 +3194,9 @@ describe('ProjectsController (e2e)', () => {
         LANGUAGE plpgsql
         AS $$
         BEGIN
-          INSERT INTO "customer_follow_ups" ("id", "project_id")
-          VALUES ('00000000-0000-4000-8000-000000000001', OLD."id");
+          INSERT INTO "customer_follow_up_delivery_attempts"
+            ("id", "project_id", "draft_version", "state", "attempted_at")
+          VALUES ('00000000-0000-4000-8000-000000000001', OLD."id", 1, 'FAILED', CURRENT_TIMESTAMP);
           RETURN OLD;
         END;
         $$
@@ -3119,8 +3229,9 @@ describe('ProjectsController (e2e)', () => {
         LANGUAGE plpgsql
         AS $$
         BEGIN
-          INSERT INTO "customer_follow_ups" ("id", "project_id")
-          VALUES ('00000000-0000-4000-8000-000000000002', OLD."id");
+          INSERT INTO "customer_follow_up_delivery_attempts"
+            ("id", "project_id", "draft_version", "state", "attempted_at")
+          VALUES ('00000000-0000-4000-8000-000000000002', OLD."id", 1, 'FAILED', CURRENT_TIMESTAMP);
           RETURN OLD;
         END;
         $$
@@ -3401,13 +3512,10 @@ describe('ProjectsController (e2e)', () => {
     assert.equal(response.body.some((project: { id: string }) => project.id === projectId), true);
   }
 
-  async function clearProjectAuditEvents(projectId: string): Promise<void> {
-    await dataSource.query('DELETE FROM "audit_events" WHERE "project_id" = $1', [projectId]);
-  }
 });
 
 const projectDeletionConflictMessage =
-  'This project has persisted activity and cannot be deleted. Archive it instead.';
+  'Only a DRAFT without Customer communication or Git handoff history can be deleted. Archive it instead.';
 
 function assertProjectResponse(value: unknown, expectedStatus: string): void {
   if (value === null || typeof value !== 'object') {

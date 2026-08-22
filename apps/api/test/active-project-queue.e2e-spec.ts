@@ -376,6 +376,15 @@ describe('Active project queue (e2e)', () => {
     await assertEntrySurfacePreparationState(app, clarification.id, 'CLARIFICATION_REQUIRED');
   });
 
+  it('resumes the retained preparation state at every entry surface after restoration', async () => {
+    const project = await createQueueProject(app, `Restored preparation ${Date.now()}`);
+    await createCompletedCanonicalIntake(app, project.id);
+    await request(app.getHttpServer()).post(`/projects/${project.id}/archive`).expect(201);
+    await request(app.getHttpServer()).post(`/projects/${project.id}/restore`).expect(201);
+
+    await assertEntrySurfacePreparationState(app, project.id, 'DECISION_REVIEW_REQUIRED');
+  });
+
   it('routes every HTTP entry surface through the canonical database work-state projection', async () => {
     const project = await createQueueProject(app, `Canonical projection ${Date.now()}`);
 

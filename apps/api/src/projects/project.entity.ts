@@ -27,6 +27,15 @@ export class Project {
   })
   status!: ProjectStatus;
 
+  @Column({
+    name: 'archived_from_status',
+    type: 'enum',
+    enum: projectStatuses,
+    enumName: 'project_status',
+    nullable: true,
+  })
+  archivedFromStatus!: ProjectStatus | null;
+
   @Column({ name: 'ball_owner', type: 'varchar', length: 255, nullable: true })
   ballOwner!: string | null;
 

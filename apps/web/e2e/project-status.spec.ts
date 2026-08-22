@@ -157,4 +157,27 @@ test('keeps administrative phase editing in Project settings and persists the se
   await expect(page.getByTestId('project-lifecycle-status-select')).toContainText(
     'Ügyfél-visszajelzésre vár',
   );
+
+  const archiveResponse = page.waitForResponse(
+    (response) =>
+      response.request().method() === 'POST' &&
+      response.url().endsWith(`/api/projects/${project.id}/archive`),
+  );
+  await page.getByTestId('archive-project-button').locator('button').click();
+  await page.getByTestId('confirm-project-archive-button').locator('button').click();
+  expect((await archiveResponse).status()).toBe(201);
+
+  const restoreResponse = page.waitForResponse(
+    (response) =>
+      response.request().method() === 'POST' &&
+      response.url().endsWith(`/api/projects/${project.id}/restore`),
+  );
+  await page.getByTestId('restore-project-button').locator('button').click();
+  expect((await restoreResponse).status()).toBe(201);
+  await expect(page.getByTestId('project-lifecycle-status-select')).toContainText(
+    'Ügyfél-visszajelzésre vár',
+  );
+  await expect(page.getByTestId('project-settings-action-success')).toContainText(
+    'Korábbi esemény vagy küldés nem ismétlődött meg.',
+  );
 });

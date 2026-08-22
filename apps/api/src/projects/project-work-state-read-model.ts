@@ -183,12 +183,6 @@ export class ProjectWorkStateReadModel {
            AND round.status IN ('OPEN', 'ENDED')
          ORDER BY round.project_id, round.created_at DESC, round.id ASC
       ),
-      latest_restoration AS MATERIALIZED (
-        SELECT event.project_id, MAX(event.created_at) AS created_at
-          FROM audit_events event
-         WHERE event.event_type = 'PROJECT_RESTORED'
-         GROUP BY event.project_id
-      ),
       reply_counts AS MATERIALIZED (
         SELECT correspondence.project_id,
                COUNT(*) FILTER (WHERE correspondence.status = 'Új válasz')::integer AS new_reply_count
@@ -260,8 +254,6 @@ export class ProjectWorkStateReadModel {
                COALESCE(reply_counts.new_reply_count, 0)::integer AS new_reply_count,
                current_round.id AS current_round_id,
                current_round.status AS current_round_status,
-               current_round.created_at AS current_round_created_at,
-               latest_restoration.created_at AS latest_restoration_at,
                EXISTS (
                  SELECT 1 FROM project_question_schemas schema WHERE schema.project_id = source.id
                ) AS has_schema,
@@ -286,7 +278,6 @@ export class ProjectWorkStateReadModel {
                )::integer AS completed_decision_inputs
           FROM projects source
           LEFT JOIN current_round ON current_round.project_id = source.id
-          LEFT JOIN latest_restoration ON latest_restoration.project_id = source.id
           LEFT JOIN reply_counts ON reply_counts.project_id = source.id
           LEFT JOIN round_metrics ON round_metrics.project_id = source.id
           LEFT JOIN follow_up_metrics ON follow_up_metrics.project_id = source.id
@@ -353,11 +344,6 @@ export class ProjectWorkStateReadModel {
                END AS urgency_rank,
                CASE
                  WHEN NOT decision_facts.has_schema THEN 'SCHEMA_REQUIRED'
-                 WHEN decision_facts.latest_restoration_at IS NOT NULL
-                   AND (
-                     decision_facts.current_round_created_at IS NULL
-                     OR decision_facts.current_round_created_at <= decision_facts.latest_restoration_at
-                   ) THEN 'SCHEMA_REQUIRED'
                  WHEN decision_facts.current_round_id IS NULL
                    OR decision_facts.current_round_status = 'OPEN' THEN 'INTAKE_IN_PROGRESS'
                  WHEN decision_facts.total_questions <> ${expectedKeyCountParameter}::integer

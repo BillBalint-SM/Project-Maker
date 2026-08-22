@@ -62,7 +62,7 @@ database; see [`docs/mail-gateway.md`](docs/mail-gateway.md#local-synthetic-gate
 pnpm test:mail-gateway
 ```
 
-The production API image and fresh `0001 -> 0032` migration path have one
+The production API image and fresh `0001 -> 0034` migration path have one
 isolated local/CI smoke command:
 
 ```powershell

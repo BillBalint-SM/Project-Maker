@@ -1200,10 +1200,43 @@ describe('Customer follow-up ping draft and manual delivery', () => {
     assert.equal(delivered.length, 0);
   });
 
-  it('stops expired and archived schedules without creating a delivery attempt', async () => {
+  it('stops an expired schedule without creating a delivery attempt', async () => {
     const expiredProjectId = await createProject(app, 'scheduled-expired');
-    const archivedProjectId = await createProject(app, 'scheduled-archived');
-    for (const projectId of [expiredProjectId, archivedProjectId]) {
+    await request(app.getHttpServer())
+      .patch(`/projects/${expiredProjectId}/follow-up/draft`)
+      .send({
+        messageDraft: 'Kérlek, válaszolj az emlékeztetőre.',
+        referencedFollowUpId: null,
+        expectedVersion: 1,
+      })
+      .expect(200);
+    await request(app.getHttpServer())
+      .patch(`/projects/${expiredProjectId}/follow-up`)
+      .send({ enabled: true, intervalMinutes: 60 })
+      .expect(200);
+    const dueAt = new Date('2026-08-17T16:00:00.000Z');
+    await dataSource.query(
+      `UPDATE customer_follow_ups
+       SET next_ping_at = $2::timestamptz, expires_at = $2::timestamptz
+       WHERE project_id = $1`,
+      [expiredProjectId, dueAt],
+    );
+
+    await followUpService.processDuePings(dueAt);
+
+    const state = await request(app.getHttpServer())
+      .get(`/projects/${expiredProjectId}/follow-up`)
+      .expect(200);
+    assert.equal(state.body.enabled, false);
+    assert.equal(state.body.nextPingAt, null);
+    assert.equal(state.body.latestManualAttempt, null);
+    assert.equal(delivered.length, 0);
+  });
+
+  it('pauses automatic reminders and resumes only the next future cadence', async () => {
+    const overdueProjectId = await createProject(app, 'scheduled-archive-overdue');
+    const remainingProjectId = await createProject(app, 'scheduled-archive-remaining');
+    for (const projectId of [overdueProjectId, remainingProjectId]) {
       await request(app.getHttpServer())
         .patch(`/projects/${projectId}/follow-up/draft`)
         .send({
@@ -1217,32 +1250,144 @@ describe('Customer follow-up ping draft and manual delivery', () => {
         .send({ enabled: true, intervalMinutes: 60 })
         .expect(200);
     }
-    await request(app.getHttpServer())
-      .post(`/projects/${archivedProjectId}/archive`)
-      .send({})
-      .expect(201);
-    const dueAt = new Date('2026-08-17T16:00:00.000Z');
+
+    const archiveReference = new Date();
+    const overdueAt = new Date(archiveReference.getTime() - 60_000);
+    const remainingAt = new Date(archiveReference.getTime() + 30 * 60_000 + 20_000);
     await dataSource.query(
       `UPDATE customer_follow_ups
-       SET next_ping_at = $2::timestamptz,
-           expires_at = CASE WHEN project_id = $1 THEN $2::timestamptz ELSE NULL END
-       WHERE project_id = ANY($3::uuid[])`,
-      [expiredProjectId, dueAt, [expiredProjectId, archivedProjectId]],
+       SET next_ping_at = CASE WHEN project_id = $1 THEN $3::timestamptz ELSE $4::timestamptz END
+       WHERE project_id = ANY($2::uuid[])`,
+      [overdueProjectId, [overdueProjectId, remainingProjectId], overdueAt, remainingAt],
     );
+    await request(app.getHttpServer()).post(`/projects/${overdueProjectId}/archive`).expect(201);
+    const remainingArchiveStartedAt = Date.now();
+    await request(app.getHttpServer()).post(`/projects/${remainingProjectId}/archive`).expect(201);
+    const remainingArchiveFinishedAt = Date.now();
 
-    await followUpService.processDuePings(dueAt);
-
-    for (const projectId of [expiredProjectId, archivedProjectId]) {
-      const state = await request(app.getHttpServer())
+    await followUpService.processDuePings(
+      new Date(archiveReference.getTime() + 2 * 60 * 60_000),
+    );
+    for (const projectId of [overdueProjectId, remainingProjectId]) {
+      const paused = await request(app.getHttpServer())
         .get(`/projects/${projectId}/follow-up`)
         .expect(200);
-      assert.equal(state.body.enabled, false);
-      assert.equal(state.body.nextPingAt, null);
-      assert.equal(state.body.latestManualAttempt, null);
+      assert.equal(paused.body.enabled, true);
+      assert.equal(paused.body.nextPingAt, null);
+      assert.equal(paused.body.latestManualAttempt, null);
     }
     assert.equal(delivered.length, 0);
+    assert.equal(submitted.length, 0);
+
+    const overdueRestoreStartedAt = Date.now();
+    await request(app.getHttpServer()).post(`/projects/${overdueProjectId}/restore`).expect(201);
+    const overdueResumed = await request(app.getHttpServer())
+      .get(`/projects/${overdueProjectId}/follow-up`)
+      .expect(200);
+    assertFutureDelay(overdueResumed.body.nextPingAt, overdueRestoreStartedAt, 60);
+
+    const remainingRestoreStartedAt = Date.now();
+    await request(app.getHttpServer()).post(`/projects/${remainingProjectId}/restore`).expect(201);
+    const remainingRestoreFinishedAt = Date.now();
+    const remainingResumed = await request(app.getHttpServer())
+      .get(`/projects/${remainingProjectId}/follow-up`)
+      .expect(200);
+    assertPreservedRemainingDelay(
+      remainingResumed.body.nextPingAt,
+      remainingAt,
+      remainingArchiveStartedAt,
+      remainingArchiveFinishedAt,
+      remainingRestoreStartedAt,
+      remainingRestoreFinishedAt,
+    );
+    assert.equal(delivered.length, 0);
+    assert.equal(submitted.length, 0);
+  });
+
+  it('pauses the next cadence when an already claimed reminder finishes during archive', async () => {
+    const projectId = await createProject(app, 'scheduled-archive-in-flight');
+    await request(app.getHttpServer())
+      .patch(`/projects/${projectId}/follow-up/draft`)
+      .send({
+        messageDraft: 'Kérlek, válaszolj az emlékeztetőre.',
+        referencedFollowUpId: null,
+        expectedVersion: 1,
+      })
+      .expect(200);
+    await request(app.getHttpServer())
+      .patch(`/projects/${projectId}/follow-up`)
+      .send({ enabled: true, intervalMinutes: 60 })
+      .expect(200);
+    const dueAt = new Date();
+    await dataSource.query(
+      'UPDATE customer_follow_ups SET next_ping_at = $2 WHERE project_id = $1',
+      [projectId, dueAt],
+    );
+
+    let deliveryBegan!: () => void;
+    const deliveryBeganPromise = new Promise<void>((resolve) => {
+      deliveryBegan = resolve;
+    });
+    deliveryStarted = deliveryBegan;
+    releaseDelivery = () => undefined;
+    const processing = followUpService.processDuePings(dueAt);
+    await deliveryBeganPromise;
+    await request(app.getHttpServer()).post(`/projects/${projectId}/archive`).expect(201);
+    releaseDelivery?.();
+    await processing;
+
+    const archived = await request(app.getHttpServer())
+      .get(`/projects/${projectId}/follow-up`)
+      .expect(200);
+    assert.equal(archived.body.enabled, true);
+    assert.equal(archived.body.nextPingAt, null);
+    assert.equal(archived.body.latestManualAttempt.state, 'SENT');
+    assert.equal(delivered.length, 1);
+
+    const restoreStartedAt = Date.now();
+    await request(app.getHttpServer()).post(`/projects/${projectId}/restore`).expect(201);
+    const resumed = await request(app.getHttpServer())
+      .get(`/projects/${projectId}/follow-up`)
+      .expect(200);
+    assertFutureDelay(resumed.body.nextPingAt, restoreStartedAt, 60);
+    assert.equal(delivered.length, 1);
   });
 });
+
+function assertFutureDelay(
+  nextPingAt: unknown,
+  restoreStartedAt: number,
+  expectedMinutes: number,
+): void {
+  if (typeof nextPingAt !== 'string') {
+    throw new Error('expected a scheduled next reminder timestamp');
+  }
+  const delayMinutes = (new Date(nextPingAt).getTime() - restoreStartedAt) / 60_000;
+  assert.ok(
+    delayMinutes >= expectedMinutes - 2 && delayMinutes <= expectedMinutes + 2,
+    `expected the next reminder in about ${expectedMinutes} minutes, got ${delayMinutes}`,
+  );
+}
+
+function assertPreservedRemainingDelay(
+  nextPingAt: unknown,
+  originalNextPingAt: Date,
+  archiveStartedAt: number,
+  archiveFinishedAt: number,
+  restoreStartedAt: number,
+  restoreFinishedAt: number,
+): void {
+  if (typeof nextPingAt !== 'string') {
+    throw new Error('expected a scheduled next reminder timestamp');
+  }
+  const actualNextPingAt = new Date(nextPingAt).getTime();
+  const earliestExpected = restoreStartedAt + originalNextPingAt.getTime() - archiveFinishedAt;
+  const latestExpected = restoreFinishedAt + originalNextPingAt.getTime() - archiveStartedAt;
+  assert.ok(
+    actualNextPingAt >= earliestExpected - 100 && actualNextPingAt <= latestExpected + 100,
+    `expected the exact remaining reminder delay between ${earliestExpected} and ${latestExpected}, got ${actualNextPingAt}`,
+  );
+}
 
 async function createProject(app: INestApplication, label: string): Promise<string> {
   const suffix = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
