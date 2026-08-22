@@ -459,6 +459,15 @@ describe('Customer follow-up ping draft and manual delivery', () => {
       [attemptId, projectId, projectRows[0]!.customer_contact_email],
     );
 
+    const legacyState = await request(app.getHttpServer())
+      .get(`/projects/${projectId}/follow-up`)
+      .expect(200);
+    assert.equal(legacyState.body.latestManualAttempt.state, 'FAILED');
+    assert.equal(
+      legacyState.body.latestManualAttempt.failureCode,
+      'SMTP_SEND_FAILED',
+    );
+
     const retried = await request(app.getHttpServer())
       .post(`/projects/${projectId}/follow-up/ping/retry`)
       .send({ attemptId, acknowledgeDuplicateRisk: false })

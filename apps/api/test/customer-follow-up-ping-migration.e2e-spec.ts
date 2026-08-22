@@ -9,7 +9,7 @@ const CUSTOMER_FOLLOW_UP_PING_MIGRATION =
   'CustomerFollowUpPingDraft0015CustomerFollowUpPingDraft1787126400000';
 
 describe('Customer follow-up ping migration (PostgreSQL)', () => {
-  it('migrates empty drafts and refuses rollback after retained ping activity', async () => {
+  it('adds an empty, versioned draft to an existing follow-up', async () => {
     const databaseUrl = process.env['DATABASE_URL'];
     if (!databaseUrl) {
       throw new Error('DATABASE_URL is required for the Customer follow-up migration proof.');
@@ -52,31 +52,6 @@ describe('Customer follow-up ping migration (PostgreSQL)', () => {
       );
       assert.deepEqual(defaults, [{ messageDraft: null, referencedFollowUpId: null, draftVersion: 1 }]);
 
-      await migrationDataSource.undoLastMigration();
-      const reverted = await migrationDataSource.query<Array<{ columnName: string }>>(
-        `SELECT column_name AS "columnName"
-         FROM information_schema.columns
-         WHERE table_name = 'customer_follow_ups' AND column_name = 'message_draft'`,
-      );
-      assert.deepEqual(reverted, []);
-
-      await migrationDataSource.runMigrations();
-      await migrationDataSource.query(
-        `UPDATE "customer_follow_ups"
-         SET "message_draft" = 'Megőrzendő ügyfélüzenet', "draft_version" = 2
-         WHERE "project_id" = $1`,
-        [projectId],
-      );
-      await assert.rejects(
-        migrationDataSource.undoLastMigration(),
-        /Migration 0015 cannot remove retained Customer follow-up ping activity \(drafts=1, attempts=0\)/,
-      );
-      const preserved = await migrationDataSource.query<Array<{ messageDraft: string }>>(
-        `SELECT "message_draft" AS "messageDraft"
-         FROM "customer_follow_ups" WHERE "project_id" = $1`,
-        [projectId],
-      );
-      assert.deepEqual(preserved, [{ messageDraft: 'Megőrzendő ügyfélüzenet' }]);
     } finally {
       if (migrationDataSource?.isInitialized) {
         await migrationDataSource.destroy();

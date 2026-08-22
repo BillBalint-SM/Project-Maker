@@ -253,7 +253,6 @@ function configuration(port: number, caCertificate: string): ConfigService {
     MAIL_GATEWAY_IMAP_SECURITY: 'IMPLICIT_TLS',
     MAIL_GATEWAY_IMAP_USERNAME: 'imap-user',
     MAIL_GATEWAY_IMAP_PASSWORD: 'imap-secret',
-    MAIL_GATEWAY_CHECKPOINT_SECRET: 'checkpoint-secret-with-at-least-32-bytes',
     MAIL_GATEWAY_TLS_CA_CERTIFICATE_BASE64: Buffer.from(caCertificate).toString('base64'),
   });
 }

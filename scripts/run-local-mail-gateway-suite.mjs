@@ -32,14 +32,12 @@ async function main() {
   const port = await publishedPostgresPort();
   const environment = {
     ...process.env,
-    ACTIVE_PROJECT_QUEUE_CURSOR_SECRET: 'local-mail-gateway-cursor-secret-at-least-32-characters',
     CORRESPONDENCE_MAILBOX_ADDRESS: 'project-maker-local@example.test',
     CORRESPONDENCE_MAILBOX_NAME: 'Project Maker local test',
     CORRESPONDENCE_MAILBOX_POLL_INTERVAL_MS: '60000',
     CORS_ORIGIN: 'http://127.0.0.1:4200',
     DATABASE_URL: `postgres://${databaseUser}:${databasePassword}@127.0.0.1:${port}/${databaseName}`,
     FOLLOW_UP_POLL_INTERVAL_MS: '60000',
-    MAIL_GATEWAY_CHECKPOINT_SECRET: 'local-mail-gateway-checkpoint-secret-at-least-32-characters',
     MAIL_GATEWAY_IMAP_FOLDER: 'INBOX',
     MAIL_GATEWAY_IMAP_HOST: '127.0.0.1',
     MAIL_GATEWAY_IMAP_PASSWORD: 'local-imap-password',

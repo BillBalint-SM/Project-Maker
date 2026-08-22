@@ -1,12 +1,12 @@
-import { Column, CreateDateColumn, Entity, PrimaryColumn, UpdateDateColumn } from 'typeorm';
+import {
+  Column,
+  CreateDateColumn,
+  Entity,
+  PrimaryColumn,
+  UpdateDateColumn,
+} from 'typeorm';
 
 import type { FollowUpDeliveryStatus } from '@project-maker/contracts';
-
-const followUpDeliveryStatusValues: readonly FollowUpDeliveryStatus[] = [
-  'NEVER',
-  'SENT',
-  'FAILED',
-];
 
 @Entity({ name: 'customer_follow_ups' })
 export class CustomerFollowUpEntity {
@@ -25,19 +25,39 @@ export class CustomerFollowUpEntity {
   @Column({ name: 'draft_version', type: 'integer', default: 1 })
   draftVersion!: number;
 
-  @Column({ name: 'preview_token_digest', type: 'varchar', length: 64, nullable: true })
+  @Column({
+    name: 'preview_token_digest',
+    type: 'varchar',
+    length: 64,
+    nullable: true,
+  })
   previewTokenDigest!: string | null;
 
-  @Column({ name: 'preview_fingerprint', type: 'varchar', length: 64, nullable: true })
+  @Column({
+    name: 'preview_fingerprint',
+    type: 'varchar',
+    length: 64,
+    nullable: true,
+  })
   previewFingerprint!: string | null;
 
   @Column({ name: 'preview_expires_at', type: 'timestamptz', nullable: true })
   previewExpiresAt!: Date | null;
 
-  @Column({ name: 'preview_sender_name', type: 'varchar', length: 255, nullable: true })
+  @Column({
+    name: 'preview_sender_name',
+    type: 'varchar',
+    length: 255,
+    nullable: true,
+  })
   previewSenderName!: string | null;
 
-  @Column({ name: 'preview_sender_address', type: 'varchar', length: 320, nullable: true })
+  @Column({
+    name: 'preview_sender_address',
+    type: 'varchar',
+    length: 320,
+    nullable: true,
+  })
   previewSenderAddress!: string | null;
 
   @Column({ type: 'boolean', default: false })
@@ -55,16 +75,23 @@ export class CustomerFollowUpEntity {
   @Column({ name: 'next_ping_at', type: 'timestamptz', nullable: true })
   nextPingAt!: Date | null;
 
+  // Legacy fallback for installations predating delivery-attempt history.
+  // New canonical rows leave this retained value untouched; projections prefer
+  // customer_outbound_attempts whenever one exists.
   @Column({
     name: 'last_delivery_status',
     type: 'enum',
-    enum: followUpDeliveryStatusValues,
+    enum: ['NEVER', 'SENT', 'FAILED'],
     enumName: 'follow_up_delivery_status',
     default: 'NEVER',
   })
   lastDeliveryStatus!: FollowUpDeliveryStatus;
-
-  @Column({ name: 'last_delivery_error', type: 'varchar', length: 100, nullable: true })
+  @Column({
+    name: 'last_delivery_error',
+    type: 'varchar',
+    length: 100,
+    nullable: true,
+  })
   lastDeliveryError!: string | null;
 
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })

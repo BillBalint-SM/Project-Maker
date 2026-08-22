@@ -5,12 +5,24 @@ export async function hasCustomerReceiptEvidence(
   correspondenceId: string | null,
 ): Promise<boolean> {
   if (!correspondenceId) return false;
-  const rows = await manager.query(
-    `SELECT EXISTS (
-       SELECT 1 FROM "customer_inbound_messages"
-       WHERE "correspondence_id" = $1
-     ) AS "present"`,
-    [correspondenceId],
-  ) as Array<{ present: boolean }>;
-  return rows[0]?.present ?? false;
+  return (
+    await findCorrespondencesWithCustomerReceiptEvidence(manager, [
+      correspondenceId,
+    ])
+  ).has(correspondenceId);
+}
+
+export async function findCorrespondencesWithCustomerReceiptEvidence(
+  manager: EntityManager,
+  correspondenceIds: readonly string[],
+): Promise<ReadonlySet<string>> {
+  const uniqueIds = [...new Set(correspondenceIds)];
+  if (uniqueIds.length === 0) return new Set();
+  const rows = await manager.query<Array<{ correspondenceId: string }>>(
+    `SELECT DISTINCT "correspondence_id" AS "correspondenceId"
+     FROM "customer_inbound_messages"
+     WHERE "correspondence_id" = ANY($1::uuid[])`,
+    [uniqueIds],
+  );
+  return new Set(rows.map(({ correspondenceId }) => correspondenceId));
 }

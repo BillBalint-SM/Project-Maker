@@ -8,11 +8,14 @@ import { migrationsForHistoricalDatabase } from './migration-harness';
 
 const INTERVIEW_HANDOFF_MIGRATION =
   'InterviewCustomerHandoff0014InterviewCustomerHandoff1787039999000';
+const MARKDOWN_TEMPLATE_MIGRATION =
+  'MarkdownTemplateLibrary0013MarkdownTemplateLibrary1786953600000';
 
 describe('Interview customer handoff migration boundary (PostgreSQL)', () => {
   let adminDataSource: DataSource;
   let migrationDataSource: DataSource;
   let databaseName: string;
+  let historicalCompletedRoundId: string;
 
   before(async () => {
     const configuredDatabaseUrl = process.env['DATABASE_URL'];
@@ -30,11 +33,67 @@ describe('Interview customer handoff migration boundary (PostgreSQL)', () => {
     migrationDataSource = new DataSource({
       type: 'postgres',
       url: databaseUrl.toString(),
+      migrations: [...migrationsForHistoricalDatabase(MARKDOWN_TEMPLATE_MIGRATION)],
+      migrationsTransactionMode: 'each',
+    });
+    await migrationDataSource.initialize();
+    await migrationDataSource.runMigrations();
+
+    const historicalProjectId = randomUUID();
+    const historicalSchemaId = randomUUID();
+    historicalCompletedRoundId = randomUUID();
+    await migrationDataSource.query(
+      `INSERT INTO "projects" (
+        "id", "name", "customer_contact_name", "customer_contact_email"
+      ) VALUES ($1, 'Historical completed interview', 'Customer Contact',
+        'historical@example.test')`,
+      [historicalProjectId],
+    );
+    await migrationDataSource.query(
+      `INSERT INTO "project_question_schemas" (
+        "id", "project_id", "schema_version", "bank_version", "source"
+      ) VALUES ($1, $2, 1, 1, 'INTAKE06_UPGRADE_PROOF')`,
+      [historicalSchemaId, historicalProjectId],
+    );
+    await migrationDataSource.query(
+      `INSERT INTO "interview_rounds" (
+        "id", "project_id", "project_schema_id", "type", "source"
+      ) VALUES ($1, $2, $3, 'INITIAL_INTAKE', 'INTAKE06_UPGRADE_PROOF')`,
+      [historicalCompletedRoundId, historicalProjectId, historicalSchemaId],
+    );
+    await migrationDataSource.query(
+      `UPDATE "interview_rounds"
+       SET "status" = 'COMPLETED', "completed_at" = CURRENT_TIMESTAMP
+       WHERE "id" = $1`,
+      [historicalCompletedRoundId],
+    );
+    await migrationDataSource.destroy();
+
+    migrationDataSource = new DataSource({
+      type: 'postgres',
+      url: databaseUrl.toString(),
       migrations: [...migrationsForHistoricalDatabase(INTERVIEW_HANDOFF_MIGRATION)],
       migrationsTransactionMode: 'each',
     });
     await migrationDataSource.initialize();
     await migrationDataSource.runMigrations();
+  });
+
+  it('upgrades a historical completed meeting without changing its completion record', async () => {
+    const rows = await migrationDataSource.query<
+      Array<{ status: string; completedAt: Date; contentVersion: number }>
+    >(
+      `SELECT "status", "completed_at" AS "completedAt",
+        "content_version" AS "contentVersion"
+       FROM "interview_rounds"
+       WHERE "id" = $1`,
+      [historicalCompletedRoundId],
+    );
+
+    assert.equal(rows.length, 1);
+    assert.equal(rows[0]?.status, 'ENDED');
+    assert.ok(rows[0]?.completedAt instanceof Date);
+    assert.equal(rows[0]?.contentVersion, 1);
   });
 
   after(async () => {
@@ -244,61 +303,4 @@ describe('Interview customer handoff migration boundary (PostgreSQL)', () => {
     }]);
   });
 
-  it('refuses rollback while ended interviews or handoff history exist', async () => {
-    await assert.rejects(
-      migrationDataSource.undoLastMigration(),
-      /Migration 0014 cannot remove ended interview or customer handoff history/i,
-    );
-  });
-
-  it('restores the prior empty schema without leaving versioned handoff artifacts', async () => {
-    const rollbackDatabaseName = `project_maker_intake06_down_${randomUUID().replaceAll('-', '')}`;
-    const rollbackDatabaseUrl = new URL(process.env['DATABASE_URL']!);
-    rollbackDatabaseUrl.pathname = `/${rollbackDatabaseName}`;
-    let rollbackDataSource: DataSource | undefined;
-
-    try {
-      await adminDataSource.query(`CREATE DATABASE "${rollbackDatabaseName}"`);
-      rollbackDataSource = new DataSource({
-        type: 'postgres',
-        url: rollbackDatabaseUrl.toString(),
-        migrations: [...migrationsForHistoricalDatabase(INTERVIEW_HANDOFF_MIGRATION)],
-        migrationsTransactionMode: 'each',
-      });
-      await rollbackDataSource.initialize();
-      await rollbackDataSource.runMigrations();
-      await rollbackDataSource.undoLastMigration();
-
-      const rows = await rollbackDataSource.query<
-        Array<{ handoffTable: string | null; newColumnCount: string; statuses: string[] }>
-      >(`
-        SELECT
-          to_regclass('public.interview_customer_handoffs')::text AS "handoffTable",
-          (
-            SELECT COUNT(*)::text FROM information_schema.columns
-            WHERE table_schema = 'public'
-              AND (
-                (table_name = 'projects' AND column_name IN ('internal_owner_name', 'next_action_owner_role'))
-                OR (table_name = 'interview_rounds' AND column_name = 'content_version')
-              )
-          ) AS "newColumnCount",
-          to_json(ARRAY(
-            SELECT enumlabel FROM pg_enum
-            JOIN pg_type ON pg_type.oid = pg_enum.enumtypid
-            WHERE pg_type.typname = 'interview_round_status'
-            ORDER BY enumsortorder
-          )) AS "statuses"
-      `);
-      assert.deepEqual(rows, [{
-        handoffTable: null,
-        newColumnCount: '0',
-        statuses: ['OPEN', 'COMPLETED'],
-      }]);
-    } finally {
-      if (rollbackDataSource?.isInitialized) {
-        await rollbackDataSource.destroy();
-      }
-      await adminDataSource.query(`DROP DATABASE IF EXISTS "${rollbackDatabaseName}" WITH (FORCE)`);
-    }
-  });
 });

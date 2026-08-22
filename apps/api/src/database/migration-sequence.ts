@@ -31,6 +31,7 @@ import { CustomerResponseAndNotifications0028CustomerResponseAndNotifications178
 import { CustomerResponseEvidence0029CustomerResponseEvidence1788336000000 } from '../migrations/0029-customer-response-evidence';
 import { DeliveryAndGit0030DeliveryAndGit1788422400000 } from '../migrations/0030-delivery-and-git';
 import { ClaudeCodeMcpConnection0031ClaudeCodeMcpConnection1788508800000 } from '../migrations/0031-claude-code-mcp-connection';
+import { CanonicalCustomerMailPersistence0032CanonicalCustomerMailPersistence1788595200000 } from '../migrations/0032-canonical-customer-mail-persistence';
 
 export type ApiMigration = new () => MigrationInterface;
 
@@ -66,6 +67,7 @@ export const migrationSequence: readonly ApiMigration[] = [
   CustomerResponseEvidence0029CustomerResponseEvidence1788336000000,
   DeliveryAndGit0030DeliveryAndGit1788422400000,
   ClaudeCodeMcpConnection0031ClaudeCodeMcpConnection1788508800000,
+  CanonicalCustomerMailPersistence0032CanonicalCustomerMailPersistence1788595200000,
 ];
 
 export function migrationsThrough(migrationName: string): readonly ApiMigration[] {
