@@ -99,15 +99,15 @@ projektügyfél-adat nem része az átadási csomagnak.
    `/api/health` végpontot.
 5. Ellenőrizd a migrációs állapotot az
    [üzemeltetési átadás dokumentált parancsával](operations-handoff.md#database-migrations-and-recovery).
-   A `pending: false` és mind a 35 migráció megléte kötelező.
+   A `pending: false` és mind a 36 migráció megléte kötelező.
 6. Szintetikus adatokkal járd végig legalább ezt az üzleti smoke-ot: projekt
-   létrehozása és kilépés, visszatérés a Projektportfólióba, kérdésséma
-   elfogadása, felmérési válasz mentése, felmérés lezárása, Becslési
-   felkészültség megnyitása, tisztázandó tétel létrehozása, Projektállapot
+   létrehozása és kilépés, visszatérés a `Portfolio` oldalra, kérdésséma
+   elfogadása, felmérési válasz mentése, felmérés lezárása, `Estimation
+   Readiness` megnyitása, tisztázandó tétel létrehozása, `Project Status`
    ellenőrzése és pontos visszatérés a kiinduló listába.
-7. Ellenőrizd 390 képpont széles nézetben és billentyűzettel a globális és a
-   Projekt-navigációt, az elsődleges feladatot, valamint a hiba utáni
-   újrapróbálást.
+7. Ellenőrizd legalább 1024 képpont széles támogatott asztali nézetben és
+   billentyűzettel a globális és a Project-navigációt, az elsődleges feladatot,
+   valamint a hiba utáni újrapróbálást.
 
 ### Az első kapu eredménye
 

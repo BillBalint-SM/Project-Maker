@@ -20,7 +20,7 @@ Scope: integrate nullable optional-resource reads and professional-English compl
 - [x] G4: Driver review confirms exports, MCP reads, write conflicts, user-authored text, and historical values remain unchanged.
   EVIDENCE: Reviewed every `DeliveryPackageService.find/get` caller and the Question Schema read path. Only the two collection-like browser GETs use successful nullable absence; artifact/Markdown/CSV/print exports and MCP context retain the strict `get` path, while Git handoff still requires `entity()` and its existing conflict. No DTO, persistence, authored content, wire enum, or historical record was changed. The copy edits are limited to four accepted literals and current documentation standards.
 
-- [x] G5: Documentation and product copy use one current professional-English standard without a translation framework.
+- [x] G5: Product copy uses professional English and documentation consistently quotes current English UI labels; explanatory prose may remain in its intended reader language.
   CHECK: rg -n "professional English" .agents/skills/project-maker-angular-conventions/SKILL.md PLAN.md docs/roadmap.md docs/user-guide.md
   EXPECT: professional English
-  EVIDENCE: docs/user-guide.md:37:The application interface uses professional English. This guide quotes visible button and field labels in `this format`.
+  EVIDENCE: PLAN.md:164:| 2.2.1 | `UX-AUDIT-005/006`: successful optional-resource absence plus complete professional English | Question Schema and Delivery Package API/controller/tests; related web adapters/test

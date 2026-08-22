@@ -125,6 +125,7 @@ ordered TypeORM migrations registered in
 33. `0033-project-archive-resume.ts` — retained pre-archive Project phase and paused automatic-reminder cadence for side-effect-free workflow resume.
 34. `0034-project-draft-deletion.ts` — internal Project-owned draft data cascades on explicit Project deletion while Customer communication and Git handoff history retain restrictive foreign keys.
 35. `0035-question-bank-reference-files.ts` — immutable Question Bank reference-file content and question-revision relations; valid legacy `QUESTION_BANK` attachments are carried forward without duplicating their bytes across later Bank revisions.
+36. `0036-professional-english-product-language.ts` — publishes professional-English successor versions of the canonical Question Bank and default Markdown template without rewriting immutable published history.
 
 The deployed API image contains the compiled migration classes, but not the
 TypeScript migration source tree used by the development-only
@@ -175,10 +176,10 @@ docker compose --env-file .env exec -T api node -e $migrationStatusScript
 
 `pending: false` means that all migration classes in the running image are
 recorded in the database. The `applied` array is the database's migration
-history; the thirty-five expected names are listed above.
+history; the thirty-six expected names are listed above.
 
 The supported migration policy is no-squash forward evolution from the oldest
-supported `0001` schema through `0035`. Do not use `undoLastMigration()` or an
+supported `0001` schema through `0036`. Do not use `undoLastMigration()` or an
 arbitrary runtime downgrade as a normal recovery procedure: a down migration
 can destroy retained business history and is not a deployment workflow. Take a
 backup, diagnose the affected state, and ship a reviewed forward correction.
@@ -244,7 +245,7 @@ users have the same application capability set. Unsafe browser requests use
 the authenticated session and exact `CORS_ORIGIN` boundary. Deactivation
 revokes both browser sessions and the user's MCP connection.
 
-The `Fiókbeállítások` page lets the signed-in user create, replace, or revoke
+The `Account settings` page lets the signed-in user create, replace, or revoke
 one Project Maker MCP token. Only its SHA-256 digest and creation time are
 stored; the plaintext is returned once so the user can run:
 
@@ -585,7 +586,7 @@ paths, and one reviewed send/reply browser journey without external credentials.
 
 The `container-smoke` job builds the production API image, proves the packaged
 contracts runtime import and the absence of build tooling, migrates a fresh
-database through `0001 -> 0035`, then checks health and an authenticated
+database through `0001 -> 0036`, then checks health and an authenticated
 canonical-policy consumer. The script owns and removes its temporary Compose
 project and volume.
 

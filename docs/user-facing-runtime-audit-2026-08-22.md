@@ -4,13 +4,13 @@
 
 - **Baseline:** `main` at `4632fe536d7bddce7865a144bfb3a30f77f7a963`
 - **Original audit mode:** diagnosis only; no application behavior was changed in the audited baseline
-- **Remediation status:** `UX-AUDIT-001` through `UX-AUDIT-006` are resolved on `codex/ux-audit-remediation`; branch and root evidence is recorded below
+- **Remediation status:** all six patches are implemented on `codex/ux-audit-remediation`; final independent-review and re-measurement gates are still in progress
 - **Primary environment:** isolated current-`main` Compose stack at `http://127.0.0.1:18080`
 - **Protected environment:** the existing `http://localhost:8080` stack was not modified
 - **Supported viewport scope:** desktop/laptop widths only: 1024, 1280, 1440, and 1920 pixels
 - **Finding gate:** a product defect is listed only when a deterministic detector could fail, the failure repeated, the case was minimized, and source inspection explained the behavior
 
-This document is the implementation backlog produced by the audit. All six accepted items are **RESOLVED**. Candidate failures that did not pass the finding gate remain recorded separately and must not be implemented as product fixes without new evidence.
+This document is the implementation backlog produced by the audit. All six accepted patches are implemented; final closure remains gated by independent re-review and re-measured validation. Candidate failures that did not pass the finding gate remain recorded separately and must not be implemented as product fixes without new evidence.
 
 ## Severity rubric
 
@@ -215,11 +215,11 @@ Validation should be limited to the two optional-resource API/browser cases, the
 
 ## Remediation evidence
 
-- `UX-AUDIT-001/002`: [`app.component.ts`](../apps/web/src/app/app.component.ts), [`app.component.html`](../apps/web/src/app/app.component.html), and [`app.component.spec.ts`](../apps/web/src/app/app.component.spec.ts) cover independent failures and retries, successful badge recovery, later feature-local badge publications, stale-account cancellation, logout double-submit protection, retained session, visible error, and successful retry.
+- `UX-AUDIT-001/002`: [`app.component.ts`](../apps/web/src/app/app.component.ts), [`app.component.html`](../apps/web/src/app/app.component.html), [`app.component.spec.ts`](../apps/web/src/app/app.component.spec.ts), and the two badge-service specifications cover independent failures and retries, successful feature-local recovery after an initial failure, session-scoped badge publications, rejection of prior-session races, logout double-submit protection, retained session, a fixed safe error that never propagates backend diagnostics, and successful retry.
 - `UX-AUDIT-003`: [`customer-follow-up.component.ts`](../apps/web/src/app/projects/customer-follow-up/customer-follow-up.component.ts), its template, and [`customer-follow-up.component.spec.ts`](../apps/web/src/app/projects/customer-follow-up/customer-follow-up.component.spec.ts) enforce the saved-draft prerequisite while retaining the existing API guard and composer.
 - `UX-AUDIT-004`: [`decision-review.page.ts`](../apps/web/src/app/projects/decision-review.page.ts), its template, and [`decision-review.page.spec.ts`](../apps/web/src/app/projects/decision-review.page.spec.ts) prove loading/error fail-closed behavior, retry-to-archived resolution, and the proven-active creation path.
 - `UX-AUDIT-005`: [`question-bank-reference-files.e2e-spec.ts`](../apps/api/test/question-bank-reference-files.e2e-spec.ts) and [`delivery-package.e2e-spec.ts`](../apps/api/test/delivery-package.e2e-spec.ts) prove `200`/JSON `null` for a known empty Project and `404` for an unknown Project. The browser-adapter specifications prove that real errors are no longer reinterpreted as absence.
-- `UX-AUDIT-006`: the Delivery `Outputs` title, three command-failure specifications, source-copy guard, and reconciled [`CONTEXT.md`](../CONTEXT.md), [`PLAN.md`](../PLAN.md), [`README.md`](../README.md), roadmap, user guide, and ADR establish the professional-English standard without a translation framework or persisted-value rewrite.
+- `UX-AUDIT-006`: the Delivery `Outputs` title, three command-failure specifications, source-copy guard, and reconciled [`CONTEXT.md`](../CONTEXT.md), [`PLAN.md`](../PLAN.md), [`README.md`](../README.md), roadmap, user guide, and ADR establish professional-English runtime copy and exact English UI labels in operating documentation. Explanatory prose may retain its intended reader language; no translation framework or persisted-value rewrite was introduced.
 - [`ux-audit-remediation.spec.ts`](../apps/web/e2e/ux-audit-remediation.spec.ts) runs the four P2 recoveries through a real browser at a supported desktop width: both independent shell retries, failed-then-successful Sign out, first-time draft-to-schedule setup with reload persistence, and error-to-archived Formal Decision retry. All four passed against the real local API and a disposable fresh database.
 - Orchestrated evidence is retained in [`ux-audit-shell.md`](../gates/ux-audit-shell.md), [`ux-audit-project-safety.md`](../gates/ux-audit-project-safety.md), [`ux-audit-contract-english.md`](../gates/ux-audit-contract-english.md), and the two branch gate files. All 20 leaf gates and all 10 branch gates passed, including the full Angular component suite, production web build, nullable contract typechecks, and both adjacent API E2E files on a fresh database.
 

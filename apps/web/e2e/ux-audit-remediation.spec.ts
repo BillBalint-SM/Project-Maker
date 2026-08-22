@@ -73,7 +73,7 @@ test.describe('UX audit remediation', () => {
     await page.route('**/api/auth/logout', async (route) => {
       logoutRequests += 1;
       if (logoutRequests === 1) {
-        await route.fulfill({ status: 503, contentType: 'application/json', body: '{"message":"Sign out is temporarily unavailable."}' });
+        await route.fulfill({ status: 503, contentType: 'application/json', body: '{"message":"ECONNRESET at internal-auth-node-7"}' });
         return;
       }
       await route.fulfill({ status: 204 });
@@ -84,7 +84,7 @@ test.describe('UX audit remediation', () => {
     await page.getByRole('button', { name: 'Sign out', exact: true }).click();
 
     await expect(page.getByTestId('navigation-panel')).toHaveClass(/open/);
-    await expect(page.getByTestId('logout-error')).toContainText('Sign out is temporarily unavailable.');
+    await expect(page.getByTestId('logout-error')).toHaveText('Unable to sign out. Check your connection and try again.');
     await page.getByRole('button', { name: 'Retry sign out', exact: true }).click();
 
     await expect(page).toHaveURL('/login');

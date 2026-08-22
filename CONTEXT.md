@@ -8,7 +8,7 @@ The domain language used to describe discovery projects, intake work, and their 
 The organization that owns and operates a Project Maker deployment and employs
 its internal users. It supplies runtime infrastructure and configuration; it
 is never the Customer in Project Maker product language. Hungarian operations
-documentation calls it `üzemeltető szervezet`.
+documentation calls it `üzemeltető szervezet`; this is not an employee-facing UI label.
 _Avoid_: Customer, Customer tenant, Project Customer
 
 **Internal user**:
@@ -35,7 +35,8 @@ _Avoid_: User identity, application role, project permission
 The external organization for which a project is being prepared. The shorter
 `Customer` qualifier is reserved for this organization and its correspondence;
 it never denotes the Operator organization. Hungarian product language calls
-it `projektügyfél`, or `ügyfél` where the Project context is unambiguous.
+it `projektügyfél`, or `ügyfél` where the Project context is unambiguous; these
+are Hungarian documentation terms, not employee-facing UI labels.
 _Avoid_: Operator organization, deployment owner, application customer
 
 **Customer contact**:
@@ -74,7 +75,7 @@ _Avoid_: Project status, audit event, automatic progress report
 **Portfolio overview**:
 The application-level starting context for current projects, their preparation
 states, and the most important next actions. Its employee-facing name is
-`Portfolio overview`; it does not replace a selected project's working context or
+`Portfolio Overview`; it does not replace a selected project's working context or
 the active project queue.
 _Avoid_: Full project dossier, unfiltered project list
 
@@ -90,7 +91,7 @@ _Avoid_: Project phase, sprint, epic
 
 **Active project queue**:
 A prioritized cross-project list of projects in active preparation, each with
-one clear next action. Its employee-facing name is `Active project queue`; it is
+one clear next action. Its employee-facing name is `Active Project Queue`; it is
 distinct from a queue of individual discovery follow-ups.
 _Avoid_: Discovery follow-up queue, project archive
 
@@ -127,9 +128,9 @@ of Project question-schema publication.
 _Avoid_: Day-to-day project coordination, hidden destructive controls
 
 **Administrative project phase**:
-The manually recorded business phase shown as `Adminisztratív projektfázis`:
-`Előkészítés alatt`, `Felmérési szakasz`, `Belső egyeztetésre vár`,
-`Ügyfél-visszajelzésre vár`, or `Tervezésre átadva`. It is not the server-derived
+The manually recorded business phase shown as `Administrative project phase`:
+`In preparation`, `Discovery in progress`, `Awaiting internal alignment`,
+`Awaiting Customer feedback`, or `Handed over for planning`. It is not the server-derived
 Project preparation state and is not a complete delivery lifecycle with a
 terminal successful-delivery state.
 _Avoid_: Project lifecycle, preparation state, delivery completion
@@ -144,14 +145,14 @@ _Avoid_: Contact details used as an implicit assignment, project lifecycle contr
 **Internal project owner**:
 The named internal employee who operates Project Maker for the project,
 conducts the interview, and may own its next action. Employee-facing language
-calls the role `Belső projektgazda`.
+calls the role `Internal project owner`.
 _Avoid_: Anonymous internal user, unqualified project role
 
 **Next-action owner**:
 The concrete person who currently has the project's next action: either the
 Internal project owner or the Customer contact. Employee-facing language names
-the role and person together as `Belső projektgazda – Név` or
-`Ügyfélkapcsolattartó – Név`.
+the role and person together as `Internal project owner – Name` or
+`Customer contact – Name`.
 _Avoid_: Ball owner, free-form owner label
 
 **Ended interview**:
@@ -168,7 +169,7 @@ _Avoid_: One-time pre-send state, readiness approval
 **Interview customer handoff**:
 One numbered, immutable, human-readable question-and-answer snapshot explicitly
 sent to the project's named Customer contact after review. Its employee-facing
-name is `felmérési összefoglaló`.
+name is `Customer interview summary`.
 _Avoid_: Customer follow-up ping, arbitrary-recipient email, raw data export
 
 **Interview revision draft**:
@@ -213,7 +214,7 @@ _Avoid_: Empty interview round, discarded project-start input
 **Project-start draft**:
 A persistent project created from valid basic data before its Project question
 schema is accepted. It remains resumable and is visibly in the
-`Kérdésséma szükséges` preparation state until the interview starts.
+`Question schema required` preparation state until the interview starts.
 _Avoid_: Browser-only wizard draft, silently abandoned input
 
 **Frozen Project question schema**:
@@ -236,19 +237,19 @@ _Avoid_: Question Bank reference file, Customer inbound attachment, general Proj
 
 **Post-interview readiness transition**:
 The direct transition from an ended Initial Intake meeting to that project's
-`Becslési felkészültség` context, where its current gaps are understood and acted on while
+`Estimation Readiness` context, where its current gaps are understood and acted on while
 the ended interview supports versioned review and customer handoff.
 _Avoid_: Returning blindly to a global list, treating completion as readiness
 
 **Project preparation state**:
 The one employee-facing preparation state shown for an active project:
-`Kérdésséma szükséges`, `Felmérés folyamatban`, `Tisztázás szükséges`,
-`Döntési értékelés szükséges`, `Becslés előkészíthető`, or `Becslésre kész`.
+`Question schema required`, `Initial Intake in progress`, `Clarification required`,
+`Decision Review required`, `Ready for estimation preparation`, or `Ready for estimation`.
 It conveys the next stage of project preparation, not a raw persistence status.
 _Avoid_: DRAFT, inferred priority score, multiple competing project states
 
 **Discovery follow-up queue**:
-The cross-project working view named `Tisztázandó tételek`, containing open
+The cross-project working view named `Discovery Follow-ups`, containing open
 Discovery follow-ups from active projects. It does not include Customer
 reminders.
 _Avoid_: Active project queue, customer follow-up queue
@@ -282,11 +283,11 @@ _Avoid_: Specification version, hard-coded renderer, editable historical snapsho
 **Markdown template library**:
 The organization-level collection of named Markdown templates available when a
 project generates a future Specification version. Its employee-facing context
-is `Specifikációs sablonok`.
+is `Specification templates`.
 _Avoid_: Project-owned template copy, Specification version history
 
 **Project specification**:
-The project context named `Projekt-specifikáció`, which presents immutable,
+The project context named `Project Specification`, which presents immutable,
 versioned specification snapshots. Markdown remains the download format, not
 the employee-facing name of the context.
 _Avoid_: Markdown terv, editable live document
@@ -306,8 +307,8 @@ a separate approval workflow.
 _Avoid_: Second canonical specification, approval queue, delivery backlog
 
 **Specification version**:
-One immutable Project specification snapshot, shown as `specifikációverzió` and
-listed under `Verziótörténet`. It retains the selected published template and
+One immutable Project specification snapshot, shown as `Specification version` and
+listed under `Version history`. It retains the selected published template and
 source snapshot; later project or template changes do not rewrite it.
 _Avoid_: Markdown-revízió, live project state, editable historical snapshot
 
@@ -360,10 +361,10 @@ treat that address as proof of employee identity, and Reply-To remains separate.
 _Avoid_: Reply-To address, authenticated employee identity, current Project owner
 
 **Customer correspondence status**:
-The employee-owned processing state of a Customer correspondence: `Válaszra
-vár`, `Új válasz`, `Feldolgozás alatt`, or `Lezárva`. Unread count and outbound
+The employee-owned processing state of a Customer correspondence: `Awaiting
+response`, `New response`, `Processing`, or `Closed`. Unread count and outbound
 delivery state are separate; a later inbound message returns a closed
-correspondence to `Új válasz`.
+correspondence to the employee-facing `New response` state (stored internally as `Új válasz`).
 _Avoid_: Email delivery status, unread flag, Project preparation state
 
 **Customer inbound message**:
@@ -374,7 +375,7 @@ _Avoid_: Delivery receipt, audit payload, executable email content
 
 **Customer reply classification**:
 An employee-recorded interpretation of a Customer inbound message:
-`Elfogadva`, `Módosítást kér`, `Kérdés vagy válasz`, or `Egyéb`. It is not a
+`Accepted`, `Change requested`, `Question or answer`, or `Other`. It is not a
 formal Project decision and does not create one automatically.
 _Avoid_: Automatic sentiment, delivery result, Go/No-Go decision
 
@@ -461,7 +462,7 @@ source linkage.
 _Avoid_: Any historical checklist, automatically repointed source
 
 **Resolved discovery follow-up**:
-A discovery follow-up in the `Megválaszolva` or `Nem releváns` terminal state; its business content is immutable and it is not reopened by the editing slice.
+A discovery follow-up in the `Answered` or `Not applicable` terminal state; its business content is immutable and it is not reopened by the editing slice.
 _Avoid_: Closed task, archived follow-up
 
 **Contracts runtime distribution**:
@@ -509,14 +510,14 @@ _Avoid_: Client-side scoring copy, final decision record
 
 **Estimate-blocking gap**:
 A current Initial Intake checklist item marked `requiredForEstimate` whose
-effective checklist status is neither `Kész` nor `Nem releváns`. It is a
+effective checklist status is neither `Complete` nor `Not applicable`. It is a
 policy-defined estimate gate; it is not every important readiness gap or an
 unresolved discovery follow-up.
 _Avoid_: Critical gap, generic open work
 
 **Decision critical gap**:
 A current available readiness gap classified by the selected policy as
-`Kritikus`. It takes precedence over a positive estimation recommendation and
+`Critical`. It takes precedence over a positive estimation recommendation and
 may be distinct from an estimate-blocking gap.
 _Avoid_: Estimate-blocking gap, any unresolved follow-up
 

@@ -35,7 +35,7 @@ const workState: ProjectWorkState = {
   primaryAction: { target: 'INTERVIEW', label: 'Felmérés megnyitása' },
 };
 
-@Component({ template: '<p data-testid="project-panel">Projektállapot panel</p>' })
+@Component({ template: '<p data-testid="project-panel">Project Status panel</p>' })
 class StatusPanel {}
 
 @Component({ template: '<p data-testid="interview-panel">Felmérés panel</p>' })

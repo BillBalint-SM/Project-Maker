@@ -1,6 +1,5 @@
 import {
   Component,
-  computed,
   DestroyRef,
   effect,
   inject,
@@ -40,28 +39,24 @@ export class AppComponent implements OnInit {
 
   readonly currentUser = this.auth.currentUser;
   readonly newReplyCount = signal(0);
+  readonly notificationCount = signal(0);
   readonly loggingOut = signal(false);
   readonly customerReplyLoadError = signal<string | null>(null);
   readonly notificationLoadError = signal<string | null>(null);
   readonly logoutError = signal<string | null>(null);
   readonly navigationOpen = signal(false);
-  private readonly summaryBadgeUserId = signal<string | null>(null);
-  private readonly notificationBadgeUserId = signal<string | null>(null);
-  readonly notificationCount = computed(() =>
-    this.notificationBadgeUserId() === this.currentUser()?.id
-      ? this.notifications.current()?.totalCount ?? 0
-      : 0,
-  );
   private readonly loadReplySummary = effect(() => {
     const user = this.currentUser();
-    if (this.activeUserId !== user?.id) {
+    const nextUserId = user?.id ?? null;
+    if (this.activeUserId !== nextUserId) {
+      const previousUserWasActive = this.activeUserId !== null;
       this.cancelUserLoads();
-      this.activeUserId = user?.id ?? null;
+      this.activeUserId = nextUserId;
+      if (previousUserWasActive) this.notifications.clearCurrent();
       this.loadedSummaryForUserId = null;
       this.loadedNotificationsForUserId = null;
       this.newReplyCount.set(0);
-      this.summaryBadgeUserId.set(null);
-      this.notificationBadgeUserId.set(null);
+      this.notificationCount.set(0);
       this.customerReplyLoadError.set(null);
       this.notificationLoadError.set(null);
     }
@@ -72,14 +67,22 @@ export class AppComponent implements OnInit {
     this.loadCustomerReplySummary(user.id);
     this.loadNotifications(user.id);
   });
+  private readonly clearRecoveredNotificationError = effect(() => {
+    const user = this.currentUser();
+    const snapshot = this.notifications.current();
+    if (user && snapshot?.userId === user.id) {
+      this.notificationCount.set(snapshot.notifications.totalCount);
+      this.notificationLoadError.set(null);
+    }
+  });
 
   ngOnInit(): void {
     this.replies.summaryChanges
       .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe((summary) => {
-        const user = this.currentUser();
-        if (user && this.summaryBadgeUserId() === user.id) {
-          this.newReplyCount.set(summary.newReplyCount);
+      .subscribe((update) => {
+        if (this.currentUser()?.id === update.userId) {
+          this.newReplyCount.set(update.summary.newReplyCount);
+          this.customerReplyLoadError.set(null);
         }
       });
   }
@@ -108,7 +111,6 @@ export class AppComponent implements OnInit {
         next: (summary) => {
           if (this.currentUser()?.id === userId) {
             this.loadedSummaryForUserId = userId;
-            this.summaryBadgeUserId.set(userId);
             this.newReplyCount.set(summary.newReplyCount);
           }
           if (this.summaryRequestForUserId === userId) {
@@ -150,7 +152,6 @@ export class AppComponent implements OnInit {
         next: (notifications) => {
           if (this.currentUser()?.id === userId) {
             this.loadedNotificationsForUserId = userId;
-            this.notificationBadgeUserId.set(userId);
           }
           if (this.notificationRequestForUserId === userId) {
             this.notificationRequestForUserId = null;
@@ -199,13 +200,15 @@ export class AppComponent implements OnInit {
           this.closeNavigation();
           void this.router.navigate(['/login']);
         },
-        error: (error: unknown) => {
+        error: () => {
           this.loggingOut.set(false);
-          this.logoutError.set(errorMessage(error, 'Unable to sign out. Check your connection and try again.'));
+          this.logoutError.set(logoutFailureMessage);
         },
       });
   }
 }
+
+const logoutFailureMessage = 'Unable to sign out. Check your connection and try again.';
 
 function errorMessage(error: unknown, fallback: string): string {
   return error instanceof Error && error.message ? error.message : fallback;

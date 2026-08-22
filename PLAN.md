@@ -128,8 +128,8 @@ workflows, two HTTP contracts, product copy, and authoritative documentation.
 - Interfaces:
   - Customer-reply and Notification shell loads have independent state and an
     explicit retry; no polling or real-time channel is introduced.
-  - Logout failure keeps the authenticated session, reports the safe existing
-    service error, and permits one deliberate retry.
+  - Logout failure keeps the authenticated session, reports a controlled safe
+    English message, and permits one deliberate retry.
   - Follow-up Settings links to
     `/projects/:projectId/customer-correspondences#customer-communication` and
     cannot enable automation before a non-empty draft exists; the API guard
@@ -140,9 +140,11 @@ workflows, two HTTP contracts, product copy, and authoritative documentation.
   - `GET` of an optional Question Schema or Delivery Package returns `200` with
     JSON `null` for a known Project with no resource. A missing Project remains
     `404`; export, handoff, and mutation prerequisites remain strict.
-  - Employee-facing runtime copy and current operating documentation use
-    professional software-development and project-management English. Stored
-    legacy values, user-authored content, and immutable history are unchanged.
+  - Employee-facing runtime copy uses professional software-development and
+    project-management English. Current operating documentation quotes the
+    same English UI labels; explanatory prose may remain in its intended
+    reader language. Stored legacy values, user-authored content, and immutable
+    history are unchanged.
 - Data ownership: no persistence migration and no new role, permission,
   credential, retry daemon, or cross-feature state manager.
 - Naming and errors: Angular signals and existing feature-local services;
@@ -208,3 +210,10 @@ workflows, two HTTP contracts, product copy, and authoritative documentation.
   and production build. The contract/language branch passed 5/5 gates,
   including both complete adjacent API E2E files on a freshly migrated
   database.
+- 2026-08-22: first-pass independent Standards/Spec review reopened final
+  closure for unsafe logout diagnostics and stale documentation labels. A
+  follow-up adversarial shell review also found that feature-local requests
+  from a previous session could race the next user's badges. Red tests proved
+  both cross-session races; badge publications and Notification snapshots are
+  now session-scoped, while the shell retains the last valid current-user
+  count and ignores stale updates. Final review and re-measurement remain open.

@@ -5,7 +5,7 @@ Scope: resolve UX-AUDIT-003 and UX-AUDIT-004 while retaining both server-side gu
 - [x] G1: Follow-up Settings prevents enabling without a draft and offers a direct route to the draft composer.
   CHECK: rg -n "customer-correspondences|customer-communication|messageDraft|Enable automated" apps/web/src/app/projects/customer-follow-up/customer-follow-up.component.html apps/web/src/app/projects/customer-follow-up/customer-follow-up.component.ts
   EXPECT: customer-correspondences
-  EVIDENCE: apps/web/src/app/projects/customer-follow-up/customer-follow-up.component.html:273:            [routerLink]="['/projects', projectId(), 'customer-correspondences']" | apps/web/src/app/projects/custome
+  EVIDENCE: apps/web/src/app/projects/customer-follow-up/customer-follow-up.component.ts:465:    if (state.messageDraft?.trim()) { | apps/web/src/app/projects/customer-follow-up/customer-follow-up.component.ts:47
 
 - [x] G2: The focused Customer follow-up prerequisite specification passes.
   CHECK: npx.cmd --yes pnpm@11.20.0 --dir apps/web exec ng test --watch=false --include=src/app/projects/customer-follow-up/customer-follow-up.component.spec.ts
@@ -15,7 +15,7 @@ Scope: resolve UX-AUDIT-003 and UX-AUDIT-004 while retaining both server-side gu
 - [x] G3: Formal Decision has explicit loading, active, archived, and error states; unknown/error never exposes an enabled mutation form.
   CHECK: rg -n "loading|active|archived|error|Retry|Record decision" apps/web/src/app/projects/decision-review.page.ts apps/web/src/app/projects/decision-review.page.html
   EXPECT: Retry
-  EVIDENCE: apps/web/src/app/projects/decision-review.page.ts:174:  | { readonly state: 'archived'; readonly project: ProjectWorkspace } | apps/web/src/app/projects/decision-review.page.ts:175:  | { readonly stat
+  EVIDENCE: apps/web/src/app/projects/decision-review.page.html:79:    @if (error(); as message) { <p-message severity="error" role="alert">{{ message }}</p-message> } | apps/web/src/app/projects/decision-review.
 
 - [x] G4: The focused Formal Decision specification proves fail-closed retry-to-archived behavior and the active creation control case.
   CHECK: npx.cmd --yes pnpm@11.20.0 --dir apps/web exec ng test --watch=false --include=src/app/projects/decision-review.page.spec.ts

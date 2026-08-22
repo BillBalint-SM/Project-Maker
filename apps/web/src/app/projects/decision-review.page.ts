@@ -7,7 +7,6 @@ import type {
   CreateFormalDecisionInput,
   FormalDecision,
   FormalDecisionOutcome,
-  ProjectWorkspace,
 } from '@project-maker/contracts';
 import { ButtonModule } from 'primeng/button';
 import { CardModule } from 'primeng/card';
@@ -88,8 +87,8 @@ export class DecisionReviewPage implements OnInit {
       takeUntilDestroyed(this.destroyRef),
     ).subscribe({
       next: (project) => this.projectAvailability.set(project.status === 'ARCHIVED'
-        ? { state: 'archived', project }
-        : { state: 'active', project }),
+        ? { state: 'archived' }
+        : { state: 'active' }),
       error: () => this.projectAvailability.set({
         state: 'error',
         message: 'Project availability could not be confirmed. Retry before recording a formal decision.',
@@ -170,8 +169,8 @@ export class DecisionReviewPage implements OnInit {
 
 type ProjectAvailability =
   | { readonly state: 'loading' }
-  | { readonly state: 'active'; readonly project: ProjectWorkspace }
-  | { readonly state: 'archived'; readonly project: ProjectWorkspace }
+  | { readonly state: 'active' }
+  | { readonly state: 'archived' }
   | { readonly state: 'error'; readonly message: string };
 
 function today(): string {
