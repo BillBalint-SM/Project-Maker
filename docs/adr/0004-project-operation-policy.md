@@ -1,8 +1,14 @@
 ---
-status: accepted
+status: superseded
 ---
 
-# Keep project operations within the Selected project context
+# Superseded: project-wide operation policy
+
+This decision is superseded by [ADR-0007](0007-command-local-pending-state.md).
+The former project-wide single-flight policy added coupling between unrelated
+features without preventing a user from issuing the same command twice.
+
+## Historical decision
 
 The Selected project context is the visible context for work in one project.
 Each project operation belongs to the smallest domain module that owns its
