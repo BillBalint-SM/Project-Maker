@@ -109,28 +109,6 @@
         </ul>
       </p-card>
 
-      <p-card>
-        <ng-template #title>Discovery mellékletek</ng-template>
-        <ng-template #subtitle>PDF, PNG, JPEG vagy UTF-8 TXT, legfeljebb 50 MiB; PostgreSQL-ben, inerten tárolva.</ng-template>
-        @if (followUps().length > 0) {
-          <form class="stack" (ngSubmit)="uploadAttachment()">
-            <label>Tisztázandó tétel
-              <select name="attachmentOwnerId" [(ngModel)]="attachmentOwnerId">
-                @for (followUp of followUps(); track followUp.id) { <option [value]="followUp.id">{{ followUp.question }}</option> }
-              </select>
-            </label>
-            <label>Fájl <input type="file" accept=".pdf,.png,.jpg,.jpeg,.txt" (change)="chooseFile($event)" /></label>
-            <p-button type="submit" label="Melléklet feltöltése" [disabled]="saving() || archived() || !attachmentFile" />
-          </form>
-        } @else {
-          <p class="empty">Melléklethez előbb hozz létre egy tisztázandó tételt.</p>
-        }
-        <ul class="record-list">
-          @for (attachment of attachments(); track attachment.id) {
-            <li><div><strong>{{ attachment.originalName }}</strong><small>{{ attachment.contentType }} · {{ attachment.sizeBytes }} bájt</small></div><a [href]="attachmentUrl(attachment.id)">Letöltés</a></li>
-          } @empty { <li class="empty">Még nincs melléklet.</li> }
-        </ul>
-      </p-card>
     </div>
   }
 </section>

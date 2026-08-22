@@ -1,0 +1,50 @@
+.attachment-block {
+  border-top: 1px solid var(--surface-border, #d9dee8);
+  display: grid;
+  gap: 0.65rem;
+  margin-top: 1rem;
+  padding-top: 0.85rem;
+}
+
+.attachment-block h3 {
+  font-size: 1rem;
+  margin: 0;
+}
+
+.attachment-list {
+  display: grid;
+  gap: 0.5rem;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.attachment-list li,
+.attachment-actions,
+.attachment-upload {
+  align-items: center;
+  display: flex;
+  gap: 0.75rem;
+  justify-content: space-between;
+}
+
+.attachment-list strong,
+.attachment-list small {
+  display: block;
+}
+
+.attachment-list small,
+.empty {
+  color: var(--text-color-secondary, #667085);
+}
+
+.attachment-upload {
+  align-items: end;
+  flex-wrap: wrap;
+  justify-content: flex-start;
+}
+
+.attachment-upload label {
+  display: grid;
+  gap: 0.35rem;
+}

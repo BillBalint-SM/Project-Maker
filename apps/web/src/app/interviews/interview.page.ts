@@ -12,6 +12,7 @@ import type {
   BaseQuestion,
   BaseQuestionBank,
   BaseQuestionType,
+  GovernedAttachment,
   InterviewRound,
   ProjectQuestionSchema,
   PublishProjectQuestionSchemaInput,
@@ -21,6 +22,8 @@ import type {
 import { InterviewApiService, isInterviewApiError } from './interview-api.service';
 import { InterviewHandoffComponent } from './interview-handoff/interview-handoff.component';
 import { ProjectApiService } from '../projects/project-api.service';
+import { ProjectAttachmentBlockComponent } from '../projects/attachments/project-attachment-block.component';
+import { ProjectAttachmentsApiService } from '../projects/attachments/project-attachments-api.service';
 import { QuestionBankApiService } from '../settings/question-bank-api.service';
 import { baseQuestionTypeLabel } from '../base-question-type-label';
 
@@ -61,6 +64,7 @@ interface QuestionAssessmentState {
     CardModule,
     MessageModule,
     InterviewHandoffComponent,
+    ProjectAttachmentBlockComponent,
     ProgressSpinnerModule,
     RouterLink,
     TagModule,
@@ -76,6 +80,7 @@ export class InterviewPage implements OnInit, OnDestroy {
   private readonly questionBankApi = inject(QuestionBankApiService);
   private readonly interviewApi = inject(InterviewApiService);
   private readonly projectApi = inject(ProjectApiService);
+  private readonly projectAttachmentsApi = inject(ProjectAttachmentsApiService);
   private readonly autosaveTimers = new Map<string, ReturnType<typeof setTimeout>>();
   private readonly inFlightRequestIds = new Map<string, Set<number>>();
 
@@ -100,6 +105,7 @@ export class InterviewPage implements OnInit, OnDestroy {
   readonly projectArchived = signal(false);
   readonly projectPlaybookId = signal('general');
   readonly handoffContentRevision = signal(0);
+  readonly attachments = signal<readonly GovernedAttachment[]>([]);
 
   ngOnInit(): void {
     this.loadInterviewData();
@@ -135,13 +141,15 @@ export class InterviewPage implements OnInit, OnDestroy {
         ? this.interviewApi.getRound(this.projectId, this.requestedRoundId)
         : this.interviewApi.getActiveInitialIntake(this.projectId),
       project: this.projectApi.loadProjectWorkspace(this.projectId),
+      attachments: this.projectAttachmentsApi.list(this.projectId),
     }).subscribe({
-      next: ({ bank, schema, activeRound, project }) => {
+      next: ({ bank, schema, activeRound, project, attachments }) => {
         this.bank.set(bank);
         this.schema.set(schema);
         this.round.set(activeRound);
         this.projectArchived.set(project.status === 'ARCHIVED');
         this.projectPlaybookId.set(project.playbook.id);
+        this.attachments.set(attachments);
         this.answerStates.set(buildAnswerStates(activeRound));
         this.assessmentStates.set(buildAssessmentStates(activeRound));
         this.selectedKeys.set(this.buildSelectedKeys(bank, schema, activeRound, project.playbook.id));
@@ -160,6 +168,24 @@ export class InterviewPage implements OnInit, OnDestroy {
     return this.bank()?.questions.filter(
       (question) => question.active && question.stableKey.startsWith(prefix),
     ) ?? [];
+  }
+
+  attachmentsFor(ownerId: string): readonly GovernedAttachment[] {
+    return this.attachments().filter(
+      (attachment) =>
+        attachment.ownerKind === 'ROUND_SNAPSHOT' && attachment.ownerId === ownerId,
+    );
+  }
+
+  reloadAttachments(): void {
+    this.projectAttachmentsApi.list(this.projectId).subscribe({
+      next: (attachments) => this.attachments.set(attachments),
+      error: (error: Error) => this.actionError.set(error.message),
+    });
+  }
+
+  referenceFileUrl(questionId: string, fileId: string): string {
+    return this.questionBankApi.referenceFileDownloadUrl(questionId, fileId);
   }
 
   isSelected(stableKey: string): boolean {

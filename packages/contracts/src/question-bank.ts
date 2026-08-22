@@ -10,6 +10,15 @@ export const baseQuestionTypes = [
 
 export type BaseQuestionType = (typeof baseQuestionTypes)[number];
 
+export interface QuestionReferenceFile {
+  readonly id: string;
+  readonly originalName: string;
+  readonly contentType: string;
+  readonly sizeBytes: number;
+  readonly sha256: string;
+  readonly createdAt: string;
+}
+
 export interface BaseQuestion {
   readonly id: string;
   readonly stableKey: string;
@@ -27,6 +36,7 @@ export interface BaseQuestion {
   readonly options: readonly string[] | null;
   readonly source: 'CANONICAL_SEED' | 'SETTINGS_API';
   readonly publishedAt: string;
+  readonly referenceFiles: readonly QuestionReferenceFile[];
 }
 
 export interface BaseQuestionBank {
@@ -87,6 +97,7 @@ export interface ProjectSchemaQuestion {
   readonly order: number;
   readonly hint: string | null;
   readonly options: readonly string[] | null;
+  readonly referenceFiles: readonly QuestionReferenceFile[];
 }
 
 export interface ProjectQuestionSchema {

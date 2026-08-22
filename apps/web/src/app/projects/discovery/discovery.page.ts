@@ -8,8 +8,6 @@ import { CardModule } from 'primeng/card';
 import { MessageModule } from 'primeng/message';
 import { ProgressSpinnerModule } from 'primeng/progressspinner';
 import type {
-  DiscoveryFollowUp,
-  GovernedAttachment,
   Insight,
   InterviewRound,
   InterviewRoundType,
@@ -20,7 +18,6 @@ import type {
 import { InterviewApiService } from '../../interviews/interview-api.service';
 import { QuestionBankApiService } from '../../settings/question-bank-api.service';
 import { ProjectApiService } from '../project-api.service';
-import { DiscoveryFollowUpsApiService } from '../discovery-follow-ups/discovery-follow-ups-api.service';
 import { DiscoveryApiService } from './discovery-api.service';
 
 interface AnswerSourceOption {
@@ -51,15 +48,12 @@ export class DiscoveryPage implements OnInit {
   private readonly interviews = inject(InterviewApiService);
   private readonly questions = inject(QuestionBankApiService);
   private readonly projects = inject(ProjectApiService);
-  private readonly followUpsApi = inject(DiscoveryFollowUpsApiService);
 
   readonly projectId = this.route.snapshot.paramMap.get('projectId') ?? '';
   readonly contacts = signal<readonly ProjectContact[]>([]);
   readonly rounds = signal<readonly InterviewRound[]>([]);
   readonly insights = signal<readonly Insight[]>([]);
   readonly schema = signal<ProjectQuestionSchema | null>(null);
-  readonly followUps = signal<readonly DiscoveryFollowUp[]>([]);
-  readonly attachments = signal<readonly GovernedAttachment[]>([]);
   readonly archived = signal(false);
   readonly loading = signal(true);
   readonly saving = signal(false);
@@ -84,9 +78,6 @@ export class DiscoveryPage implements OnInit {
   insightEvidenceId = '';
   insightEditEvidenceIds: readonly string[] = [];
 
-  attachmentOwnerId = '';
-  attachmentFile: File | null = null;
-
   ngOnInit(): void {
     this.load();
   }
@@ -105,8 +96,6 @@ export class DiscoveryPage implements OnInit {
       rounds: this.interviews.listRounds(this.projectId),
       insights: this.discovery.listInsights(this.projectId),
       schema: this.questions.loadProjectSchema(this.projectId),
-      followUps: this.followUpsApi.list(this.projectId),
-      attachments: this.discovery.listAttachments(this.projectId),
     }).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: (view) => {
         this.archived.set(view.project.status === 'ARCHIVED');
@@ -114,10 +103,7 @@ export class DiscoveryPage implements OnInit {
         this.rounds.set(view.rounds);
         this.insights.set(view.insights);
         this.schema.set(view.schema);
-        this.followUps.set(view.followUps);
-        this.attachments.set(view.attachments);
         this.roundStableKey ||= view.schema?.questions[0]?.stableKey ?? '';
-        this.attachmentOwnerId ||= view.followUps[0]?.id ?? '';
         this.loading.set(false);
       },
       error: (error: Error) => {
@@ -257,28 +243,6 @@ export class DiscoveryPage implements OnInit {
     this.insightVersion = insight.version;
     this.insightStatement = insight.statement;
     this.insightEditEvidenceIds = insight.evidence.map((evidence) => evidence.id);
-  }
-
-  chooseFile(event: Event): void {
-    this.attachmentFile = (event.target as HTMLInputElement).files?.[0] ?? null;
-  }
-
-  uploadAttachment(): void {
-    if (this.saving() || this.archived() || !this.attachmentOwnerId || !this.attachmentFile) return;
-    this.startSave();
-    this.discovery.uploadAttachment(this.projectId, this.attachmentOwnerId, this.attachmentFile)
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({
-        next: () => {
-          this.attachmentFile = null;
-          this.finishSave('A melléklet biztonságosan eltárolva.');
-        },
-        error: (error: Error) => this.failSave(error),
-      });
-  }
-
-  attachmentUrl(attachmentId: string): string {
-    return this.discovery.downloadUrl(this.projectId, attachmentId);
   }
 
   roundLabel(type: InterviewRoundType): string {

@@ -724,6 +724,36 @@ Ha az öt mező a megnyitott értékkel azonos marad, nincs mentendő változás
 
 Egyszerre csak egy szerkesztési vagy lezárási űrlap lehet nyitva. Ha más közben szerkeszti, lezárja vagy archiválja a projektet, a mentés ütközést jelezhet. Ilyenkor a beírt piszkozat megmarad, a lista a legfrissebb állapotra frissül, és a mentés nem ír felül senkit. Ne töltsd újra általánosan az oldalt, mert ez eldobná a megőrzött helyi szerkesztőpiszkozatot. Ha a frissítés sikertelen, válaszd a `Frissítés újrapróbálása` műveletet. Csak sikeres frissítés után válaszd nyitott tételnél az `Aktuális verzió betöltése` gombot, hasonlítsd össze az értékeket, majd szükség esetén írd be újra a saját változtatásodat és mentsd el. Ha a frissített tétel már lezárt, nem szerkeszthető és nem tölthető vissza szerkesztésre; a piszkozatot csak a `Mégse` gombbal vetheted el.
 
+### Csatolmányok
+
+A csatolmány nem általános dokumentumtár. Két külön típus használható:
+
+- a `Question Bank` referenciafájl az Operator szervezet közös kérdésváltozatához
+  tartozik; a közzétett kérdésbank-verzió és az azt kiválasztó projektséma mindig
+  ugyanazt a pontos referenciafájl-készletet őrzi;
+- a `Projekt munka-csatolmány` egy projekten belül egy Kezdeti felmérés
+  ellenőrzőlista-kérdéshez vagy egy tisztázandó tételhez tartozik.
+
+Projektmunka-csatolmányként PDF; Word-, RTF- és OpenDocument-szöveg (`.doc`,
+`.docx`, `.rtf`, `.odt`); Excel-, CSV- és OpenDocument-táblázat (`.xls`, `.xlsx`,
+`.csv`, `.ods`); PowerPoint- és OpenDocument-bemutató (`.ppt`, `.pptx`, `.odp`);
+UTF-8 TXT és Markdown (`.txt`, `.md`); PNG és JPEG; valamint Microsoft Project
+és Visio (`.mpp`, `.vsdx`) tölthető fel. Az alapértelmezett felső határ 50 MiB;
+a telepítés ezt alacsonyabb értékre állíthatja. A generikus archívumok és futtatható
+fájlok nem engedélyezettek, a letöltés pedig mindig fájlletöltésként indul.
+
+Archivált projektben új munka-csatolmány feltöltése vagy eltávolítása nem
+lehetséges, de a megőrzött munka-csatolmány letölthető marad. A Question Bank
+korábbi referenciafájljai és az azokkal létrehozott projektsémák szintén
+olvashatók maradnak. Evidence-ként felhasznált projektmunka-csatolmányt előbb
+az Evidence hivatkozás megszüntetése nélkül nem lehet eltávolítani.
+
+A Kezdeti felmérés kérdéséhez tartozó fájl ugyanaddig módosítható, mint maga a
+válasz: nyitott körben, illetve lezárás után addig, amíg nincs kiküldött Customer
+handoff. A már elküldött handoff nem ismétlődik meg, és a hozzá tartozó történeti
+fájl csak letölthető. Egy lezárt tisztázandó tétel fájljai szintén megmaradnak,
+de már nem bővíthetők és nem távolíthatók el.
+
 ### Tisztázandó tétel lezárása
 
 Egy nyitott elem csak egyszer zárható le, két terminális státusz egyikére:

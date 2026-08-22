@@ -39,6 +39,7 @@ import { ReadinessService } from '../readiness/readiness.service';
 import { BaseQuestionEntity } from '../question-bank/base-question.entity';
 import { ProjectQuestionSchemaEntity } from '../question-bank/project-question-schema.entity';
 import { ProjectSchemaQuestionEntity } from '../question-bank/project-schema-question.entity';
+import { loadQuestionReferenceFiles } from '../question-bank/question-reference-file-projection';
 import { CreateMarkdownRevisionDto } from './dto/create-markdown-revision.dto';
 import {
   MarkdownRevisionEntity,
@@ -278,6 +279,10 @@ async function loadLatestProjectSchema(
   if (baseQuestionsById.size !== schemaQuestions.length) {
     throw new InternalServerErrorException('Stored project question schema is incomplete.');
   }
+  const referenceFilesByQuestionId = await loadQuestionReferenceFiles(
+    manager,
+    baseQuestions.map(({ id }) => id),
+  );
 
   const questions = schemaQuestions.map((schemaQuestion): ProjectSchemaQuestion => {
     const baseQuestion = baseQuestionsById.get(schemaQuestion.baseQuestionId);
@@ -297,6 +302,7 @@ async function loadLatestProjectSchema(
       order: schemaQuestion.order,
       hint: baseQuestion.hint,
       options: baseQuestion.options,
+      referenceFiles: referenceFilesByQuestionId.get(baseQuestion.id) ?? [],
     };
   });
 
@@ -345,6 +351,10 @@ async function loadInterviewRounds(
   const overridesBySnapshot = new Map(
     overrides.map((override) => [override.snapshotId, override]),
   );
+  const referenceFilesByQuestionId = await loadQuestionReferenceFiles(
+    manager,
+    snapshots.flatMap(({ baseQuestionId }) => baseQuestionId ? [baseQuestionId] : []),
+  );
   const assessmentPolicy = await loadRoundQuestionAssessmentPolicy();
 
   return rounds.map((round) => {
@@ -369,6 +379,9 @@ async function loadInterviewRounds(
           answersBySnapshot.get(snapshot.id) ?? null,
           overridesBySnapshot.get(snapshot.id) ?? null,
           assessmentPolicy,
+          snapshot.baseQuestionId
+            ? referenceFilesByQuestionId.get(snapshot.baseQuestionId) ?? []
+            : [],
         ),
       ),
     };

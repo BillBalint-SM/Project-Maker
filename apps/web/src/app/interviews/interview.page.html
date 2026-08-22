@@ -408,6 +408,29 @@
                         Ez blokkoló tisztázás. Rögzítsd a választ, mielőtt lezárod a kört.
                       </p>
                     }
+                    @if (question.baseQuestionId && (question.referenceFiles?.length ?? 0) > 0) {
+                      <section class="question-reference-files" [attr.aria-label]="'Kérdésbanki referenciafájlok: ' + question.text">
+                        <h3>Kérdésbanki referenciafájlok</h3>
+                        <ul class="question-guidance">
+                          @for (file of question.referenceFiles ?? []; track file.id) {
+                            <li>
+                              <span>{{ file.originalName }}</span>
+                              <a [href]="referenceFileUrl(question.baseQuestionId!, file.id)">Letöltés</a>
+                            </li>
+                          }
+                        </ul>
+                      </section>
+                    }
+                    @if (currentRound.type === 'INITIAL_INTAKE') {
+                      <app-project-attachment-block
+                        [projectId]="projectId"
+                        ownerKind="ROUND_SNAPSHOT"
+                        [ownerId]="question.id"
+                        [mutable]="!isAnswerDisabled(question)"
+                        [attachments]="attachmentsFor(question.id)"
+                        (changed)="reloadAttachments()"
+                      />
+                    }
                   </article>
                 }
               </div>

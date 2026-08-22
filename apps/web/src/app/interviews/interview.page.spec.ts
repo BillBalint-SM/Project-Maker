@@ -11,6 +11,7 @@ import type {
 
 import { appConfig } from '../app.config';
 import { ProjectApiService } from '../projects/project-api.service';
+import { ProjectAttachmentsApiService } from '../projects/attachments/project-attachments-api.service';
 import { QuestionBankApiService } from '../settings/question-bank-api.service';
 import { InterviewApiService, interviewApiErrorBrand } from './interview-api.service';
 import { InterviewPage } from './interview.page';
@@ -871,6 +872,15 @@ async function renderInterviewPage(
           })),
         },
       },
+      {
+        provide: ProjectAttachmentsApiService,
+        useValue: {
+          list: vi.fn().mockReturnValue(of([])),
+          upload: vi.fn().mockReturnValue(of({})),
+          remove: vi.fn().mockReturnValue(of(undefined)),
+          downloadUrl: vi.fn(),
+        },
+      },
     ],
   }).compileComponents();
 
@@ -1017,6 +1027,7 @@ function buildBaseTextQuestion(): BaseQuestionBank['questions'][number] {
     options: null,
     source: 'CANONICAL_SEED',
     publishedAt: '2026-08-06T10:00:00.000Z',
+    referenceFiles: [],
   };
 }
 
@@ -1034,6 +1045,7 @@ function buildSchemaTextQuestion(): ProjectQuestionSchema['questions'][number] {
     order: 1,
     hint: null,
     options: null,
+    referenceFiles: [],
   };
 }
 
@@ -1196,6 +1208,7 @@ function buildBooleanSchema(): ProjectQuestionSchema {
         order: 1,
         hint: null,
         options: null,
+        referenceFiles: [],
       },
     ],
   };
@@ -1222,6 +1235,7 @@ function buildOptionalTextSchema(): ProjectQuestionSchema {
         order: 1,
         hint: null,
         options: null,
+        referenceFiles: [],
       },
     ],
   };
@@ -1268,6 +1282,7 @@ function buildLongTextSchema(question: RoundQuestionSnapshot): ProjectQuestionSc
         order: 1,
         hint: question.hint,
         options: null,
+        referenceFiles: [],
       },
     ],
   };

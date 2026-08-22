@@ -28,7 +28,7 @@ The current implementation and delivery status are maintained in
 - [x] **CONTACT-01:** Users can maintain simple Project-owned contacts with no stakeholder roles, permissions, organization directory, or CRM workflow.
 - [x] **ROUNDS-02:** `STAKEHOLDER` and `CLARIFICATION` rounds can be open independently. They freeze selected Question Bank prompts or employee-authored ad-hoc clarification questions without adding meeting management.
 - [x] **INSIGHT-01:** Users author an Insight and attach or snapshot its supporting Project sources in the same form; Evidence remains reusable provenance rather than a prerequisite workflow.
-- [ ] **ATTACH-01:** Authenticated employees can upload and download bounded governed attachments with size/type limits, safe names, inert PostgreSQL storage, safe download, and lifecycle checks. Operator-provided antivirus is reused when configured but its absence does not block unrelated discovery work.
+- [x] **ATTACH-01:** Authenticated employees can upload and download bounded governed attachments with size/type limits, safe names, inert PostgreSQL storage, safe download, and lifecycle checks. Optional Operator-provided antivirus integration remains separate and its absence does not block discovery work.
 - [x] **PLAYBOOK-02:** System-integration and data-migration playbook versions are added without rewriting `general` v1. A Project can change playbook until its first interview round starts.
 
 ## Customer communication

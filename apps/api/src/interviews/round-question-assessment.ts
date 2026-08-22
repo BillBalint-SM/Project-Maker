@@ -2,6 +2,7 @@ import type {
   AnswerValue,
   BaseQuestionType,
   GeneralPlaybook,
+  QuestionReferenceFile,
   RoundQuestionSnapshot,
 } from '@project-maker/contracts';
 import { loadGeneralPlaybookV1 } from '@project-maker/contracts/general-playbook-runtime';
@@ -68,6 +69,7 @@ export function toEffectiveRoundQuestionSnapshot(
   answer: RoundAnswerEntity | null,
   override: RoundQuestionAssessmentOverrideEntity | null,
   policy: RoundQuestionAssessmentPolicy,
+  referenceFiles: readonly QuestionReferenceFile[] = [],
 ): RoundQuestionSnapshot {
   const answerIsValid =
     answer !== null &&
@@ -90,6 +92,7 @@ export function toEffectiveRoundQuestionSnapshot(
     answeredAt: answer ? toIso(answer.answeredAt, 'answer answeredAt') : null,
     checklistStatus: assessment.status,
     assessmentRationale: assessment.rationale,
+    referenceFiles,
   };
 }
 

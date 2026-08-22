@@ -1089,6 +1089,101 @@ test('creates a discovery follow-up, preserves its local date after reload, and 
   );
 });
 
+test('uploads, downloads, confirms removal, and retains a resolved follow-up file', async ({
+  page,
+  request,
+}) => {
+  const project = await createProject(request, 'Discovery attachment browser flow');
+  const followUp = await createDiscoveryFollowUp(request, project.id);
+  await page.goto('/projects/' + project.id + '/readiness');
+
+  const item = discoveryFollowUpItem(page, followUp.id);
+  const block = item.getByTestId('project-attachment-block-' + followUp.id);
+  const fileInput = block.getByTestId('project-attachment-file');
+  await fileInput.setInputFiles({
+    name: 'ügyfél-igény.txt',
+    mimeType: 'text/plain',
+    buffer: Buffer.from('accepted scope', 'utf8'),
+  });
+  const uploadResponse = page.waitForResponse(
+    (response) =>
+      response.request().method() === 'POST' &&
+      response.url().endsWith('/api/projects/' + project.id + '/attachments'),
+  );
+  await block.getByTestId('upload-project-attachment').locator('button').click();
+  const uploaded = await uploadResponse;
+  expect(uploaded.status()).toBe(201);
+  const attachment = (await uploaded.json()) as { readonly id: string };
+
+  const downloadLink = block.getByTestId(
+    'download-project-attachment-' + attachment.id,
+  );
+  const downloadPromise = page.waitForEvent('download');
+  await downloadLink.click();
+  const download = await downloadPromise;
+  expect(download.suggestedFilename()).toBe('ügyfél-igény.txt');
+
+  page.once('dialog', async (dialog) => dialog.dismiss());
+  await block
+    .getByTestId('remove-project-attachment-' + attachment.id)
+    .locator('button')
+    .click();
+  await expect(downloadLink).toBeVisible();
+
+  page.once('dialog', async (dialog) => dialog.accept());
+  const removalResponse = page.waitForResponse(
+    (response) =>
+      response.request().method() === 'DELETE' &&
+      response.url().endsWith(
+        '/api/projects/' + project.id + '/attachments/' + attachment.id,
+      ),
+  );
+  await block
+    .getByTestId('remove-project-attachment-' + attachment.id)
+    .locator('button')
+    .click();
+  expect((await removalResponse).status()).toBe(204);
+  await expect(downloadLink).toHaveCount(0);
+
+  await fileInput.setInputFiles({
+    name: 'megőrzött-forrás.txt',
+    mimeType: 'text/plain',
+    buffer: Buffer.from('retained scope', 'utf8'),
+  });
+  const retainedUploadResponse = page.waitForResponse(
+    (response) =>
+      response.request().method() === 'POST' &&
+      response.url().endsWith('/api/projects/' + project.id + '/attachments'),
+  );
+  await block.getByTestId('upload-project-attachment').locator('button').click();
+  const retainedUpload = await retainedUploadResponse;
+  expect(retainedUpload.status()).toBe(201);
+  const retainedAttachment = (await retainedUpload.json()) as { readonly id: string };
+
+  const resolved = await request.post(
+    apiOrigin + '/projects/' + project.id + '/discovery-follow-ups/' + followUp.id + '/resolve',
+    {
+      data: {
+        status: 'Megválaszolva',
+        decisionOrAnswer: 'A kapcsolódó forrás alapján lezárva.',
+      },
+    },
+  );
+  expect(resolved.status()).toBe(200);
+  await page.reload();
+
+  const retainedBlock = discoveryFollowUpItem(page, followUp.id).getByTestId(
+    'project-attachment-block-' + followUp.id,
+  );
+  await expect(
+    retainedBlock.getByTestId('download-project-attachment-' + retainedAttachment.id),
+  ).toBeVisible();
+  await expect(retainedBlock.getByTestId('project-attachment-file')).toHaveCount(0);
+  await expect(
+    retainedBlock.getByTestId('remove-project-attachment-' + retainedAttachment.id),
+  ).toHaveCount(0);
+});
+
 test('keeps the discovery list visible while archived and re-enables creation after restore', async ({
   page,
   request,

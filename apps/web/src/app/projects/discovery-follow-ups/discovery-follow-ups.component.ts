@@ -39,6 +39,7 @@ import {
   type DiscoveryFollowUp,
   type DiscoveryFollowUpCategory,
   type DiscoveryFollowUpSourceOption,
+  type GovernedAttachment,
   type ProjectStatus,
   type ResolveDiscoveryFollowUpInput,
   type UpdateDiscoveryFollowUpInput,
@@ -46,6 +47,8 @@ import {
 import { finalize } from 'rxjs';
 
 import { ProjectCommandPending } from '../project-command-pending';
+import { ProjectAttachmentBlockComponent } from '../attachments/project-attachment-block.component';
+import { ProjectAttachmentsApiService } from '../attachments/project-attachments-api.service';
 import {
   DiscoveryFollowUpsApiError,
   DiscoveryFollowUpsApiService,
@@ -72,6 +75,7 @@ interface EditConflictRefreshSnapshot {
     MessageModule,
     Overlay,
     ProgressSpinnerModule,
+    ProjectAttachmentBlockComponent,
     ReactiveFormsModule,
     SelectModule,
     TagModule,
@@ -90,6 +94,7 @@ export class DiscoveryFollowUpsComponent implements OnInit {
   readonly committedChange = output<void>();
 
   private readonly api = inject(DiscoveryFollowUpsApiService);
+  private readonly attachmentsApi = inject(ProjectAttachmentsApiService);
   private readonly pending = new ProjectCommandPending();
   private readonly destroyRef = inject(DestroyRef);
   private readonly document = inject(DOCUMENT);
@@ -100,6 +105,7 @@ export class DiscoveryFollowUpsComponent implements OnInit {
   readonly loadError = signal<string | null>(null);
   readonly actionError = signal<string | null>(null);
   readonly feedback = signal<string | null>(null);
+  readonly attachments = signal<readonly GovernedAttachment[]>([]);
   readonly openedResolutionId = signal<string | null>(null);
   readonly savingResolutionId = signal<string | null>(null);
   readonly openedEditId = signal<string | null>(null);
@@ -275,6 +281,28 @@ export class DiscoveryFollowUpsComponent implements OnInit {
   ngOnInit(): void {
     this.loadFollowUps();
     this.loadSourceOptions();
+    this.loadAttachments();
+  }
+
+  loadAttachments(): void {
+    this.attachmentsApi.list(this.projectId())
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (attachments) => this.attachments.set(attachments),
+        error: (error: Error) => this.actionError.set(error.message),
+      });
+  }
+
+  attachmentsFor(ownerId: string): readonly GovernedAttachment[] {
+    return this.attachments().filter(
+      (attachment) =>
+        attachment.ownerKind === 'DISCOVERY_FOLLOW_UP' && attachment.ownerId === ownerId,
+    );
+  }
+
+  attachmentChanged(): void {
+    this.loadAttachments();
+    this.committedChange.emit();
   }
 
   loadFollowUps(): void {

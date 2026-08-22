@@ -63,6 +63,7 @@ do not commit `.env` or real credentials.
 | `WEB_PORT` | yes | Host port mapped to Nginx port `8080`. |
 | `CORS_ORIGIN` | yes | One exact browser origin, for example `http://localhost:8080`; paths, wildcards, credentials, and origin lists are rejected. |
 | `FOLLOW_UP_POLL_INTERVAL_MS` | no | Automatic follow-up poll interval. Valid range is 5,000–86,400,000 ms; default is 60,000. |
+| `ATTACHMENT_MAX_MIB` | no | Maximum size of one Question Bank reference file or Project work attachment in MiB. Defaults to 50; an Operator may configure a lower positive value, never a higher one. |
 | `CORRESPONDENCE_MAILBOX_POLL_INTERVAL_MS` | no | Dedicated correspondence mailbox IMAP poll interval in milliseconds. The default is 60,000; non-integer values and values below 100 fall back to that default. |
 | `CORRESPONDENCE_MAILBOX_NAME` / `CORRESPONDENCE_MAILBOX_ADDRESS` | yes | Operator organization-controlled dedicated sender identity; reply correlation uses high-entropy plus-addresses at this mailbox. |
 | `MAIL_GATEWAY_SMTP_*` | yes | TLS SMTP endpoint and dedicated credential. Only `STARTTLS_REQUIRED` and `IMPLICIT_TLS` are accepted. |
@@ -123,6 +124,7 @@ ordered TypeORM migrations registered in
 32. `0032-canonical-customer-mail-persistence.ts` — canonical outbound, correspondence, and append-only attempt persistence for Interview handoff and Customer follow-up delivery; incomplete pre-canonical records remain readable as legacy history rather than being fabricated or removed.
 33. `0033-project-archive-resume.ts` — retained pre-archive Project phase and paused automatic-reminder cadence for side-effect-free workflow resume.
 34. `0034-project-draft-deletion.ts` — internal Project-owned draft data cascades on explicit Project deletion while Customer communication and Git handoff history retain restrictive foreign keys.
+35. `0035-question-bank-reference-files.ts` — immutable Question Bank reference-file content and question-revision relations; valid legacy `QUESTION_BANK` attachments are carried forward without duplicating their bytes across later Bank revisions.
 
 The deployed API image contains the compiled migration classes, but not the
 TypeScript migration source tree used by the development-only
@@ -173,10 +175,10 @@ docker compose --env-file .env exec -T api node -e $migrationStatusScript
 
 `pending: false` means that all migration classes in the running image are
 recorded in the database. The `applied` array is the database's migration
-history; the thirty-four expected names are listed above.
+history; the thirty-five expected names are listed above.
 
 The supported migration policy is no-squash forward evolution from the oldest
-supported `0001` schema through `0034`. Do not use `undoLastMigration()` or an
+supported `0001` schema through `0035`. Do not use `undoLastMigration()` or an
 arbitrary runtime downgrade as a normal recovery procedure: a down migration
 can destroy retained business history and is not a deployment workflow. Take a
 backup, diagnose the affected state, and ship a reviewed forward correction.
@@ -295,6 +297,26 @@ confirmation tool. That confirmation tool also carries Claude Code's native
   limited to administrative `DRAFT`, but migration `0034` cascades its internal
   Project-owned working data. Any Customer communication or Git handoff history,
   including failed or uncertain attempts, returns `409` and requires archive.
+
+### Governed attachment semantics
+
+`ATTACHMENT_MAX_MIB` is an Operator deployment value. It defaults to 50 MiB and
+can only be reduced. Nginx accepts a 51 MiB API request so the 50 MiB hard file
+maximum plus multipart overhead can reach the API; the API enforces the exact
+configured file cap. Accepted files are PDF; Word, RTF, and OpenDocument text;
+Excel, CSV, and OpenDocument spreadsheets; PowerPoint and OpenDocument
+presentations; UTF-8 TXT and Markdown; PNG and JPEG; and Microsoft Project and
+Visio. Generic archives, executables, HTML, and SVG remain rejected. The feature
+uses one PostgreSQL-backed durable path and does not provision a parser, scanner,
+object store, preview service, OCR, or a separate recovery process.
+
+Question Bank reference files belong to the Operator organization's immutable
+Question Bank question revision. Published Question Bank versions and Project
+question schemas retain their exact selected reference-file set. Project work
+attachments belong only to one Project Initial Intake snapshot or Discovery
+follow-up. Archived Projects are read-only, while retained Project work
+attachments remain available through authenticated inert download. Explicit
+Project draft deletion never removes Question Bank reference files.
 
 ### Discovery follow-up semantics
 
@@ -563,7 +585,7 @@ paths, and one reviewed send/reply browser journey without external credentials.
 
 The `container-smoke` job builds the production API image, proves the packaged
 contracts runtime import and the absence of build tooling, migrates a fresh
-database through `0001 -> 0034`, then checks health and an authenticated
+database through `0001 -> 0035`, then checks health and an authenticated
 canonical-policy consumer. The script owns and removes its temporary Compose
 project and volume.
 

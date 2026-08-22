@@ -278,6 +278,49 @@
             @if (question.hint) {
               <p class="question-hint"><strong>Kitöltési segítség:</strong> {{ question.hint }}</p>
             }
+            <section class="reference-files" [attr.aria-label]="'Referenciafájlok: ' + question.text">
+              <h3>Referenciafájlok</h3>
+              <p class="reference-files-help">A módosítás új publikált kérdésbankverziót hoz létre; a korábbi verzió fájlkészlete változatlan marad.</p>
+              <ul>
+                @for (file of question.referenceFiles; track file.id) {
+                  <li>
+                    <span><strong>{{ file.originalName }}</strong><small>{{ file.sizeBytes }} bájt</small></span>
+                    <span class="reference-file-actions">
+                      <a [href]="referenceFileUrl(question.id, file.id)">Letöltés</a>
+                      <p-button
+                        label="Eltávolítás"
+                        severity="danger"
+                        [text]="true"
+                        [disabled]="referenceSavingId() !== null"
+                        [attr.data-testid]="'remove-question-reference-' + file.id"
+                        (onClick)="removeReferenceFile(question, file.id, file.originalName)"
+                      />
+                    </span>
+                  </li>
+                } @empty {
+                  <li class="empty">Ehhez a kérdésverzióhoz még nincs referenciafájl.</li>
+                }
+              </ul>
+              <div class="reference-file-upload">
+                <label>
+                  Fájl
+                  <input
+                    type="file"
+                    accept=".pdf,.doc,.docx,.rtf,.odt,.xls,.xlsx,.csv,.ods,.ppt,.pptx,.odp,.txt,.md,.png,.jpg,.jpeg,.mpp,.vsdx"
+                    [disabled]="referenceSavingId() !== null"
+                    [attr.data-testid]="'question-reference-file-' + question.id"
+                    (change)="chooseReferenceFile(question.id, $event)"
+                  />
+                </label>
+                <p-button
+                  label="Referenciafájl hozzáadása"
+                  [loading]="referenceSavingId() === question.id"
+                  [disabled]="referenceSavingId() !== null || !selectedReferenceFile(question.id)"
+                  [attr.data-testid]="'add-question-reference-' + question.id"
+                  (onClick)="addReferenceFile(question)"
+                />
+              </div>
+            </section>
             <div class="item-actions">
               <p-button
                 label="Alapkérdés szerkesztése"

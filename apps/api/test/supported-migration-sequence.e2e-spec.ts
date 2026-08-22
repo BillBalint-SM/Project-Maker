@@ -86,12 +86,19 @@ describe('Supported migration sequence (PostgreSQL)', () => {
       );
 
       current = await connectThrough('EvidenceBasedDiscovery0026EvidenceBasedDiscovery1788076800000');
+      const [question] = await current.query<Array<{ id: string }>>(
+        `SELECT id
+         FROM base_questions
+         ORDER BY bank_version DESC, display_order ASC
+         LIMIT 1`,
+      );
+      assert.ok(question, 'The historical Question Bank seed must exist.');
       await current.query(
         `INSERT INTO governed_attachments (
            id, project_id, owner_kind, owner_id, original_name, content_type, size_bytes, sha256, content
          ) VALUES ($1, $2, 'QUESTION_BANK', $3, 'retained.txt', 'text/plain', 2,
                    repeat('a', 64), decode('0102', 'hex'))`,
-        [attachmentId, projectId, randomUUID()],
+        [attachmentId, projectId, question.id],
       );
 
       if (database?.isInitialized) await database.destroy();
@@ -130,6 +137,21 @@ describe('Supported migration sequence (PostgreSQL)', () => {
         specification: '# Retained specification',
         customerMail: 'Retained Customer-mail',
         identity: 'retained.user@example.test',
+        attachment: '0102',
+      }]);
+      const migratedReference = await database.query<Array<{
+        questionId: string;
+        attachment: string;
+      }>>(
+        `SELECT reference.question_id AS "questionId",
+                encode(content.content, 'hex') AS attachment
+         FROM question_reference_files reference
+         JOIN question_reference_file_contents content ON content.id = reference.file_id
+         WHERE reference.question_id = $1 AND reference.file_id = $2`,
+        [question.id, attachmentId],
+      );
+      assert.deepEqual(migratedReference, [{
+        questionId: question.id,
         attachment: '0102',
       }]);
     } finally {

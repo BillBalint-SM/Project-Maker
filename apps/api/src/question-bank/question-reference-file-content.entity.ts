@@ -1,20 +1,9 @@
 import { Column, CreateDateColumn, Entity, PrimaryColumn } from 'typeorm';
 
-import type { GovernedAttachmentOwnerKind } from '@project-maker/contracts';
-
-@Entity({ name: 'governed_attachments' })
-export class GovernedAttachmentEntity {
+@Entity({ name: 'question_reference_file_contents' })
+export class QuestionReferenceFileContentEntity {
   @PrimaryColumn('uuid')
   id!: string;
-
-  @Column({ name: 'project_id', type: 'uuid' })
-  projectId!: string;
-
-  @Column({ name: 'owner_kind', type: 'varchar', length: 40 })
-  ownerKind!: GovernedAttachmentOwnerKind;
-
-  @Column({ name: 'owner_id', type: 'uuid' })
-  ownerId!: string;
 
   @Column({ name: 'original_name', type: 'varchar', length: 255 })
   originalName!: string;

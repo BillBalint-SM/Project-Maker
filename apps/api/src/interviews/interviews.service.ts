@@ -11,6 +11,7 @@ import type {
   AnswerValue,
   BaseQuestionType,
   InterviewRound,
+  QuestionReferenceFile,
   RoundQuestionSnapshot,
 } from '@project-maker/contracts';
 import { DataSource, EntityManager, In, QueryFailedError } from 'typeorm';
@@ -21,6 +22,7 @@ import { Project } from '../projects/project.entity';
 import { BaseQuestionEntity } from '../question-bank/base-question.entity';
 import { ProjectQuestionSchemaEntity } from '../question-bank/project-question-schema.entity';
 import { ProjectSchemaQuestionEntity } from '../question-bank/project-schema-question.entity';
+import { loadQuestionReferenceFiles } from '../question-bank/question-reference-file-projection';
 import { CreateInterviewRoundDto } from './dto/create-interview-round.dto';
 import { SetRoundQuestionAssessmentDto } from './dto/set-round-question-assessment.dto';
 import { UpdateRoundAnswerDto } from './dto/update-round-answer.dto';
@@ -190,7 +192,18 @@ export class InterviewsService {
         schemaVersion: String(schema.schemaVersion),
         questionCount: String(snapshots.length),
       });
-      return toInterviewRound(round, schema.schemaVersion, snapshots, [], [], assessmentPolicy);
+      return toInterviewRound(
+        round,
+        schema.schemaVersion,
+        snapshots,
+        [],
+        [],
+        assessmentPolicy,
+        await loadQuestionReferenceFiles(
+          manager,
+          snapshots.flatMap(({ baseQuestionId }) => baseQuestionId ? [baseQuestionId] : []),
+        ),
+      );
     });
   }
 
@@ -251,7 +264,8 @@ export class InterviewsService {
             snapshotId,
           });
         }
-        return toEffectiveRoundQuestionSnapshot(
+        return toEffectiveRoundQuestionSnapshotWithReferences(
+          manager,
           snapshot,
           null,
           existingOverride?.status === assessmentPolicy.partialStatus
@@ -276,7 +290,8 @@ export class InterviewsService {
         snapshotId,
         answerId: savedAnswer.id,
       });
-      return toEffectiveRoundQuestionSnapshot(
+      return toEffectiveRoundQuestionSnapshotWithReferences(
+        manager,
         snapshot,
         savedAnswer,
         existingOverride,
@@ -333,7 +348,8 @@ export class InterviewsService {
         existingOverride?.status === assessment.status &&
         existingOverride.rationale === assessment.rationale
       ) {
-        return toEffectiveRoundQuestionSnapshot(
+        return toEffectiveRoundQuestionSnapshotWithReferences(
+          manager,
           snapshot,
           loadedAnswer,
           existingOverride,
@@ -371,7 +387,8 @@ export class InterviewsService {
         snapshotId,
         assessment.status,
       );
-      return toEffectiveRoundQuestionSnapshot(
+      return toEffectiveRoundQuestionSnapshotWithReferences(
+        manager,
         snapshot,
         loadedAnswer,
         savedOverride,
@@ -413,7 +430,13 @@ export class InterviewsService {
         await overrideRepository.remove(existingOverride);
         await saveAssessmentResetAuditEvent(manager, projectId, roundId, snapshotId);
       }
-      return toEffectiveRoundQuestionSnapshot(snapshot, answer, null, assessmentPolicy);
+      return toEffectiveRoundQuestionSnapshotWithReferences(
+        manager,
+        snapshot,
+        answer,
+        null,
+        assessmentPolicy,
+      );
     });
   }
 
@@ -658,6 +681,27 @@ async function saveAssessmentResetAuditEvent(
   });
 }
 
+async function toEffectiveRoundQuestionSnapshotWithReferences(
+  manager: EntityManager,
+  snapshot: RoundQuestionSnapshotEntity,
+  answer: RoundAnswerEntity | null,
+  override: RoundQuestionAssessmentOverrideEntity | null,
+  assessmentPolicy: RoundQuestionAssessmentPolicy,
+): Promise<RoundQuestionSnapshot> {
+  const referenceFilesByQuestionId = snapshot.baseQuestionId
+    ? await loadQuestionReferenceFiles(manager, [snapshot.baseQuestionId])
+    : new Map<string, readonly QuestionReferenceFile[]>();
+  return toEffectiveRoundQuestionSnapshot(
+    snapshot,
+    answer,
+    override,
+    assessmentPolicy,
+    snapshot.baseQuestionId
+      ? referenceFilesByQuestionId.get(snapshot.baseQuestionId) ?? []
+      : [],
+  );
+}
+
 async function loadInterviewRound(
   manager: EntityManager,
   round: InterviewRoundEntity,
@@ -681,6 +725,10 @@ async function loadInterviewRound(
     order: { snapshotId: 'ASC', id: 'ASC' },
   });
   const assessmentPolicy = await loadRoundQuestionAssessmentPolicy();
+  const referenceFilesByQuestionId = await loadQuestionReferenceFiles(
+    manager,
+    snapshots.flatMap(({ baseQuestionId }) => baseQuestionId ? [baseQuestionId] : []),
+  );
   return toInterviewRound(
     round,
     schema.schemaVersion,
@@ -688,6 +736,7 @@ async function loadInterviewRound(
     answers,
     overrides,
     assessmentPolicy,
+    referenceFilesByQuestionId,
   );
 }
 
@@ -702,6 +751,7 @@ function toInterviewRound(
   answers: readonly RoundAnswerEntity[],
   overrides: readonly RoundQuestionAssessmentOverrideEntity[],
   assessmentPolicy: RoundQuestionAssessmentPolicy,
+  referenceFilesByQuestionId: ReadonlyMap<string, readonly QuestionReferenceFile[]>,
 ): InterviewRound {
   const answersBySnapshotId = new Map(answers.map((answer) => [answer.snapshotId, answer]));
   const overridesBySnapshotId = new Map(
@@ -723,6 +773,9 @@ function toInterviewRound(
         answersBySnapshotId.get(snapshot.id) ?? null,
         overridesBySnapshotId.get(snapshot.id) ?? null,
         assessmentPolicy,
+        snapshot.baseQuestionId
+          ? referenceFilesByQuestionId.get(snapshot.baseQuestionId) ?? []
+          : [],
       ),
     ),
   };

@@ -62,7 +62,7 @@ database; see [`docs/mail-gateway.md`](docs/mail-gateway.md#local-synthetic-gate
 pnpm test:mail-gateway
 ```
 
-The production API image and fresh `0001 -> 0034` migration path have one
+The production API image and fresh `0001 -> 0035` migration path have one
 isolated local/CI smoke command:
 
 ```powershell
@@ -126,6 +126,7 @@ safely establish a new mailbox baseline.
 | `WEB_PORT` | Host port published by Nginx |
 | `CORS_ORIGIN` | Exact browser origin allowed by the API |
 | `FOLLOW_UP_POLL_INTERVAL_MS` | Automatic follow-up poll interval (5,000–86,400,000 ms) |
+| `ATTACHMENT_MAX_MIB` | Attachment limit in MiB; defaults to 50 and may only reduce that maximum |
 | `CORRESPONDENCE_MAILBOX_POLL_INTERVAL_MS` | Correspondence mailbox poll interval in milliseconds; defaults to 60,000, and invalid values or values below 100 fall back to the default |
 | `CORRESPONDENCE_MAILBOX_NAME` / `CORRESPONDENCE_MAILBOX_ADDRESS` | Operator organization-controlled dedicated sender identity; Reply-To correlation uses the configured address and generated plus-addresses |
 | `MAIL_GATEWAY_SMTP_*` | TLS SMTP host, port, security mode, and dedicated credential |
