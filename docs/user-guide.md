@@ -93,7 +93,7 @@ Az auditnapló a bejelentkezett belső felhasználóhoz köti a műveleteket. Ez
 - Ne írj jelszót, hozzáférési tokent, privát kulcsot vagy más titkot válaszba, tisztázandó tételbe, Markdownba vagy mezőbe.
 - Ügyfélnek küldés előtt ellenőrizd a projekt létrehozásakor megadott kapcsolattartó e-mail-címét.
 - A Claude Code-nak szánt Markdownot ne küldd ügyfélnek; ügyfélkommunikációhoz a felmérési összefoglalót vagy az előnézett ügyfél-emlékeztetőt használd.
-- Hasznos történettel rendelkező projektet archiválj. A törlés csak üres, korai piszkozat eltávolítására való.
+- Hasznos történettel rendelkező projektet archiválj. A törlés csak tudatosan eldobott `DRAFT` projekt és belső munkaadatainak eltávolítására való; ügyfélkommunikáció vagy Git-átadás után nem használható.
 - Archivált projektet előbb állíts vissza, és csak utána hozz létre új tartalmat, még akkor is, ha egy közvetlen oldal technikailag megnyitható.
 
 ### Mit jelent a képernyő állapota?
@@ -290,16 +290,14 @@ A kereső, a jelölők, a frissítés, a lapozás és a sorműveletek billentyű
 2. Töltsd ki a `Projekt neve` mezőt. Legyen egyértelmű, legfeljebb 255 karakteres név.
 3. Töltsd ki az `Ügyfél kapcsolattartó neve` mezőt a tényleges kapcsolattartó nevével; a mező legfeljebb 255 karaktert fogad el.
 4. Töltsd ki az `Ügyfél kapcsolattartó e-mail-címe` mezőt érvényes, legfeljebb 320 karakteres e-mail-címmel.
-5. Ellenőrizd még egyszer a címet. A jelenlegi felületen később sem a projekt neve, sem a kapcsolattartó neve vagy e-mail-címe nem szerkeszthető.
+5. Ellenőrizd még egyszer a címet. Később a `Projektbeállítások` oldalon a projekt neve, a belső projektgazda és az ügyfélkapcsolattartó neve vagy e-mail-címe is javítható.
 6. Válaszd a létrehozást és a felmérés megnyitását.
 
 Siker esetén a webapp létrehoz egy `Előkészítés alatt` adminisztratív projektfázisú projektet, és közvetlenül a következő szükséges feladatra vezet. A projekt már a Projektportfólióban is látható.
 
 Ha meggondoltad magad, a `Mégse` bezárja az űrlapot és nem hoz létre projektet. Ha az űrlap mezőhibát jelez, javítsd a kiemelt értéket; a projekt csak sikeres szerverválasz után jön létre.
 
-> **Kapcsolattartói adat javítása:** mivel jelenleg nincs szerkesztőművelet, hibás név vagy e-mail esetén ne küldj levelet.
->
-> Ha a projekt még teljesen üres és `Előkészítés alatt` állapotú, törölhető és helyesen újralétrehozható. Ha már van megőrzendő tevékenysége, archiváld, és a csapattal egyeztetett módon hozz létre helyes projektet. A régi történetet ne próbáld törléssel eltüntetni.
+> **Kapcsolattartói adat javítása:** nyisd meg a `Projektbeállítások` oldalt, javítsd az adatot, és várd meg a sikeres mentést, mielőtt új ügyfélküldést indítasz. A módosítás a jövőbeli küldések címzettjét frissíti; a korábbi levelezési pillanatképeket nem írja át.
 
 ## Projektállapot és Projektbeállítások
 
@@ -328,7 +326,7 @@ A `Projektbeállítások` oldal kezeli:
 - az adminisztratív projektfázist;
 - az archiválást, visszaállítást és a jogosult korai piszkozat végleges törlését.
 
-Az alapadatok csak az első kérdésséma elfogadásáig és aktív projektben szerkeszthetők. Ezután olvashatók maradnak, de a történeti azonosság védelmében nem írhatók át. Az automatikus ütemezés beállítása itt történik; a kézi ügyfél-emlékeztető megírása, előnézete, küldése és helyreállítása az `Ügyféllevelezés` munkafelület feladata.
+Az alapadatok és az ügyfélkapcsolattartó aktív projektben a kérdésséma elfogadása után is szerkeszthetők. Archivált projektben csak olvashatók; módosításhoz előbb állítsd vissza a projektet. A mentés a jövőbeli munkához használt aktuális adatokat frissíti, a korábbi ügyfélkommunikáció és Git-átadás változatlan pillanatkép marad. Az automatikus ütemezés beállítása itt történik; a kézi ügyfél-emlékeztető megírása, előnézete, küldése és helyreállítása az `Ügyféllevelezés` munkafelület feladata.
 
 ### Adminisztratív projektfázis
 
@@ -347,7 +345,7 @@ A `Tervezésre átadva` fázis beállítása továbbra is automatikusan létreho
 
 ### Archivált projekt
 
-Archiválás és törlés kizárólag a `Projektbeállítások` elkülönített `Archiválás és törlés` részében érhető el, és explicit megerősítést kér. Archiválás után a projektoldalak és beállítások olvashatók maradnak, a módosítások letiltódnak. Új munka előtt előbb válaszd a `Projekt visszaállítása` műveletet; a visszaállított adminisztratív projektfázis mindig `Előkészítés alatt`.
+Archiválás és törlés kizárólag a `Projektbeállítások` elkülönített `Archiválás és törlés` részében érhető el, és explicit megerősítést kér. Archiválás után a projektoldalak és beállítások olvashatók maradnak, a módosítások és új külső műveletek szünetelnek. A `Projekt visszaállítása` az archiválás előtti adminisztratív fázist és teljes mentett munkafolyamat-állapotot folytatja; korábbi eseményt vagy küldést nem ismétel meg.
 
 ## A közös kérdésbank kezelése
 
@@ -749,9 +747,9 @@ Lezárt (`Megválaszolva` vagy `Nem releváns`) tisztázandó tétel nem szerkes
 
 ### Archivált projekt
 
-Archiválás után a tisztázandó tételek listája és a kompakt forráshivatkozások olvashatók maradnak, de az új elem létrehozása, a `Tisztázandó tételek szerkesztése`, a `Lezárás` és a forráshivatkozási műveletek letiltottak. Ha archiváláskor nyitva volt egy helyi szerkesztő-, lezárási vagy forráshivatkozási űrlap, illetve eltávolítási megerősítés, annak be nem mentett állapota törlődik. Visszaállítás után a projekt piszkozat állapotú lesz, a meglévő tételek megmaradnak, és a nyitott elemek műveletei újra elérhetővé válnak.
+Archiválás után a tisztázandó tételek listája és a kompakt forráshivatkozások olvashatók maradnak, de az új elem létrehozása, a `Tisztázandó tételek szerkesztése`, a `Lezárás` és a forráshivatkozási műveletek letiltottak. Ha archiváláskor nyitva volt egy helyi szerkesztő-, lezárási vagy forráshivatkozási űrlap, illetve eltávolítási megerősítés, annak be nem mentett állapota törlődik. Visszaállítás után az archiválás előtti projektfázis és mentett felmérési állapot folytatódik, a meglévő tételek megmaradnak, és a nyitott elemek műveletei újra elérhetővé válnak.
 
-Ha archivált állapotban kell valódi új döntést rögzíteni, előbb válaszd a `Projekt visszaállítása` műveletet, ellenőrizd a piszkozat állapotot, majd végezd el a tisztázási műveletet.
+Ha archivált állapotban kell valódi új döntést rögzíteni, előbb válaszd a `Projekt visszaállítása` műveletet, ellenőrizd a folytatott mentett állapotot, majd végezd el a tisztázási műveletet.
 
 ## Ügyfél-emlékeztetők
 
@@ -807,7 +805,7 @@ A `Sikeresen elküldve` azt igazolja, hogy a levelezési szolgáltatás elfogadt
 
 Ismert gateway-elutasításkor a felület `Sikertelen küldés` állapotot mutat, a következő automatikus időpont pedig a beállított időköz szerint megmarad. A hibás próbálkozás külön kézzel is újrapróbálható. Bizonytalan kimenetnél az automatikus ütemezés szünetel: előbb ellenőrizd a kimenő postafiókot, majd csak a külön kockázatelfogadással indított újrapróbálás sikeres befejezése ütemezi a következő emlékeztetőt.
 
-Lejárat után az automatikus feldolgozás kikapcsolja az ütemezést és törli a következő emlékeztető időpontját. Archivált projekthez nem küld automatikus levelet; amikor az ütemező a következő esedékes tételt feldolgozza, az archivált projekt ütemezését is kikapcsolja.
+Lejárat után az automatikus feldolgozás kikapcsolja az ütemezést és törli a következő emlékeztető időpontját. Archiváláskor az engedélyezett ütemezés és a következő küldésig hátralévő idő megmarad, de automatikus levél nem indul. Visszaállításkor a hátralévő idő folytatódik; ha az emlékeztető már archiválás előtt esedékes volt, egy teljes új időköz indul. Az archiválás alatt kimaradt küldéseket a rendszer nem pótolja, korábbi vagy bizonytalan kimenetű kísérletet nem ismétel meg, és a közben lejárt végdátumot nem hosszabbítja meg.
 
 ### Egyetlen kézi emlékeztető küldése
 
@@ -1010,7 +1008,7 @@ Az archiválás és a törlés üzleti jelentése teljesen különböző:
 4. Válaszd a `Projekt archiválása` gombot.
 5. Várd meg az `A projekt archiválva lett.` sikerüzenetet és az `Archivált` állapotot.
 
-Az archivált projekt megőrzött adatai elérhetők maradnak. A koordináció, az ügyfél-emlékeztető műveletei, valamint a tisztázandó tétel létrehozása és lezárása letiltott. A projektoldalak, a megőrzött tartalom és a legutóbbi üzleti aktivitás továbbra is olvasható.
+Az archivált projekt megőrzött adatai elérhetők maradnak. A koordináció, az ügyfél-emlékeztető műveletei, valamint a tisztázandó tétel létrehozása és lezárása letiltott. A projektoldalak, a megőrzött tartalom és a legutóbbi üzleti aktivitás továbbra is olvasható; a specifikációverziók, csatolmányok és Delivery package exportok továbbra is letölthetők.
 
 A jelenlegi kiadásban a `Felmérés` és a `Projekt-specifikáció` közvetlen útvonala archiválás után is megnyitható lehet. Ezt ne értelmezd engedélyként új tartalom létrehozására. A biztonságos szabály: előbb `Projekt visszaállítása`, utána új séma, kör, válasz vagy specifikációverzió.
 
@@ -1018,29 +1016,26 @@ A jelenlegi kiadásban a `Felmérés` és a `Projekt-specifikáció` közvetlen 
 
 1. Nyisd meg az `Archivált` projektet a Projektportfólióból.
 2. Válaszd a `Projekt visszaállítása` gombot.
-3. Várd meg az `A projekt visszaállt az Előkészítés alatt adminisztratív projektfázisba.` sikerüzenetet.
-4. Állítsd be újra a valós aktív státuszt, felelőst, következő lépést és határidőt.
+3. Várd meg az archiválás előtti fázist megnevező sikerüzenetet.
+4. Ellenőrizd a folytatott adminisztratív fázist, felmérési állapotot, felelőst, következő lépést és határidőt.
 
-A visszaállítás mindig `Előkészítés alatt` adminisztratív projektfázist ad. Nem emlékszik az archiválás előtti aktív fázisra. A megőrzött sémák, körök, tisztázandó tételek, specifikációverziók és belső események megmaradnak.
+A visszaállítás az archiválás előtti adminisztratív fázist, kérdéssémát, aktuális felmérési kört, válaszokat, értékeléseket, tisztázandó tételeket, specifikációkat és más mentett projektmunkát folytatja. Maga a visszaállítás nem hoz létre új felmérési kört, specifikációverziót, ügyféllevelet, emlékeztetőt, Git-átadást vagy más korábbi eseményt. A már megtörtént küldések és bizonytalan kézbesítési eredmények változatlan előzmények; újrapróbálásuk továbbra is külön, explicit művelet.
 
 Ha archiválás előtt nyitva maradt egy be nem mentett tisztázási lezáró űrlap, annak piszkozata nem áll vissza. Nyisd meg újra a tételt, és a forrásból ellenőrzött választ rögzítsd.
 
 ### Végleges törlés
 
-> **Visszafordíthatatlan művelet:** a sikeres `Projekt végleges törlése` után nincs visszaállítás vagy kuka. Csak olyan korai, `Előkészítés alatt` állapotú projektet törölj, amelyről meggyőződtél, hogy nem kell megőrizni. Hasznos történetnél mindig archiválj.
+> **Visszafordíthatatlan művelet:** a sikeres `Projekt végleges törlése` után nincs visszaállítás vagy kuka. Csak olyan `Előkészítés alatt` állapotú projektet törölj, amelynek belső munkaadataira biztosan nincs szükség. Ügyfélkommunikáció vagy Git-átadás után mindig archiválj.
 
-A törlési kártya csak `Előkészítés alatt` állapotban látható, de ez nem garantálja a törölhetőséget. A szerver csak akkor engedi a törlést, ha nincs megőrzendő kapcsolódó aktivitás vagy auditnyom.
+A törlési kártya csak `Előkészítés alatt` állapotban látható. Sikeres megerősítéskor a projekt és minden hozzá tartozó belső munkaadat egyetlen műveletben végleg törlődik. Ide tartozhat az audit, a kérdésséma és felmérési piszkozat, a válasz, a tisztázandó tétel, a specifikáció, a csatolmány, az Insight, a belső döntés vagy státusz és a még át nem adott Delivery package.
 
-Törlést akadályoz többek között:
+Törlést mindig akadályoz:
 
-- bármely audit-esemény;
-- közzétett projektséma;
-- elindított felmérési kör;
-- specifikációverzió;
-- tisztázandó tétel;
-- mentett ügyfél-emlékeztető állapot, amely beállítás vagy küldés során is létrejöhet.
+- ha a projekt adminisztratív fázisa már nem `Előkészítés alatt`;
+- bármely ügyfélküldés, küldési kísérlet, ügyfélválasz, ügyfél-válaszkérés vagy kapcsolt levelezési előzmény;
+- bármely Git-átadási előzmény, annak eredményétől függetlenül.
 
-A projekt neve, felelőse, következő lépése vagy határideje önmagában nem helyettesíti ezt a szerveroldali ellenőrzést. Mindig a törlési válasz az irányadó.
+A pusztán belső audit, séma, felmérés, specifikáció vagy más belső draft-adat nem blokkolja a tudatos törlést. A szerver a megerősítés pillanatában újra ellenőrzi a fázist és a megőrzendő Customer/Git történetet; mindig a törlési válasz az irányadó.
 
 1. Válaszd a `Projekt végleges törlése` gombot.
 2. Olvasd el a `Projekt végleges törlése` megerősítést és a következményeket.
@@ -1173,7 +1168,7 @@ Az alábbiak nem elrejtett funkciók és nem más menüpontban találhatók; a j
 
 ### Projekt- és felmérési munka
 
-- A projekt neve és az ügyfélkapcsolati adatok az első kérdésséma elfogadásáig szerkeszthetők; utána olvashatók maradnak.
+- A projekt neve, a belső projektgazda és az ügyfélkapcsolati adatok minden aktív projektben szerkeszthetők; archiválva visszaállításig csak olvashatók.
 - Csak kezdő felmérési kör indítható; további körtípus nincs.
 - A jelenlegi felület az aktuális kezdő felméréshez tartozó felmérési összefoglaló verzióit mutatja; több külön történeti felmérési kör összevont böngészője nincs.
 - A felkészültségi sáv nem állít át adminisztratív projektfázist, és nem helyettesíti a csapat üzleti döntését.
@@ -1199,7 +1194,7 @@ Az alábbiak nem elrejtett funkciók és nem más menüpontban találhatók; a j
 ### Adminisztratív projektfázis és megőrzés
 
 - Az adminisztratív projektfázisok közötti sorrend nincs kikényszerítve és nincs automatikusan számítva.
-- A visszaállítás nem hozza vissza az archiválás előtti fázist; mindig `Előkészítés alatt` lesz.
+- A visszaállítás az archiválás előtti teljes mentett munkafolyamat-állapotot folytatja, de nem állít vissza be nem mentett böngészőűrlapot vagy lejárt előnézetet, és nem ismétel meg külső műveletet.
 - Az archivált projekt munkafelületei csak olvashatók; új tartalom előtt mindig állítsd vissza a projektet.
 - Nincs specifikációverzió- vagy audit-esemény szerkesztés és törlés.
 - A végfelhasználói felület nem biztosít platformszintű biztonsági mentési vagy visszaállítási műveletet.

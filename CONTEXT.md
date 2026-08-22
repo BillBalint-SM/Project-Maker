@@ -121,7 +121,9 @@ _Avoid_: Scroll navigation, URL for every transient selection, hidden context sw
 The project-scoped administration context for basic project data, Project
 Customer contact details, Project Customer reminder configuration, archive,
 and deletion. It does not configure the Operator organization's mail gateway
-and is separate from active project preparation work.
+and is separate from active project preparation work. Basic Project and
+Customer-contact data remain editable while the Project is active, regardless
+of Project question-schema publication.
 _Avoid_: Day-to-day project coordination, hidden destructive controls
 
 **Administrative project phase**:
@@ -258,10 +260,18 @@ not the normal project preparation journey.
 _Avoid_: Raw audit log, technical event feed
 
 **Project archive**:
-The deliberate removal of a project from active preparation lists while
-retaining its readable history. Restoring an archived project resumes its
-preparation at the `Kérdésséma szükséges` state.
-_Avoid_: Deleted project, completed estimation handoff
+The deliberate pause and removal of a project from active work while retaining
+its complete saved workflow state and readable history. Restoring an archived
+project resumes that saved state; completed events and external actions remain
+history and are not repeated.
+_Avoid_: Deleted project, preparation reset, replayed project
+
+**Project draft deletion**:
+The explicit, irreversible removal of an administrative `DRAFT` Project and
+all of its Project-owned internal working data. Customer communication or Git
+handoff history makes the Project ineligible for deletion and requires archive;
+technical audit, schema, internal discovery, and draft outputs alone do not.
+_Avoid_: Empty-only deletion, deletion of Customer or Git history, archive
 
 **Markdown template**:
 A named, reusable, user-editable Markdown structure stored for future

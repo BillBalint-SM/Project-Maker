@@ -20,8 +20,11 @@
   workflows remain available when the gateway is incomplete. Gateway activation
   requires the controlled smoke evidence described in
   [mail-gateway.md](../docs/mail-gateway.md).
-- Database migration `0032` is the current schema baseline. Historical
+- Database migration `0034` is the current schema baseline. Historical
   migrations remain retained and must not be edited or removed.
+- `PROJECT-UX-01` is complete: active Project basics remain editable, archive
+  and restore preserve the saved workflow without replay, internal-only `DRAFT`
+  data cascades on explicit deletion, and Customer/Git history forces archive.
 - IMAP checkpoint state is a strict plain versioned value; it has no separate
   secret. Invalid or old checkpoints safely establish a new baseline.
 

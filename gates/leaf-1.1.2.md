@@ -23,4 +23,4 @@ Scope: local documentation separates delivered implementation from genuinely ope
   EVIDENCE: 110:19. `0019-customer-mailbox-sync.ts` — durable dedicated-mailbox identity, completed historical checkpoint, bounded freshness/failure state, synchronization timestamps, lease ownership, and retaine
 
 - [x] G5: Future opportunities are not presented as delivered.
-  EVIDENCE: 2026-08-22 — `PROJECT-UX-01`, `ATTACH-01`, `DATA-03`, `MIG-01`, and `PWA-01` remain open and the roadmap does not claim complete delivery. `COLLAB-01` is correctly delivered because Customer response drafts have browser-local persistence evidence.
+  EVIDENCE: 2026-08-22 — `ATTACH-01`, `DATA-03`, `MIG-01`, and `PWA-01` remain open and the roadmap does not claim complete delivery. `PROJECT-UX-01` is now correctly delivered with lifecycle, editability, deletion-boundary, and archived-output evidence; `COLLAB-01` remains correctly delivered because Customer response drafts have browser-local persistence evidence.
