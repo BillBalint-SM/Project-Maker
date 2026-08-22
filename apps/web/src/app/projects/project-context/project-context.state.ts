@@ -31,7 +31,7 @@ export class ProjectContextState {
     }
 
     if (!projectId) {
-      this.loadError.set('A projekt azonosítója hiányzik az útvonalból.');
+      this.loadError.set('The project identifier is missing from the route.');
       this.loading.set(false);
       return;
     }

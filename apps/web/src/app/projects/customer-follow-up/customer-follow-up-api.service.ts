@@ -33,7 +33,7 @@ export class CustomerFollowUpApiService {
   load(projectId: string): Observable<CustomerFollowUpState> {
     return this.request(
       this.http.get<CustomerFollowUpState>(this.route(projectId)),
-      'betölteni az ügyfél-emlékeztetőt',
+      'load the Customer follow-up',
     );
   }
 
@@ -44,14 +44,14 @@ export class CustomerFollowUpApiService {
       this.http.get<readonly CustomerFollowUpReferenceOption[]>(
         `${this.route(projectId)}/reference-options`,
       ),
-      'betölteni a hivatkozható tisztázandó tételeket',
+      'load available Discovery follow-ups',
     );
   }
 
   senderIdentity(projectId: string): Observable<CorrespondenceMailboxIdentity> {
     return this.request(
       this.http.get<CorrespondenceMailboxIdentity>(`${this.route(projectId)}/sender-identity`),
-      'betölteni a levelezési postafiók feladóját',
+      'load the correspondence mailbox sender',
     );
   }
 
@@ -61,7 +61,7 @@ export class CustomerFollowUpApiService {
   ): Observable<CustomerFollowUpState> {
     return this.request(
       this.http.patch<CustomerFollowUpState>(this.route(projectId), input),
-      'menteni az automatikus emlékeztető beállításait',
+      'save automated follow-up settings',
     );
   }
 
@@ -71,7 +71,7 @@ export class CustomerFollowUpApiService {
   ): Observable<CustomerFollowUpState> {
     return this.request(
       this.http.patch<CustomerFollowUpState>(`${this.route(projectId)}/draft`, input),
-      'menteni az ügyfél-emlékeztető piszkozatát',
+      'save the Customer follow-up draft',
     );
   }
 
@@ -84,7 +84,7 @@ export class CustomerFollowUpApiService {
         `${this.route(projectId)}/ping/preview`,
         input,
       ),
-      'elkészíteni az ügyfél-emlékeztető előnézetét',
+      'prepare the Customer follow-up preview',
     );
   }
 
@@ -94,7 +94,7 @@ export class CustomerFollowUpApiService {
   ): Observable<CustomerFollowUpPingDelivery> {
     return this.request(
       this.http.post<CustomerFollowUpPingDelivery>(`${this.route(projectId)}/ping`, input),
-      'elküldeni az ügyfél-emlékeztetőt',
+      'send the Customer follow-up',
     );
   }
 
@@ -107,7 +107,7 @@ export class CustomerFollowUpApiService {
         `${this.route(projectId)}/ping/retry`,
         input,
       ),
-      'újrapróbálni az ügyfél-emlékeztetőt',
+      'retry the Customer follow-up',
     );
   }
 
@@ -138,13 +138,13 @@ export class CustomerFollowUpApiService {
     if (error.status === 409) {
       if (code === 'FOLLOW_UP_DRAFT_REQUIRED') {
         return throwError(() => new CustomerFollowUpApiError(
-          'Előbb ments egy nem üres ügyfél-emlékeztetőt.',
+          'Save a non-empty Customer follow-up draft first.',
           code,
         ));
       }
       return throwError(() =>
         new CustomerFollowUpApiError(
-          `Nem sikerült ${action}, mert az állapot időközben megváltozott. Töltsd újra az aktuális piszkozatot.`,
+          `Could not ${action} because the state changed. Reload the current draft and try again.`,
           code,
         ),
       );
@@ -152,19 +152,19 @@ export class CustomerFollowUpApiService {
     if (error.status === 503) {
       if (code === 'FOLLOW_UP_DELIVERY_UNKNOWN') {
         return throwError(() => new CustomerFollowUpApiError(
-          'A kézbesítési eredmény bizonytalan. Ellenőrizd a kimenő postafiókot az újraküldés előtt.',
+          'Delivery outcome is unknown. Check the outbound mailbox before retrying.',
           code,
         ));
       }
       if (code === 'FOLLOW_UP_DELIVERY_FAILED') {
         return throwError(() => new CustomerFollowUpApiError(
-          'Az ügyfél-emlékeztető küldése sikertelen. Kézzel újrapróbálható.',
+          'Customer follow-up delivery failed. You can retry it manually.',
           code,
         ));
       }
       return throwError(() =>
         new CustomerFollowUpApiError(
-          `Nem sikerült ${action}, mert az e-mail-küldés nem érhető el. Ellenőrizd a levelezési átjáró beállításait.`,
+          `Could not ${action} because email delivery is unavailable. Check the mail gateway configuration.`,
           code,
         ),
       );

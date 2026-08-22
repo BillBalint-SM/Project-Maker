@@ -96,7 +96,7 @@ describe('Interview customer handoff HTTP boundary', () => {
     const firstId = history.body[0].id as string;
     await request(app.getHttpServer()).post(`/projects/${project.body.id}/rounds/${roundId}/customer-handoffs/${firstId}/preview`).send({ mode: 'CUSTOM', name: 'Téves', address: 'personal@example.test' }).expect(400);
     const firstPreview = await request(app.getHttpServer()).post(`/projects/${project.body.id}/rounds/${roundId}/customer-handoffs/${firstId}/preview`).send({}).expect(201);
-    assert.match(firstPreview.body.textContent, /Nincs rögzített válasz/);
+    assert.match(firstPreview.body.textContent, /No answer recorded/);
     assert.equal(firstPreview.body.senderName, 'Project Maker');
     assert.equal(firstPreview.body.senderAddress, 'project-maker@example.test');
     await request(app.getHttpServer()).post(`/projects/${project.body.id}/rounds/${roundId}/customer-handoffs/${firstId}/send`).send({ ...sendInput(firstPreview.body), senderAddress: 'personal@example.test' }).expect(400);

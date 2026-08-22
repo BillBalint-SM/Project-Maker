@@ -184,16 +184,16 @@ describe('Customer follow-up ping draft and manual delivery', () => {
       .expect(201);
     assert.match(preview.body.recipientName, /Ügyfél Anna/);
     assert.match(preview.body.recipientEmail, /@example\.test$/);
-    assert.match(preview.body.subject, /^Pontosítás kérése — Customer ping preview-send/);
+    assert.match(preview.body.subject, /^Clarification request — Customer ping preview-send/);
     assert.equal(preview.body.draftVersion, 2);
     assert.equal(preview.body.referencedFollowUpVersion, 1);
     assert.equal(preview.body.senderName, 'Project Maker');
     assert.equal(preview.body.senderAddress, 'project-maker@example.test');
     assert.equal(typeof preview.body.previewToken, 'string');
     assert.match(preview.body.text, /Kérlek, küldd el a hiányzó jóváhagyást\./);
-    assert.match(preview.body.text, /Kérdés: Melyik jóváhagyás hiányzik\?/);
-    assert.match(preview.body.text, /Következő lépés: Az ügyfél pontosítja a szabályt\./);
-    assert.match(preview.body.text, /Határidő: 2026-09-15/);
+    assert.match(preview.body.text, /Question: Melyik jóváhagyás hiányzik\?/);
+    assert.match(preview.body.text, /Next action: Az ügyfél pontosítja a szabályt\./);
+    assert.match(preview.body.text, /Due date: 2026-09-15/);
     for (const forbidden of ['PO Péter', 'BUSINESS', reference.id, '.md', 'Markdown', 'Claude']) {
       assert.equal(preview.body.text.includes(forbidden), false);
     }
@@ -781,7 +781,7 @@ describe('Customer follow-up ping draft and manual delivery', () => {
     assert.equal(
       unknownActivity.body.events.some(
         (event: { summary: string }) => event.summary ===
-          'Az ügyfél-emlékeztető küldési eredménye bizonytalan; kézi ellenőrzés szükséges.',
+          'Customer reminder delivery outcome is uncertain; manual review is required.',
       ),
       true,
     );
@@ -866,10 +866,10 @@ describe('Customer follow-up ping draft and manual delivery', () => {
     assert.deepEqual(
       activity.body.events.map((event: { summary: string }) => event.summary),
       [
-        'Az ügyfél-emlékeztető küldése sikertelen; újrapróbálható.',
-        'Az ügyfél-emlékeztető piszkozata frissítve lett.',
-        'Az ügyfél-emlékeztető elküldve az ügyfélnek.',
-        'Az ügyfél-emlékeztető piszkozata frissítve lett.',
+        'Customer reminder delivery failed and can be retried.',
+        'Customer reminder draft updated.',
+        'Customer reminder sent to the Customer.',
+        'Customer reminder draft updated.',
       ],
     );
   });
@@ -1157,7 +1157,7 @@ describe('Customer follow-up ping draft and manual delivery', () => {
     assert.equal(submitted[0]?.senderAddress, 'project-maker@example.test');
     assert.match(submitted[0]?.replyToAddress ?? '', /^project-maker\+.+@example\.test$/);
     assert.match(delivered[0].text, /Kérlek, erősítsd meg a döntést\./);
-    assert.match(delivered[0].text, /Kérdés: Melyik döntést kell megerősíteni\?/);
+    assert.match(delivered[0].text, /Question: Melyik döntést kell megerősíteni\?/);
     assert.doesNotMatch(delivered[0].text, /\.md\b|Markdown|Claude Code|execution-plan revision/i);
     assert.equal(submitted[0]?.htmlContent, undefined);
     const attempts = await dataSource.query<Array<{ state: string }>>(

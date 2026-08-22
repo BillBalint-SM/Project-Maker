@@ -19,7 +19,7 @@ export function dedicatedCustomerSender(config: ConfigService): ResolvedCustomer
     || !isEmail(address)
     || /[\r\n<>]/.test(address)
   ) {
-    throw new ConflictException('A levelezési postafiók nincs megfelelően beállítva.');
+    throw new ConflictException('The correspondence mailbox is not configured correctly.');
   }
   return { name, address };
 }

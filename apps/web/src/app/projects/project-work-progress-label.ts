@@ -5,6 +5,6 @@ export function projectWorkProgressLabel(
 ): string | null {
   if (!progress) return null;
   return progress.kind === 'INTERVIEW_ANSWERS'
-    ? `${progress.answeredQuestions} / ${progress.totalQuestions} kérdés megválaszolva`
-    : `${progress.completedInputs} / ${progress.totalInputs} döntési szempont kitöltve`;
+    ? `${progress.answeredQuestions} / ${progress.totalQuestions} questions answered`
+    : `${progress.completedInputs} / ${progress.totalInputs} decision criteria completed`;
 }

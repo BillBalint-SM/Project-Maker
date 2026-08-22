@@ -23,12 +23,12 @@ export class DeliveryPackageService {
   async save(projectId: string, input: SaveDeliveryPackageDto): Promise<DeliveryPackage> {
     await this.dataSource.transaction(async (manager) => {
       const project = await requireProject(manager, projectId, true);
-      if (project.status === 'ARCHIVED') throw new ConflictException('Archivált projekt fejlesztési csomagja nem szerkeszthető.');
+      if (project.status === 'ARCHIVED') throw new ConflictException('The Delivery package of an archived Project cannot be edited.');
       const revision = await manager.getRepository(MarkdownRevisionEntity).findOneBy({
         id: input.specificationRevisionId,
         projectId,
       });
-      if (!revision) throw new BadRequestException('A kiválasztott specifikációverzió nem ehhez a projekthez tartozik.');
+      if (!revision) throw new BadRequestException('The selected specification version does not belong to this Project.');
       const items = normalizeItems(input.items, revision.content);
       const repository = manager.getRepository(DeliveryPackageEntity);
       let deliveryPackage = await repository.findOne({
@@ -67,12 +67,12 @@ export class DeliveryPackageService {
   async get(projectId: string): Promise<DeliveryPackage> {
     const project = await requireProject(this.dataSource.manager, projectId, false);
     const deliveryPackage = await this.dataSource.getRepository(DeliveryPackageEntity).findOneBy({ projectId });
-    if (!deliveryPackage) throw new NotFoundException('Ehhez a projekthez még nincs fejlesztési csomag.');
+    if (!deliveryPackage) throw new NotFoundException('This Project does not have a Delivery package yet.');
     const revision = await this.dataSource.getRepository(MarkdownRevisionEntity).findOneBy({
       id: deliveryPackage.specificationRevisionId,
       projectId,
     });
-    if (!revision) throw new NotFoundException('A fejlesztési csomag specifikációforrása nem található.');
+    if (!revision) throw new NotFoundException('The source specification for this Delivery package could not be found.');
     return toView(project, deliveryPackage, revision, await this.provenance(deliveryPackage));
   }
 
@@ -94,7 +94,7 @@ export class DeliveryPackageService {
 
   async csv(projectId: string): Promise<{ readonly filename: string; readonly content: string }> {
     const view = await this.get(projectId);
-    const header = ['Projekt', 'Projekt ID', 'Specifikációverzió', 'Csomagverzió', 'Tétel sorszám', 'Cím', 'User story', 'Kritérium sorszám', 'Elfogadási kritérium', 'Forrásrészletek'];
+    const header = ['Project', 'Project ID', 'Specification version', 'Package version', 'Item number', 'Title', 'User story', 'Criterion number', 'Acceptance criterion', 'Source excerpts'];
     const rows = view.items.flatMap((item, itemIndex) => item.acceptanceCriteria.map((criterion, criterionIndex) => [
       view.projectName, view.projectId, String(view.specification.version), String(view.version),
       String(itemIndex + 1), item.title, item.userStory, String(criterionIndex + 1), criterion,
@@ -106,12 +106,12 @@ export class DeliveryPackageService {
 
   async printHtml(projectId: string): Promise<string> {
     const view = await this.get(projectId);
-    return `<!doctype html><html lang="hu"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>${escapeHtml(view.projectName)} – Fejlesztési csomag</title><style>body{font:16px/1.5 system-ui;max-width:52rem;margin:2rem auto;padding:0 1rem;color:#172033}button{padding:.7rem 1rem}@media print{button{display:none}}article{break-inside:avoid;margin:2rem 0}li{margin:.35rem 0}blockquote{border-left:.2rem solid #64748b;margin-left:0;padding-left:1rem;white-space:pre-wrap}</style></head><body><button type="button" onclick="window.print()">Nyomtatás / Mentés PDF-ként</button><main><h1>${escapeHtml(view.projectName)} – Fejlesztési csomag</h1><p>Specifikációverzió: v${view.specification.version} · Csomagverzió: v${view.version} · Állapot: ${view.provenance.state === 'HANDED_OFF' ? 'Gitbe átadva' : 'Szerkesztett változat'}</p>${view.items.map((item, index) => `<article><h2>${index + 1}. ${escapeHtml(item.title)}</h2><p><strong>User story</strong><br>${escapeHtml(item.userStory)}</p><h3>Elfogadási kritériumok</h3><ol>${item.acceptanceCriteria.map((criterion) => `<li>${escapeHtml(criterion)}</li>`).join('')}</ol>${item.sourceExcerpts.length ? `<h3>Forrásrészletek</h3>${item.sourceExcerpts.map((excerpt) => `<blockquote>${escapeHtml(excerpt)}</blockquote>`).join('')}` : ''}</article>`).join('')}</main></body></html>`;
+    return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>${escapeHtml(view.projectName)} – Delivery package</title><style>body{font:16px/1.5 system-ui;max-width:52rem;margin:2rem auto;padding:0 1rem;color:#172033}button{padding:.7rem 1rem}@media print{button{display:none}}article{break-inside:avoid;margin:2rem 0}li{margin:.35rem 0}blockquote{border-left:.2rem solid #64748b;margin-left:0;padding-left:1rem;white-space:pre-wrap}</style></head><body><button type="button" onclick="window.print()">Print / Save as PDF</button><main><h1>${escapeHtml(view.projectName)} – Delivery package</h1><p>Specification version: v${view.specification.version} · Package version: v${view.version} · Status: ${view.provenance.state === 'HANDED_OFF' ? 'Handed off to Git' : 'Working version'}</p>${view.items.map((item, index) => `<article><h2>${index + 1}. ${escapeHtml(item.title)}</h2><p><strong>User story</strong><br>${escapeHtml(item.userStory)}</p><h3>Acceptance criteria</h3><ol>${item.acceptanceCriteria.map((criterion) => `<li>${escapeHtml(criterion)}</li>`).join('')}</ol>${item.sourceExcerpts.length ? `<h3>Source excerpts</h3>${item.sourceExcerpts.map((excerpt) => `<blockquote>${escapeHtml(excerpt)}</blockquote>`).join('')}` : ''}</article>`).join('')}</main></body></html>`;
   }
 
   async entity(projectId: string): Promise<DeliveryPackageEntity> {
     const entity = await this.dataSource.getRepository(DeliveryPackageEntity).findOneBy({ projectId });
-    if (!entity) throw new ConflictException('A Git-átadás előtt ments fejlesztési csomagot.');
+    if (!entity) throw new ConflictException('Save the Delivery package before starting a Git handoff.');
     return entity;
   }
 
@@ -145,14 +145,14 @@ function normalizeItems(items: readonly DeliveryPackageItemInput[], specificatio
   const ids = new Set<string>();
   return items.map((item) => {
     const id = item.id ?? randomUUID();
-    if (ids.has(id)) throw new BadRequestException('Egy fejlesztési csomag tétele csak egyszer szerepelhet.');
+    if (ids.has(id)) throw new BadRequestException('Each Delivery package item may appear only once.');
     ids.add(id);
-    const title = requiredText(item.title, 255, 'A tétel címe');
-    const userStory = requiredText(item.userStory, 4_000, 'A user story');
-    const acceptanceCriteria = item.acceptanceCriteria.map((criterion) => requiredText(criterion, 4_000, 'Az elfogadási kritérium'));
+    const title = requiredText(item.title, 255, 'Item title');
+    const userStory = requiredText(item.userStory, 4_000, 'User story');
+    const acceptanceCriteria = item.acceptanceCriteria.map((criterion) => requiredText(criterion, 4_000, 'Acceptance criterion'));
     const sourceExcerpts = (item.sourceExcerpts ?? []).map((excerpt) => {
-      const exact = requiredText(excerpt, 2_000, 'A forrásrészlet');
-      if (!specification.includes(exact)) throw new BadRequestException('A forrásrészlet nem található pontosan a kiválasztott specifikációverzióban.');
+      const exact = requiredText(excerpt, 2_000, 'Source excerpt');
+      if (!specification.includes(exact)) throw new BadRequestException('The source excerpt is not an exact match within the selected specification version.');
       return exact;
     });
     return { id, title, userStory, acceptanceCriteria, sourceExcerpts };
@@ -161,7 +161,7 @@ function normalizeItems(items: readonly DeliveryPackageItemInput[], specificatio
 
 function requiredText(value: string, max: number, label: string): string {
   const normalized = value.trim();
-  if (!normalized || normalized.length > max) throw new BadRequestException(`${label} üres vagy túl hosszú.`);
+  if (!normalized || normalized.length > max) throw new BadRequestException(`${label} is empty or exceeds the maximum length.`);
   return normalized;
 }
 
@@ -181,22 +181,22 @@ function toView(
 
 function renderMarkdown(view: DeliveryPackage, specification: string): string {
   const status = view.provenance.state === 'HANDED_OFF'
-    ? `Gitbe átadva (${view.provenance.commitSha ?? 'SHA nem elérhető'})`
-    : 'Szerkesztett, még nem Gitbe átadott változat';
+    ? `Handed off to Git (${view.provenance.commitSha ?? 'SHA unavailable'})`
+    : 'Working version not yet handed off to Git';
   const items = view.items.map((item, index) => [
     `## ${index + 1}. ${item.title}`,
     '', '**User story**', '', item.userStory,
-    '', '**Elfogadási kritériumok**', '',
+    '', '**Acceptance criteria**', '',
     ...item.acceptanceCriteria.map((criterion) => `- ${criterion}`),
-    ...(item.sourceExcerpts.length ? ['', '**Pontos forrásrészletek**', '', ...item.sourceExcerpts.flatMap((excerpt) => excerpt.split('\n').map((line) => `> ${line}`))] : []),
+    ...(item.sourceExcerpts.length ? ['', '**Exact source excerpts**', '', ...item.sourceExcerpts.flatMap((excerpt) => excerpt.split('\n').map((line) => `> ${line}`))] : []),
   ].join('\n')).join('\n\n');
   return [
-    `# Fejlesztési csomag — ${view.projectName}`, '',
+    `# Delivery package — ${view.projectName}`, '',
     `- Project ID: \`${view.projectId}\``,
-    `- Csomagverzió: v${view.version}`,
-    `- Specifikációverzió: v${view.specification.version} (\`${view.specification.id}\`)`,
-    `- Állapot: ${status}`, '', items, '',
-    '# Kanonikus specifikáció', '', specification, '',
+    `- Package version: v${view.version}`,
+    `- Specification version: v${view.specification.version} (\`${view.specification.id}\`)`,
+    `- Status: ${status}`, '', items, '',
+    '# Canonical specification', '', specification, '',
   ].join('\n');
 }
 

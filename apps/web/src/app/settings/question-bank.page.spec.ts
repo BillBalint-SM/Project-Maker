@@ -51,7 +51,7 @@ describe('QuestionBankPage', () => {
     expect(api.addReferenceFile).toHaveBeenCalledWith('question-1', file);
     expect(page.nativeElement.textContent).toContain('felmérési-irányelvek.txt');
     const download = page.nativeElement.querySelector('a[href="/api/reference-file-1/download"]');
-    expect(download?.textContent?.trim()).toBe('Letöltés');
+    expect(download?.textContent?.trim()).toBe('Download');
   });
 });
 

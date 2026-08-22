@@ -34,25 +34,25 @@ import { DiscoveryReplyOutcomeComponent } from './discovery-follow-ups/discovery
   ],
   template: `
     <section aria-labelledby="customer-replies-title">
-      <span class="eyebrow">Ügyfélkapcsolat</span>
-      <h1 id="customer-replies-title">Ügyféllevelezés</h1>
-      <p class="page-lead">Az ügyfélválaszok feldolgozása és az emlékeztetők előkészítése egy helyen.</p>
+      <span class="eyebrow">Customer communication</span>
+      <h1 id="customer-replies-title">Customer correspondence</h1>
+      <p class="page-lead">Process Customer responses and prepare follow-ups in one place.</p>
       @if (loading()) {
         <div class="state-panel" aria-live="polite">
-          <p-progress-spinner ariaLabel="Ügyféllevelezés betöltése" />
-          <p>Az ügyféllevelezés betöltése folyamatban van…</p>
+          <p-progress-spinner ariaLabel="Loading Customer correspondence" />
+          <p>Loading Customer correspondence…</p>
         </div>
       }
       @else if (loadError()) {
         <div class="state-panel" role="alert">
-          <h2>Az ügyféllevelezés most nem tölthető be</h2>
+          <h2>Customer correspondence could not be loaded</h2>
           <p>{{ loadError() }}</p>
-          <p-button label="Ügyféllevelezés újratöltése" (onClick)="reload()" />
+          <p-button label="Reload Customer correspondence" (onClick)="reload()" />
         </div>
       }
       @else if (correspondenceWork(); as current) {
         @if (current.projectArchived) {
-          <p role="status">Az archivált projekt levelezése olvasható. A feldolgozáshoz vagy a forrásfolyamat módosításához előbb állítsd vissza a projektet.</p>
+          <p role="status">The archived project's correspondence is read-only. Restore the project to process replies or change the source workflow.</p>
         }
         <app-customer-response [projectId]="projectId" [archived]="current.projectArchived" />
         <app-customer-follow-up
@@ -63,39 +63,39 @@ import { DiscoveryReplyOutcomeComponent } from './discovery-follow-ups/discovery
         @if (commandError()) {
           <div class="command-error" role="alert">
             <p>{{ commandError() }}</p>
-            <p-button type="button" label="Ügyféllevelezés újratöltése" (onClick)="reload()" />
+            <p-button type="button" label="Reload Customer correspondence" (onClick)="reload()" />
           </div>
         }
         <p class="reply-summary" data-testid="project-new-reply-count">
-          {{ current.newReplyCount }} feldolgozatlan ügyfélválasz
+          {{ current.newReplyCount }} unprocessed Customer {{ current.newReplyCount === 1 ? 'response' : 'responses' }}
         </p>
         @if (current.correspondences.length === 0) {
           <div class="state-panel">
-            <h2>Még nincs ügyfélválasz</h2>
-            <p>Az elküldött összefoglalókra és emlékeztetőkre érkező válaszok itt jelennek meg.</p>
+            <h2>No Customer responses yet</h2>
+            <p>Responses to sent interview summaries and follow-ups will appear here.</p>
             <a pButton [routerLink]="['/projects', projectId, 'interview']" fragment="customer-handoff">
-              Felmérési összefoglaló előkészítése
+              Prepare interview summary
             </a>
           </div>
         }
         @for (correspondence of current.correspondences; track correspondence.id) {
           <article class="correspondence" [attr.data-testid]="'correspondence-' + correspondence.id">
-            <h2>{{ correspondence.status }}</h2>
-            <p>{{ correspondence.unreadMessageCount }} olvasatlan üzenet</p>
+            <h2>{{ statusLabel(correspondence.status) }}</h2>
+            <p>{{ correspondence.unreadMessageCount }} unread {{ correspondence.unreadMessageCount === 1 ? 'message' : 'messages' }}</p>
             <div class="processing-actions">
               <button pButton type="button" class="p-button-outlined"
                 [attr.data-testid]="'mark-reviewed-' + correspondence.id"
                 [disabled]="busy() || current.projectArchived || correspondence.unreadMessageCount === 0"
-                (click)="markReviewed(correspondence)">Átnéztem</button>
+                (click)="markReviewed(correspondence)">Mark as reviewed</button>
               @if (correspondence.status === 'Új válasz' || correspondence.status === 'Lezárva') {
-                <button pButton type="button" [disabled]="busy() || current.projectArchived" (click)="setStatus(correspondence, 'Feldolgozás alatt')">Feldolgozás megkezdése</button>
+                <button pButton type="button" [disabled]="busy() || current.projectArchived" (click)="setStatus(correspondence, 'Feldolgozás alatt')">Start processing</button>
               }
               @if (correspondence.status !== 'Lezárva') {
-                <button pButton type="button" [class.p-button-outlined]="correspondence.status === 'Új válasz'" [disabled]="busy() || current.projectArchived" (click)="setStatus(correspondence, 'Lezárva')">Lezárás</button>
+                <button pButton type="button" [class.p-button-outlined]="correspondence.status === 'Új válasz'" [disabled]="busy() || current.projectArchived" (click)="setStatus(correspondence, 'Lezárva')">Close correspondence</button>
               }
             </div>
             @if (correspondence.unknownDeliveryReceiptEvidence) {
-              <p class="receipt-evidence" data-testid="unknown-delivery-receipt-evidence">Az ügyfél válasza igazolja az átvételt. A bizonytalan kézbesítési eredmény változatlanul megmarad; újraküldés nem javasolt.</p>
+              <p class="receipt-evidence" data-testid="unknown-delivery-receipt-evidence">The Customer response confirms receipt. The uncertain delivery outcome remains recorded; do not resend.</p>
             }
             <app-interview-reply-outcome
               [projectId]="projectId"
@@ -108,25 +108,25 @@ import { DiscoveryReplyOutcomeComponent } from './discovery-follow-ups/discovery
             />
             @for (message of correspondence.messages; track message.id) {
               <section class="inbound-message" [attr.data-testid]="'inbound-message-' + message.id">
-                <header><strong>{{ message.senderAddress || 'Ismeretlen feladó' }}</strong><time>{{ message.receivedAt | date: 'yyyy. MM. dd. HH:mm' }}</time></header>
-                @if (message.senderClassification === 'UNRECOGNIZED') { <p class="sender-warning" role="status">Az ügyfélkapcsolatok között nem szereplő válaszfeladó</p> }
-                <h3>{{ message.subject || 'Tárgy nélkül' }}</h3>
+                <header><strong>{{ message.senderAddress || 'Unknown sender' }}</strong><time>{{ message.receivedAt | date: 'dd MMM yyyy, HH:mm' }}</time></header>
+                @if (message.senderClassification === 'UNRECOGNIZED') { <p class="sender-warning" role="status">Reply sender is not listed among Project contacts</p> }
+                <h3>{{ message.subject || 'No subject' }}</h3>
                 <p class="message-text">{{ message.visibleText }}</p>
                 <label>
-                  Kézi besorolás
+                  Manual classification
                   <select [attr.data-testid]="'classification-' + message.id"
                     [disabled]="busy() || current.projectArchived"
                     (change)="classify(correspondence, message.id, $event)">
-                    <option value="" [selected]="!message.classification">Válassz besorolást</option>
+                    <option value="" [selected]="!message.classification">Select classification</option>
                     @for (classification of classifications; track classification) {
-                      <option [value]="classification" [selected]="message.classification === classification">{{ classification }}</option>
+                      <option [value]="classification" [selected]="message.classification === classification">{{ classificationLabel(classification) }}</option>
                     }
                   </select>
                 </label>
-                @if (message.quotedText) { <details><summary>Korábbi idézett levelezés</summary><pre>{{ message.quotedText }}</pre></details> }
+                @if (message.quotedText) { <details><summary>Earlier quoted correspondence</summary><pre>{{ message.quotedText }}</pre></details> }
                 @if (message.attachmentCount > 0) {
-                  <p>{{ message.attachmentCount }} melléklet</p><ul>
-                    @for (attachment of message.attachments; track attachment.name + attachment.size) { <li>{{ attachment.name }} — {{ attachment.contentType }} — {{ attachment.size }} byte</li> }
+                  <p>{{ message.attachmentCount }} {{ message.attachmentCount === 1 ? 'attachment' : 'attachments' }}</p><ul>
+                    @for (attachment of message.attachments; track attachment.name + attachment.size) { <li>{{ attachment.name }} — {{ attachment.contentType }} — {{ attachment.size }} {{ attachment.size === 1 ? 'byte' : 'bytes' }}</li> }
                   </ul>
                 }
               </section>
@@ -138,20 +138,20 @@ import { DiscoveryReplyOutcomeComponent } from './discovery-follow-ups/discovery
   `,
   styles: `
     .page-lead { max-width: 48rem; color: var(--p-text-muted-color); }
-    .state-panel { display: grid; justify-items: start; gap: .75rem; padding: 1.25rem; border: 1px solid var(--p-content-border-color); border-radius: .8rem; }
+    .state-panel { display: grid; justify-items: start; gap: .75rem; padding: 1.25rem; border: 1px solid var(--pm-border); border-radius: var(--pm-radius-md); }
     .state-panel :is(h2, p) { margin: 0; }
-    .reply-summary { font-weight: 700; }
-    .correspondence, .inbound-message { border: 1px solid var(--p-content-border-color); border-radius: .8rem; padding: 1rem; margin-top: 1rem; }
-    .inbound-message header { display: flex; justify-content: space-between; gap: 1rem; }
+    .reply-summary { color: var(--pm-cyan); font-weight: 750; }
+    .correspondence { background: linear-gradient(145deg, color-mix(in oklch, var(--pm-surface-2) 82%, transparent), color-mix(in oklch, var(--pm-surface-1) 96%, transparent)); border: 1px solid var(--pm-border); border-radius: var(--pm-radius-md); box-shadow: var(--pm-shadow-sm); overflow: hidden; padding: 1.1rem; margin-top: 1rem; position: relative; }
+    .correspondence::before { background: linear-gradient(90deg, var(--pm-blue), var(--pm-magenta), var(--pm-yellow)); content: ''; height: 1px; inset: 0 12% auto; position: absolute; }
+    .inbound-message { background: color-mix(in oklch, var(--pm-surface-3) 52%, transparent); border: 1px solid color-mix(in oklch, var(--pm-border) 75%, transparent); border-radius: var(--pm-radius-sm); padding: 1rem; margin-top: 1rem; }
+    .inbound-message header { align-items: baseline; display: flex; flex-wrap: wrap; justify-content: space-between; gap: .5rem 1rem; }
+    .inbound-message time { color: var(--pm-text-muted); font-size: .82rem; font-variant-numeric: tabular-nums; }
     .message-text, pre { white-space: pre-wrap; overflow-wrap: anywhere; font: inherit; }
+    pre { background: var(--pm-canvas-deep); border: 1px solid var(--pm-border); border-radius: var(--pm-radius-sm); padding: .85rem; }
     .sender-warning { color: var(--p-orange-700); font-weight: 700; }
     .receipt-evidence { color: var(--p-green-700); font-weight: 700; }
     .processing-actions { display: flex; flex-wrap: wrap; gap: .5rem; }
     label { display: grid; gap: .35rem; margin-block: .75rem; max-width: 22rem; }
-    @media (max-width: 30rem) {
-      .inbound-message header { align-items: flex-start; flex-direction: column; }
-      .processing-actions > * { width: 100%; }
-    }
   `,
 })
 export class CustomerCorrespondencesPage implements OnInit {
@@ -233,9 +233,22 @@ export class CustomerCorrespondencesPage implements OnInit {
         this.notifications.load().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({ error: () => undefined });
       },
       error: () => {
-        this.commandError.set('A művelet nem hajtható végre a jelenlegi adatokkal. Töltsd újra az adatokat, majd próbáld meg ismét.');
+        this.commandError.set('This operation cannot be completed with the current data. Reload the data, then try again.');
         this.busy.set(false);
       },
       });
+  }
+
+  statusLabel(status: CustomerCorrespondenceStatus): string {
+    return ({ 'Válaszra vár': 'Awaiting response', 'Új válasz': 'New response', 'Feldolgozás alatt': 'Processing', Lezárva: 'Closed' })[status] ?? status;
+  }
+
+  classificationLabel(classification: CustomerInboundMessageClassification): string {
+    return ({
+      Elfogadva: 'Accepted',
+      'Módosítást kér': 'Change requested',
+      'Kérdés vagy válasz': 'Question or answer',
+      Egyéb: 'Other',
+    } as const)[classification] ?? classification;
   }
 }

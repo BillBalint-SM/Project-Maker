@@ -92,7 +92,7 @@ describe('Delivery package and exports (e2e)', () => {
     const artifact = await request(app.getHttpServer())
       .get(`/projects/${projectId}/delivery-package/artifact`).expect(200);
     assert.match(artifact.body.content, /PO-ként/);
-    assert.match(artifact.body.content, /Kanonikus specifikáció/);
+    assert.match(artifact.body.content, /Canonical specification/);
     assert.match(artifact.body.content, new RegExp(escapeRegExp(exactExcerpt)));
     assert.equal(artifact.body.provenance.state, 'DRAFT');
 
@@ -104,7 +104,7 @@ describe('Delivery package and exports (e2e)', () => {
 
     const print = await request(app.getHttpServer())
       .get(`/projects/${projectId}/delivery-package/print`).expect(200);
-    assert.match(print.text, /<html lang="hu">/);
+    assert.match(print.text, /<html lang="en">/);
     assert.match(print.text, /Magyar átadás &lt;biztonságosan&gt;/);
 
     await request(app.getHttpServer()).post(`/projects/${projectId}/archive`).expect(201);

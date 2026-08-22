@@ -1,25 +1,25 @@
 @if (loading()) {
   <div class="state-panel" data-testid="project-settings-loading" aria-live="polite">
-    <p-progress-spinner ariaLabel="Projektbeállítások betöltése" />
-    <p>A projektbeállítások betöltése…</p>
+    <p-progress-spinner ariaLabel="Loading project settings" />
+    <p>Loading project settings…</p>
   </div>
 } @else if (loadError(); as error) {
   <div class="state-panel" data-testid="project-settings-error" role="alert">
-    <h1>A projektbeállítások nem tölthetők be</h1>
+    <h1>Project settings could not be loaded</h1>
     <p>{{ error }}</p>
-    <p-button label="Projektbeállítások újratöltése" data-testid="retry-project-settings-button" (onClick)="loadSettings()" />
+    <p-button label="Reload project settings" data-testid="retry-project-settings-button" (onClick)="loadSettings()" />
   </div>
 } @else if (view(); as current) {
   <section aria-labelledby="project-settings-title">
     <div class="page-heading">
-      <span class="eyebrow">Projektadminisztráció</span>
-      <h1 id="project-settings-title">Projektbeállítások</h1>
-      <p>A projekt azonosító adatai, ügyfélkapcsolati beállításai, adminisztratív fázisa, archiválása és törlése.</p>
+      <span class="eyebrow">Project administration</span>
+      <h1 id="project-settings-title">Project Settings</h1>
+      <p>Project identity, Customer contact settings, administrative phase, archiving, and deletion.</p>
     </div>
 
     @if (current.project.status === 'ARCHIVED') {
       <p-message severity="secondary" role="status">
-        A projekt archiválva van. A teljes mentett munkafolyamat és történet olvasható; módosítás, automatikus emlékeztető és új külső művelet a visszaállításig szünetel.
+        This project is archived. Its saved workflow and history remain readable; changes, automatic reminders, and new external actions are paused until it is restored.
       </p-message>
     }
     @if (actionError()) {
@@ -31,35 +31,35 @@
 
     <div class="settings-grid">
       <p-card id="project-basics" data-testid="project-basics-editor">
-        <ng-template #title>Projekt alapadatai</ng-template>
+        <ng-template #title>Project Details</ng-template>
         <ng-template #subtitle>
           @if (canEditBasics()) {
-            Aktív projektben az alapadatok és az ügyfélkapcsolattartó adatai módosíthatók.
+            Project details and Customer contact details can be changed while the project is active.
           } @else {
-            Archivált projektben az alapadatok csak olvashatók; visszaállítás után ismét módosíthatók.
+            Project details are read-only while the project is archived and can be changed again after restoration.
           }
         </ng-template>
         <form class="settings-form" [formGroup]="basicsForm" (ngSubmit)="saveProjectBasics()">
           <fieldset data-testid="project-basics-fieldset" [disabled]="basicsSaving() || !canEditBasics()">
             <div class="field">
-              <label for="draft-project-name">Projekt neve</label>
+              <label for="draft-project-name">Project name</label>
               <input pInputText id="draft-project-name" formControlName="name" data-testid="draft-project-name-input" />
             </div>
             <div class="field">
-              <label for="draft-internal-owner-name">Belső projektgazda neve</label>
+              <label for="draft-internal-owner-name">Internal project owner</label>
               <input pInputText id="draft-internal-owner-name" formControlName="internalOwnerName" data-testid="draft-internal-owner-name-input" />
             </div>
             <div class="field" data-testid="customer-contact-settings">
-              <label for="draft-customer-contact-name">Ügyfélkapcsolattartó neve</label>
+              <label for="draft-customer-contact-name">Customer contact</label>
               <input pInputText id="draft-customer-contact-name" formControlName="customerContactName" data-testid="draft-customer-contact-name-input" />
             </div>
             <div class="field">
-              <label for="draft-customer-contact-email">Ügyfélkapcsolattartó e-mail-címe</label>
+              <label for="draft-customer-contact-email">Customer contact email</label>
               <input pInputText id="draft-customer-contact-email" type="email" formControlName="customerContactEmail" data-testid="draft-customer-contact-email-input" />
             </div>
           </fieldset>
           @if (basicsForm.invalid && basicsForm.touched) {
-            <p-message severity="error">Minden alapadatot érvényesen tölts ki a mentéshez.</p-message>
+            <p-message severity="error">Complete all project details with valid values before saving.</p-message>
           }
           @if (basicsError()) {
             <p-message severity="error" role="alert" data-testid="project-basics-error">{{ basicsError() }}</p-message>
@@ -68,7 +68,7 @@
             <p-message severity="success" role="status" data-testid="project-basics-feedback">{{ basicsFeedback() }}</p-message>
           }
           @if (canEditBasics()) {
-            <p-button type="submit" label="Alapadatok mentése" [loading]="basicsSaving()" [disabled]="basicsSaving() || basicsForm.invalid" data-testid="save-project-basics" />
+            <p-button type="submit" label="Save project details" [loading]="basicsSaving()" [disabled]="basicsSaving() || basicsForm.invalid" data-testid="save-project-basics" />
           }
         </form>
       </p-card>
@@ -76,8 +76,8 @@
       <app-customer-follow-up [projectId]="projectId" [archived]="isArchived()" mode="settings" />
 
       <p-card data-testid="project-playbook-settings">
-        <ng-template #title>Felmérési playbook</ng-template>
-        <ng-template #subtitle>A playbook az első felmérési körig módosítható; utána a pontos verzió megmarad forrásként.</ng-template>
+        <ng-template #title>Discovery Playbook</ng-template>
+        <ng-template #subtitle>The playbook can be changed until the first Initial Intake; the exact version is then retained as a source.</ng-template>
         <form class="settings-form" [formGroup]="playbookForm" (ngSubmit)="savePlaybook()">
           <label for="project-playbook-settings-select">Playbook</label>
           <select id="project-playbook-settings-select" formControlName="playbook" [disabled]="pending.isPending('save-playbook') || isArchived()">
@@ -85,25 +85,25 @@
               <option [value]="playbook.id + ':' + playbook.version">{{ playbook.name }} · v{{ playbook.version }}</option>
             }
           </select>
-          <p-button type="submit" label="Playbook mentése" [disabled]="pending.isPending('save-playbook') || isArchived()" />
+          <p-button type="submit" label="Save playbook" [disabled]="pending.isPending('save-playbook') || isArchived()" />
         </form>
       </p-card>
 
       <p-card data-testid="project-lifecycle-settings">
-        <ng-template #title>Adminisztratív projektfázis</ng-template>
-        <ng-template #subtitle>A kézzel rögzített üzleti fázis azt jelzi, hol tart vagy mire vár a projekt; nem a számított becslési felkészültséget mutatja.</ng-template>
+        <ng-template #title>Administrative Project Phase</ng-template>
+        <ng-template #subtitle>The manually recorded business phase shows where the project is or what it is waiting for; it is not calculated estimation readiness.</ng-template>
         @if (isArchived()) {
           <dl>
             <div>
-              <dt>Jelenlegi adminisztratív projektfázis</dt>
-              <dd data-testid="project-lifecycle-status-value">Archivált</dd>
+              <dt>Current administrative project phase</dt>
+              <dd data-testid="project-lifecycle-status-value">Archived</dd>
             </div>
           </dl>
         } @else {
         <form class="settings-form" [formGroup]="lifecycleForm" (ngSubmit)="saveProjectStatus()">
           <fieldset data-testid="project-lifecycle-fieldset" [disabled]="lifecycleSaving() || transitioning()">
             <div class="field">
-              <label for="project-lifecycle-status">Adminisztratív projektfázis</label>
+              <label for="project-lifecycle-status">Administrative project phase</label>
               <p-select
                 inputId="project-lifecycle-status"
                 styleClass="full-width"
@@ -121,32 +121,32 @@
           @if (lifecycleFeedback()) {
             <p-message severity="success" role="status" data-testid="project-lifecycle-feedback">{{ lifecycleFeedback() }}</p-message>
           }
-          <p-button type="submit" label="Adminisztratív projektfázis mentése" [loading]="lifecycleSaving()" [disabled]="lifecycleSaving() || transitioning() || lifecycleForm.invalid" data-testid="save-project-lifecycle-status" />
+          <p-button type="submit" label="Save administrative project phase" [loading]="lifecycleSaving()" [disabled]="lifecycleSaving() || transitioning() || lifecycleForm.invalid" data-testid="save-project-lifecycle-status" />
         </form>
         }
       </p-card>
     </div>
 
     <p-card styleClass="danger-zone" data-testid="project-danger-zone">
-      <ng-template #title>Archiválás és törlés</ng-template>
-      <ng-template #subtitle>Műveletek, amelyek kiveszik a projektet az aktív munkából vagy végleg törlik.</ng-template>
+      <ng-template #title>Archive and Delete</ng-template>
+      <ng-template #subtitle>Actions that remove the project from active work or permanently delete it.</ng-template>
 
       @if (isArchived()) {
         <div class="danger-action">
-          <div><h2>Projekt visszaállítása</h2><p>A projekt az archiválás előtti mentett munkafolyamat-állapotban folytatódik. Korábbi esemény vagy küldés nem ismétlődik meg.</p></div>
-          <p-button label="Projekt visszaállítása" [loading]="transitioning()" [disabled]="transitioning()" data-testid="restore-project-button" (onClick)="restoreProject()" />
+          <div><h2>Restore Project</h2><p>The project resumes from its saved pre-archive workflow state. Earlier events and sends are not repeated.</p></div>
+          <p-button label="Restore project" [loading]="transitioning()" [disabled]="transitioning()" data-testid="restore-project-button" (onClick)="restoreProject()" />
         </div>
       } @else {
         <div class="danger-action">
-          <div><h2>Projekt archiválása</h2><p>A mentett munkafolyamat megmarad, de a projekt kikerül az aktív munkából, csak olvasható lesz, és az automatikus ügyfél-emlékeztető szünetel.</p></div>
-          <p-button label="Projekt archiválása" severity="danger" [outlined]="true" [loading]="transitioning()" [disabled]="transitioning()" data-testid="archive-project-button" (onClick)="requestProjectArchive()" />
+          <div><h2>Archive Project</h2><p>The saved workflow is retained, but the project leaves active work, becomes read-only, and automatic Customer reminders pause.</p></div>
+          <p-button label="Archive project" severity="danger" [outlined]="true" [loading]="transitioning()" [disabled]="transitioning()" data-testid="archive-project-button" (onClick)="requestProjectArchive()" />
         </div>
       }
 
       @if (isDeletableDraft()) {
         <div class="danger-action">
-          <div><h2>Projekt végleges törlése</h2><p>A DRAFT projekttel együtt a belső munkaadatok is végleg törlődnek. Ügyfélkommunikáció vagy Git-átadás után archiválni kell.</p></div>
-          <p-button label="Projekt végleges törlése" severity="danger" [outlined]="true" [loading]="deleting()" [disabled]="deleting()" data-testid="delete-project-button" (onClick)="requestProjectDeletion()" />
+          <div><h2>Permanently Delete Project</h2><p>The DRAFT project and its internal working data will be permanently deleted. Archive the project if Customer communication or Git handoff history exists.</p></div>
+          <p-button label="Permanently delete project" severity="danger" [outlined]="true" [loading]="deleting()" [disabled]="deleting()" data-testid="delete-project-button" (onClick)="requestProjectDeletion()" />
         </div>
       }
     </p-card>
@@ -154,8 +154,8 @@
     <p-confirmdialog #archiveDialog key="project-archive" [defaultFocus]="'none'">
       <ng-template #footer>
         <div class="confirmation-actions" data-testid="project-archive-confirmation">
-          <p-button label="Mégse" [autofocus]="true" data-testid="cancel-project-archive-button" (onClick)="archiveDialog.onReject()" />
-          <p-button label="Projekt archiválása" severity="danger" data-testid="confirm-project-archive-button" (onClick)="archiveDialog.onAccept()" />
+          <p-button label="Cancel" [autofocus]="true" data-testid="cancel-project-archive-button" (onClick)="archiveDialog.onReject()" />
+          <p-button label="Archive project" severity="danger" data-testid="confirm-project-archive-button" (onClick)="archiveDialog.onAccept()" />
         </div>
       </ng-template>
     </p-confirmdialog>
@@ -163,8 +163,8 @@
     <p-confirmdialog #deleteDialog key="project-delete" [defaultFocus]="'none'">
       <ng-template #footer>
         <div class="confirmation-actions" data-testid="project-delete-confirmation">
-          <p-button label="Mégse" [autofocus]="true" data-testid="cancel-project-delete-button" (onClick)="deleteDialog.onReject()" />
-          <p-button label="Projekt végleges törlése" severity="danger" data-testid="confirm-project-delete-button" (onClick)="deleteDialog.onAccept()" />
+          <p-button label="Cancel" [autofocus]="true" data-testid="cancel-project-delete-button" (onClick)="deleteDialog.onReject()" />
+          <p-button label="Permanently delete project" severity="danger" data-testid="confirm-project-delete-button" (onClick)="deleteDialog.onAccept()" />
         </div>
       </ng-template>
     </p-confirmdialog>

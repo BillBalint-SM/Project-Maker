@@ -1,7 +1,7 @@
 <p-card id="discovery-follow-ups" data-testid="discovery-follow-ups-card">
-  <ng-template #title>Tisztázandó tételek</ng-template>
+  <ng-template #title>Discovery Follow-ups</ng-template>
   <ng-template #subtitle>
-    Rögzítsd a tisztázandó kérdést, a felelősét, a határidejét és a következő lépést. Az archivált projektek adatai olvashatók maradnak.
+    Record the question requiring clarification, its owner, due date, and next action. Archived Project data remains read-only.
   </ng-template>
 
   @if (loading()) {
@@ -10,8 +10,8 @@
       data-testid="discovery-follow-ups-loading"
       aria-live="polite"
     >
-      <p-progress-spinner ariaLabel="A tisztázandó tételek betöltése" />
-      <p>A tisztázandó tételek betöltése…</p>
+      <p-progress-spinner ariaLabel="Loading Discovery follow-ups" />
+      <p>Loading Discovery follow-ups…</p>
     </div>
   } @else if (loadError(); as error) {
     <div
@@ -21,7 +21,7 @@
     >
       <p>{{ error }}</p>
       <p-button
-        label="Tisztázandó tételek újratöltése"
+        label="Reload Discovery follow-ups"
         data-testid="retry-discovery-follow-ups-button"
         (onClick)="loadFollowUps()"
       />
@@ -54,9 +54,9 @@
         class="discovery-follow-up-fields"
         [disabled]="mutationDisabled() || creating()"
       >
-        <legend class="sr-only">Új tisztázandó tétel</legend>
+        <legend class="sr-only">New Discovery follow-up</legend>
         <div class="field">
-          <label for="discovery-follow-up-category">Kategória</label>
+          <label for="discovery-follow-up-category">Category</label>
           <p-select
             inputId="discovery-follow-up-category"
             styleClass="full-width"
@@ -70,11 +70,11 @@
             creationForm.controls.category.invalid &&
             creationForm.controls.category.touched
           ) {
-            <small class="field-error">Válassz kategóriát.</small>
+            <small class="field-error">Select a category.</small>
           }
         </div>
         <div class="field">
-          <label for="discovery-follow-up-question">Tisztázandó kérdés</label>
+          <label for="discovery-follow-up-question">Question requiring clarification</label>
           <textarea
             pTextarea
             id="discovery-follow-up-question"
@@ -87,16 +87,16 @@
             creationForm.controls.question.hasError('maxlength') &&
             creationForm.controls.question.touched
           ) {
-            <small class="field-error">A kérdés legfeljebb 10 000 karakter lehet.</small>
+            <small class="field-error">The question must not exceed 10,000 characters.</small>
           } @else if (
             creationForm.controls.question.invalid &&
             creationForm.controls.question.touched
           ) {
-            <small class="field-error">A kérdés megadása kötelező.</small>
+            <small class="field-error">A question is required.</small>
           }
         </div>
         <div class="field">
-          <label for="discovery-follow-up-owner">Felelős</label>
+          <label for="discovery-follow-up-owner">Owner</label>
           <input
             pInputText
             id="discovery-follow-up-owner"
@@ -108,16 +108,16 @@
             creationForm.controls.owner.hasError('maxlength') &&
             creationForm.controls.owner.touched
           ) {
-            <small class="field-error">A felelős neve legfeljebb 255 karakter lehet.</small>
+            <small class="field-error">The owner name must not exceed 255 characters.</small>
           } @else if (
             creationForm.controls.owner.invalid &&
             creationForm.controls.owner.touched
           ) {
-            <small class="field-error">A felelős megadása kötelező.</small>
+            <small class="field-error">An owner is required.</small>
           }
         </div>
         <div class="field">
-          <label for="discovery-follow-up-due-date">Határidő</label>
+          <label for="discovery-follow-up-due-date">Due date</label>
           <p-datepicker
             inputId="discovery-follow-up-due-date"
             styleClass="full-width"
@@ -131,12 +131,12 @@
             creationForm.controls.dueDate.invalid &&
             creationForm.controls.dueDate.touched
           ) {
-            <small class="field-error">Adj meg valós határidőt.</small>
+            <small class="field-error">Enter a valid due date.</small>
           }
         </div>
         <div class="field">
           <label for="discovery-follow-up-source">
-            Kezdő felmérési forrás (opcionális)
+            Initial Intake source (optional)
           </label>
           <p-select
             inputId="discovery-follow-up-source"
@@ -148,7 +148,7 @@
             data-testid="discovery-follow-up-source-select"
           />
           @if (sourceOptionsLoading()) {
-            <small>A kezdő felmérés forrásainak betöltése…</small>
+            <small>Loading Initial Intake sources…</small>
           } @else if (sourceOptionsError(); as error) {
             <div
               class="discovery-follow-up-source-options-error"
@@ -158,7 +158,7 @@
               <span>{{ error }}</span>
               <p-button
                 type="button"
-                label="Forráslista újrapróbálása"
+                label="Retry loading sources"
                 severity="secondary"
                 [outlined]="true"
                 data-testid="retry-discovery-follow-up-source-options-button"
@@ -167,12 +167,12 @@
             </div>
           } @else if (sourceOptions().length === 0) {
             <small data-testid="discovery-follow-up-source-options-empty">
-              Nincs elérhető kezdő felmérési forrás. A tisztázandó tétel hivatkozás nélkül is létrehozható.
+              No Initial Intake source is available. You can create the Discovery follow-up without a source link.
             </small>
           }
         </div>
         <div class="field">
-          <label for="discovery-follow-up-next-step">Következő lépés</label>
+          <label for="discovery-follow-up-next-step">Next action</label>
           <textarea
             pTextarea
             id="discovery-follow-up-next-step"
@@ -185,18 +185,18 @@
             creationForm.controls.nextStep.hasError('maxlength') &&
             creationForm.controls.nextStep.touched
           ) {
-            <small class="field-error">A következő lépés legfeljebb 10 000 karakter lehet.</small>
+            <small class="field-error">The next action must not exceed 10,000 characters.</small>
           } @else if (
             creationForm.controls.nextStep.invalid &&
             creationForm.controls.nextStep.touched
           ) {
-            <small class="field-error">A következő lépés megadása kötelező.</small>
+            <small class="field-error">A next action is required.</small>
           }
         </div>
       </fieldset>
       <p-button
         type="submit"
-        label="Tisztázandó tétel létrehozása"
+        label="Create Discovery follow-up"
         [loading]="creating()"
         [disabled]="mutationDisabled()"
         data-testid="create-discovery-follow-up-button"
@@ -204,7 +204,7 @@
     </form>
 
     @if (followUps().length === 0) {
-      <p class="discovery-follow-up-empty">Még nincs rögzített tisztázandó tétel.</p>
+      <p class="discovery-follow-up-empty">No Discovery follow-ups have been recorded yet.</p>
     } @else {
       <ol class="discovery-follow-up-list" data-testid="discovery-follow-ups-list">
         @for (followUp of followUps(); track followUp.id) {
@@ -218,29 +218,29 @@
           >
             @if (reviewFollowUpId() === followUp.id) {
               <p class="reply-review-context" role="status" data-testid="reply-review-context">
-                Ez a tisztázandó tétel egy ügyfél-emlékeztetőre érkezett válasz áttekintési kontextusa.
-                @if (reviewFollowUpVersion()) { Az emlékeztető a {{ reviewFollowUpVersion() }}. forrásverzióhoz tartozik. }
-                A válasz nem módosította és nem zárta le automatikusan a tisztázandó tételt.
+                This Discovery follow-up is shown in the context of a Customer follow-up reply.
+                @if (reviewFollowUpVersion()) { The follow-up relates to source version {{ reviewFollowUpVersion() }}. }
+                The reply did not automatically change or resolve the Discovery follow-up.
               </p>
             }
             <div class="discovery-follow-up-meta">
               <strong>{{ categoryLabel(followUp.category) }}</strong>
-              <p-tag [value]="followUp.status" data-testid="discovery-follow-up-status" />
+              <p-tag [value]="statusLabel(followUp.status)" data-testid="discovery-follow-up-status" />
               <time [attr.datetime]="followUp.dueDate" data-testid="discovery-follow-up-due-date">
                 {{ followUp.dueDate }}
               </time>
             </div>
             <p>{{ followUp.question }}</p>
-            <p><strong>Felelős:</strong> {{ followUp.owner }}</p>
-            <p><strong>Következő lépés:</strong> {{ followUp.nextStep }}</p>
+            <p><strong>Owner:</strong> {{ followUp.owner }}</p>
+            <p><strong>Next action:</strong> {{ followUp.nextStep }}</p>
             @if (followUp.decisionOrAnswer) {
               <p data-testid="discovery-follow-up-decision-or-answer">
-                <strong>Döntés vagy válasz:</strong> {{ followUp.decisionOrAnswer }}
+                <strong>Decision or answer:</strong> {{ followUp.decisionOrAnswer }}
               </p>
             }
             @if (followUp.source; as source) {
               <p data-testid="discovery-follow-up-source-reference">
-                <strong>Forrás:</strong>
+                <strong>Source:</strong>
                 #{{ source.order }} · {{ source.topic }} · {{ source.controlPoint }}
               </p>
             }
@@ -254,7 +254,7 @@
             />
             @if (isCanonicalOpen(followUp)) {
               <p-button
-                label="Tisztázandó tételek szerkesztése"
+                label="Edit Discovery follow-up"
                 severity="secondary"
                 [outlined]="true"
                 [disabled]="editActionDisabled()"
@@ -262,14 +262,14 @@
                 (onClick)="openEdit(followUp.id)"
               />
               <p-button
-                label="Lezárás"
+                label="Resolve"
                 [disabled]="resolveControlDisabled()"
                 data-testid="resolve-discovery-follow-up-button"
                 (onClick)="openResolution(followUp.id)"
               />
               @if (followUp.source === null) {
                 <p-button
-                  label="Forrás hozzárendelése"
+                  label="Assign source"
                   severity="secondary"
                   [outlined]="true"
                   [disabled]="
@@ -283,7 +283,7 @@
                 />
               } @else {
                 <p-button
-                  label="Forrás módosítása"
+                  label="Change source"
                   severity="secondary"
                   [outlined]="true"
                   [disabled]="
@@ -296,7 +296,7 @@
                   (onClick)="openSourceLink(followUp.id)"
                 />
                 <p-button
-                  label="Forráshivatkozás törlése"
+                  label="Remove source link"
                   severity="danger"
                   [outlined]="true"
                   [loading]="savingSourceLinkId() === followUp.id"
@@ -316,7 +316,7 @@
               >
                 <div class="field">
                   <label for="discovery-follow-up-source-link">
-                    Kezdő felmérési forrás
+                    Initial Intake source
                   </label>
                   <p-select
                     inputId="discovery-follow-up-source-link"
@@ -331,7 +331,7 @@
                 <div class="discovery-follow-up-source-link-actions">
                   <p-button
                     type="submit"
-                    label="Forrás mentése"
+                    label="Save source"
                     [loading]="savingSourceLinkId() === followUp.id"
                     [disabled]="
                       sourceLinkForm.invalid ||
@@ -343,7 +343,7 @@
                   />
                   <p-button
                     type="button"
-                    label="Mégse"
+                    label="Cancel"
                     severity="secondary"
                     [outlined]="true"
                     [disabled]="savingSourceLinkId() !== null"
@@ -364,9 +364,9 @@
                   class="discovery-follow-up-fields"
                   [disabled]="editControlDisabled()"
                 >
-                  <legend class="sr-only">Tisztázandó tétel szerkesztése</legend>
+                  <legend class="sr-only">Edit Discovery follow-up</legend>
                   <div class="field">
-                    <label for="discovery-follow-up-edit-category">Kategória</label>
+                    <label for="discovery-follow-up-edit-category">Category</label>
                     <p-select
                       inputId="discovery-follow-up-edit-category"
                       styleClass="full-width"
@@ -380,11 +380,11 @@
                       editForm.controls.category.invalid &&
                       editForm.controls.category.touched
                     ) {
-                      <small class="field-error">Válassz kategóriát.</small>
+                      <small class="field-error">Select a category.</small>
                     }
                   </div>
                   <div class="field">
-                    <label for="discovery-follow-up-edit-question">Tisztázandó kérdés</label>
+                    <label for="discovery-follow-up-edit-question">Question requiring clarification</label>
                     <textarea
                       pTextarea
                       id="discovery-follow-up-edit-question"
@@ -397,16 +397,16 @@
                       editForm.controls.question.hasError('maxlength') &&
                       editForm.controls.question.touched
                     ) {
-                      <small class="field-error">A kérdés legfeljebb 10 000 karakter lehet.</small>
+                      <small class="field-error">The question must not exceed 10,000 characters.</small>
                     } @else if (
                       editForm.controls.question.invalid &&
                       editForm.controls.question.touched
                     ) {
-                      <small class="field-error">A kérdés megadása kötelező.</small>
+                      <small class="field-error">A question is required.</small>
                     }
                   </div>
                   <div class="field">
-                    <label for="discovery-follow-up-edit-owner">Felelős</label>
+                    <label for="discovery-follow-up-edit-owner">Owner</label>
                     <input
                       pInputText
                       id="discovery-follow-up-edit-owner"
@@ -418,16 +418,16 @@
                       editForm.controls.owner.hasError('maxlength') &&
                       editForm.controls.owner.touched
                     ) {
-                      <small class="field-error">A felelős neve legfeljebb 255 karakter lehet.</small>
+                      <small class="field-error">The owner name must not exceed 255 characters.</small>
                     } @else if (
                       editForm.controls.owner.invalid &&
                       editForm.controls.owner.touched
                     ) {
-                      <small class="field-error">A felelős megadása kötelező.</small>
+                      <small class="field-error">An owner is required.</small>
                     }
                   </div>
                   <div class="field">
-                    <label for="discovery-follow-up-edit-due-date">Határidő</label>
+                    <label for="discovery-follow-up-edit-due-date">Due date</label>
                     <p-datepicker
                       inputId="discovery-follow-up-edit-due-date"
                       styleClass="full-width"
@@ -441,11 +441,11 @@
                       editForm.controls.dueDate.invalid &&
                       editForm.controls.dueDate.touched
                     ) {
-                      <small class="field-error">Adj meg valós határidőt.</small>
+                      <small class="field-error">Enter a valid due date.</small>
                     }
                   </div>
                   <div class="field">
-                    <label for="discovery-follow-up-edit-next-step">Következő lépés</label>
+                    <label for="discovery-follow-up-edit-next-step">Next action</label>
                     <textarea
                       pTextarea
                       id="discovery-follow-up-edit-next-step"
@@ -458,12 +458,12 @@
                       editForm.controls.nextStep.hasError('maxlength') &&
                       editForm.controls.nextStep.touched
                     ) {
-                      <small class="field-error">A következő lépés legfeljebb 10 000 karakter lehet.</small>
+                      <small class="field-error">The next action must not exceed 10,000 characters.</small>
                     } @else if (
                       editForm.controls.nextStep.invalid &&
                       editForm.controls.nextStep.touched
                     ) {
-                      <small class="field-error">A következő lépés megadása kötelező.</small>
+                      <small class="field-error">A next action is required.</small>
                     }
                   </div>
                 </fieldset>
@@ -473,16 +473,16 @@
                     data-testid="discovery-follow-up-edit-conflict"
                   >
                     @if (hasTerminalEditConflict(followUp.id)) {
-                      A lezárt tisztázandó tétel már nem szerkeszthető. Vesd el ezt a piszkozatot.
+                      This Discovery follow-up has already been resolved and can no longer be edited. Discard this draft.
                     } @else {
-                      A tisztázandó tétel időközben megváltozott. A piszkozat megmaradt; mentés előtt töltsd be az aktuális verziót.
+                      This Discovery follow-up changed in the meantime. Your draft is retained; load the current version before saving.
                     }
                   </p-message>
                 }
                 <div class="discovery-follow-up-edit-actions">
                   <p-button
                     type="submit"
-                    label="Módosítások mentése"
+                    label="Save changes"
                     [loading]="isEditSaving(followUp.id)"
                     [disabled]="
                       editControlDisabled() ||
@@ -493,7 +493,7 @@
                   />
                   <p-button
                     type="button"
-                    label="Mégse"
+                    label="Cancel"
                     severity="secondary"
                     [outlined]="true"
                     [disabled]="isEditSaving(followUp.id)"
@@ -504,7 +504,7 @@
                     @if (canReloadEditFromCurrent(followUp.id)) {
                       <p-button
                         type="button"
-                        label="Aktuális verzió betöltése"
+                        label="Load current version"
                         severity="secondary"
                         [outlined]="true"
                         [disabled]="mutationDisabled()"
@@ -514,7 +514,7 @@
                     } @else if (!hasTerminalEditConflict(followUp.id)) {
                       <p-button
                         type="button"
-                        label="Frissítés újrapróbálása"
+                        label="Retry refresh"
                         severity="secondary"
                         [outlined]="true"
                         [loading]="refreshingEditConflict()"
@@ -540,9 +540,9 @@
                   class="discovery-follow-up-fields"
                   [disabled]="resolutionControlsDisabled()"
                 >
-                  <legend class="sr-only">Tisztázandó tétel lezárása</legend>
+                  <legend class="sr-only">Resolve Discovery follow-up</legend>
                   <div class="field">
-                    <label for="discovery-follow-up-resolution-status">Lezárás módja</label>
+                    <label for="discovery-follow-up-resolution-status">Resolution type</label>
                     <p-select
                       inputId="discovery-follow-up-resolution-status"
                       styleClass="full-width"
@@ -556,12 +556,12 @@
                       resolutionForm.controls.status.invalid &&
                       resolutionForm.controls.status.touched
                     ) {
-                      <small class="field-error">Válaszd ki a lezárás módját.</small>
+                      <small class="field-error">Select a resolution type.</small>
                     }
                   </div>
                   <div class="field">
                     <label for="discovery-follow-up-decision-or-answer">
-                      Döntés vagy válasz
+                      Decision or answer
                     </label>
                     <textarea
                       pTextarea
@@ -576,27 +576,27 @@
                       resolutionForm.controls.decisionOrAnswer.touched
                     ) {
                       <small class="field-error">
-                        A döntés vagy válasz legfeljebb 10 000 karakter lehet.
+                        The decision or answer must not exceed 10,000 characters.
                       </small>
                     } @else if (
                       resolutionForm.controls.decisionOrAnswer.invalid &&
                       resolutionForm.controls.decisionOrAnswer.touched
                     ) {
-                      <small class="field-error">A döntés vagy válasz megadása kötelező.</small>
+                      <small class="field-error">A decision or answer is required.</small>
                     }
                   </div>
                 </fieldset>
                 <div class="discovery-follow-up-resolution-actions">
                   <p-button
                     type="submit"
-                    label="Lezárás mentése"
+                    label="Save resolution"
                     [loading]="isResolutionSaving(followUp.id)"
                     [disabled]="resolutionControlsDisabled()"
                     data-testid="save-discovery-follow-up-resolution-button"
                   />
                   <p-button
                     type="button"
-                    label="Mégse"
+                    label="Cancel"
                     severity="secondary"
                     [outlined]="true"
                     [disabled]="resolutionControlsDisabled()"
@@ -629,19 +629,19 @@
       aria-describedby="discovery-follow-up-source-remove-description"
       data-testid="discovery-follow-up-source-remove-confirmation"
     >
-      <h3 id="discovery-follow-up-source-remove-title">Törlöd a forráshivatkozást?</h3>
+      <h3 id="discovery-follow-up-source-remove-title">Remove the source link?</h3>
       <p id="discovery-follow-up-source-remove-description">
-        A rögzített eredet megszűnik. Egy későbbi felmérési kör után előfordulhat, hogy a régi forrás már nem rendelhető vissza.
+        The recorded provenance will be removed. After a later Initial Intake round, the previous source may no longer be available to link again.
       </p>
       <div class="discovery-follow-up-source-remove-actions">
         <p-button
-          label="Mégse"
+          label="Cancel"
           [autofocus]="true"
           data-testid="cancel-discovery-follow-up-source-remove-button"
           (onClick)="cancelSourceLinkRemoval()"
         />
         <p-button
-          label="Forráshivatkozás törlése"
+          label="Remove source link"
           severity="danger"
           data-testid="confirm-discovery-follow-up-source-remove-button"
           (onClick)="acceptSourceLinkRemoval()"

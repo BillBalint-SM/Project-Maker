@@ -2,29 +2,32 @@ import { expect, test } from '@playwright/test';
 
 import { tabTo } from './keyboard-assertions';
 
-test('a belső felhasználó regisztrál, belép az appba, majd kijelentkezik', async ({ page }) => {
+test('an Internal user creates an account, enters the application, and signs out', async ({ page }) => {
   const email = `playwright-${crypto.randomUUID()}@example.test`;
 
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/');
   await expect(page).toHaveURL(/\/login\?returnUrl=%2F$/);
-  await expect(page.getByRole('heading', { name: 'Bejelentkezés' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Sign in' })).toBeVisible();
 
-  const registration = page.getByRole('button', { name: 'Regisztráció' });
+  const registration = page.getByRole('button', { name: 'Create account' });
   await tabTo(page, registration);
   await page.keyboard.press('Enter');
-  const emailInput = page.getByLabel('E-mail-cím');
+  const emailInput = page.getByLabel('Email address');
   await tabTo(page, emailInput);
   await emailInput.fill(email);
-  const passwordInput = page.getByLabel('Jelszó');
+  const passwordInput = page.getByLabel('Password');
   await tabTo(page, passwordInput);
   await passwordInput.fill('playwright-biztonsagos-jelszo-42');
-  const createAccount = page.getByRole('button', { name: 'Fiók létrehozása', exact: true });
+  const createAccount = page.locator('form').getByRole('button', {
+    name: 'Create account',
+    exact: true,
+  });
   await tabTo(page, createAccount);
   await page.keyboard.press('Enter');
 
   await expect(page).toHaveURL('/');
-  await expect(page.getByRole('navigation', { name: 'Fő navigáció' })).toBeVisible();
+  await expect(page.getByRole('navigation', { name: 'Main navigation' })).toBeVisible();
   await expect(page.getByRole('link', { name: email })).toBeVisible();
 
   const projectResponse = await page.request.post('/api/projects', {
@@ -40,8 +43,8 @@ test('a belső felhasználó regisztrál, belép az appba, majd kijelentkezik', 
   expect(projectResponse.status()).toBe(201);
   const project = (await projectResponse.json()) as { readonly id: string };
   await page.goto(`/projects/${project.id}/status`);
-  await expect(page.getByRole('heading', { name: 'Projektállapot' })).toBeVisible();
-  const skipLink = page.getByRole('link', { name: 'Ugrás a fő tartalomra' });
+  await expect(page.getByRole('heading', { name: 'Project status' })).toBeVisible();
+  const skipLink = page.getByRole('link', { name: 'Skip to main content' });
   await tabTo(page, skipLink);
   await page.keyboard.press('Enter');
   await expect(page.locator('#main-content')).toBeFocused();
@@ -50,6 +53,6 @@ test('a belső felhasználó regisztrál, belép az appba, majd kijelentkezik', 
 
   await page.reload();
   await expect(page.getByRole('link', { name: email })).toBeVisible();
-  await page.getByRole('button', { name: 'Kijelentkezés' }).click();
+  await page.getByRole('button', { name: 'Sign out' }).click();
   await expect(page).toHaveURL('/login');
 });

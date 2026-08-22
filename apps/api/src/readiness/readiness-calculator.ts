@@ -29,24 +29,24 @@ interface SortableGap {
 
 const factorCopy: Readonly<Record<FactorId, { readonly label: string; readonly helpText: string }>> = {
   baseInfo: {
-    label: 'Alapinformációk',
-    helpText: 'A projekt és az ügyfél alapadatainak teljessége.',
+    label: 'Core project information',
+    helpText: 'Completeness of the Project and Customer baseline information.',
   },
   business: {
-    label: 'Üzleti tisztázottság',
-    helpText: 'Az üzleti célokhoz kapcsolódó ellenőrzőlista-elemek állapota.',
+    label: 'Business clarity',
+    helpText: 'Completion status of the checklist items that define the business outcomes.',
   },
   ownership: {
-    label: 'Felelősség',
-    helpText: 'A következő lépés kijelölt felelőse és a felelősségi ellenőrzőlista állapota.',
+    label: 'Ownership',
+    helpText: 'The assigned next-action owner and the status of ownership-related checklist items.',
   },
   checklist: {
-    label: 'Ellenőrzőlista',
-    helpText: 'Az aktuális intake ellenőrzőlista releváns elemeinek teljessége.',
+    label: 'Readiness checklist',
+    helpText: 'Completion of the relevant checklist items in the current Initial Intake.',
   },
   followUpResolution: {
-    label: 'Tisztázandó tételek',
-    helpText: 'A tisztázandó tételek lezártsága.',
+    label: 'Discovery follow-ups',
+    helpText: 'Resolution status of the Project\'s Discovery follow-ups.',
   },
 };
 
@@ -265,20 +265,20 @@ function toPercentage(fraction: number): number {
 }
 
 function completionLabel(policy: GeneralPlaybook, completionPercentage: number): string {
-  const completeLabel = requirePolicyLabel(policy.statuses.completion, 0, 'complete completion');
-  const inProgressLabel = requirePolicyLabel(policy.statuses.completion, 1, 'in-progress completion');
-  const clarificationLabel = requirePolicyLabel(
+  requirePolicyLabel(policy.statuses.completion, 0, 'complete completion');
+  requirePolicyLabel(policy.statuses.completion, 1, 'in-progress completion');
+  requirePolicyLabel(
     policy.statuses.completion,
     2,
     'clarification completion',
   );
   if (completionPercentage === 0) {
-    return clarificationLabel;
+    return 'Clarification required';
   }
   if (completionPercentage === 100) {
-    return completeLabel;
+    return 'Complete';
   }
-  return inProgressLabel;
+  return 'In progress';
 }
 
 function readinessBand(policy: GeneralPlaybook, percentage: number): string {
@@ -291,26 +291,29 @@ function readinessBand(policy: GeneralPlaybook, percentage: number): string {
     throw new TypeError('Readiness policy thresholds are not ordered.');
   }
   if (percentage < thresholds.clarificationBelow) {
-    return 'Pontosítás szükséges';
+    return 'Clarification required';
   }
   if (percentage >= thresholds.developmentReadyFrom) {
-    return 'Fejlesztésre kész';
+    return 'Ready for development';
   }
   if (percentage >= thresholds.estimateReadyFrom) {
-    return 'Becslésre kész';
+    return 'Ready for estimation';
   }
   if (percentage >= thresholds.estimatePreparationFrom) {
-    return 'Becslés előkészíthető';
+    return 'Ready for estimation preparation';
   }
-  return 'Pontosítás szükséges';
+  return 'Clarification required';
 }
 
 function createGaps(input: ReadinessCalculatorInput): readonly ReadinessGap[] {
   const sortableGaps: SortableGap[] = [];
   const severities = input.policy.statuses.readinessGapSeverity;
-  const criticalSeverity = requirePolicyLabel(severities, 0, 'critical readiness gap');
-  const importantSeverity = requirePolicyLabel(severities, 1, 'important readiness gap');
-  const clarificationSeverity = requirePolicyLabel(severities, 2, 'clarification readiness gap');
+  requirePolicyLabel(severities, 0, 'critical readiness gap');
+  requirePolicyLabel(severities, 1, 'important readiness gap');
+  requirePolicyLabel(severities, 2, 'clarification readiness gap');
+  const criticalSeverity = 'Critical';
+  const importantSeverity = 'Important';
+  const clarificationSeverity = 'Clarification';
   const blockedFollowUpStatus = requireBlockedFollowUpStatus(input.policy);
 
   if (!hasText(input.project.ballOwner)) {
@@ -318,9 +321,9 @@ function createGaps(input: ReadinessCalculatorInput): readonly ReadinessGap[] {
       gap: {
         id: 'overview-ball-owner',
         severity: importantSeverity,
-        category: 'Felelősség',
-        message: 'A következő lépés felelőse nincs megadva.',
-        nextStep: 'Jelölj ki felelőst a Projektállapot oldalon.',
+        category: 'Ownership',
+        message: 'The next action does not have an owner.',
+        nextStep: 'Assign an owner on the Project Status page.',
         target: 'overview',
         snapshotId: null,
         followUpId: null,
@@ -356,13 +359,13 @@ function createGaps(input: ReadinessCalculatorInput): readonly ReadinessGap[] {
       gap: {
         id: `follow-up-${followUp.id}`,
         severity: isBlocked ? criticalSeverity : importantSeverity,
-        category: 'Tisztázandó tétel',
+        category: 'Discovery follow-up',
         message: isBlocked
-          ? 'Egy tisztázandó tétel blokkolt állapotban van.'
-          : 'Van lezáratlan tisztázandó tétel.',
+          ? 'A Discovery follow-up is blocked.'
+          : 'A Discovery follow-up remains unresolved.',
         nextStep: isBlocked
-          ? 'Oldd fel a blokkoló tisztázandó tételt.'
-          : 'Dolgozd fel vagy zárd le a tisztázandó tételt.',
+          ? 'Resolve the blocking Discovery follow-up.'
+          : 'Complete or resolve the Discovery follow-up.',
         target: 'follow-ups',
         snapshotId: null,
         followUpId: followUp.id,
@@ -407,11 +410,11 @@ function checklistGap(
     gap: {
       id: `checklist-${snapshot.stableKey}`,
       severity,
-      category: 'Ellenőrzőlista',
+      category: 'Readiness checklist',
       message: missing
-        ? 'Az ellenőrzőlista-elemhez még nincs elegendő információ.'
-        : 'Az ellenőrzőlista-elem állapota még részleges.',
-      nextStep: 'Nyisd meg a kérdést, és egészítsd ki vagy pontosítsd az információt.',
+        ? 'The checklist item does not yet have enough supporting information.'
+        : 'The checklist item is only partially complete.',
+      nextStep: 'Open the question and complete or clarify the supporting information.',
       target: 'checklist',
       snapshotId: snapshot.id,
       followUpId: null,

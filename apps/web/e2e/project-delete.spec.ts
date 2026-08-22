@@ -79,7 +79,7 @@ test('keeps stale Project settings open after a server-side delete conflict', as
   expect((await deleteResponse).status()).toBe(409);
   await expect(page).toHaveURL(new RegExp(`/projects/${project.id}/settings$`));
   await expect(page.getByTestId('project-settings-action-error')).toContainText(
-    'Csak DRAFT projekt törölhető. Ügyfélkommunikációs vagy Git-átadási előzmény esetén archiváld a projektet.',
+    'Only a DRAFT project can be deleted. Archive the project when Customer correspondence or Git handoff history exists.',
   );
   await expect(page.getByTestId('project-settings-action-error')).not.toContainText(
     /PostgreSQL|customer_follow_ups|audit_events|stack/i,

@@ -38,7 +38,7 @@ export class MarkdownTemplatePage implements OnInit {
   readonly feedback = signal<string | null>(null);
   readonly placeholders = markdownTemplatePlaceholderDefinitions;
   readonly form = new FormGroup({
-    name: new FormControl('', { nonNullable: true, validators: [Validators.required, Validators.maxLength(255)] }),
+    name: new FormControl('', { nonNullable: true, validators: [Validators.required, Validators.pattern(/\S/), Validators.maxLength(255)] }),
     draftContent: new FormControl('', { nonNullable: true, validators: [Validators.required, Validators.maxLength(100_000)] }),
   });
 
@@ -94,7 +94,7 @@ export class MarkdownTemplatePage implements OnInit {
     request.subscribe({
       next: (template) => {
         this.working.set(false);
-        this.feedback.set('Piszkozat mentve. Az előnézet után publikálhatod.');
+        this.feedback.set('Draft saved. Review the preview before publishing.');
         this.upsert(template);
         this.selected.set(template);
         this.form.reset({ name: template.name, draftContent: template.draftContent });
@@ -131,7 +131,7 @@ export class MarkdownTemplatePage implements OnInit {
     this.api.publish(template.id).subscribe({
       next: (published) => {
         this.working.set(false);
-        this.feedback.set(`A sablon v${published.latestPublishedVersion} verziója publikálva.`);
+        this.feedback.set(`Template version ${published.latestPublishedVersion} published.`);
         this.upsert(published);
         this.selected.set(published);
       },

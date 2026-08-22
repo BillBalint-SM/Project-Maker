@@ -479,16 +479,16 @@ function specializedPlaybook(
 
 export const systemIntegrationPlaybookV1 = specializedPlaybook(
   'system-integration',
-  'Rendszerintegráció',
-  'Integrációs nézőpont',
-  'Térj ki a forrás- és célrendszer kapcsolatára.',
+  'System integration',
+  'Integration perspective',
+  'Describe the relationship between the source and target systems.',
 );
 
 export const dataMigrationPlaybookV1 = specializedPlaybook(
   'data-migration',
-  'Adatmigráció',
-  'Migrációs nézőpont',
-  'Térj ki az adatminőségre, leképezésre és visszaállíthatóságra.',
+  'Data migration',
+  'Migration perspective',
+  'Address data quality, mapping, reconciliation, and rollback.',
 );
 
 export const packagedPlaybooks = deepFreeze([
@@ -498,7 +498,11 @@ export const packagedPlaybooks = deepFreeze([
 ] as const);
 
 export const packagedPlaybookSummaries: readonly PackagedPlaybookSummary[] = packagedPlaybooks.map(
-  ({ id, version, name }) => ({ id, version, name }),
+  ({ id, version, name }) => ({
+    id,
+    version,
+    name: id === 'general' ? 'General project discovery' : name,
+  }),
 );
 
 export function findPackagedPlaybook(id: string, version: number): GeneralPlaybook | null {

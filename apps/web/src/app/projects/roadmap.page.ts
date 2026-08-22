@@ -89,7 +89,7 @@ export class RoadmapPage implements OnInit {
       next: (goal) => {
         this.initiativeForm.controls.goalId.setValue(goal.id);
         this.goalForm.reset({ name: '', description: '' });
-        this.finishSave('Az üzleti cél létrejött.');
+        this.finishSave('Business goal created.');
       },
       error: (error: Error) => this.failSave(error),
     });
@@ -106,7 +106,7 @@ export class RoadmapPage implements OnInit {
     }).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: () => {
         this.initiativeForm.patchValue({ name: '', description: '' });
-        this.finishSave('A kezdeményezés létrejött.');
+        this.finishSave('Initiative created.');
       },
       error: (error: Error) => this.failSave(error),
     });
@@ -118,47 +118,47 @@ export class RoadmapPage implements OnInit {
     this.api.assignProject(project.id, { initiativeId }).pipe(
       takeUntilDestroyed(this.destroyRef),
     ).subscribe({
-      next: () => this.finishSave('A projekt roadmap-helye frissült.'),
+      next: () => this.finishSave('Project roadmap assignment updated.'),
       error: (error: Error) => this.failSave(error),
     });
   }
 
   renameGoal(goalId: string, currentName: string, description: string | null): void {
-    const name = window.prompt('Üzleti cél neve', currentName)?.trim();
+    const name = window.prompt('Business goal name', currentName)?.trim();
     if (!name || name === currentName) return;
     this.startSave();
     this.api.updateGoal(goalId, { name, description }).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
-      next: () => this.finishSave('Az üzleti cél átnevezve.'),
+      next: () => this.finishSave('Business goal renamed.'),
       error: (error: Error) => this.failSave(error),
     });
   }
 
   renameInitiative(initiativeId: string, currentName: string, description: string | null): void {
-    const name = window.prompt('Kezdeményezés neve', currentName)?.trim();
+    const name = window.prompt('Initiative name', currentName)?.trim();
     if (!name || name === currentName) return;
     this.startSave();
     this.api.updateInitiative(initiativeId, { name, description }).pipe(
       takeUntilDestroyed(this.destroyRef),
     ).subscribe({
-      next: () => this.finishSave('A kezdeményezés átnevezve.'),
+      next: () => this.finishSave('Initiative renamed.'),
       error: (error: Error) => this.failSave(error),
     });
   }
 
   deleteGoal(goalId: string): void {
-    if (!window.confirm('Törlöd az üzleti célt? A kezdeményezései törlődnek, a projektek besorolás nélkül maradnak.')) return;
+    if (!window.confirm('Delete this business goal? Its initiatives will be deleted and projects will become unassigned.')) return;
     this.startSave();
     this.api.deleteGoal(goalId).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
-      next: () => this.finishSave('Az üzleti cél törölve, a projektek megmaradtak.'),
+      next: () => this.finishSave('Business goal deleted; projects were retained.'),
       error: (error: Error) => this.failSave(error),
     });
   }
 
   deleteInitiative(initiativeId: string): void {
-    if (!window.confirm('Törlöd a kezdeményezést? A projektek besorolás nélkül maradnak.')) return;
+    if (!window.confirm('Delete this initiative? Its projects will become unassigned.')) return;
     this.startSave();
     this.api.deleteInitiative(initiativeId).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
-      next: () => this.finishSave('A kezdeményezés törölve, a projektek megmaradtak.'),
+      next: () => this.finishSave('Initiative deleted; projects were retained.'),
       error: (error: Error) => this.failSave(error),
     });
   }

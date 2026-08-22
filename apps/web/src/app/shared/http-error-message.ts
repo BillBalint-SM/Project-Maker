@@ -4,9 +4,9 @@ export function genericHttpErrorMessage(
   fallback?: string,
 ): string {
   if (isNetworkError(error)) {
-    return 'Nem sikerült kapcsolódni a szolgáltatáshoz. Ellenőrizd a kapcsolatot, majd próbáld újra.';
+    return 'Unable to connect to the service. Check the connection and try again.';
   }
-  return fallback ?? `Nem sikerült ${action}. Próbáld meg újra.`;
+  return fallback ?? `Unable to ${action}. Try again.`;
 }
 
 function isNetworkError(value: unknown): value is { readonly status: number } {

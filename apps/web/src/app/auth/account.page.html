@@ -1,7 +1,7 @@
 <section aria-labelledby="account-title">
   <div class="page-heading">
-    <span class="eyebrow">Saját fiók</span>
-    <h1 id="account-title">Fiókbeállítások</h1>
+    <span class="eyebrow">My account</span>
+    <h1 id="account-title">Account settings</h1>
     <p>{{ user()?.email }}</p>
   </div>
 
@@ -15,36 +15,36 @@
   <div class="account-grid">
     <div class="mcp-connection">
       <p-card>
-        <ng-template #title>Claude Code-kapcsolat</ng-template>
-        <ng-template #subtitle>A saját Claude Code előfizetésed közvetlenül éri el a Project Maker munkafolyamatait.</ng-template>
+        <ng-template #title>Claude Code connection</ng-template>
+        <ng-template #subtitle>Your Claude Code subscription can access Project Maker workflows directly.</ng-template>
 
         @if (mcpStatus(); as status) {
           <p class="connection-status">
-            Állapot:
-            <strong>{{ status.configured ? 'Kapcsolati token aktív' : 'Nincs aktív token' }}</strong>
-            @if (status.createdAt) { <span> · létrehozva: {{ status.createdAt | date: 'yyyy. MM. dd. HH:mm' }}</span> }
+            Status:
+            <strong>{{ status.configured ? 'Connection token active' : 'No active token' }}</strong>
+            @if (status.createdAt) { <span> · created {{ status.createdAt | date: 'dd MMM yyyy, HH:mm' }}</span> }
           </p>
-          <p>A kapcsolat ugyanazokat a műveleteket használja, mint a webapp. Nincs külön szerepkör, AI API-kulcs vagy fogyasztásalapú Project Maker-díj.</p>
+          <p>This connection uses the same actions as the web application. It does not create a separate role, require an AI API key, or incur usage-based Project Maker charges.</p>
 
           @if (mcpCommand(); as command) {
             <div class="connection-command">
-              <label for="mcp-command">Egyszer futtasd a saját gépeden</label>
+              <label for="mcp-command">Run once on your local machine</label>
               <textarea id="mcp-command" rows="4" readonly [value]="command"></textarea>
-              <small>A token csak most látható. A parancs felhasználói szinten adja hozzá a Project Maker szervert a Claude Code-hoz.</small>
+              <small>The token is shown only once. This command adds the Project Maker server to Claude Code for your user account.</small>
             </div>
-            <p-button label="Parancs másolása" severity="secondary" [outlined]="true" (onClick)="copyMcpCommand()" />
+            <p-button label="Copy command" severity="secondary" [outlined]="true" (onClick)="copyMcpCommand()" />
           }
 
           <div class="connection-actions">
             <p-button
-              [label]="status.configured ? 'Új token készítése' : 'Kapcsolati token készítése'"
+              [label]="status.configured ? 'Generate new token' : 'Generate connection token'"
               [loading]="mcpPending()"
               [disabled]="mcpPending()"
               (onClick)="createMcpConnection()"
             />
             @if (status.configured) {
               <p-button
-                label="Kapcsolat megszüntetése"
+                label="Revoke connection"
                 severity="danger"
                 [text]="true"
                 [disabled]="mcpPending()"
@@ -53,19 +53,19 @@
             }
           </div>
           @if (status.configured && !mcpToken()) {
-            <small>Ha már nincs meg a korábbi token, készíts újat; ez automatikusan lecseréli a régit.</small>
+            <small>If you no longer have the previous token, generate a new one. It automatically replaces the existing token.</small>
           }
         } @else {
-          <p>Kapcsolat állapotának betöltése…</p>
+          <p>Loading connection status…</p>
         }
       </p-card>
     </div>
 
     <p-card>
-      <ng-template #title>Jelszó módosítása</ng-template>
+      <ng-template #title>Change password</ng-template>
       <form [formGroup]="passwordForm" (ngSubmit)="changePassword()" novalidate>
         <div class="field">
-          <label for="current-password">Jelenlegi jelszó</label>
+          <label for="current-password">Current password</label>
           <input
             pInputText
             id="current-password"
@@ -77,7 +77,7 @@
           />
         </div>
         <div class="field">
-          <label for="new-password">Új jelszó</label>
+          <label for="new-password">New password</label>
           <input
             pInputText
             id="new-password"
@@ -88,11 +88,11 @@
             aria-describedby="new-password-help"
             required
           />
-          <small id="new-password-help">Legalább 12 karakter.</small>
+          <small id="new-password-help">At least 12 characters.</small>
         </div>
         <p-button
           type="submit"
-          label="Jelszó mentése"
+          label="Save password"
           [loading]="pending()"
           [disabled]="pending()"
         />
@@ -100,10 +100,10 @@
     </p-card>
 
     <p-card styleClass="deactivate-card">
-      <ng-template #title>Fiók letiltása</ng-template>
-      <p>A fiók és a korábbi munkád megmarad. Ugyanezzel az e-mail-címmel és jelszóval bármikor visszaállíthatod.</p>
+      <ng-template #title>Deactivate account</ng-template>
+      <p>Your account and retained work remain available. You can restore the account at any time with the same email address and password.</p>
       <p-button
-        label="Fiók letiltása"
+        label="Deactivate account"
         severity="danger"
         [outlined]="true"
         [loading]="pending()"

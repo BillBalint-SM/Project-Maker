@@ -10,7 +10,7 @@ export class ProjectMakerMcpEndpoint implements OnModuleDestroy {
   private readonly handler = createMcpHandler((context) => {
     const actorId = context.authInfo?.clientId;
     if (!actorId) {
-      throw new Error('Az MCP-kéréshez nem tartozik belső felhasználó.');
+      throw new Error('The MCP request has no associated Internal user.');
     }
     return createProjectMakerMcpServer(this.facade, actorId);
   });

@@ -13,7 +13,7 @@ describe('ProjectAttachmentBlockComponent', () => {
     const download = page.nativeElement.querySelector(
       '[data-testid="download-project-attachment-attachment-1"]',
     ) as HTMLAnchorElement | null;
-    expect(download?.textContent?.trim()).toBe('Letöltés');
+    expect(download?.textContent?.trim()).toBe('Download');
     expect(download?.getAttribute('href')).toBe(
       '/api/projects/project-1/attachments/attachment-1/download',
     );

@@ -1,21 +1,21 @@
 <section aria-labelledby="decision-review-page-title">
   <div class="page-heading">
-    <span class="eyebrow">Projekt</span>
-    <h1 id="decision-review-page-title">Döntési értékelés</h1>
-    <p>A felkészültség és a hat értékelési szempont közös döntési eredménye.</p>
+    <span class="eyebrow">Project</span>
+    <h1 id="decision-review-page-title">Decision Review</h1>
+    <p>The combined decision outcome from readiness and the six assessment inputs.</p>
   </div>
   <app-decision-review [projectId]="projectId" [refreshKey]="0" />
 
   <p-card styleClass="formal-decision-card">
-    <ng-template #title>Formális döntések</ng-template>
-    <ng-template #subtitle>Rövid, emberi döntési napló. A rögzítés nem ír át projektadatot és nem indít automatikus folyamatot.</ng-template>
+    <ng-template #title>Formal decisions</ng-template>
+    <ng-template #subtitle>A concise, human-authored decision log. Recording a decision does not overwrite project data or trigger automation.</ng-template>
 
     @if (archived()) {
-      <p>Az archivált projekthez nem rögzíthető új döntés.</p>
+      <p>New decisions cannot be recorded for an archived project.</p>
     } @else {
       <form class="formal-decision-form" [formGroup]="decisionForm" (ngSubmit)="saveDecision()">
         <div class="field">
-          <label for="formal-decision-outcome">Eredmény</label>
+          <label for="formal-decision-outcome">Outcome</label>
           <select id="formal-decision-outcome" formControlName="outcome" data-testid="formal-decision-outcome">
             @for (option of outcomeOptions; track option.value) {
               <option [value]="option.value">{{ option.label }}</option>
@@ -23,33 +23,33 @@
           </select>
         </div>
         <div class="field">
-          <label for="formal-decision-date">Döntés napja</label>
+          <label for="formal-decision-date">Decision date</label>
           <input id="formal-decision-date" type="date" formControlName="decisionDate" />
         </div>
         <div class="field field-wide">
-          <label for="formal-decision-maker">Döntéshozó</label>
+          <label for="formal-decision-maker">Decision maker</label>
           <input id="formal-decision-maker" type="text" formControlName="decisionMaker" data-testid="formal-decision-maker" />
         </div>
         <div class="field field-wide">
-          <label for="formal-decision-rationale">Indoklás</label>
+          <label for="formal-decision-rationale">Rationale</label>
           <textarea pTextarea id="formal-decision-rationale" rows="4" formControlName="rationale" data-testid="formal-decision-rationale"></textarea>
         </div>
         @if (decisionForm.controls.outcome.value === 'CONDITIONAL_GO') {
           <div class="field">
-            <label for="formal-decision-conditions">Feltételek</label>
+            <label for="formal-decision-conditions">Conditions</label>
             <textarea pTextarea id="formal-decision-conditions" rows="3" formControlName="conditions"></textarea>
           </div>
           <div class="field">
-            <label for="formal-decision-review-date">Felülvizsgálat napja</label>
+            <label for="formal-decision-review-date">Review date</label>
             <input id="formal-decision-review-date" type="date" formControlName="reviewDate" />
           </div>
         }
         <label class="check-field field-wide">
           <input type="checkbox" formControlName="referenceDecisionReview" />
-          Kapcsolódik a fenti döntési értékeléshez
+          Relates to the Decision Review above
         </label>
         <div class="form-actions field-wide">
-          <p-button type="submit" label="Döntés rögzítése" [loading]="saving()" [disabled]="decisionForm.invalid || saving()" data-testid="save-formal-decision" />
+          <p-button type="submit" label="Record decision" [loading]="saving()" [disabled]="decisionForm.invalid || saving()" data-testid="save-formal-decision" />
         </div>
       </form>
     }
@@ -57,21 +57,21 @@
     @if (feedback()) { <p-message severity="success" role="status">{{ feedback() }}</p-message> }
     @if (error(); as message) { <p-message severity="error" role="alert">{{ message }}</p-message> }
     @if (loading()) {
-      <p aria-live="polite">A döntéstörténet betöltése…</p>
+      <p aria-live="polite">Loading decision history…</p>
     } @else {
       <ol class="formal-decision-history" data-testid="formal-decision-history">
         @for (decision of decisions(); track decision.id) {
           <li>
             <div class="decision-heading">
               <strong>{{ decisionLabel(decision.outcome) }}</strong>
-              <span>{{ decision.decisionDate | date: 'yyyy. MM. dd.' }} · {{ decision.decisionMaker }}</span>
+              <span>{{ decision.decisionDate | date: 'dd MMM yyyy' }} · {{ decision.decisionMaker }}</span>
             </div>
             <p>{{ decision.rationale }}</p>
-            @if (decision.conditions) { <p><strong>Feltételek:</strong> {{ decision.conditions }}</p> }
-            @if (decision.reviewDate) { <p><strong>Felülvizsgálat:</strong> {{ decision.reviewDate | date: 'yyyy. MM. dd.' }}</p> }
+            @if (decision.conditions) { <p><strong>Conditions:</strong> {{ decision.conditions }}</p> }
+            @if (decision.reviewDate) { <p><strong>Review date:</strong> {{ decision.reviewDate | date: 'yyyy-MM-dd' }}</p> }
           </li>
         } @empty {
-          <li>Még nincs formális döntés.</li>
+          <li>No formal decision recorded yet.</li>
         }
       </ol>
     }

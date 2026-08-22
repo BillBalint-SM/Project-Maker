@@ -29,13 +29,13 @@ import { baseQuestionTypeLabel } from '../base-question-type-label';
 
 const textAutosaveDelayMs = 750;
 const completionBlockedByAnswerErrorMessage =
-  'A felmérési kör nem zárható le, amíg van sikertelen válaszmentés. Mentsd újra a hibás válaszokat, majd próbáld újra.';
+  'The interview round cannot be completed while response saves have failed. Save the failed responses again, then retry.';
 const completionBlockedByPendingSaveMessage =
-  'A felmérési kör lezárása előtt várd meg, amíg minden automatikus mentés befejeződik.';
+  'Wait for all automatic saves to complete before completing the interview round.';
 const completionBlockedByAssessmentErrorMessage =
-  'A felmérési kör nem zárható le, amíg van sikertelen értékelésmentés. Mentsd újra a hibás értékeléseket, majd próbáld újra.';
+  'The interview round cannot be completed while assessment saves have failed. Save the failed assessments again, then retry.';
 const completionBlockedByPendingAssessmentMessage =
-  'A felmérési kör lezárása előtt várd meg, amíg minden értékelés mentése befejeződik.';
+  'Wait for all assessment saves to complete before completing the interview round.';
 
 type QuestionSaveStatus = 'idle' | 'saving' | 'saved' | 'error';
 type AssessmentMode = 'automatic' | 'partial' | 'not-relevant';
@@ -119,7 +119,7 @@ export class InterviewPage implements OnInit, OnDestroy {
   loadInterviewData(): void {
     if (!this.projectId) {
       this.loadError.set(
-        'Hiányzik a projektazonosító a felmérés URL-jéből. Menj vissza a projektportfólióhoz, és nyisd meg újra a felmérést.',
+        'The project identifier is missing from the interview URL. Return to the project portfolio and open the interview again.',
       );
       this.loading.set(false);
       return;
@@ -216,13 +216,13 @@ export class InterviewPage implements OnInit, OnDestroy {
     }
     if (this.hasOpenRound()) {
       this.actionError.set(
-        'A kérdésséma nem módosítható, amíg van nyitott kezdő felmérési kör.',
+        'The question schema cannot be changed while an Initial Intake round is open.',
       );
       return;
     }
     if (this.selectedCount() === 0) {
       this.actionError.set(
-        'Legalább egy aktív alapkérdést ki kell választanod a projektséma közzététele előtt.',
+        'Select at least one active base question before publishing the project schema.',
       );
       return;
     }
@@ -261,8 +261,8 @@ export class InterviewPage implements OnInit, OnDestroy {
         }
         this.feedback.set(
           this.schema()?.schemaVersion === 1
-            ? 'A projekt kérdéssémája elkészült.'
-            : 'A projekt kérdéssémája frissült.',
+            ? 'Project question schema created.'
+            : 'Project question schema updated.',
         );
       },
       error: () => {
@@ -279,7 +279,7 @@ export class InterviewPage implements OnInit, OnDestroy {
   private startInitialRound(reconcileExistingRound = false): void {
     if (this.roundSaving() || this.schema() === null || this.projectArchived()) {
       if (this.schema() === null) {
-        this.actionError.set('A felmérési kör indítása előtt fogadd el a projekt kérdéssémáját.');
+        this.actionError.set('Accept the project question schema before starting an interview round.');
       }
       return;
     }
@@ -319,12 +319,12 @@ export class InterviewPage implements OnInit, OnDestroy {
     this.answerStates.set(buildAnswerStates(round));
     this.assessmentStates.set(buildAssessmentStates(round));
     this.roundSaving.set(false);
-    this.feedback.set('A kezdő felmérési kör elindult.');
+    this.feedback.set('Initial Intake round started.');
   }
 
   private showInitialRoundStartFailure(): void {
     this.actionError.set(
-      'A kérdésséma elfogadva van, de a kezdő felmérési kör nem indult el. Próbáld újra a felmérés indítását.',
+      'The question schema was accepted, but the Initial Intake round did not start. Retry starting the interview.',
     );
     this.roundSaving.set(false);
   }
@@ -432,7 +432,12 @@ export class InterviewPage implements OnInit, OnDestroy {
   }
 
   assessmentStatus(question: RoundQuestionSnapshot): string {
-    return question.checklistStatus;
+    return ({
+      'Nincs meg': 'Missing',
+      'Részben megvan': 'Partially complete',
+      Kész: 'Complete',
+      'Nem releváns': 'Not applicable',
+    } as const)[question.checklistStatus] ?? question.checklistStatus;
   }
 
   isAssessmentSelected(question: RoundQuestionSnapshot, mode: AssessmentMode): boolean {
@@ -534,17 +539,17 @@ export class InterviewPage implements OnInit, OnDestroy {
   assessmentSaveState(question: RoundQuestionSnapshot): string {
     const state = this.assessmentState(question);
     if (state.status === 'saving') {
-      return 'Értékelés mentése folyamatban…';
+      return 'Saving assessment…';
     }
     if (state.status === 'error') {
       return state.error
-        ? `Nem sikerült elmenteni az értékelést. ${state.error}`
-        : 'Nem sikerült elmenteni az értékelést. Próbáld újra.';
+        ? `Could not save assessment. ${state.error}`
+        : 'Could not save assessment. Retry.';
     }
     if (state.mode !== state.baselineMode || state.rationale !== state.baselineRationale) {
-      return 'Értékelési piszkozat';
+      return 'Assessment draft';
     }
-    return 'Értékelés mentve';
+    return 'Assessment saved';
   }
 
   assessmentHasError(question: RoundQuestionSnapshot): boolean {
@@ -663,20 +668,20 @@ export class InterviewPage implements OnInit, OnDestroy {
   questionSaveState(question: RoundQuestionSnapshot): string {
     const state = this.answerState(question);
     if (state.status === 'saving') {
-      return 'Mentés folyamatban…';
+      return 'Saving…';
     }
     if (state.status === 'error') {
       return state.error
-        ? `Nem sikerült menteni. ${state.error}`
-        : 'Nem sikerült menteni. Próbáld újra.';
+        ? `Could not save. ${state.error}`
+        : 'Could not save. Retry.';
     }
     if (this.hasUnsavedChanges(question)) {
-      return 'Piszkozat – automatikus mentésre vár';
+      return 'Draft – awaiting automatic save';
     }
     if (state.persisted !== null || question.answeredAt) {
-      return 'Mentve';
+      return 'Saved';
     }
-    return 'Még nincs mentve';
+    return 'Not saved yet';
   }
 
   questionHasError(question: RoundQuestionSnapshot): boolean {
@@ -688,7 +693,7 @@ export class InterviewPage implements OnInit, OnDestroy {
   }
 
   questionRetryLabel(question: RoundQuestionSnapshot): string {
-    return `Válasz újramentése: ${question.text}`;
+    return `Save response again: ${question.text}`;
   }
 
   showBlockingGuidance(question: RoundQuestionSnapshot): boolean {
@@ -703,9 +708,9 @@ export class InterviewPage implements OnInit, OnDestroy {
 
   roundTypeLabel(): string {
     const type = this.round()?.type;
-    if (type === 'STAKEHOLDER') return 'Stakeholder kör';
-    if (type === 'CLARIFICATION') return 'Tisztázó kör';
-    return 'Kezdő felmérés';
+    if (type === 'STAKEHOLDER') return 'Stakeholder round';
+    if (type === 'CLARIFICATION') return 'Clarification round';
+    return 'Initial Intake';
   }
 
   isInitialRound(): boolean {
@@ -717,19 +722,19 @@ export class InterviewPage implements OnInit, OnDestroy {
   questionTypeGuidance(question: RoundQuestionSnapshot): string {
     switch (question.type) {
       case 'TEXT':
-        return 'Rövid, tömör válasz ajánlott.';
+        return 'A short, concise response is recommended.';
       case 'LONG_TEXT':
-        return 'Részletes, többmondatos válasz ajánlott.';
+        return 'A detailed, multi-sentence response is recommended.';
       case 'SINGLE_SELECT':
-        return 'Pontosan egy lehetőséget válassz.';
+        return 'Select exactly one option.';
       case 'MULTI_SELECT':
-        return 'Egy vagy több lehetőséget is kiválaszthatsz.';
+        return 'Select one or more options.';
       case 'BOOLEAN':
-        return 'Jelöld be, ha a válasz igen.';
+        return 'Select this option if the answer is yes.';
       case 'NUMBER':
-        return 'Adj meg egy véges számértéket.';
+        return 'Enter a finite numeric value.';
       case 'DATE':
-        return 'Add meg a dátumot ÉÉÉÉ-HH-NN formátumban.';
+        return 'Enter the date in YYYY-MM-DD format.';
     }
   }
 
@@ -738,7 +743,7 @@ export class InterviewPage implements OnInit, OnDestroy {
       return null;
     }
 
-    return `Választható lehetőségek: ${question.options.join(' · ')}`;
+    return `Available options: ${question.options.join(' · ')}`;
   }
 
   private buildSelectedKeys(
@@ -1236,13 +1241,13 @@ function resolveLoadError(error: unknown): string {
     return error.message;
   }
 
-  return 'A felmérési oldal nem tölthető be. Frissítsd az oldalt, majd próbáld újra.';
+  return 'The interview page could not be loaded. Refresh the page and try again.';
 }
 
 function resolveSchemaPublishError(hasExistingSchema: boolean): string {
   if (hasExistingSchema) {
-    return 'Nem sikerült frissíteni a projektsémát. Frissítsd az oldalt, ellenőrizd a kiválasztott kérdéseket, majd próbáld újra.';
+    return 'Could not update the project schema. Refresh the page, check the selected questions, and try again.';
   }
 
-  return 'Nem sikerült közzétenni a projektsémát. Frissítsd az oldalt, ellenőrizd a kiválasztott kérdéseket, majd próbáld újra.';
+  return 'Could not publish the project schema. Refresh the page, check the selected questions, and try again.';
 }

@@ -133,7 +133,7 @@ export class ProjectSettingsPage implements OnInit {
         this.playbookForm.reset({
           playbook: `${project.playbook.id}:${project.playbook.version}`,
         });
-        this.feedback.set('A projekt playbookja mentve lett.');
+        this.feedback.set('The project playbook has been saved.');
       },
       error: (error: Error) => this.actionError.set(error.message),
     });
@@ -141,7 +141,7 @@ export class ProjectSettingsPage implements OnInit {
 
   loadSettings(): void {
     if (!this.projectId) {
-      this.loadError.set('A projekt azonosítója hiányzik az útvonalból.');
+      this.loadError.set('The project identifier is missing from the route.');
       this.loading.set(false);
       return;
     }
@@ -195,7 +195,7 @@ export class ProjectSettingsPage implements OnInit {
           customerContactEmail: project.customerContactEmail,
         });
         this.resetBasicsForm(project);
-        this.basicsFeedback.set('A projekt alapadatai mentve lettek.');
+        this.basicsFeedback.set('Project details have been saved.');
         this.projectContext?.reload();
       },
       error: (error: Error) => this.basicsError.set(error.message),
@@ -218,7 +218,7 @@ export class ProjectSettingsPage implements OnInit {
     ).subscribe({
       next: (project) => {
         if (!this.applyProjectStatus(project, intent)) return;
-        this.lifecycleFeedback.set('Az adminisztratív projektfázis frissítve lett.');
+        this.lifecycleFeedback.set('The administrative project phase has been updated.');
         this.projectContext?.reload();
       },
       error: (error: Error) => {
@@ -233,8 +233,8 @@ export class ProjectSettingsPage implements OnInit {
     if (this.isArchived() || this.pending.isPending('archive')) return;
     this.confirmationService.confirm({
       key: 'project-archive',
-      header: 'Projekt archiválása',
-      message: 'A projekt aktív munkája és automatikus ügyfél-emlékeztetője szünetel. Minden mentett állapot és történet megmarad; visszaállításkor ugyaninnen folytatható, korábbi esemény vagy küldés megismétlése nélkül.',
+      header: 'Archive Project',
+      message: 'Active project work and automatic Customer reminders will pause. All saved state and history will be retained; restoring resumes from this point without repeating earlier events or sends.',
       defaultFocus: 'none',
       accept: () => this.archiveProject(),
     });
@@ -251,7 +251,7 @@ export class ProjectSettingsPage implements OnInit {
     ).subscribe({
       next: (project) => {
         if (!this.applyProjectStatus(project, intent)) return;
-        this.feedback.set('A projekt archiválva lett.');
+        this.feedback.set('The project has been archived.');
         this.projectContext?.reload();
       },
       error: (error: Error) => {
@@ -274,7 +274,7 @@ export class ProjectSettingsPage implements OnInit {
       next: (project) => {
         if (!this.applyProjectStatus(project, intent)) return;
         this.feedback.set(
-          `A projekt az archiválás előtti állapotban, az ${projectStatusLabel(project.status)} fázisban folytatható. Korábbi esemény vagy küldés nem ismétlődött meg.`,
+          `The project can resume in its pre-archive ${projectStatusLabel(project.status)} phase. Earlier events and sends have not been repeated.`,
         );
         this.projectContext?.reload();
       },
@@ -290,8 +290,8 @@ export class ProjectSettingsPage implements OnInit {
     if (!this.isDeletableDraft() || this.pending.isPending('delete')) return;
     this.confirmationService.confirm({
       key: 'project-delete',
-      header: 'Projekt végleges törlése',
-      message: 'A DRAFT projekttel együtt minden belső munkaadat végleg törlődik. Ügyfélkommunikációs vagy Git-átadási előzmény esetén a rendszer megtagadja a törlést.',
+      header: 'Permanently Delete Project',
+      message: 'All internal working data for this DRAFT project will be permanently deleted. The system rejects deletion when Customer communication or Git handoff history exists.',
       defaultFocus: 'none',
       accept: () => this.deleteProject(),
     });

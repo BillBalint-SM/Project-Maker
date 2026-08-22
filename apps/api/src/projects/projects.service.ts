@@ -397,9 +397,9 @@ export function toWorkspace(project: Project): ProjectWorkspace {
 
 function playbookName(id: string, version: number): string {
   const names: Readonly<Record<string, string>> = {
-    'general:1': 'Általános projektfelmérés',
-    'system-integration:1': 'Rendszerintegráció',
-    'data-migration:1': 'Adatmigráció',
+    'general:1': 'General project discovery',
+    'system-integration:1': 'System integration',
+    'data-migration:1': 'Data migration',
   };
   return names[`${id}:${version}`] ?? `${id} v${version}`;
 }

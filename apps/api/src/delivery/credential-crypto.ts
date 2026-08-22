@@ -34,14 +34,14 @@ export class CredentialCrypto {
       decipher.setAuthTag(tag);
       return JSON.parse(Buffer.concat([decipher.update(ciphertext), decipher.final()]).toString('utf8')) as StoredGitCredential;
     } catch {
-      throw new InternalServerErrorException('A tárolt Git credential nem olvasható az alkalmazáskulccsal.');
+      throw new InternalServerErrorException('The stored Git credential cannot be decrypted with the configured application key.');
     }
   }
 
   private key(): Buffer {
     const secret = this.config.get<string>('GIT_CREDENTIAL_ENCRYPTION_KEY') ?? '';
     if (secret.length < 32) {
-      throw new InternalServerErrorException('A Git credential titkosítási kulcs nincs konfigurálva.');
+      throw new InternalServerErrorException('The Git credential encryption key is not configured.');
     }
     return createHash('sha256').update(secret, 'utf8').digest();
   }
@@ -56,10 +56,10 @@ function normalizeCredential(
   const privateKey = clean(input.privateKey);
   const passphrase = clean(input.passphrase);
   if (mode === 'HTTPS_TOKEN' && !accessToken) {
-    throw new BadRequestException('HTTPS Git setuphoz access token szükséges.');
+    throw new BadRequestException('An access token is required for an HTTPS Git setup.');
   }
   if (mode === 'SSH_KEY' && !privateKey) {
-    throw new BadRequestException('SSH Git setuphoz privát kulcs szükséges.');
+    throw new BadRequestException('A private key is required for an SSH Git setup.');
   }
   return {
     mode,

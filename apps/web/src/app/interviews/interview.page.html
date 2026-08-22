@@ -1,8 +1,8 @@
 <section aria-labelledby="interview-title">
   <div class="page-heading interview-heading">
-    <span class="eyebrow">Projektfelmérés</span>
-    <h1 id="interview-title">Felmérés</h1>
-    <p>Válaszd ki az aktív kérdéseket, fogadd el a kérdéssémát, majd folytasd a kezdő felmérési kört.</p>
+    <span class="eyebrow">Project discovery</span>
+    <h1 id="interview-title">Initial Intake</h1>
+    <p>Select active questions, accept the project question schema, then continue the Initial Intake round.</p>
   </div>
 
   @if (actionError()) {
@@ -17,7 +17,7 @@
   }
   @if (projectArchived()) {
     <p-message severity="info" data-testid="archived-interview-read-only">
-      Az archivált projekt felmérése és felmérési összefoglalói csak olvashatók. Módosításhoz előbb állítsd vissza a projektet.
+      The archived project's interview and Customer summaries are read-only. Restore the project to make changes.
     </p-message>
   }
   @if (!loading() && !loadError() && handoffRequested && (!round() || !isInitialRound())) {
@@ -26,7 +26,7 @@
       data-testid="interview-handoff-prerequisite"
       role="status"
     >
-      A felmérési összegzés még nem érhető el. Előbb fogadd el a kérdéssémát és indítsd el a kezdő felmérést ezen az oldalon.
+      The interview summary is not available yet. Accept the question schema and start the Initial Intake on this page first.
     </p-message>
   }
   @if (!loading() && !loadError() && handoffRequested && isInitialRound() && round()?.status === 'OPEN') {
@@ -35,21 +35,21 @@
       data-testid="interview-handoff-prerequisite"
       role="status"
     >
-      A felmérési összegzés még nem érhető el. Előbb zárd le a kezdő felmérési kört ezen az oldalon.
+      The interview summary is not available yet. Complete the Initial Intake round on this page first.
     </p-message>
   }
 
   @if (loading()) {
     <div class="state-panel" data-testid="interview-loading" aria-live="polite">
-      <p-progress-spinner ariaLabel="Felmérési kérdések betöltése" />
-      <p>Betöltjük a kérdésbankot, a projektsémát és az aktív felmérési kört…</p>
+      <p-progress-spinner ariaLabel="Loading interview questions" />
+      <p>Loading the Question Bank, project schema, and active interview round…</p>
     </div>
   } @else if (loadError()) {
     <div class="state-panel" data-testid="interview-error" role="alert">
-      <h2>A felmérési oldal nem tölthető be</h2>
+      <h2>The interview page could not be loaded</h2>
       <p data-testid="interview-load-error-text">{{ loadError() }}</p>
       <p-button
-        label="Felmérési oldal újratöltése"
+        label="Reload interview page"
         severity="secondary"
         data-testid="retry-interview-button"
         (onClick)="loadInterviewData()"
@@ -64,25 +64,25 @@
         fragment="project-basics"
         data-testid="edit-project-basics-link"
       >
-        Projekt alapadatainak szerkesztése
+        Edit project details
       </a>
     }
 
     <div class="interview-grid">
       <p-card>
-        <ng-template #title>Projekt kérdésséma</ng-template>
+        <ng-template #title>Project question schema</ng-template>
         <ng-template #subtitle>
-          Bankverzió {{ currentBank.version }} · {{ selectedCount() }} aktív kérdés kiválasztva
+          Question Bank version {{ currentBank.version }} · {{ selectedCount() }} active questions selected
         </ng-template>
 
         @if (schema() && !round()) {
           <div class="round-start" data-testid="initial-intake-start-recovery">
             <span data-testid="project-schema-status">
-              Elfogadott kérdésséma v{{ schema()!.schemaVersion }} (bank v{{ schema()!.bankVersion }})
+              Accepted question schema v{{ schema()!.schemaVersion }} (bank v{{ schema()!.bankVersion }})
             </span>
-            <p>A kérdésséma elfogadva. A kezdő felmérés indítása még hátravan.</p>
+            <p>The question schema has been accepted. The Initial Intake still needs to be started.</p>
             <p-button
-              label="Felmérés indításának újrapróbálása"
+              label="Retry starting Initial Intake"
               [loading]="roundSaving()"
               [disabled]="roundSaving() || projectArchived()"
               data-testid="retry-initial-intake-button"
@@ -91,20 +91,20 @@
           </div>
         } @else if (activeQuestions().length === 0) {
           <div class="state-panel compact" data-testid="interview-no-active-questions">
-            <h2>Nincs aktív alapkérdés</h2>
-            <p>Aktiválj legalább egy alapkérdést a Kérdésbank beállításaiban.</p>
-            <a routerLink="/settings/questions">Kérdésbank megnyitása</a>
+            <h2>No active base questions</h2>
+            <p>Activate at least one base question in Question Bank settings.</p>
+            <a routerLink="/settings/questions">Open Question Bank</a>
           </div>
         } @else {
           <fieldset class="question-selection" data-testid="interview-question-selection">
-            <legend>Aktív alapkérdések kiválasztása</legend>
+            <legend>Select active base questions</legend>
             @for (question of activeQuestions(); track question.stableKey) {
               <label class="selection-row" [attr.data-testid]="'schema-question-' + question.stableKey">
                 <input
                   type="checkbox"
                   [checked]="isSelected(question.stableKey)"
                   [disabled]="schemaSaving() || hasOpenRound() || projectArchived()"
-                  [attr.aria-label]="'Kérdés használata: ' + question.text"
+                  [attr.aria-label]="'Use question: ' + question.text"
                   (change)="setSelected(question.stableKey, $any($event.target).checked)"
                 />
                 <span class="selection-copy">
@@ -118,13 +118,13 @@
           <div class="schema-status">
             @if (schema(); as currentSchema) {
               <span data-testid="project-schema-status">
-                Elfogadott kérdésséma v{{ currentSchema.schemaVersion }} (bank v{{ currentSchema.bankVersion }})
+                Accepted question schema v{{ currentSchema.schemaVersion }} (bank v{{ currentSchema.bankVersion }})
               </span>
             } @else {
-              <span data-testid="project-schema-status">Még nincs elfogadott kérdésséma.</span>
+              <span data-testid="project-schema-status">No accepted question schema yet.</span>
             }
             <p-button
-              [label]="schema() ? 'Kérdésséma frissítése' : 'Kérdésséma elfogadása és felmérés indítása'"
+              [label]="schema() ? 'Update question schema' : 'Accept question schema and start Initial Intake'"
               [loading]="schemaSaving()"
               [disabled]="schemaSaving() || selectedCount() === 0 || hasOpenRound() || projectArchived()"
               data-testid="publish-project-schema-button"
@@ -133,7 +133,7 @@
           </div>
           @if (hasOpenRound()) {
             <p class="schema-lock-note" data-testid="schema-lock-note">
-              A kérdésséma zárolva van, amíg a nyitott kezdő felmérési kör fut.
+              The question schema is locked while an Initial Intake round is open.
             </p>
           }
         }
@@ -141,25 +141,25 @@
 
       @if (round()) {
       <p-card>
-        <ng-template #title>Kezdő felmérési kör</ng-template>
+        <ng-template #title>Initial Intake round</ng-template>
         <ng-template #subtitle>
-          A felmérési kör a kiválasztott kérdésséma változatlan pillanatképét őrzi.
+          This interview round retains an immutable snapshot of the selected question schema.
         </ng-template>
 
         @if (round(); as currentRound) {
             @if (currentRound.status === 'OPEN') {
               <div class="resume-state" data-testid="active-round-resume-state">
-                <strong>Folyamatban lévő kezdő felmérési kör folytatása</strong>
-                <p>A legutóbb mentett állapot töltődött vissza, ezért innen folytathatod ugyanazt a kört.</p>
+                <strong>Continue Initial Intake in progress</strong>
+                <p>The last saved state was restored, so you can continue the same round here.</p>
               </div>
             }
             <div class="round-header">
               <div>
                 <span class="round-type">{{ roundTypeLabel() }}</span>
-                <p>{{ currentRound.questions.length }} pillanatkép-kérdés</p>
+                <p>{{ currentRound.questions.length }} snapshot questions</p>
               </div>
               <p-tag
-                [value]="currentRound.status === 'ENDED' ? 'Felmérési kör lezárva' : 'Folyamatban'"
+                [value]="currentRound.status === 'ENDED' ? 'Interview round completed' : 'In progress'"
                 [severity]="currentRound.status === 'ENDED' ? 'success' : 'info'"
                 data-testid="round-status"
               />
@@ -167,8 +167,8 @@
 
             @if (currentRound.questions.length === 0) {
               <div class="state-panel compact" data-testid="round-empty">
-                <h2>Nincs kérdés ebben a felmérési körben</h2>
-                <p>Frissítsd a projektsémát, majd indíts új kört.</p>
+                <h2>No questions in this interview round</h2>
+                <p>Update the project schema, then start a new round.</p>
               </div>
             } @else {
               <div class="round-questions" data-testid="round-questions">
@@ -187,12 +187,12 @@
                     </div>
 
                     <ul class="question-guidance" [attr.data-testid]="'round-question-guidance-' + question.id">
-                      <li>Ellenőrzési pont: {{ question.controlPoint }}</li>
+                      <li>Control point: {{ question.controlPoint }}</li>
                       @if (question.required) {
-                        <li>Kötelező kérdés</li>
+                        <li>Required question</li>
                       }
                       @if (question.blocking) {
-                        <li>Blokkoló tisztázás</li>
+                        <li>Blocking clarification</li>
                       }
                       @if (question.hint) {
                         <li>{{ question.hint }}</li>
@@ -210,7 +210,7 @@
                           type="text"
                           [value]="textAnswer(question)"
                           [disabled]="isAnswerDisabled(question)"
-                          [attr.aria-label]="'Válasz: ' + question.text"
+                          [attr.aria-label]="'Response: ' + question.text"
                           [attr.aria-required]="question.required"
                           [attr.data-testid]="'round-answer-input-' + question.id"
                           (input)="setTextDraft(question, $any($event.target).value)"
@@ -222,7 +222,7 @@
                           rows="4"
                           [value]="textAnswer(question)"
                           [disabled]="isAnswerDisabled(question)"
-                          [attr.aria-label]="'Válasz: ' + question.text"
+                          [attr.aria-label]="'Response: ' + question.text"
                           [attr.aria-required]="question.required"
                           [attr.data-testid]="'round-answer-textarea-' + question.id"
                           (input)="setTextDraft(question, $any($event.target).value)"
@@ -233,12 +233,12 @@
                           class="answer-control"
                           [value]="textAnswer(question)"
                           [disabled]="isAnswerDisabled(question)"
-                          [attr.aria-label]="'Válasz: ' + question.text"
+                          [attr.aria-label]="'Answer: ' + question.text"
                           [attr.aria-required]="question.required"
                           [attr.data-testid]="'round-answer-select-' + question.id"
                           (change)="setSingleSelectDraft(question, $any($event.target).value)"
                         >
-                          <option value="">Válassz egy lehetőséget</option>
+                          <option value="">Select an option</option>
                           @for (option of question.options ?? []; track option) {
                             <option [value]="option">{{ option }}</option>
                           }
@@ -266,11 +266,11 @@
                             type="checkbox"
                             [checked]="booleanAnswer(question)"
                             [disabled]="isAnswerDisabled(question)"
-                            [attr.aria-label]="'Válasz: ' + question.text"
+                            [attr.aria-label]="'Answer: ' + question.text"
                             [attr.data-testid]="'round-answer-boolean-' + question.id"
                             (change)="setDiscreteDraft(question, $any($event.target).checked)"
                           />
-                          Igen
+                          Yes
                         </label>
                       }
                       @case ('NUMBER') {
@@ -279,7 +279,7 @@
                           type="number"
                           [value]="numberAnswer(question)"
                           [disabled]="isAnswerDisabled(question)"
-                          [attr.aria-label]="'Válasz: ' + question.text"
+                          [attr.aria-label]="'Answer: ' + question.text"
                           [attr.aria-required]="question.required"
                           [attr.data-testid]="'round-answer-number-' + question.id"
                           (input)="setNumberDraft(question, $any($event.target).value)"
@@ -291,7 +291,7 @@
                           type="date"
                           [value]="textAnswer(question)"
                           [disabled]="isAnswerDisabled(question)"
-                          [attr.aria-label]="'Válasz: ' + question.text"
+                          [attr.aria-label]="'Answer: ' + question.text"
                           [attr.aria-required]="question.required"
                           [attr.data-testid]="'round-answer-date-' + question.id"
                           (change)="setDiscreteDraft(question, $any($event.target).value || null)"
@@ -310,7 +310,7 @@
                       </small>
                       @if (showRetryButton(question)) {
                         <p-button
-                          label="Mentés újrapróbálása"
+                          label="Retry save"
                           severity="secondary"
                           [outlined]="true"
                           [attr.aria-label]="questionRetryLabel(question)"
@@ -323,10 +323,10 @@
                     <section
                       class="assessment-block"
                       [attr.data-testid]="'round-assessment-' + question.id"
-                      [attr.aria-label]="'Értékelés: ' + question.text"
+                      [attr.aria-label]="'Assessment: ' + question.text"
                     >
                       <div class="assessment-header">
-                        <strong>Értékelés</strong>
+                        <strong>Assessment</strong>
                         <p-tag
                           [value]="assessmentStatus(question)"
                           severity="secondary"
@@ -335,7 +335,7 @@
                       </div>
                       <div class="assessment-actions">
                         <p-button
-                          label="Automatikus állapot"
+                          label="Automatic status"
                           severity="secondary"
                           [outlined]="true"
                           [attr.aria-pressed]="isAssessmentSelected(question, 'automatic')"
@@ -344,7 +344,7 @@
                           (onClick)="resetAssessment(question)"
                         />
                         <p-button
-                          label="Részben megvan"
+                          label="Partially addressed"
                           severity="secondary"
                           [outlined]="true"
                           [attr.aria-pressed]="isAssessmentSelected(question, 'partial')"
@@ -353,7 +353,7 @@
                           (onClick)="selectPartialAssessment(question)"
                         />
                         <p-button
-                          label="Nem releváns"
+                          label="Not applicable"
                           severity="secondary"
                           [outlined]="true"
                           [attr.aria-pressed]="isAssessmentSelected(question, 'not-relevant')"
@@ -365,7 +365,7 @@
                       @if (showAssessmentRationale(question)) {
                         <div class="field assessment-rationale">
                           <label [for]="'round-assessment-rationale-' + question.id">
-                            Indoklás, miért nem releváns
+                            Rationale for not applicable
                           </label>
                           <textarea
                             class="answer-control"
@@ -377,7 +377,7 @@
                             (input)="setAssessmentRationale(question, $any($event.target).value)"
                           ></textarea>
                           <p-button
-                            label="Indoklás mentése"
+                            label="Save rationale"
                             [disabled]="!canSaveNotRelevantAssessment(question)"
                             [attr.data-testid]="'save-not-relevant-assessment-' + question.id"
                             (onClick)="saveNotRelevantAssessment(question)"
@@ -394,7 +394,7 @@
                         </small>
                         @if (assessmentHasError(question)) {
                           <p-button
-                            label="Értékelés újrapróbálása"
+                            label="Retry assessment"
                             severity="secondary"
                             [outlined]="true"
                             [attr.data-testid]="'retry-round-assessment-' + question.id"
@@ -405,17 +405,17 @@
                     </section>
                     @if (showBlockingGuidance(question)) {
                       <p class="blocking-guidance" [attr.data-testid]="'round-blocking-guidance-' + question.id">
-                        Ez blokkoló tisztázás. Rögzítsd a választ, mielőtt lezárod a kört.
+                        This is a blocking clarification. Record a response before completing the round.
                       </p>
                     }
                     @if (question.baseQuestionId && (question.referenceFiles?.length ?? 0) > 0) {
-                      <section class="question-reference-files" [attr.aria-label]="'Kérdésbanki referenciafájlok: ' + question.text">
-                        <h3>Kérdésbanki referenciafájlok</h3>
+                      <section class="question-reference-files" [attr.aria-label]="'Question Bank reference files: ' + question.text">
+                        <h3>Question Bank reference files</h3>
                         <ul class="question-guidance">
                           @for (file of question.referenceFiles ?? []; track file.id) {
                             <li>
                               <span>{{ file.originalName }}</span>
-                              <a [href]="referenceFileUrl(question.baseQuestionId!, file.id)">Letöltés</a>
+                              <a [href]="referenceFileUrl(question.baseQuestionId!, file.id)">Download</a>
                             </li>
                           }
                         </ul>
@@ -448,7 +448,7 @@
                   </p>
                 }
                 <p-button
-                  [label]="isInitialRound() ? 'Felmérés lezárása és hiányok áttekintése' : 'Kör lezárása'"
+                  [label]="isInitialRound() ? 'Complete intake and review gaps' : 'Complete round'"
                   [loading]="completing()"
                   [disabled]="isCompleteDisabled()"
                   data-testid="finish-interview-later-button"
@@ -456,7 +456,7 @@
                 />
                 @if (isInitialRound()) {
                   <p-button
-                    label="Lezárás és felmérési összefoglaló előnézete"
+                    label="Complete and preview interview summary"
                     severity="secondary"
                     [outlined]="true"
                     [loading]="completing()"
@@ -480,8 +480,8 @@
                 (editableChange)="endedEditable.set($event)"
               />
             } @else if (currentRound.status === 'ENDED') {
-              <p-message severity="secondary">Ez a célzott felmérési kör lezárt és csak olvasható.</p-message>
-              <a [routerLink]="['/projects', projectId, 'discovery']">Vissza a felfedezésekhez</a>
+              <p-message severity="secondary">This targeted interview round is complete and read-only.</p-message>
+              <a [routerLink]="['/projects', projectId, 'discovery']">Back to Discovery</a>
             }
         }
       </p-card>

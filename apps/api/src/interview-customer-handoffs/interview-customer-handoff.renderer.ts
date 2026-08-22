@@ -32,25 +32,25 @@ export interface RenderedHandoff {
 }
 
 export function renderHandoff(projection: HandoffProjection): RenderedHandoff {
-  const subject = `Project Maker – Interjú-összefoglaló – ${projection.projectName} – ${projection.version}. verzió`;
+  const subject = `Project Maker – Initial Intake summary – ${projection.projectName} – version ${projection.version}`;
   const header = [
-    `Projekt: ${projection.projectName}`,
-    `Ügyfélkapcsolattartó: ${projection.recipientName}`,
-    `Belső projektgazda: ${projection.internalOwnerName}`,
-    `Interjú dátuma: ${projection.roundDate}`,
-    `Verzió: ${projection.version}`,
+    `Project: ${projection.projectName}`,
+    `Customer contact: ${projection.recipientName}`,
+    `Internal project owner: ${projection.internalOwnerName}`,
+    `Interview date: ${projection.roundDate}`,
+    `Version: ${projection.version}`,
   ];
-  if (projection.supersededVersion !== null) header.push(`Korábbi verzió: ${projection.supersededVersion}`);
-  if (projection.modificationSummary) header.push(`Módosítás összefoglalása: ${projection.modificationSummary}`);
+  if (projection.supersededVersion !== null) header.push(`Superseded version: ${projection.supersededVersion}`);
+  if (projection.modificationSummary) header.push(`Change summary: ${projection.modificationSummary}`);
   const questions = projection.questions.flatMap((question) => [
     '',
     `${question.order}. [${question.topic}] ${question.text}`,
-    `Válasz: ${formatAnswer(question.answer)}`,
-    `Állapot: ${question.status}`,
-    ...(question.rationale ? [`Indoklás: ${question.rationale}`] : []),
+    `Answer: ${formatAnswer(question.answer)}`,
+    `Status: ${formatAssessmentStatus(question.status)}`,
+    ...(question.rationale ? [`Rationale: ${question.rationale}`] : []),
   ]);
   const textContent = [...header, ...questions].join('\n');
-  const htmlContent = `<article><h1>${escapeHtml(subject)}</h1>${header.map((line) => `<p>${escapeHtml(line)}</p>`).join('')}<ol>${projection.questions.map((question) => `<li><h2>${escapeHtml(question.topic)}</h2><p>${escapeHtml(question.text)}</p><p><strong>Válasz:</strong> ${escapeHtml(formatAnswer(question.answer))}</p><p><strong>Állapot:</strong> ${escapeHtml(question.status)}</p>${question.rationale ? `<p><strong>Indoklás:</strong> ${escapeHtml(question.rationale)}</p>` : ''}</li>`).join('')}</ol></article>`;
+  const htmlContent = `<article><h1>${escapeHtml(subject)}</h1>${header.map((line) => `<p>${escapeHtml(line)}</p>`).join('')}<ol>${projection.questions.map((question) => `<li><h2>${escapeHtml(question.topic)}</h2><p>${escapeHtml(question.text)}</p><p><strong>Answer:</strong> ${escapeHtml(formatAnswer(question.answer))}</p><p><strong>Status:</strong> ${escapeHtml(formatAssessmentStatus(question.status))}</p>${question.rationale ? `<p><strong>Rationale:</strong> ${escapeHtml(question.rationale)}</p>` : ''}</li>`).join('')}</ol></article>`;
   const previewDigest = createHash('sha256')
     .update(JSON.stringify({ subject, textContent, htmlContent, sourceContentVersion: projection.sourceContentVersion }))
     .digest('hex');
@@ -58,10 +58,19 @@ export function renderHandoff(projection: HandoffProjection): RenderedHandoff {
 }
 
 function formatAnswer(value: AnswerValue | null): string {
-  if (value === null) return 'Nincs rögzített válasz';
+  if (value === null) return 'No answer recorded';
   if (Array.isArray(value)) return value.join(', ');
-  if (typeof value === 'boolean') return value ? 'Igen' : 'Nem';
+  if (typeof value === 'boolean') return value ? 'Yes' : 'No';
   return String(value);
+}
+
+function formatAssessmentStatus(status: string): string {
+  return ({
+    'Nincs meg': 'Missing',
+    'Részben megvan': 'Partially complete',
+    'Kész': 'Complete',
+    'Nem releváns': 'Not applicable',
+  } as Readonly<Record<string, string>>)[status] ?? status;
 }
 
 function escapeHtml(value: string): string {

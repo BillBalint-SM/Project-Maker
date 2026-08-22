@@ -9,7 +9,7 @@ const protectedRoutes: Routes = [
       import('./projects/project-list.page').then(
         (module) => module.ProjectListPage,
       ),
-    title: 'Projektportfólió | Project Maker',
+    title: 'Portfolio | Project Maker',
   },
   {
     path: 'projects/new',
@@ -17,7 +17,7 @@ const protectedRoutes: Routes = [
       import('./projects/project-create.page').then(
         (module) => module.ProjectCreatePage,
       ),
-    title: 'Új projekt | Project Maker',
+    title: 'New project | Project Maker',
   },
   {
     path: 'projects/active',
@@ -25,7 +25,7 @@ const protectedRoutes: Routes = [
       import('./projects/active-project-queue.page').then(
         (module) => module.ActiveProjectQueuePageComponent,
       ),
-    title: 'Aktív munkasor | Project Maker',
+    title: 'Active project queue | Project Maker',
   },
   {
     path: 'follow-ups',
@@ -33,7 +33,7 @@ const protectedRoutes: Routes = [
       import('./projects/open-discovery-follow-ups.page').then(
         (module) => module.OpenDiscoveryFollowUpsPage,
       ),
-    title: 'Tisztázandó tételek | Project Maker',
+    title: 'Discovery follow-ups | Project Maker',
   },
   {
     path: 'customer-mail-triage',
@@ -41,7 +41,7 @@ const protectedRoutes: Routes = [
       import('./projects/customer-mail-triage.page').then(
         (module) => module.CustomerMailTriagePage,
       ),
-    title: 'Nem társított ügyfélüzenetek | Project Maker',
+    title: 'Unmatched Customer messages | Project Maker',
   },
   {
     path: 'projects/:projectId',
@@ -56,7 +56,7 @@ const protectedRoutes: Routes = [
           import('./projects/project-status.page').then(
             (module) => module.ProjectStatusPage,
           ),
-        title: 'Projektállapot | Project Maker',
+        title: 'Project status | Project Maker',
       },
       {
         path: 'interview',
@@ -64,7 +64,7 @@ const protectedRoutes: Routes = [
           import('./interviews/interview.page').then(
             (module) => module.InterviewPage,
           ),
-        title: 'Felmérés | Project Maker',
+        title: 'Initial Intake | Project Maker',
       },
       {
         path: 'discovery',
@@ -72,7 +72,7 @@ const protectedRoutes: Routes = [
           import('./projects/discovery/discovery.page').then(
             (module) => module.DiscoveryPage,
           ),
-        title: 'Felfedezések | Project Maker',
+        title: 'Discovery | Project Maker',
       },
       {
         path: 'readiness',
@@ -80,7 +80,7 @@ const protectedRoutes: Routes = [
           import('./projects/readiness.page').then(
             (module) => module.ReadinessPage,
           ),
-        title: 'Becslési felkészültség | Project Maker',
+        title: 'Estimation readiness | Project Maker',
       },
       {
         path: 'decision-review',
@@ -88,7 +88,7 @@ const protectedRoutes: Routes = [
           import('./projects/decision-review.page').then(
             (module) => module.DecisionReviewPage,
           ),
-        title: 'Döntési értékelés | Project Maker',
+        title: 'Decision Review | Project Maker',
       },
       {
         path: 'markdown',
@@ -96,7 +96,7 @@ const protectedRoutes: Routes = [
           import('./markdown/markdown.page').then(
             (module) => module.MarkdownPage,
           ),
-        title: 'Projekt-specifikáció | Project Maker',
+        title: 'Project specification | Project Maker',
       },
       {
         path: 'delivery',
@@ -104,7 +104,7 @@ const protectedRoutes: Routes = [
           import('./projects/delivery/delivery.page').then(
             (module) => module.DeliveryPage,
           ),
-        title: 'Fejlesztési csomag | Project Maker',
+        title: 'Delivery package | Project Maker',
       },
       {
         path: 'customer-correspondences',
@@ -112,7 +112,7 @@ const protectedRoutes: Routes = [
           import('./projects/customer-correspondences.page').then(
             (module) => module.CustomerCorrespondencesPage,
           ),
-        title: 'Ügyféllevelezés | Project Maker',
+        title: 'Customer correspondence | Project Maker',
       },
       {
         path: 'settings',
@@ -120,7 +120,7 @@ const protectedRoutes: Routes = [
           import('./projects/project-settings.page').then(
             (module) => module.ProjectSettingsPage,
           ),
-        title: 'Projektbeállítások | Project Maker',
+        title: 'Project settings | Project Maker',
       },
       {
         path: '',
@@ -135,7 +135,7 @@ const protectedRoutes: Routes = [
       import('./settings/question-bank.page').then(
         (module) => module.QuestionBankPage,
       ),
-    title: 'Kérdésbank | Project Maker',
+    title: 'Question Bank | Project Maker',
   },
   {
     path: 'settings/markdown-templates',
@@ -143,31 +143,31 @@ const protectedRoutes: Routes = [
       import('./settings/markdown-template.page').then(
         (module) => module.MarkdownTemplatePage,
       ),
-    title: 'Specifikációs sablonok | Project Maker',
+    title: 'Specification templates | Project Maker',
   },
   {
     path: 'settings/git-setups',
     loadComponent: () =>
       import('./settings/git-setup.page').then((module) => module.GitSetupPage),
-    title: 'Git setupok | Project Maker',
+    title: 'Git connections | Project Maker',
   },
   {
     path: 'roadmap',
     loadComponent: () =>
       import('./projects/roadmap.page').then((module) => module.RoadmapPage),
-    title: 'Üzleti roadmap | Project Maker',
+    title: 'Business roadmap | Project Maker',
   },
   {
     path: 'notifications',
     loadComponent: () =>
       import('./notifications/notifications.page').then((module) => module.NotificationsPage),
-    title: 'Értesítések | Project Maker',
+    title: 'Notifications | Project Maker',
   },
   {
     path: 'account',
     loadComponent: () =>
       import('./auth/account.page').then((module) => module.AccountPage),
-    title: 'Saját fiók | Project Maker',
+    title: 'My account | Project Maker',
   },
   {
     path: '**',
@@ -182,13 +182,13 @@ export const routes: Routes = [
       import('./customer-response/public-customer-response.page').then(
         (module) => module.PublicCustomerResponsePage,
       ),
-    title: 'Ügyfél-pontosítás | Project Maker',
+    title: 'Customer clarification | Project Maker',
   },
   {
     path: 'login',
     loadComponent: () =>
       import('./auth/login.page').then((module) => module.LoginPage),
-    title: 'Bejelentkezés | Project Maker',
+    title: 'Sign in | Project Maker',
   },
   {
     path: '',

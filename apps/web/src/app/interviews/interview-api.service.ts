@@ -40,7 +40,7 @@ export class InterviewApiService {
       .get<InterviewRound | null>(`/api/projects/${encodedProjectId}/rounds/active`)
       .pipe(
         catchError((error: unknown) =>
-          failApiRequest(error, 'betölteni az aktív kezdő felmérési kört'),
+          failApiRequest(error, 'load the active Initial Intake'),
         ),
       );
   }
@@ -48,7 +48,7 @@ export class InterviewApiService {
   listRounds(projectId: string): Observable<readonly InterviewRound[]> {
     return this.http
       .get<readonly InterviewRound[]>(`/api/projects/${encodeURIComponent(projectId)}/rounds`)
-      .pipe(catchError((error: unknown) => failApiRequest(error, 'betölteni a felmérési köröket')));
+      .pipe(catchError((error: unknown) => failApiRequest(error, 'load the Initial Intake rounds')));
   }
 
   getRound(projectId: string, roundId: string): Observable<InterviewRound> {
@@ -56,7 +56,7 @@ export class InterviewApiService {
     const encodedRoundId = encodeURIComponent(roundId);
     return this.http
       .get<InterviewRound>(`/api/projects/${encodedProjectId}/rounds/${encodedRoundId}`)
-      .pipe(catchError((error: unknown) => failApiRequest(error, 'betölteni a kiválasztott felmérési kört')));
+      .pipe(catchError((error: unknown) => failApiRequest(error, 'load the selected Initial Intake round')));
   }
 
   createRound(
@@ -67,7 +67,7 @@ export class InterviewApiService {
     return this.http
       .post<InterviewRound>(`/api/projects/${encodedProjectId}/rounds`, input)
       .pipe(
-        catchError((error: unknown) => failApiRequest(error, 'elindítani a felmérési kört')),
+        catchError((error: unknown) => failApiRequest(error, 'start the Initial Intake round')),
       );
   }
 
@@ -85,7 +85,7 @@ export class InterviewApiService {
         `/api/projects/${encodedProjectId}/rounds/${encodedRoundId}/answers/${encodedSnapshotId}`,
         input,
       )
-      .pipe(catchError((error: unknown) => failApiRequest(error, 'elmenteni a választ')));
+      .pipe(catchError((error: unknown) => failApiRequest(error, 'save the answer')));
   }
 
   setAssessment(
@@ -102,7 +102,7 @@ export class InterviewApiService {
         `/api/projects/${encodedProjectId}/rounds/${encodedRoundId}/answers/${encodedSnapshotId}/assessment`,
         input,
       )
-      .pipe(catchError((error: unknown) => failApiRequest(error, 'elmenteni az értékelést')));
+      .pipe(catchError((error: unknown) => failApiRequest(error, 'save the assessment')));
   }
 
   resetAssessment(
@@ -117,7 +117,7 @@ export class InterviewApiService {
       .delete<RoundQuestionSnapshot>(
         `/api/projects/${encodedProjectId}/rounds/${encodedRoundId}/answers/${encodedSnapshotId}/assessment`,
       )
-      .pipe(catchError((error: unknown) => failApiRequest(error, 'visszaállítani az automatikus értékelést')));
+      .pipe(catchError((error: unknown) => failApiRequest(error, 'restore the automatic assessment')));
   }
 
   finishRound(projectId: string, roundId: string): Observable<InterviewRound> {
@@ -129,7 +129,7 @@ export class InterviewApiService {
         {},
       )
       .pipe(
-        catchError((error: unknown) => failApiRequest(error, 'lezárni a felmérési kört')),
+        catchError((error: unknown) => failApiRequest(error, 'end the Initial Intake round')),
       );
   }
 }
@@ -167,23 +167,23 @@ function mapApiError(error: unknown, action: string): ActionableApiError {
 
   if (error.status === 0) {
     return {
-      userMessage: `Nem sikerült ${action}, mert a szolgáltatás nem érhető el. Ellenőrizd a kapcsolatot, majd próbáld újra.`,
+      userMessage: `Unable to ${action} because the service is unavailable. Check the connection and try again.`,
       diagnostics: { action, status: error.status, statusText: error.statusText },
     };
   }
 
   const nextStep =
     error.status === 404
-      ? 'Ellenőrizd, hogy a projekt, a felmérési kör vagy a kérdés még létezik-e.'
+      ? 'Check that the project, Initial Intake round, or question still exists.'
       : error.status === 409
-        ? 'Frissítsd az oldalt, hogy a legfrissebb felmérési állapotot lásd, majd próbáld újra.'
-        : 'Ellenőrizd az adatokat, majd próbáld újra.';
+        ? 'Refresh the page to load the latest Initial Intake state, then try again.'
+        : 'Check the submitted data and try again.';
   return {
-    userMessage: `Nem sikerült ${action}. ${nextStep}`,
+    userMessage: `Unable to ${action}. ${nextStep}`,
     diagnostics: { action, status: error.status, statusText: error.statusText },
   };
 }
 
 function createGenericActionErrorMessage(action: string): string {
-  return `Nem sikerült ${action}. Frissítsd az oldalt, majd próbáld újra.`;
+  return `Unable to ${action}. Refresh the page and try again.`;
 }

@@ -27,7 +27,7 @@ test.describe.serial('SCORE-01.2 Decision Review employee workflow', () => {
     await page.goto(`/projects/${project.id}/decision-review`);
     await expect(page.getByTestId('decision-review-card')).toBeVisible();
     await expect(page.getByTestId('decision-review-unavailable')).toContainText(
-      'Adj meg mind a hat értékelési szempontot',
+      'Rate all six criteria to calculate the decision score.',
     );
     await expect(page.getByTestId('decision-review-score')).toHaveCount(0);
 
@@ -48,7 +48,7 @@ test.describe.serial('SCORE-01.2 Decision Review employee workflow', () => {
       projectId: project.id,
       available: true,
       decisionScore: 68,
-      decisionScoreLabel: 'Magas',
+      decisionScoreLabel: 'High',
       recommendation: 'ESTIMATE_READY',
       readinessPercentage: 100,
       hasCriticalGap: false,
@@ -56,14 +56,14 @@ test.describe.serial('SCORE-01.2 Decision Review employee workflow', () => {
     });
 
     await expect(page.getByTestId('decision-review-score')).toContainText('68');
-    await expect(page.getByTestId('decision-review-score')).toContainText('Magas');
+    await expect(page.getByTestId('decision-review-score')).toContainText('High');
     await expect(page.getByTestId('decision-review-recommendation')).toContainText(
-      'Becslésre kész',
+      'Ready for estimation',
     );
     await expect(page.getByTestId('decision-review-readiness')).toContainText('100%');
     await expect(page.getByTestId('decision-review-blocking-gap-count')).toContainText('0');
     await expect(page.getByTestId('decision-review-dimensions')).toContainText(
-      'Komplexitás · 10% · fordított',
+      'Complexity · 10% · inverted',
     );
     await expect(page.getByTestId('decision-review-dimensions')).toContainText('25%');
 

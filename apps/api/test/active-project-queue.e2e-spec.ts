@@ -141,15 +141,15 @@ describe('Active project queue (e2e)', () => {
 
     await assertEntrySurfacePriority(app, overdue.id, 'OVERDUE', {
       target: 'PROJECT_COORDINATION',
-      label: 'Következő lépés kezelése',
+      label: 'Manage next action',
     });
     await assertEntrySurfacePriority(app, dueSoon.id, 'DUE_SOON', {
       target: 'PROJECT_COORDINATION',
-      label: 'Következő lépés kezelése',
+      label: 'Manage next action',
     });
     await assertEntrySurfacePriority(app, ordinary.id, 'IN_PROGRESS', {
       target: 'INTERVIEW',
-      label: 'Felmérés megnyitása',
+      label: 'Open Initial Intake',
     });
   });
 
@@ -184,7 +184,7 @@ describe('Active project queue (e2e)', () => {
     assert.equal(item.newReplyCount, 1);
     assert.deepEqual(item.primaryAction, {
       target: 'CUSTOMER_CORRESPONDENCE',
-      label: 'Ügyféllevelezés megnyitása',
+      label: 'Open Customer correspondence',
     });
     let workState = await request(app.getHttpServer())
       .get(`/projects/${projectId}/work-state`)
@@ -202,7 +202,7 @@ describe('Active project queue (e2e)', () => {
         newReplyCount: 1,
         primaryAction: {
           target: 'CUSTOMER_CORRESPONDENCE',
-          label: 'Ügyféllevelezés megnyitása',
+          label: 'Open Customer correspondence',
         },
       },
     );
@@ -230,7 +230,7 @@ describe('Active project queue (e2e)', () => {
     assert.equal(item.urgency, 'OVERDUE');
     assert.deepEqual(item.primaryAction, {
       target: 'PROJECT_COORDINATION',
-      label: 'Következő lépés kezelése',
+      label: 'Manage next action',
     });
     workState = await request(app.getHttpServer())
       .get(`/projects/${projectId}/work-state`)
@@ -238,7 +238,7 @@ describe('Active project queue (e2e)', () => {
     assert.equal(workState.body.urgency, 'OVERDUE');
     assert.deepEqual(workState.body.primaryAction, {
       target: 'PROJECT_COORDINATION',
-      label: 'Következő lépés kezelése',
+      label: 'Manage next action',
     });
     assert.deepEqual((await portfolioWorkState(app, projectId)).primaryAction, item.primaryAction);
   });

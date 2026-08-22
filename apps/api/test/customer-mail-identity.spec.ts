@@ -32,7 +32,7 @@ describe('Operator-provided correspondence mailbox identity', () => {
     ]) {
       assert.throws(
         () => dedicatedCustomerSender(new ConfigService(values)),
-        /levelezési postafiók/i,
+        /correspondence mailbox/i,
       );
     }
   });

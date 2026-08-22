@@ -1,27 +1,27 @@
 <section aria-labelledby="project-status-title">
   <div class="page-heading">
-    <span class="eyebrow">Projekt</span>
-    <h1 id="project-status-title">Projektállapot</h1>
-    <p>A napi projektmunka következő lépése, ügyféllevelezése és legutóbbi változásai.</p>
+    <span class="eyebrow">Project</span>
+    <h1 id="project-status-title">Project Status</h1>
+    <p>The next action, Customer correspondence, and recent changes for day-to-day project work.</p>
   </div>
 
   <div class="status-hub-grid">
     <p-card data-testid="project-status-coordination">
-      <ng-template #title>Projektkoordináció</ng-template>
-      <ng-template #subtitle>A jelenlegi felelős és a következő konkrét lépés.</ng-template>
+      <ng-template #title>Project Coordination</ng-template>
+      <ng-template #subtitle>The current owner and next concrete action.</ng-template>
 
       @if (projectContext.loading()) {
-        <p class="card-state" aria-live="polite">A projektkoordináció betöltése folyamatban van…</p>
+        <p class="card-state" aria-live="polite">Loading project coordination…</p>
       } @else if (projectContext.loadError(); as error) {
         <div class="card-state" role="alert">
           <p>{{ error }}</p>
-          <p-button label="Projektállapot újratöltése" (onClick)="projectContext.reload()" />
+          <p-button label="Reload Project Status" (onClick)="projectContext.reload()" />
         </div>
       } @else if (projectContext.workState(); as currentProject) {
         <dl class="status-details">
-          <div><dt>Következő lépés felelőse</dt><dd>{{ currentProject.nextActionOwner.displayName ?? 'Még nincs kijelölve.' }}</dd></div>
-          <div><dt>Következő lépés</dt><dd>{{ currentProject.nextAction ?? 'Még nincs rögzítve.' }}</dd></div>
-          <div><dt>Határidő</dt><dd>{{ currentProject.dueAt ? (currentProject.dueAt | date: 'yyyy. MM. dd. HH:mm') : 'Még nincs rögzítve.' }}</dd></div>
+          <div><dt>Next-action owner</dt><dd>{{ currentProject.nextActionOwner.displayName ?? 'Not assigned.' }}</dd></div>
+          <div><dt>Next action</dt><dd>{{ currentProject.nextAction ?? 'Not recorded.' }}</dd></div>
+          <div><dt>Due date</dt><dd>{{ currentProject.dueAt ? (currentProject.dueAt | date: 'yyyy-MM-dd HH:mm') : 'Not recorded.' }}</dd></div>
         </dl>
       }
 
@@ -33,18 +33,18 @@
         <form class="coordination-form" [formGroup]="coordinationForm" (ngSubmit)="saveCoordination()" data-testid="workspace-form">
           <fieldset [disabled]="coordinationSaving()">
             <div class="field">
-              <label for="next-action-owner">Következő lépés felelőse</label>
-              <p-select inputId="next-action-owner" formControlName="nextActionOwnerRole" [options]="ownerRoleOptions()" optionLabel="label" optionValue="value" optionDisabled="disabled" placeholder="Válassz felelőst" data-testid="workspace-next-action-owner-select" />
+              <label for="next-action-owner">Next-action owner</label>
+              <p-select inputId="next-action-owner" formControlName="nextActionOwnerRole" [options]="ownerRoleOptions()" optionLabel="label" optionValue="value" optionDisabled="disabled" placeholder="Select an owner" data-testid="workspace-next-action-owner-select" />
             </div>
             <div class="field">
-              <label for="next-action">Következő lépés</label>
+              <label for="next-action">Next action</label>
               <textarea pTextarea id="next-action" rows="4" formControlName="nextAction" data-testid="workspace-next-action-input"></textarea>
               @if (coordinationForm.controls.nextAction.hasError('maxlength')) {
-                <small class="field-error">A következő lépés legfeljebb 10 000 karakter lehet.</small>
+                <small class="field-error">The next action can contain up to 10,000 characters.</small>
               }
             </div>
             <div class="field">
-              <label for="due-at">Határidő</label>
+              <label for="due-at">Due date</label>
               <p-datepicker inputId="due-at" formControlName="dueAt" [showTime]="true" [showIcon]="true" [showButtonBar]="true" [hourFormat]="'24'" [appendTo]="'body'" data-testid="workspace-due-at-input" />
             </div>
           </fieldset>
@@ -52,52 +52,52 @@
             <p-message severity="error" role="alert">{{ error }}</p-message>
           }
           <div class="form-actions">
-            <button pButton type="button" class="p-button-outlined" (click)="cancelCoordinationEdit()">Mégse</button>
-            <button pButton type="submit" [disabled]="coordinationSaving() || coordinationForm.invalid" data-testid="save-workspace-button">Koordináció mentése</button>
+            <button pButton type="button" class="p-button-outlined" (click)="cancelCoordinationEdit()">Cancel</button>
+            <button pButton type="submit" [disabled]="coordinationSaving() || coordinationForm.invalid" data-testid="save-workspace-button">Save coordination</button>
           </div>
         </form>
       } @else if (coordinationLoading()) {
-        <p class="editor-state" aria-live="polite">A szerkesztés előkészítése…</p>
+        <p class="editor-state" aria-live="polite">Preparing editor…</p>
       } @else if (coordinationLoadError(); as error) {
         <div class="editor-state" role="alert">
-          <p>A koordináció most nem szerkeszthető. {{ error }}</p>
-          <p-button label="Szerkesztési adatok újratöltése" [outlined]="true" (onClick)="loadCoordinationEditor()" />
+          <p>Coordination cannot be edited right now. {{ error }}</p>
+          <p-button label="Reload editing data" [outlined]="true" (onClick)="loadCoordinationEditor()" />
         </div>
       } @else if (coordinationWorkspace(); as workspace) {
         @if (workspace.status === 'ARCHIVED') {
-          <p class="editor-state">Az archivált projekt koordinációja csak olvasható. A módosításhoz előbb állítsd vissza a projektet a <a [routerLink]="['/projects', projectId, 'settings']" queryParamsHandling="preserve">Projektbeállításokban</a>.</p>
+          <p class="editor-state">Coordination is read-only for archived projects. Restore the project first in <a [routerLink]="['/projects', projectId, 'settings']" queryParamsHandling="preserve">Project Settings</a> to make changes.</p>
         } @else {
-          <button pButton type="button" class="p-button-outlined" data-testid="project-status-edit-coordination" (click)="editCoordination()">Koordináció szerkesztése</button>
+          <button pButton type="button" class="p-button-outlined" data-testid="project-status-edit-coordination" (click)="editCoordination()">Edit coordination</button>
         }
       }
     </p-card>
 
     <p-card data-testid="project-status-customer-communication">
-      <ng-template #title>Ügyféllevelezés</ng-template>
-      <ng-template #subtitle>Az új válaszok állapota és a feldolgozás belépési pontja.</ng-template>
+      <ng-template #title>Customer Correspondence</ng-template>
+      <ng-template #subtitle>Status of new replies and the entry point for processing them.</ng-template>
       @if (projectContext.loading()) {
-        <p class="card-state" aria-live="polite">Az ügyféllevelezés állapotának betöltése…</p>
+        <p class="card-state" aria-live="polite">Loading Customer correspondence status…</p>
       } @else if (projectContext.loadError(); as error) {
         <div class="card-state" role="alert"><p>{{ error }}</p></div>
       } @else if (projectContext.workState(); as currentProject) {
         <dl class="status-details">
-          <div><dt>Új válaszok</dt><dd>{{ currentProject.newReplyCount }}</dd></div>
-          <div><dt>Teendő</dt><dd>{{ currentProject.newReplyCount > 0 ? 'Az új ügyfélválaszok feldolgozásra várnak.' : 'Nincs feldolgozatlan új ügyfélválasz.' }}</dd></div>
+          <div><dt>New replies</dt><dd>{{ currentProject.newReplyCount }}</dd></div>
+          <div><dt>Action required</dt><dd>{{ currentProject.newReplyCount > 0 ? 'New Customer replies are awaiting processing.' : 'There are no unprocessed new Customer replies.' }}</dd></div>
         </dl>
-        <a class="status-hub-link" [routerLink]="['/projects', projectId, 'customer-correspondences']" queryParamsHandling="preserve" data-testid="project-status-open-customer-communication">Ügyféllevelezés kezelése</a>
+        <a class="status-hub-link" [routerLink]="['/projects', projectId, 'customer-correspondences']" queryParamsHandling="preserve" data-testid="project-status-open-customer-communication">Manage Customer correspondence</a>
       }
     </p-card>
 
     <p-card class="status-update-card" data-testid="project-status-updates">
-      <ng-template #title>Státuszjelentések</ng-template>
-      <ng-template #subtitle>Rövid emberi helyzetkép. A legfrissebb bejegyzés javítható, a korábbiak megmaradnak.</ng-template>
+      <ng-template #title>Status Updates</ng-template>
+      <ng-template #subtitle>A concise human-authored project snapshot. The latest entry can be corrected while prior entries are retained.</ng-template>
 
       @if (isArchived()) {
-        <p class="card-state">Az archivált projekthez nem rögzíthető új státusz.</p>
+        <p class="card-state">New status updates cannot be recorded for an archived project.</p>
       } @else {
         <form class="status-update-form" [formGroup]="statusForm" (ngSubmit)="saveStatusUpdate()">
           <div class="field">
-            <label for="status-health">Egészség</label>
+            <label for="status-health">Health</label>
             <select id="status-health" formControlName="health" data-testid="status-health">
               @for (option of healthOptions; track option.value) {
                 <option [value]="option.value">{{ option.label }}</option>
@@ -105,28 +105,28 @@
             </select>
           </div>
           <div class="field field-wide">
-            <label for="status-summary">Összefoglaló</label>
+            <label for="status-summary">Summary</label>
             <textarea pTextarea id="status-summary" rows="3" formControlName="summary" data-testid="status-summary"></textarea>
           </div>
           <div class="field">
-            <label for="status-changes">Mi változott? <span>(nem kötelező)</span></label>
+            <label for="status-changes">Changes <span>(optional)</span></label>
             <textarea pTextarea id="status-changes" rows="3" formControlName="changes"></textarea>
           </div>
           <div class="field">
-            <label for="status-risks">Kockázatok <span>(nem kötelező)</span></label>
+            <label for="status-risks">Risks <span>(optional)</span></label>
             <textarea pTextarea id="status-risks" rows="3" formControlName="risks"></textarea>
           </div>
           <div class="field field-wide">
-            <label for="status-next-step">Következő lépés</label>
+            <label for="status-next-step">Next step</label>
             <textarea pTextarea id="status-next-step" rows="2" formControlName="nextStep" data-testid="status-next-step"></textarea>
           </div>
           <div class="form-actions field-wide">
             @if (editingStatusId()) {
-              <button pButton type="button" class="p-button-outlined" (click)="cancelStatusEdit()">Mégse</button>
+              <button pButton type="button" class="p-button-outlined" (click)="cancelStatusEdit()">Cancel</button>
             }
             <p-button
               type="submit"
-              [label]="editingStatusId() ? 'Státusz frissítése' : 'Státusz rögzítése'"
+              [label]="editingStatusId() ? 'Update status' : 'Record status'"
               [loading]="statusSaving()"
               [disabled]="statusForm.invalid || statusSaving()"
               data-testid="save-status-update"
@@ -142,44 +142,44 @@
         <p-message severity="error" role="alert">{{ error }}</p-message>
       }
       @if (statusUpdatesLoading()) {
-        <p class="card-state" aria-live="polite">A státusztörténet betöltése…</p>
+        <p class="card-state" aria-live="polite">Loading status history…</p>
       } @else {
         <ol class="status-update-history" data-testid="status-update-history">
           @for (update of statusUpdates(); track update.id) {
             <li>
               <div class="status-update-heading">
                 <strong>{{ healthLabel(update.health) }}</strong>
-                <time [attr.datetime]="update.updatedAt">{{ update.updatedAt | date: 'yyyy. MM. dd. HH:mm' }}</time>
+                <time [attr.datetime]="update.updatedAt">{{ update.updatedAt | date: 'dd MMM yyyy, HH:mm' }}</time>
               </div>
               <p>{{ update.summary }}</p>
-              @if (update.changes) { <p><strong>Változás:</strong> {{ update.changes }}</p> }
-              @if (update.risks) { <p><strong>Kockázat:</strong> {{ update.risks }}</p> }
-              <p><strong>Következő lépés:</strong> {{ update.nextStep }}</p>
+              @if (update.changes) { <p><strong>Changes:</strong> {{ update.changes }}</p> }
+              @if (update.risks) { <p><strong>Risk:</strong> {{ update.risks }}</p> }
+              <p><strong>Next step:</strong> {{ update.nextStep }}</p>
               @if (update.editable && !isArchived()) {
-                <button pButton type="button" class="p-button-text" (click)="editStatusUpdate(update)">Legfrissebb szerkesztése</button>
+                <button pButton type="button" class="p-button-text" (click)="editStatusUpdate(update)">Edit latest update</button>
               }
             </li>
           } @empty {
-            <li class="empty-history">Még nincs státuszjelentés.</li>
+            <li class="empty-history">No status updates yet.</li>
           }
         </ol>
       }
     </p-card>
 
     <p-card class="activity-card" data-testid="project-status-activity">
-      <ng-template #title>Legutóbbi aktivitás</ng-template>
-      <ng-template #subtitle>Az utolsó öt, munkához szükséges projektváltozás.</ng-template>
+      <ng-template #title>Recent Activity</ng-template>
+      <ng-template #subtitle>The five most recent project changes relevant to ongoing work.</ng-template>
       @if (activityLoading()) {
-        <p class="card-state" aria-live="polite">Az aktivitás betöltése folyamatban van…</p>
+        <p class="card-state" aria-live="polite">Loading activity…</p>
       } @else if (activityError(); as error) {
-        <div class="card-state" role="alert"><p>{{ error }}</p><p-button label="Aktivitás újratöltése" (onClick)="loadActivity()" /></div>
+        <div class="card-state" role="alert"><p>{{ error }}</p><p-button label="Reload activity" (onClick)="loadActivity()" /></div>
       } @else if (activity(); as currentActivity) {
         @if (currentActivity.events.length === 0) {
-          <p class="card-state">Még nincs megjeleníthető projektaktivitás.</p>
+          <p class="card-state">No project activity is available to display yet.</p>
         } @else {
           <ol class="activity-list">
             @for (item of currentActivity.events; track item.occurredAt + item.summary) {
-              <li><strong>{{ item.summary }}</strong><time [attr.datetime]="item.occurredAt">{{ item.occurredAt | date: 'yyyy. MM. dd. HH:mm' }}</time></li>
+              <li><strong>{{ item.summary }}</strong><time [attr.datetime]="item.occurredAt">{{ item.occurredAt | date: 'dd MMM yyyy, HH:mm' }}</time></li>
             }
           </ol>
         }

@@ -74,21 +74,21 @@ export class ProjectListPage implements OnInit {
   });
   readonly viewName = new FormControl('', { nonNullable: true });
   readonly healthOptions = [
-    { value: 'ON_TRACK' as const, label: 'Terv szerint' },
-    { value: 'AT_RISK' as const, label: 'Kockázatos' },
-    { value: 'BLOCKED' as const, label: 'Blokkolt' },
+    { value: 'ON_TRACK' as const, label: 'On track' },
+    { value: 'AT_RISK' as const, label: 'At risk' },
+    { value: 'BLOCKED' as const, label: 'Blocked' },
   ];
   readonly decisionOptions = [
-    { value: 'GO' as const, label: 'Mehet' },
-    { value: 'CONDITIONAL_GO' as const, label: 'Feltételesen mehet' },
-    { value: 'NO_GO' as const, label: 'Nem mehet' },
+    { value: 'GO' as const, label: 'Go' },
+    { value: 'CONDITIONAL_GO' as const, label: 'Conditional Go' },
+    { value: 'NO_GO' as const, label: 'No-Go' },
   ];
   readonly sortOptions = [
-    { value: 'RECENTLY_UPDATED' as const, label: 'Legutóbb frissített' },
-    { value: 'NAME' as const, label: 'Név' },
-    { value: 'DUE_DATE' as const, label: 'Határidő' },
-    { value: 'READINESS_DESC' as const, label: 'Felkészültség' },
-    { value: 'DECISION_SCORE_DESC' as const, label: 'Döntési pontszám' },
+    { value: 'RECENTLY_UPDATED' as const, label: 'Last updated' },
+    { value: 'NAME' as const, label: 'Name' },
+    { value: 'DUE_DATE' as const, label: 'Due date' },
+    { value: 'READINESS_DESC' as const, label: 'Readiness' },
+    { value: 'DECISION_SCORE_DESC' as const, label: 'Decision score' },
   ];
   readonly progressLabel = projectWorkProgressLabel;
   readonly actionFragment = projectActionFragment;
@@ -155,7 +155,7 @@ export class ProjectListPage implements OnInit {
     if (!this.writeSavedViews(next)) return;
     this.savedViews.set(next);
     this.viewName.setValue('');
-    this.viewFeedback.set(`A(z) „${name}” nézet elmentve ebben a böngészőben.`);
+      this.viewFeedback.set(`The “${name}” view was saved in this browser.`);
   }
 
   applySavedView(event: Event): void {
@@ -204,13 +204,13 @@ export class ProjectListPage implements OnInit {
 
   mailboxStateLabel(state: CustomerMailboxSyncState): string {
     const labels: Record<CustomerMailboxSyncState, string> = {
-      NOT_CONFIGURED: 'Postafiók nincs konfigurálva',
-      INITIALIZING: 'Postafiók kapcsolódása folyamatban',
-      CURRENT: 'Postafiók naprakész',
-      DELAYED: 'Postafiók-szinkron késik',
-      UNAVAILABLE: 'Postafiók átmenetileg nem érhető el',
-      CONFIGURATION_ERROR: 'Postafiók-beállítás javítandó',
-      AUTHORIZATION_ERROR: 'Postafiók-jogosultság javítandó',
+      NOT_CONFIGURED: 'Correspondence mailbox is not configured',
+      INITIALIZING: 'Connecting to the correspondence mailbox',
+      CURRENT: 'Correspondence mailbox is current',
+      DELAYED: 'Correspondence mailbox sync is delayed',
+      UNAVAILABLE: 'Correspondence mailbox is temporarily unavailable',
+      CONFIGURATION_ERROR: 'Correspondence mailbox configuration requires attention',
+      AUTHORIZATION_ERROR: 'Correspondence mailbox authorization requires attention',
     };
     return labels[state];
   }
@@ -277,7 +277,7 @@ export class ProjectListPage implements OnInit {
       window.localStorage.setItem(key, JSON.stringify(views));
       return true;
     } catch {
-      this.viewFeedback.set('A böngésző nem engedte elmenteni ezt a nézetet.');
+      this.viewFeedback.set('This browser could not save the view.');
       return false;
     }
   }

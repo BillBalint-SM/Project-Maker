@@ -4,13 +4,13 @@ import {
 } from '@project-maker/contracts';
 
 const labels: Readonly<Record<BaseQuestionType, string>> = {
-  TEXT: 'Rövid szöveg',
-  LONG_TEXT: 'Hosszú szöveg',
-  SINGLE_SELECT: 'Egyszeres választás',
-  MULTI_SELECT: 'Többszörös választás',
-  BOOLEAN: 'Igen vagy nem',
-  NUMBER: 'Szám',
-  DATE: 'Dátum',
+  TEXT: 'Short text',
+  LONG_TEXT: 'Long text',
+  SINGLE_SELECT: 'Single select',
+  MULTI_SELECT: 'Multiple select',
+  BOOLEAN: 'Yes / No',
+  NUMBER: 'Number',
+  DATE: 'Date',
 };
 
 export const baseQuestionTypeOptions = baseQuestionTypes.map((value) => ({

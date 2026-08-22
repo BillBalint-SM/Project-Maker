@@ -107,18 +107,18 @@ const authModeText: Record<
   { readonly heading: string; readonly description: string; readonly submitLabel: string }
 > = {
   login: {
-    heading: 'Bejelentkezés',
-    description: 'Lépj be a belső projektmunkához az e-mail-címeddel és jelszavaddal.',
-    submitLabel: 'Bejelentkezés',
+    heading: 'Sign in',
+    description: 'Sign in with your email address and password to access internal project work.',
+    submitLabel: 'Sign in',
   },
   signup: {
-    heading: 'Fiók létrehozása',
-    description: 'Hozd létre a saját belső fiókodat. Más jóváhagyásra nincs szükség.',
-    submitLabel: 'Fiók létrehozása',
+    heading: 'Create account',
+    description: 'Create your Internal user account. No additional approval is required.',
+    submitLabel: 'Create account',
   },
   restore: {
-    heading: 'Fiók visszaállítása',
-    description: 'A korábban letiltott fiók ugyanazzal az e-mail-címmel és jelszóval visszaállítható.',
-    submitLabel: 'Fiók visszaállítása',
+    heading: 'Restore account',
+    description: 'Restore a previously deactivated account using its original email address and password.',
+    submitLabel: 'Restore account',
   },
 };

@@ -204,7 +204,7 @@ function normalizeRecord(
   uidValidity: string,
 ): CustomerMailboxChange {
   const attachments = record.attachments.slice(0, 20).map((attachment) => Object.freeze({
-    name: bounded(attachment.name, 255, 'Névtelen melléklet'),
+    name: bounded(attachment.name, 255, 'Unnamed attachment'),
     contentType: bounded(attachment.contentType, 255, 'application/octet-stream'),
     size: Number.isSafeInteger(attachment.size) && attachment.size >= 0
       ? attachment.size

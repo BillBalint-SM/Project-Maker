@@ -5,15 +5,15 @@ import type {
 } from '@project-maker/contracts';
 
 const interviewAction: ProjectPreparationAction = {
-  label: 'Felmérés megnyitása',
+  label: 'Open Initial Intake',
   target: 'INTERVIEW',
 };
 const readinessAction: ProjectPreparationAction = {
-  label: 'Becslési felkészültség megnyitása',
+  label: 'Open Estimation Readiness',
   target: 'READINESS',
 };
 const decisionReviewAction: ProjectPreparationAction = {
-  label: 'Döntési értékelés megnyitása',
+  label: 'Open Decision Review',
   target: 'DECISION_REVIEW',
 };
 
@@ -23,17 +23,17 @@ export function toProjectPreparationStatus(
 ): ProjectPreparationStatus {
   switch (state) {
     case 'SCHEMA_REQUIRED':
-      return status(projectId, state, 'Kérdésséma szükséges', interviewAction);
+      return status(projectId, state, 'Question schema required', interviewAction);
     case 'INTAKE_IN_PROGRESS':
-      return status(projectId, state, 'Felmérés folyamatban', interviewAction);
+      return status(projectId, state, 'Initial Intake in progress', interviewAction);
     case 'CLARIFICATION_REQUIRED':
-      return status(projectId, state, 'Tisztázás szükséges', readinessAction);
+      return status(projectId, state, 'Clarification required', readinessAction);
     case 'DECISION_REVIEW_REQUIRED':
-      return status(projectId, state, 'Döntési értékelés szükséges', decisionReviewAction);
+      return status(projectId, state, 'Decision Review required', decisionReviewAction);
     case 'ESTIMATE_PREPARABLE':
-      return status(projectId, state, 'Becslés előkészíthető', decisionReviewAction);
+      return status(projectId, state, 'Ready for estimation preparation', decisionReviewAction);
     case 'ESTIMATE_READY':
-      return status(projectId, state, 'Becslésre kész', decisionReviewAction);
+      return status(projectId, state, 'Ready for estimation', decisionReviewAction);
   }
 }
 

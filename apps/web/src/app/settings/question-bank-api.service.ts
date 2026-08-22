@@ -17,19 +17,19 @@ export class QuestionBankApiService {
   loadBaseQuestionBank(): Observable<BaseQuestionBank> {
     return this.http
       .get<BaseQuestionBank>('/api/settings/base-questions')
-      .pipe(catchError((error: unknown) => failApiRequest(error, 'betölteni a kérdésbankot')));
+      .pipe(catchError((error: unknown) => failApiRequest(error, 'load the Question Bank')));
   }
 
   createBaseQuestion(input: CreateBaseQuestionInput): Observable<BaseQuestionBank> {
     return this.http
       .post<BaseQuestionBank>('/api/settings/base-questions', input)
-      .pipe(catchError((error: unknown) => failApiRequest(error, 'létrehozni az alapkérdést')));
+      .pipe(catchError((error: unknown) => failApiRequest(error, 'create the base question')));
   }
 
   updateBaseQuestion(input: UpdateBaseQuestionInput): Observable<BaseQuestionBank> {
     return this.http
       .patch<BaseQuestionBank>('/api/settings/base-questions', input)
-      .pipe(catchError((error: unknown) => failApiRequest(error, 'menteni az alapkérdés módosításait')));
+      .pipe(catchError((error: unknown) => failApiRequest(error, 'save base question changes')));
   }
 
   addReferenceFile(questionId: string, file: File): Observable<BaseQuestionBank> {
@@ -40,7 +40,7 @@ export class QuestionBankApiService {
         `/api/settings/base-questions/${encodeURIComponent(questionId)}/reference-files`,
         body,
       )
-      .pipe(catchError((error: unknown) => failApiRequest(error, 'hozzáadni a referenciafájlt')));
+      .pipe(catchError((error: unknown) => failApiRequest(error, 'add the reference file')));
   }
 
   removeReferenceFile(questionId: string, fileId: string): Observable<BaseQuestionBank> {
@@ -48,7 +48,7 @@ export class QuestionBankApiService {
       .delete<BaseQuestionBank>(
         `/api/settings/base-questions/${encodeURIComponent(questionId)}/reference-files/${encodeURIComponent(fileId)}`,
       )
-      .pipe(catchError((error: unknown) => failApiRequest(error, 'eltávolítani a referenciafájlt')));
+      .pipe(catchError((error: unknown) => failApiRequest(error, 'remove the reference file')));
   }
 
   referenceFileDownloadUrl(questionId: string, fileId: string): string {
@@ -64,7 +64,7 @@ export class QuestionBankApiService {
           if (error instanceof HttpErrorResponse && error.status === 404) {
             return of(null);
           }
-          return failApiRequest(error, 'betölteni a projekt kérdéssémáját');
+          return failApiRequest(error, 'load the Project question schema');
         }),
       );
   }
@@ -79,7 +79,7 @@ export class QuestionBankApiService {
         `/api/projects/${encodedProjectId}/question-schema`,
         input,
       )
-      .pipe(catchError((error: unknown) => failApiRequest(error, 'publikálni a projekt kérdéssémáját')));
+      .pipe(catchError((error: unknown) => failApiRequest(error, 'publish the Project question schema')));
   }
 
   updateProjectSchema(
@@ -92,7 +92,7 @@ export class QuestionBankApiService {
         `/api/projects/${encodedProjectId}/question-schema`,
         input,
       )
-      .pipe(catchError((error: unknown) => failApiRequest(error, 'frissíteni a projekt kérdéssémáját')));
+      .pipe(catchError((error: unknown) => failApiRequest(error, 'update the Project question schema')));
   }
 }
 
@@ -118,26 +118,26 @@ function failApiRequest(error: unknown, action: string): Observable<never> {
 function mapApiError(error: unknown, action: string): ActionableApiError {
   if (!(error instanceof HttpErrorResponse)) {
     return {
-      userMessage: `Nem sikerült ${action}. Frissítsd az oldalt, majd próbáld újra.`,
+      userMessage: `Unable to ${action}. Refresh the page and try again.`,
       diagnostics: null,
     };
   }
 
   if (error.status === 0) {
     return {
-      userMessage: `Nem sikerült ${action}, mert a szolgáltatás nem érhető el. Ellenőrizd a kapcsolatot, majd próbáld újra.`,
+      userMessage: `Unable to ${action} because the service is unavailable. Check your connection and try again.`,
       diagnostics: { action, status: error.status, statusText: error.statusText },
     };
   }
 
   const nextStep =
     error.status === 404
-      ? 'Ellenőrizd, hogy a projekt vagy a kérdés még létezik-e.'
+      ? 'Check that the Project or question still exists.'
       : error.status === 409
-        ? 'Frissítsd az oldalt a legújabb publikált verzióhoz, majd próbáld újra.'
-        : 'Ellenőrizd a megadott értékeket, majd próbáld újra.';
+        ? 'Refresh the page to load the latest published version, then try again.'
+        : 'Check the supplied values and try again.';
   return {
-    userMessage: `Nem sikerült ${action}. ${nextStep}`,
+    userMessage: `Unable to ${action}. ${nextStep}`,
     diagnostics: { action, status: error.status, statusText: error.statusText },
   };
 }

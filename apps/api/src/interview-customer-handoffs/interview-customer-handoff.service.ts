@@ -96,7 +96,7 @@ export class InterviewCustomerHandoffService {
       .findOne({ where: { roundId: round.id }, order: { version: 'DESC' } });
     if (!latest || latest.state === 'DRAFT') return;
     throw new ConflictException(
-      'Az interjú csak aktív összefoglaló-tervezettel szerkeszthető.',
+      'The interview can be edited only while an active summary draft exists.',
     );
   }
   async list(
@@ -159,7 +159,7 @@ export class InterviewCustomerHandoffService {
       requireMutable(project);
       if (round.status !== 'ENDED')
         throw new ConflictException(
-          'Új összefoglaló-verzió csak lezárt interjúhoz indítható.',
+          'A new summary version can be started only for an ended interview.',
         );
       await reconcileExpiredSending(manager, projectId, roundId);
       const repository = manager.getRepository(InterviewCustomerHandoffEntity);
@@ -178,7 +178,7 @@ export class InterviewCustomerHandoffService {
         (latest.state === 'UNKNOWN' &&
           (await hasCustomerReceiptEvidence(manager, latest.correspondenceId)));
       if (!canSupersede)
-        throw new ConflictException('Már van aktív összefoglaló-verzió.');
+        throw new ConflictException('An active summary version already exists.');
       const draft = await repository.save(
         newDraft(repository, projectId, roundId, latest.version + 1, latest.id),
       );
@@ -208,7 +208,7 @@ export class InterviewCustomerHandoffService {
         true,
       );
       if (handoff.state !== 'DRAFT')
-        throw new ConflictException('Csak aktív tervezet szerkeszthető.');
+        throw new ConflictException('Only an active draft can be edited.');
       handoff.modificationSummary = normalize(value);
       return toDetail(
         manager,
@@ -239,7 +239,7 @@ export class InterviewCustomerHandoffService {
         false,
       );
       if (handoff.state !== 'DRAFT')
-        throw new ConflictException('Csak aktív tervezet tekinthető elő.');
+        throw new ConflictException('Only an active draft can be previewed.');
       return buildPreview(
         manager,
         project,
@@ -273,7 +273,7 @@ export class InterviewCustomerHandoffService {
       );
       if (handoff.state !== 'DRAFT' || handoff.outboundCommunicationId)
         throw new ConflictException(
-          'Az összefoglaló nem küldhető ebből az állapotból.',
+          'The summary cannot be sent from its current state.',
         );
       const preview = await buildPreview(
         manager,
@@ -288,7 +288,7 @@ export class InterviewCustomerHandoffService {
       )
         throw new ConflictException({
           code: 'PREVIEW_STALE',
-          message: 'Az interjú az előnézet óta megváltozott.',
+          message: 'The interview changed after the preview was generated.',
         });
       const token = randomBytes(24).toString('hex');
       const predecessor = handoff.supersedesHandoffId
@@ -346,17 +346,17 @@ export class InterviewCustomerHandoffService {
       );
       if (await hasCustomerReceiptEvidence(manager, handoff.correspondenceId))
         throw new ConflictException(
-          'A Customer válasza igazolja az átvételt; ezt a logikai verziót nem szabad újraküldeni.',
+          'A Customer reply confirms receipt; this logical version must not be sent again.',
         );
       if (handoff.state === 'UNKNOWN' && !acknowledged)
         throw new BadRequestException(
-          'A kettős küldés kockázatát el kell fogadni.',
+          'You must acknowledge the risk of sending a duplicate message.',
         );
       if (
         !['FAILED', 'UNKNOWN'].includes(handoff.state) ||
         !handoff.outboundCommunicationId
       )
-        throw new ConflictException('Ez a küldés nem próbálható újra.');
+        throw new ConflictException('This delivery cannot be retried.');
       const outbound = await requireOutbound(
         manager,
         handoff.outboundCommunicationId,
@@ -384,11 +384,11 @@ export class InterviewCustomerHandoffService {
       );
       if (handoff.state !== 'FAILED')
         throw new ConflictException(
-          'Csak ismert hibával meghiúsult küldés nyitható újra.',
+          'Only a delivery that failed with a confirmed error can be reopened.',
         );
       if (handoff.correspondenceId)
         throw new ConflictException(
-          'A már átadott logikai verzió változatlan tartalommal próbálható újra.',
+          'A previously handed-off logical version may be retried only with unchanged content.',
         );
       handoff.state = 'DRAFT';
       return toDetail(
@@ -438,7 +438,7 @@ export class InterviewCustomerHandoffService {
         handoff.state !== 'SENDING' ||
         handoff.outboundCommunicationId !== outbound.id
       )
-        throw new ConflictException('A küldési állapot megváltozott.');
+        throw new ConflictException('The delivery state changed while the command was being processed.');
       handoff.state = state;
       const saved = await manager
         .getRepository(InterviewCustomerHandoffEntity)
@@ -482,10 +482,10 @@ async function buildPreview(
 ): Promise<InterviewCustomerHandoffPreview> {
   if (!project.internalOwnerName)
     throw new ConflictException(
-      'A küldéshez meg kell adni a belső projektgazda nevét.',
+      'The internal project owner name is required before sending.',
     );
   if (handoff.version > 1 && !normalize(handoff.modificationSummary))
-    throw new BadRequestException('A módosítás összefoglalása kötelező.');
+    throw new BadRequestException('A change summary is required for versions after version 1.');
   const rendered = renderHandoff(
     await loadProjection(manager, project, round, handoff),
   );
@@ -605,7 +605,7 @@ async function requireOutbound(manager: EntityManager, id: string) {
     .getRepository(CustomerOutboundCommunicationEntity)
     .findOneBy({ id });
   if (!row)
-    throw new ConflictException('A tartós kimenő kommunikáció hiányzik.');
+    throw new ConflictException('The durable outbound communication record is missing.');
   return row;
 }
 function newDraft(

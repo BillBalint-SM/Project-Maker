@@ -50,7 +50,7 @@ export class DeliveryHandoffService {
     const checkedAt = new Date().toISOString();
     try {
       await this.git.remoteSha(setup, this.setups.credential(setup));
-      return { ok: true, checkedAt, message: 'A Git remote és a cél branch elérhető.' };
+      return { ok: true, checkedAt, message: 'The Git remote and target branch are reachable.' };
     } catch (error) {
       return { ok: false, checkedAt, message: gitFailureMessage(error) };
     }
@@ -85,7 +85,7 @@ export class DeliveryHandoffService {
   async confirm(projectId: string, token: string): Promise<DeliveryHandoff> {
     const payload = decodePreview(token, this.previewSecret());
     if (payload.projectId !== projectId || Date.parse(payload.expiresAt) <= Date.now()) {
-      throw new ConflictException('A Git-átadási előnézet lejárt. Készíts új előnézetet.');
+      throw new ConflictException('The Git handoff preview has expired. Generate a new preview.');
     }
     const project = await requireActiveProject(this.dataSource, projectId);
     const deliveryPackage = await this.packages.entity(projectId);
@@ -95,7 +95,7 @@ export class DeliveryHandoffService {
       deliveryPackage.id !== payload.packageId || deliveryPackage.version !== payload.packageVersion ||
       setup.version !== payload.setupVersion || sha256(JSON.stringify(target)) !== payload.targetDigest
     ) {
-      throw new ConflictException('A fejlesztési csomag vagy a Git setup megváltozott. Készíts új előnézetet.');
+      throw new ConflictException('The Delivery package or Git setup changed. Generate a new preview.');
     }
     const existing = await this.dataSource.getRepository(DeliveryHandoffEntity).findOneBy({
       deliveryPackageId: deliveryPackage.id,
@@ -105,7 +105,7 @@ export class DeliveryHandoffService {
     if (existing) return toView(existing);
     const artifact = await this.packages.artifact(projectId);
     if (artifact.digest !== payload.artifactDigest) {
-      throw new ConflictException('A fejlesztési csomag átadási tartalma megváltozott. Készíts új előnézetet.');
+      throw new ConflictException('The Delivery package handoff content changed. Generate a new preview.');
     }
     const revision = await this.packages.revision(deliveryPackage);
     let handoff: DeliveryHandoffEntity;
@@ -155,8 +155,8 @@ export class DeliveryHandoffService {
   async retry(projectId: string, handoffId: string): Promise<DeliveryHandoff> {
     await requireActiveProject(this.dataSource, projectId);
     const handoff = await this.dataSource.getRepository(DeliveryHandoffEntity).findOneBy({ id: handoffId, projectId });
-    if (!handoff) throw new NotFoundException('A Delivery handoff nem található.');
-    if (!['FAILED', 'CONFLICT'].includes(handoff.state)) throw new ConflictException('Ez a Git-átadás nem próbálható újra.');
+    if (!handoff) throw new NotFoundException('Delivery handoff not found.');
+    if (!['FAILED', 'CONFLICT'].includes(handoff.state)) throw new ConflictException('This Git handoff cannot be retried.');
     return this.execute(handoff);
   }
 
@@ -233,7 +233,7 @@ export class DeliveryHandoffService {
 
   private previewSecret(): string {
     const secret = this.config.get<string>('GIT_HANDOFF_PREVIEW_SECRET') ?? '';
-    if (secret.length < 32) throw new ConflictException('A Git-átadási előnézet kulcsa nincs konfigurálva.');
+    if (secret.length < 32) throw new ConflictException('The Git handoff preview signing key is not configured.');
     return secret;
   }
 }
@@ -260,14 +260,14 @@ function encodePreview(payload: HandoffPreviewPayload, secret: string): string {
 
 function decodePreview(token: string, secret: string): HandoffPreviewPayload {
   const [body, signature] = token.split('.');
-  if (!body || !signature) throw new BadRequestException('Érvénytelen Git-átadási előnézet.');
+  if (!body || !signature) throw new BadRequestException('Invalid Git handoff preview.');
   const expected = createHmac('sha256', secret).update(body).digest();
   const actual = Buffer.from(signature, 'base64url');
   if (actual.length !== expected.length || !timingSafeEqual(actual, expected)) {
-    throw new BadRequestException('Érvénytelen Git-átadási előnézet.');
+    throw new BadRequestException('Invalid Git handoff preview.');
   }
   try { return JSON.parse(Buffer.from(body, 'base64url').toString('utf8')) as HandoffPreviewPayload; }
-  catch { throw new BadRequestException('Érvénytelen Git-átadási előnézet.'); }
+  catch { throw new BadRequestException('Invalid Git handoff preview.'); }
 }
 
 async function requireProject(dataSource: DataSource, id: string): Promise<Project> {
@@ -277,7 +277,7 @@ async function requireProject(dataSource: DataSource, id: string): Promise<Proje
 }
 async function requireActiveProject(dataSource: DataSource, id: string): Promise<Project> {
   const project = await requireProject(dataSource, id);
-  if (project.status === 'ARCHIVED') throw new ConflictException('Archivált projektből nem indítható Git-átadás.');
+  if (project.status === 'ARCHIVED') throw new ConflictException('A Git handoff cannot be started from an archived Project.');
   return project;
 }
 async function audit(
@@ -309,11 +309,11 @@ function toView(row: DeliveryHandoffEntity): DeliveryHandoff {
 function gitFailureMessage(error: unknown): string {
   const code = error instanceof GitOperationError ? error.code : 'GIT_FAILED';
   const messages: Record<string, string> = {
-    AUTHENTICATION_FAILED: 'A Git hitelesítés sikertelen.',
-    NON_FAST_FORWARD: 'A cél branch időközben megváltozott.',
-    REMOTE_UNREACHABLE: 'A Git remote nem érhető el.',
-    PUSH_RESULT_UNKNOWN: 'A Git kapcsolat eredménye nem bizonyítható.',
-    GIT_FAILED: 'A Git művelet nem sikerült.',
+    AUTHENTICATION_FAILED: 'Git authentication failed.',
+    NON_FAST_FORWARD: 'The target branch changed before the handoff could be completed.',
+    REMOTE_UNREACHABLE: 'The Git remote is unreachable.',
+    PUSH_RESULT_UNKNOWN: 'The result of the Git push could not be confirmed.',
+    GIT_FAILED: 'The Git operation failed.',
   };
   return messages[code] ?? messages['GIT_FAILED']!;
 }

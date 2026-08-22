@@ -52,7 +52,7 @@ export class ProjectAttachmentBlockComponent {
           this.selectedFile.set(null);
           const input = this.fileInput()?.nativeElement;
           if (input) input.value = '';
-          this.feedback.set('A fájl feltöltve.');
+          this.feedback.set('The file has been uploaded.');
           this.changed.emit();
         },
         error: (error: Error) => this.error.set(error.message),
@@ -63,7 +63,7 @@ export class ProjectAttachmentBlockComponent {
     if (
       !this.mutable() ||
       this.busy() ||
-      !this.document.defaultView?.confirm(`Eltávolítod ezt a fájlt: ${attachment.originalName}?`)
+      !this.document.defaultView?.confirm(`Remove this file: ${attachment.originalName}?`)
     ) {
       return;
     }
@@ -74,7 +74,7 @@ export class ProjectAttachmentBlockComponent {
       .pipe(finalize(() => this.busy.set(false)))
       .subscribe({
         next: () => {
-          this.feedback.set('A fájl eltávolítva.');
+          this.feedback.set('The file has been removed.');
           this.changed.emit();
         },
         error: (error: Error) => this.error.set(error.message),
@@ -87,7 +87,7 @@ export class ProjectAttachmentBlockComponent {
 
   sizeLabel(sizeBytes: number): string {
     return sizeBytes < 1024
-      ? `${sizeBytes} bájt`
+      ? `${sizeBytes} bytes`
       : `${Math.ceil(sizeBytes / 1024)} KiB`;
   }
 }

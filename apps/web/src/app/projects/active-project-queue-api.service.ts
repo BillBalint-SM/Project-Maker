@@ -23,7 +23,7 @@ export class ActiveProjectQueueApiService {
         const cursorCode = cursorErrorCode(error);
         return throwError(() => cursorCode
           ? new ActiveProjectQueueCursorRequestError(cursorCode)
-          : new Error('Az aktív munkasor nem tölthető be. Ellenőrizd a kapcsolatot, majd próbáld újra.'));
+          : new Error('The active project queue could not be loaded. Check the connection and try again.'));
       }),
     );
   }

@@ -87,7 +87,7 @@ export class DeliveryPage implements OnInit {
 
   load(): void {
     if (!this.projectId) {
-      this.error.set('Hiányzik a projekt azonosítója.');
+      this.error.set('The project identifier is missing.');
       this.loading.set(false);
       return;
     }
@@ -159,7 +159,7 @@ export class DeliveryPage implements OnInit {
   savePackage(): void {
     this.packageForm.markAllAsTouched();
     if (this.packageForm.invalid || this.saving() || this.archived()) {
-      if (this.packageForm.invalid) this.error.set('Töltsd ki a tételcímeket, user story-kat és legalább egy elfogadási kritériumot tételenként.');
+      if (this.packageForm.invalid) this.error.set('Provide an item title, user story, and at least one acceptance criterion for each item.');
       return;
     }
     const raw = this.packageForm.getRawValue();
@@ -183,7 +183,7 @@ export class DeliveryPage implements OnInit {
         this.packageForm.markAsPristine();
         this.saving.set(false);
         this.preview.set(null);
-        this.feedback.set(`A fejlesztési csomag v${saved.version} mentve lett.`);
+        this.feedback.set(`Delivery Package v${saved.version} has been saved.`);
       },
       error: (error: Error) => {
         this.error.set(error.message);
@@ -223,8 +223,8 @@ export class DeliveryPage implements OnInit {
           this.preview.set(null);
           this.handoffPending.set(false);
           this.feedback.set(handoff.state === 'SENT'
-            ? `A fejlesztési csomag Gitbe került (${shortSha(handoff.commitSha)}).`
-            : 'A Git-átadás nem igazolható. A történetből próbálható újra.');
+            ? `The Delivery Package has been handed off to Git (${shortSha(handoff.commitSha)}).`
+            : 'The Git handoff could not be verified. Retry it from the history.');
           this.loadAfterHandoff();
         },
         error: (error: Error) => {
@@ -241,7 +241,7 @@ export class DeliveryPage implements OnInit {
     this.api.retryHandoff(this.projectId, handoff.id).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: (result) => {
         this.handoffPending.set(false);
-        this.feedback.set(result.state === 'SENT' ? 'A Git-átadás sikerült.' : 'A Git-átadás továbbra sem igazolható.');
+        this.feedback.set(result.state === 'SENT' ? 'The Git handoff completed successfully.' : 'The Git handoff still cannot be verified.');
         this.loadAfterHandoff();
       },
       error: (error: Error) => {
@@ -258,7 +258,7 @@ export class DeliveryPage implements OnInit {
 
   handoffLabel(handoff: DeliveryHandoff): string {
     const labels: Record<DeliveryHandoff['state'], string> = {
-      PENDING: 'Előkészítve', PUSHING: 'Küldés alatt', SENT: 'Átadva', FAILED: 'Sikertelen', CONFLICT: 'Git konfliktus',
+      PENDING: 'Prepared', PUSHING: 'Pushing', SENT: 'Handed off', FAILED: 'Failed', CONFLICT: 'Git conflict',
     };
     return labels[handoff.state];
   }
@@ -309,5 +309,5 @@ function emptyItem(): DeliveryPackageItemInput {
 }
 
 function shortSha(value: string | null): string {
-  return value ? value.slice(0, 10) : 'SHA nélkül';
+  return value ? value.slice(0, 10) : 'No SHA';
 }

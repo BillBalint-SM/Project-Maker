@@ -24,12 +24,12 @@ export type DiscoveryOperation =
   | 'resolve';
 
 const discoveryActions: Readonly<Record<DiscoveryOperation, string>> = {
-  load: 'betölteni a tisztázandó tételeket',
-  'load-source-options': 'betölteni a kezdő felmérés forrásait',
-  create: 'létrehozni a tisztázandó tételt',
-  update: 'menteni a tisztázandó tétel módosításait',
-  'set-source-link': 'módosítani a tisztázandó tétel forrását',
-  resolve: 'lezárni a tisztázandó tételt',
+  load: 'load Discovery follow-ups',
+  'load-source-options': 'load Initial Intake sources',
+  create: 'create the Discovery follow-up',
+  update: 'save Discovery follow-up changes',
+  'set-source-link': 'update the Discovery follow-up source',
+  resolve: 'resolve the Discovery follow-up',
 };
 
 export class DiscoveryFollowUpsApiError extends Error {
@@ -162,7 +162,7 @@ export class DiscoveryFollowUpsApiService {
       return throwError(
         () =>
           new DiscoveryFollowUpsApiError(
-            'Nem sikerült ' + action + '. Frissítsd az oldalt, majd próbáld újra.',
+            'Could not ' + action + '. Refresh the page and try again.',
             operation,
             null,
           ),
@@ -179,9 +179,9 @@ export class DiscoveryFollowUpsApiService {
       return throwError(
         () =>
           new DiscoveryFollowUpsApiError(
-            'Nem sikerült ' +
+            'Could not ' +
               action +
-              ', mert a szolgáltatás nem érhető el. Ellenőrizd a kapcsolatot, majd próbáld újra.',
+              ' because the service is unavailable. Check the connection and try again.',
             operation,
             error.status,
           ),
@@ -191,7 +191,7 @@ export class DiscoveryFollowUpsApiService {
     return throwError(
       () =>
         new DiscoveryFollowUpsApiError(
-          'Nem sikerült ' +
+          'Could not ' +
             action +
             '. ' +
             discoveryNextStep(error.status, operation),
@@ -207,25 +207,25 @@ function discoveryNextStep(
   operation: DiscoveryOperation,
 ): string {
   if (status === 404) {
-    return 'Térj vissza a projektportfólióhoz, és ellenőrizd, hogy a projekt még létezik-e.';
+    return 'Return to the Project Portfolio and confirm that the Project still exists.';
   }
   if (status === 409 && operation === 'create') {
-    return 'A projekt archiválva lett vagy időközben megváltozott. Töltsd újra az oldalt, majd próbáld meg ismét.';
+    return 'The Project was archived or changed in the meantime. Reload the page and try again.';
   }
   if (status === 409 && operation === 'update') {
-    return 'A tisztázandó tétel időközben megváltozhatott. Töltsd be az aktuális verziót, majd próbáld újra.';
+    return 'The Discovery follow-up may have changed. Load the current version and try again.';
   }
   if (status === 409 && operation === 'set-source-link') {
-    return 'A kezdő felmérés forráslistája frissült. Válassz újra.';
+    return 'The Initial Intake source list changed. Select a source again.';
   }
   if (status === 409) {
-    return 'Frissítsd a projektet a legújabb adminisztratív projektfázis megjelenítéséhez.';
+    return 'Refresh the Project to display its latest administrative phase.';
   }
   if (status === 400 && operation === 'create') {
-    return 'Válassz kategóriát, töltsd ki a kötelező mezőket és adj meg valós határidőt.';
+    return 'Select a category, complete the required fields, and enter a valid due date.';
   }
   if (status === 400 && operation === 'resolve') {
-    return 'Ellenőrizd a megadott értékeket, majd próbáld újra.';
+    return 'Review the entered values and try again.';
   }
-  return 'Frissítsd a tisztázandó tételeket, majd próbáld újra.';
+  return 'Refresh Discovery follow-ups and try again.';
 }

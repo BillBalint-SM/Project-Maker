@@ -34,11 +34,11 @@ export class NotificationsPage implements OnInit {
 
   kindLabel(kind: string): string {
     const labels: Record<string, string> = {
-      PROJECT_OVERDUE: 'Lejárt feladat',
-      PROJECT_DUE: 'Közelgő feladat',
-      CUSTOMER_REPLY: 'Új ügyfélválasz',
-      CUSTOMER_RESPONSE: 'Új ügyfél-pontosítás',
-      CUSTOMER_DELIVERY_FAILURE: 'Ügyfélküldés javítandó',
+      PROJECT_OVERDUE: 'Overdue action',
+      PROJECT_DUE: 'Upcoming action',
+      CUSTOMER_REPLY: 'New Customer reply',
+      CUSTOMER_RESPONSE: 'New Customer clarification',
+      CUSTOMER_DELIVERY_FAILURE: 'Customer delivery requires attention',
     };
     return labels[kind] ?? kind;
   }

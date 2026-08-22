@@ -36,23 +36,23 @@ test('reviews and sends one Customer reminder, then surfaces its correlated repl
   await page.getByTestId('follow-up-message-draft').fill(message);
   await page.getByTestId('follow-up-reference-select').selectOption(reference.id);
   await nativeButton(page, 'save-follow-up-draft-button').click();
-  await expect(page.getByTestId('follow-up-draft-feedback')).toContainText('Piszkozat mentve');
+  await expect(page.getByTestId('follow-up-draft-feedback')).toContainText('Customer follow-up draft saved');
 
   const previewTrigger = nativeButton(page, 'preview-follow-up-ping-button');
   await previewTrigger.click();
-  const preview = page.getByRole('alertdialog', { name: 'Ügyfél-emlékeztető előnézete' });
+  const preview = page.getByRole('alertdialog', { name: 'Customer follow-up preview' });
   await expect(preview).toContainText(project.customerContactEmail);
   await expect(preview).toContainText(correspondenceMailboxIdentity);
   await expect(preview).toContainText(message);
-  await expect(preview).toContainText('Kérdés: Melyik jóváhagyás hiányzik?');
+  await expect(preview).toContainText('Question: Melyik jóváhagyás hiányzik?');
   await expect(preview).not.toContainText('Belső Tulajdonos');
-  await page.getByRole('button', { name: 'Mégse' }).click();
+  await page.getByRole('button', { name: 'Cancel' }).click();
   await expect(previewTrigger).toBeFocused();
 
   await previewTrigger.click();
-  await page.getByRole('button', { name: 'Küldés az ügyfélnek' }).click();
+  await page.getByRole('button', { name: 'Send to Customer' }).click();
   await expect(page.getByTestId('follow-up-send-result')).toContainText(
-    'Átadva a levelezőrendszernek',
+    'Accepted by the mail system for delivery',
   );
 
   const submission = (await sentMessages(request)).at(-1);
@@ -78,9 +78,9 @@ test('reviews and sends one Customer reminder, then surfaces its correlated repl
   await page.reload();
 
   await expect(page.getByText('A hiányzó jóváhagyást elküldtük.')).toBeVisible();
-  await expect(page.getByText('1 olvasatlan üzenet')).toBeVisible();
+  await expect(page.getByText('1 unread message')).toBeVisible();
   await expect(page.getByRole('link', {
-    name: 'Kapcsolódó tisztázandó tétel áttekintése',
+    name: 'Review related Discovery follow-up',
   })).toBeVisible();
 });
 

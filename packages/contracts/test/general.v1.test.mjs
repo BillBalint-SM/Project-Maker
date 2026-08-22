@@ -101,6 +101,19 @@ test('package export presents the canonical playbook as immutable contract data'
   );
 });
 
+test('package summaries expose professional English playbook names without rewriting canonical v1', async () => {
+  const { packagedPlaybookSummaries } = await import('../dist/index.js');
+
+  assert.deepEqual(
+    packagedPlaybookSummaries.map(({ id, name }) => ({ id, name })),
+    [
+      { id: 'general', name: 'General project discovery' },
+      { id: 'system-integration', name: 'System integration' },
+      { id: 'data-migration', name: 'Data migration' },
+    ],
+  );
+});
+
 test('validation rejects a status vocabulary that differs from the canonical playbook', async () => {
   const { generalPlaybookV1, validateGeneralPlaybook } = await import('../dist/index.js');
   const invalidPlaybook = structuredClone(generalPlaybookV1);

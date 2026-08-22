@@ -195,7 +195,7 @@ function attachmentMetadata(
     result.push(Object.freeze({
       name: node.dispositionParameters?.filename
         ?? node.parameters?.name
-        ?? 'Névtelen melléklet',
+        ?? 'Unnamed attachment',
       contentType: type || 'application/octet-stream',
       size: Number.isSafeInteger(node.size) && (node.size ?? -1) >= 0
         ? node.size!

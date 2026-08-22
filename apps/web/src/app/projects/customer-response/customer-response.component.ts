@@ -78,7 +78,7 @@ export class CustomerResponseComponent implements OnInit {
       next: () => {
         this.preview.set(null);
         this.selected.set(new Set());
-        this.feedback.set('A válaszkérés rögzítve és átadva lett a levelezésnek.');
+        this.feedback.set('The response request has been recorded and handed to the mail system.');
         this.busy.set(false);
         this.load();
       },
@@ -88,12 +88,12 @@ export class CustomerResponseComponent implements OnInit {
 
   revoke(request: CustomerResponseRequest): void {
     if (this.busy()) return;
-    this.command(this.api.revoke(this.projectId(), request.id), 'A válaszkérés visszavonva.');
+    this.command(this.api.revoke(this.projectId(), request.id), 'The response request has been revoked.');
   }
 
   retry(request: CustomerResponseRequest): void {
     if (this.busy()) return;
-    this.command(this.api.retry(this.projectId(), request.id), 'A küldést újrapróbáltuk.');
+    this.command(this.api.retry(this.projectId(), request.id), 'Sending has been retried.');
   }
 
   review(request: CustomerResponseRequest): void {
@@ -101,7 +101,7 @@ export class CustomerResponseComponent implements OnInit {
     this.start();
     this.api.review(this.projectId(), request.id).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: () => {
-        this.feedback.set('Az ügyfél válasza átnézett.');
+        this.feedback.set('The Customer response has been reviewed.');
         this.busy.set(false);
         this.load();
         this.notifications.load().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({ error: () => undefined });
@@ -115,7 +115,7 @@ export class CustomerResponseComponent implements OnInit {
     this.start();
     this.api.evidence(this.projectId(), request.id, answerId).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: () => {
-        this.feedback.set('A válasz bizonyítékforrásként megmarad.');
+        this.feedback.set('The response has been retained as evidence.');
         this.busy.set(false);
         this.load();
       },
@@ -124,14 +124,14 @@ export class CustomerResponseComponent implements OnInit {
   }
 
   promptText(request: CustomerResponseRequest, promptId: string): string {
-    return request.prompts.find((prompt) => prompt.id === promptId)?.text ?? 'Pontosítás';
+    return request.prompts.find((prompt) => prompt.id === promptId)?.text ?? 'Clarification';
   }
 
   requestState(request: CustomerResponseRequest): string {
-    if (request.state === 'SUBMITTED') return request.submission?.reviewedAt ? 'Átnézve' : 'Új válasz';
-    if (request.state === 'REVOKED') return 'Visszavonva';
-    if (new Date(request.expiresAt).getTime() <= Date.now()) return 'Lejárt';
-    return request.deliveryState === 'SENT' ? 'Elküldve' : request.deliveryState === 'FAILED' ? 'Sikertelen küldés' : request.deliveryState === 'UNKNOWN' ? 'Bizonytalan küldés' : 'Küldés alatt';
+    if (request.state === 'SUBMITTED') return request.submission?.reviewedAt ? 'Reviewed' : 'New response';
+    if (request.state === 'REVOKED') return 'Revoked';
+    if (new Date(request.expiresAt).getTime() <= Date.now()) return 'Expired';
+    return request.deliveryState === 'SENT' ? 'Sent' : request.deliveryState === 'FAILED' ? 'Sending failed' : request.deliveryState === 'UNKNOWN' ? 'Delivery status unknown' : 'Sending';
   }
 
   private command(operation: ReturnType<CustomerResponseApiService['revoke']>, message: string): void {

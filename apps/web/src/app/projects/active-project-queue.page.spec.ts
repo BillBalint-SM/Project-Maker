@@ -23,36 +23,36 @@ const page: ActiveProjectQueuePage = {
       projectId: '11111111-1111-4111-8111-111111111111',
       projectName: 'Ügyfélválaszos projekt',
       urgency: 'CUSTOMER_REPLY',
-      urgencyLabel: 'Új ügyfélválasz',
+      urgencyLabel: 'New Customer reply',
       preparationStatus: {
         projectId: '11111111-1111-4111-8111-111111111111',
         state: 'INTAKE_IN_PROGRESS',
-        label: 'Felmérés folyamatban',
-        primaryAction: { target: 'INTERVIEW', label: 'Felmérés megnyitása' },
+        label: 'Initial Intake in progress',
+        primaryAction: { target: 'INTERVIEW', label: 'Open Initial Intake' },
       },
       nextAction: 'Válasz feldolgozása',
       nextActionOwner: { role: 'INTERNAL_OWNER', displayName: 'Kovács Anna', complete: true },
       dueAt: null,
       newReplyCount: 2,
       progress: { kind: 'INTERVIEW_ANSWERS', answeredQuestions: 4, totalQuestions: 9 },
-      primaryAction: { target: 'CUSTOMER_CORRESPONDENCE', label: 'Ügyféllevelezés megnyitása' },
+      primaryAction: { target: 'CUSTOMER_CORRESPONDENCE', label: 'Open Customer correspondence' },
     },
     {
       projectId: '22222222-2222-4222-8222-222222222222',
       projectName: 'Normál projekt',
       urgency: 'IN_PROGRESS',
-      urgencyLabel: 'Folyamatban',
+      urgencyLabel: 'In progress',
       preparationStatus: {
         projectId: '22222222-2222-4222-8222-222222222222',
         state: 'SCHEMA_REQUIRED',
-        label: 'Kérdésséma szükséges',
-        primaryAction: { target: 'INTERVIEW', label: 'Felmérés megnyitása' },
+        label: 'Question schema required',
+        primaryAction: { target: 'INTERVIEW', label: 'Open Initial Intake' },
       },
       nextAction: null,
       nextActionOwner: { role: null, displayName: null, complete: false },
       dueAt: null,
       newReplyCount: 0,
-      primaryAction: { target: 'INTERVIEW', label: 'Felmérés megnyitása' },
+      primaryAction: { target: 'INTERVIEW', label: 'Open Initial Intake' },
     },
   ],
 };
@@ -109,11 +109,11 @@ describe('ActiveProjectQueuePageComponent', () => {
       cursor: undefined,
     });
     expect(element.querySelectorAll('[data-testid="active-queue-group"]')).toHaveLength(2);
-    expect(element.textContent).toContain('Új ügyfélválasz');
-    expect(element.textContent).toContain('4 / 9 kérdés megválaszolva');
-    expect(element.textContent).toContain('Folyamatban');
-    expect(element.textContent).toContain('2 projekt látható az összesen 12 aktív projektből');
-    expect(element.textContent).toContain('1 látható, összesen 6 projekt');
+    expect(element.textContent).toContain('New Customer reply');
+    expect(element.textContent).toContain('4 / 9 questions answered');
+    expect(element.textContent).toContain('In progress');
+    expect(element.textContent).toContain('2 of 12 active projects shown');
+    expect(element.textContent).toContain('1 shown of 6 projects');
     const projectLink = element.querySelector(
       '[data-testid="queue-project-11111111-1111-4111-8111-111111111111"]',
     ) as HTMLAnchorElement | null;
@@ -273,7 +273,7 @@ describe('ActiveProjectQueuePageComponent', () => {
     expect(router.url).toBe('/?q=projekt&urgency=OVERDUE&cursor=next-token');
   });
 
-  it('recovers a rejected cursor URL to the first page with Hungarian guidance', async () => {
+  it('recovers a rejected cursor URL to the first page with clear guidance', async () => {
     const firstPage = { ...page, previousCursor: null, nextCursor: null };
     const api = {
       getPage: vi.fn().mockImplementation((query: { cursor?: string }) =>
@@ -301,13 +301,13 @@ describe('ActiveProjectQueuePageComponent', () => {
       cursor: undefined,
     });
     expect(fixture.nativeElement.textContent).toContain(
-      'A korábbi oldal már nem állítható helyre. Az első oldalt mutatjuk.',
+      'The previous page is no longer available. Showing the first page.',
     );
 
     await router.navigateByUrl('/?q=másik-projekt');
     await fixture.whenStable();
     expect(fixture.nativeElement.textContent).not.toContain(
-      'A korábbi oldal már nem állítható helyre. Az első oldalt mutatjuk.',
+      'The previous page is no longer available. Showing the first page.',
     );
   });
 
@@ -346,7 +346,7 @@ describe('ActiveProjectQueuePageComponent', () => {
       cursor: undefined,
     });
     expect(fixture.nativeElement.textContent).toContain('Ügyfélválaszos projekt');
-    expect(fixture.nativeElement.textContent).toContain('A lista elavult lehet.');
+    expect(fixture.nativeElement.textContent).toContain('The list may be stale.');
     expect(document.activeElement).toBe(refreshButton);
   });
 
@@ -375,9 +375,9 @@ describe('ActiveProjectQueuePageComponent', () => {
     await fixture.whenStable();
 
     expect(api.getPage).toHaveBeenCalledTimes(2);
-    expect(fixture.nativeElement.textContent).toContain('Utolsó lekérés: 2026. 08. 19. 09:15');
+    expect(fixture.nativeElement.textContent).toContain('Last retrieved: 2026-08-19 09:15');
     expect(fixture.nativeElement.querySelector('[data-testid="queue-live-status"]')?.textContent)
-      .toContain('A lista frissítve.');
+      .toContain('The list has been refreshed.');
     expect(document.activeElement).toBe(refreshButton);
   });
 
@@ -415,7 +415,7 @@ describe('ActiveProjectQueuePageComponent', () => {
 
     expect(router.url).toBe('/?q=projekt&urgency=OVERDUE&cursor=next-token');
     expect(fixture.nativeElement.textContent).toContain('Ügyfélválaszos projekt');
-    expect(fixture.nativeElement.textContent).toContain('A lista elavult lehet.');
+    expect(fixture.nativeElement.textContent).toContain('The list may be stale.');
 
     (fixture.nativeElement.querySelector('[data-testid="queue-update-retry"]') as HTMLButtonElement).click();
     await fixture.whenStable();
@@ -428,7 +428,7 @@ describe('ActiveProjectQueuePageComponent', () => {
     });
     expect(router.url).toBe('/?q=projekt&urgency=OVERDUE&cursor=next-token');
     expect(fixture.nativeElement.textContent).toContain('Helyreállított oldal');
-    expect(fixture.nativeElement.textContent).not.toContain('A lista elavult lehet.');
+    expect(fixture.nativeElement.textContent).not.toContain('The list may be stale.');
   });
 
   it('retires an older failed request when a newer route query becomes active', async () => {
@@ -518,8 +518,8 @@ describe('ActiveProjectQueuePageComponent', () => {
     const fixture = TestBed.createComponent(ActiveProjectQueuePageComponent);
     await fixture.whenStable();
 
-    expect(fixture.nativeElement.textContent).toContain('Nincs aktív projekt');
-    expect(fixture.nativeElement.textContent).not.toContain('Nincs találat');
+    expect(fixture.nativeElement.textContent).toContain('No active projects');
+    expect(fixture.nativeElement.textContent).not.toContain('No results');
     const links = [...fixture.nativeElement.querySelectorAll('[data-testid="active-queue-empty"] a')]
       .map((link: Element) => link.getAttribute('href'));
     expect(links).toContain('/');
@@ -541,13 +541,14 @@ describe('ActiveProjectQueuePageComponent', () => {
     const fixture = TestBed.createComponent(ActiveProjectQueuePageComponent);
     await fixture.whenStable();
 
-    expect(fixture.nativeElement.textContent).toContain('Nincs találat');
-    expect(fixture.nativeElement.textContent).not.toContain('Nincs aktív projekt');
+    expect(
+      fixture.nativeElement.querySelector('[data-testid="active-queue-empty"] h2')?.textContent,
+    ).toContain('No results');
     (fixture.nativeElement.querySelector('[data-testid="queue-clear-filters"]') as HTMLButtonElement).click();
     await fixture.whenStable();
 
     expect(router.url).toBe('/');
-    expect(fixture.nativeElement.textContent).toContain('Nincs aktív projekt');
+    expect(fixture.nativeElement.textContent).toContain('No active projects');
   });
 });
 

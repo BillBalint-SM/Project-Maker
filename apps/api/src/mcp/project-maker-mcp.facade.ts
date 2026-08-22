@@ -58,7 +58,7 @@ export class ProjectMakerMcpFacade {
   async getProjectContext(projectId: string): Promise<unknown> {
     const project = (await this.projects.list()).find((candidate) => candidate.id === projectId);
     if (!project) {
-      throw new NotFoundException('A projekt nem található.');
+      throw new NotFoundException('Project not found.');
     }
     const [specifications, deliveryPackage, handoffs] = await Promise.all([
       this.markdown.list(projectId),
@@ -84,7 +84,7 @@ export class ProjectMakerMcpFacade {
     }
     const latest = (await this.markdown.list(projectId))[0];
     if (!latest) {
-      throw new NotFoundException('A projekthez még nincs specifikációverzió.');
+      throw new NotFoundException('The project has no specification versions yet.');
     }
     return latest;
   }

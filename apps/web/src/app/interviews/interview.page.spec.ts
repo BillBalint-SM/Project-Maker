@@ -81,8 +81,8 @@ describe('InterviewPage', () => {
     expect(
       page.nativeElement.querySelector('[data-testid="round-assessment-status-snapshot-optional"]')
         ?.textContent,
-    ).toContain('Nincs meg');
-    expect(completeStatus?.textContent).toContain('Kész');
+    ).toContain('Missing');
+    expect(completeStatus?.textContent).toContain('Complete');
   });
 
   it('does not allow partial assessment before a persisted valid answer exists', async () => {
@@ -107,7 +107,7 @@ describe('InterviewPage', () => {
 
   it('retains a not-relevant rationale after a failed save and retries the same assessment', async () => {
     const userMessage =
-      'Nem sikerült elmenteni az értékelést (HTTP 409). Frissítsd az oldalt, hogy a legfrissebb interjúállapotot lásd, majd próbáld újra.';
+      'Could not save the assessment (HTTP 409). Refresh the page to load the latest interview state, then try again.';
     const savedQuestion = buildTextQuestion({
       checklistStatus: 'Nem releváns',
       assessmentRationale: 'A kérdés nem kapcsolódik a projekthez.',
@@ -157,13 +157,13 @@ describe('InterviewPage', () => {
     expect(
       page.nativeElement.querySelector('[data-testid="round-assessment-status-snapshot-1"]')
         ?.textContent,
-    ).toContain('Nem releváns');
+    ).toContain('Not applicable');
   });
 
   it('submits nonblank not-relevant rationales above the former client limit for server validation', async () => {
     const rationaleAboveFormerClientLimit = 'x'.repeat(10_001);
     const serverError =
-      'Nem sikerült elmenteni az értékelést (HTTP 400). Ellenőrizd az adatokat, majd próbáld újra.';
+      'Could not save the assessment (HTTP 400). Check the data, then try again.';
     const setAssessment = vi.fn().mockReturnValue(throwError(() => new Error(serverError)));
     const questionBankApi = createQuestionBankApi(null, null);
     const interviewApi = {
@@ -232,13 +232,13 @@ describe('InterviewPage', () => {
     expect(
       page.nativeElement.querySelector('[data-testid="round-assessment-status-snapshot-1"]')
         ?.textContent,
-    ).toContain('Nincs meg');
+    ).toContain('Missing');
   });
 
   it('keeps pending and failed assessment work blocking completion when an overlapping answer save resolves', async () => {
     const pendingAssessment = new Subject<RoundQuestionSnapshot>();
     const pendingAnswer = new Subject<RoundQuestionSnapshot>();
-    const assessmentError = 'Nem sikerült elmenteni az értékelést. Próbáld újra.';
+    const assessmentError = 'Could not save the assessment. Try again.';
     const answerResponse = buildTextQuestion({
       answer: 'Frissített válasz',
       answeredAt: '2026-08-06T10:22:00.000Z',
@@ -281,7 +281,7 @@ describe('InterviewPage', () => {
     expect(
       page.nativeElement.querySelector('[data-testid="round-assessment-save-state-snapshot-1"]')
         ?.textContent,
-    ).toContain('Értékelés mentése folyamatban');
+    ).toContain('Saving assessment…');
     expect(
       page.nativeElement
         .querySelector('[data-testid="set-partial-assessment-snapshot-1"]')
@@ -348,12 +348,12 @@ describe('InterviewPage', () => {
     expect(
       page.nativeElement.querySelector('[data-testid="round-assessment-status-snapshot-1"]')
         ?.textContent,
-    ).toContain('Kész');
+    ).toContain('Complete');
   });
 
   it('blocks completion while assessment work is pending or failed until retry succeeds', async () => {
     const pendingAssessment = new Subject<RoundQuestionSnapshot>();
-    const userMessage = 'Nem sikerült elmenteni az értékelést. Próbáld újra.';
+    const userMessage = 'Could not save the assessment. Try again.';
     const savedQuestion = buildTextQuestion({
       checklistStatus: 'Részben megvan',
       assessmentRationale: null,
@@ -379,7 +379,7 @@ describe('InterviewPage', () => {
     );
     expect(
       page.nativeElement.querySelector('[data-testid="complete-round-blocked-message"]')?.textContent,
-    ).toContain('értékelés mentése');
+    ).toContain('assessment saves');
 
     pendingAssessment.error(new Error(userMessage));
     await page.fixture.whenStable();
@@ -554,13 +554,13 @@ describe('InterviewPage', () => {
     const saveState = page.nativeElement.querySelector(
       '[data-testid="round-answer-save-state-snapshot-1"]',
     ) as HTMLElement | null;
-    expect(saveState?.textContent?.trim()).toBe('Mentve');
+    expect(saveState?.textContent?.trim()).toBe('Saved');
     expect(answerInput.value).toBe('Újabb változat');
   });
 
-  it('keeps the failed draft visible, shows a Hungarian retry action, and retries the same value', async () => {
+  it('keeps the failed draft visible, shows a retry action, and retries the same value', async () => {
     const userMessage =
-      'Nem sikerült elmenteni a választ (HTTP 409). Frissítsd az oldalt, hogy a legfrissebb interjúállapotot lásd, majd próbáld újra.';
+      'Could not save the response (HTTP 409). Refresh the page to load the latest interview state, then try again.';
     const savedQuestion = buildTextQuestion({
       answer: 'Sikertelen mentés után is megmaradó válasz',
       answeredAt: '2026-08-06T10:24:00.000Z',
@@ -598,7 +598,7 @@ describe('InterviewPage', () => {
 
     expect(answerInput.value).toBe('Sikertelen mentés után is megmaradó válasz');
     expect(retryButton).not.toBeNull();
-    expect(saveState?.textContent).toContain('Nem sikerült menteni');
+    expect(saveState?.textContent).toContain('Could not save.');
     expect(saveState?.textContent).toContain(userMessage);
     expect(
       page.nativeElement.querySelector('[data-testid="save-round-answer-snapshot-1"]'),
@@ -624,7 +624,7 @@ describe('InterviewPage', () => {
 
   it('blocks completion while a failed autosave is still in error and keeps the retryable draft visible', async () => {
     const autosaveError =
-      'Nem sikerült elmenteni a választ (HTTP 409). Frissítsd az oldalt, hogy a legfrissebb interjúállapotot lásd, majd próbáld újra.';
+      'Could not save the response (HTTP 409). Refresh the page to load the latest interview state, then try again.';
     const failedQuestion = buildOptionalTextQuestion({
       answer: null,
       answeredAt: null,
@@ -666,7 +666,7 @@ describe('InterviewPage', () => {
     expect(answerInput.value).toBe('Még nincs mentve, de fontos válasz');
     expect(completeButton?.disabled).toBe(true);
     expect(blockedMessage?.textContent?.trim()).toBe(
-      'A felmérési kör nem zárható le, amíg van sikertelen válaszmentés. Mentsd újra a hibás válaszokat, majd próbáld újra.',
+      'The interview round cannot be completed while response saves have failed. Save the failed responses again, then retry.',
     );
 
     page.fixture.componentInstance.finishRound(false);
@@ -677,7 +677,7 @@ describe('InterviewPage', () => {
     ) as HTMLElement | null;
     expect(finishRound).not.toHaveBeenCalled();
     expect(actionError?.textContent?.trim()).toBe(
-      'A felmérési kör nem zárható le, amíg van sikertelen válaszmentés. Mentsd újra a hibás válaszokat, majd próbáld újra.',
+      'The interview round cannot be completed while response saves have failed. Save the failed responses again, then retry.',
     );
     expect(answerInput.value).toBe('Még nincs mentve, de fontos válasz');
     expect(
@@ -685,7 +685,7 @@ describe('InterviewPage', () => {
     ).not.toBeNull();
   });
 
-  it('maps schema publish failures to safe Hungarian text without exposing the raw service message', async () => {
+  it('maps schema publish failures to safe text without exposing the raw service message', async () => {
     const rawServiceMessage =
       'Could not update the project question schema (HTTP 409). PostgreSQL duplicate key value violates unique constraint.';
     const questionBankApi = createQuestionBankApi(null, null);
@@ -710,13 +710,12 @@ describe('InterviewPage', () => {
 
     expect(questionBankApi.updateProjectSchema).toHaveBeenCalledTimes(1);
     expect(actionError?.textContent?.trim()).toBe(
-      'Nem sikerült frissíteni a projektsémát. Frissítsd az oldalt, ellenőrizd a kiválasztott kérdéseket, majd próbáld újra.',
+      'Could not update the project schema. Refresh the page, check the selected questions, and try again.',
     );
-    expect(actionError?.textContent).not.toContain('Could not');
     expect(actionError?.textContent).not.toContain('PostgreSQL');
   });
 
-  it('renders deterministic Hungarian coaching from the round snapshot contract', async () => {
+  it('renders deterministic English coaching from the round snapshot contract', async () => {
     const question = buildLongTextQuestion({
       hint: 'Írd le a jelenlegi helyzetet és a kívánt kimenetet.',
     });
@@ -731,14 +730,14 @@ describe('InterviewPage', () => {
       '[data-testid="round-question-snapshot-long-text"]',
     ) as HTMLElement | null;
 
-    expect(questionCard?.textContent).toContain('Ellenőrzési pont: Üzleti cél');
-    expect(questionCard?.textContent).toContain('Kötelező kérdés');
-    expect(questionCard?.textContent).toContain('Blokkoló tisztázás');
+    expect(questionCard?.textContent).toContain('Control point: Üzleti cél');
+    expect(questionCard?.textContent).toContain('Required question');
+    expect(questionCard?.textContent).toContain('Blocking clarification');
     expect(questionCard?.textContent).toContain(
       'Írd le a jelenlegi helyzetet és a kívánt kimenetet.',
     );
     expect(questionCard?.textContent).toContain(
-      'Részletes, többmondatos válasz ajánlott.',
+      'A detailed, multi-sentence response is recommended.',
     );
   });
 
@@ -755,7 +754,7 @@ describe('InterviewPage', () => {
     expect(
       page.nativeElement.querySelector('[data-testid="interview-question-selection"]'),
     ).not.toBeNull();
-    expect(page.nativeElement.textContent).not.toContain('Kezdő felmérési kör');
+    expect(page.nativeElement.querySelector('[data-testid="round-status"]')).toBeNull();
     expect(
       page.nativeElement.querySelector('[data-testid="round-type-select"]'),
     ).toBeNull();
@@ -775,12 +774,12 @@ describe('InterviewPage', () => {
 
     expect(interviewApi.getRound).toHaveBeenCalledWith('project-789', 'round-stakeholder');
     expect(page.nativeElement.querySelector('.round-type')?.textContent?.trim())
-      .toBe('Stakeholder kör');
+      .toBe('Stakeholder round');
   });
 
-  it('preserves the specific Hungarian service error during initial load', async () => {
+  it('preserves the specific service error during initial load', async () => {
     const userMessage =
-      'Nem sikerült betölteni az aktív kezdő felmérési kört. Ellenőrizd, hogy a projekt, a felmérési kör vagy a kérdés még létezik-e.';
+      'Could not load the active Initial Intake round. Check that the project, interview round, or question still exists.';
     const questionBankApi = createQuestionBankApi(null, null);
     const interviewApi = {
       ...createInterviewApi(null, null),
@@ -802,7 +801,7 @@ describe('InterviewPage', () => {
     expect(loadError?.textContent?.trim()).toBe(userMessage);
   });
 
-  it('falls back to the generic Hungarian load error for an unknown internal error message', async () => {
+  it('falls back to the generic load error for an unknown internal error message', async () => {
     const questionBankApi = createQuestionBankApi(null, null);
     const interviewApi = {
       ...createInterviewApi(null, null),
@@ -810,7 +809,7 @@ describe('InterviewPage', () => {
         throwError(
           () =>
             new Error(
-              'Nem sikerült lekérni az interjúkört. PostgreSQL relation interview_rounds does not exist at SELECT * FROM interview_rounds.',
+              'Could not load the interview round. PostgreSQL relation interview_rounds does not exist at SELECT * FROM interview_rounds.',
             ),
         ),
       ),
@@ -822,7 +821,7 @@ describe('InterviewPage', () => {
     ) as HTMLElement | null;
 
     expect(loadError?.textContent?.trim()).toBe(
-      'A felmérési oldal nem tölthető be. Frissítsd az oldalt, majd próbáld újra.',
+      'The interview page could not be loaded. Refresh the page and try again.',
     );
   });
 });

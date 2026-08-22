@@ -1,9 +1,9 @@
 <section
   class="attachment-block"
-  [attr.aria-label]="'Kapcsolódó fájlok: ' + ownerId()"
+  [attr.aria-label]="'Related files: ' + ownerId()"
   [attr.data-testid]="'project-attachment-block-' + ownerId()"
 >
-  <h3>Kapcsolódó fájlok</h3>
+  <h3>Related files</h3>
 
   @if (error()) {
     <p-message severity="error" role="alert">{{ error() }}</p-message>
@@ -23,10 +23,10 @@
           <a
             [href]="downloadUrl(attachment.id)"
             [attr.data-testid]="'download-project-attachment-' + attachment.id"
-          >Letöltés</a>
+          >Download</a>
           @if (mutable()) {
             <p-button
-              label="Eltávolítás"
+              label="Remove"
               severity="danger"
               [text]="true"
               [disabled]="busy()"
@@ -37,14 +37,14 @@
         </span>
       </li>
     } @empty {
-      <li class="empty">Még nincs kapcsolódó fájl.</li>
+      <li class="empty">No related files yet.</li>
     }
   </ul>
 
   @if (mutable()) {
     <div class="attachment-upload">
       <label>
-        Fájl
+        File
         <input
           #fileInput
           type="file"
@@ -55,7 +55,7 @@
         />
       </label>
       <p-button
-        label="Fájl hozzáadása"
+        label="Add file"
         [loading]="busy()"
         [disabled]="busy() || !selectedFile()"
         data-testid="upload-project-attachment"

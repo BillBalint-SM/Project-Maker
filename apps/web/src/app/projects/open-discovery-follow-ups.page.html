@@ -1,11 +1,11 @@
 <section aria-labelledby="open-follow-ups-title">
   <div class="page-heading follow-ups-heading">
     <div>
-      <span class="eyebrow">Portfólió</span>
-      <h1 id="open-follow-ups-title">Tisztázandó tételek</h1>
-      <p>Az összes aktív projekt nyitott tisztázandó tételei, határidő szerint rendezve.</p>
+      <span class="eyebrow">Portfolio</span>
+      <h1 id="open-follow-ups-title">Discovery Follow-ups</h1>
+      <p>Open discovery follow-ups across all active projects, ordered by due date.</p>
     </div>
-    <a pButton severity="secondary" routerLink="/">Vissza a projektportfólióhoz</a>
+    <a pButton severity="secondary" routerLink="/">Back to Portfolio Overview</a>
   </div>
 
   <div class="sr-only" role="status" aria-live="polite" aria-atomic="true">
@@ -14,32 +14,32 @@
 
   @if (loading()) {
     <div class="state-panel" data-testid="follow-ups-loading" aria-live="polite">
-      <p-progress-spinner ariaLabel="A tisztázandó tételek betöltése" />
-      <p>A tisztázandó tételek betöltése…</p>
+      <p-progress-spinner ariaLabel="Loading discovery follow-ups" />
+      <p>Loading discovery follow-ups…</p>
     </div>
   } @else if (loadError()) {
     <div class="state-panel" data-testid="follow-ups-error" role="alert">
-      <h2>A tisztázandó tételek most nem tölthetők be</h2>
+      <h2>Discovery follow-ups could not be loaded</h2>
       <p>{{ loadError() }}</p>
       <button pButton type="button" data-testid="follow-ups-retry" (click)="retry()">
-        Tisztázandó tételek újratöltése
+        Reload discovery follow-ups
       </button>
     </div>
   } @else if (items(); as openItems) {
     @if (openItems.length === 0) {
       <div class="state-panel" data-testid="follow-ups-empty">
-        <h2>Nincs nyitott tisztázandó tétel</h2>
-        <p>Jelenleg egyik aktív projektnél sincs tisztázásra váró kérdés.</p>
+        <h2>No open discovery follow-ups</h2>
+        <p>There are currently no open questions requiring clarification in active projects.</p>
         <a
           pButton
           severity="secondary"
           routerLink="/"
           data-testid="follow-ups-empty-portfolio"
-        >Vissza a projektportfólióhoz</a>
+        >Back to Portfolio Overview</a>
       </div>
     } @else {
       <p class="queue-summary" aria-live="polite">
-        <strong>{{ openItems.length }} nyitott tisztázandó tétel</strong>
+        <strong>{{ openItems.length }} open discovery follow-ups</strong>
       </p>
       <ul class="follow-up-list">
         @for (item of openItems; track item.id) {
@@ -55,15 +55,15 @@
             </div>
             <dl>
               <div>
-                <dt>Felelős</dt>
+                <dt>Owner</dt>
                 <dd>{{ item.owner }}</dd>
               </div>
               <div>
-                <dt>Határidő</dt>
-                <dd>{{ item.dueDate | date: 'yyyy. MM. dd.' }}</dd>
+                <dt>Due date</dt>
+                <dd>{{ item.dueDate | date: 'dd MMM yyyy' }}</dd>
               </div>
               <div>
-                <dt>Következő lépés</dt>
+                <dt>Next action</dt>
                 <dd>{{ item.nextStep }}</dd>
               </div>
             </dl>
@@ -73,7 +73,7 @@
               [queryParams]="projectQueryParams"
               fragment="discovery-follow-ups"
               data-testid="open-follow-up-action"
-            >Tisztázandó tételek kezelése</a>
+            >Manage discovery follow-ups</a>
           </li>
         }
       </ul>

@@ -86,36 +86,36 @@ export function createProjectMakerMcpServer(
   const server = new McpServer({ name: 'project-maker', version: '1.0.0' });
 
   server.registerTool('list_projects', {
-    title: 'Project Maker projektek listázása',
-    description: 'Az aktív Project Maker projekteket listázza; kérésre az archiváltakat is.',
+    title: 'List Project Maker projects',
+    description: 'Lists active Project Maker projects and, when requested, archived projects.',
     inputSchema: z.object({ includeArchived: z.boolean().optional().default(false) }),
     annotations: readOnly,
   }, ({ includeArchived }) => call(actorId, () => facade.listProjects(includeArchived)));
 
   server.registerTool('get_project_context', {
-    title: 'Projekt munkakontextusának lekérése',
-    description: 'Egy projekt alapadatait, specifikációverzióit, fejlesztési csomagját és Git-átadási történetét adja vissza.',
+    title: 'Get project work context',
+    description: 'Returns core project data, specification versions, the delivery package, and Git handoff history.',
     inputSchema: z.object({ projectId: uuid }),
     annotations: readOnly,
   }, ({ projectId }) => call(actorId, () => facade.getProjectContext(projectId)));
 
   server.registerTool('read_specification', {
-    title: 'Projekt-specifikáció olvasása',
-    description: 'A megadott vagy a legfrissebb változatlan Project Maker Markdown specifikációt adja vissza.',
+    title: 'Read project specification',
+    description: 'Returns the requested or latest immutable Project Maker Markdown specification.',
     inputSchema: z.object({ projectId: uuid, revisionId: uuid.optional() }),
     annotations: readOnly,
   }, ({ projectId, revisionId }) => call(actorId, () => facade.readSpecification(projectId, revisionId)));
 
   server.registerTool('generate_specification', {
-    title: 'Új specifikációverzió generálása',
-    description: 'A meglévő Project Maker-generátort használva új, változatlan Markdown specifikációverziót készít.',
+    title: 'Generate a new specification version',
+    description: 'Uses the existing Project Maker generator to create a new immutable Markdown specification version.',
     inputSchema: z.object({ projectId: uuid, templateId: uuid.optional() }),
     annotations: internalWrite,
   }, ({ projectId, templateId }) => call(actorId, () => facade.generateSpecification(projectId, templateId)));
 
   server.registerTool('save_delivery_package', {
-    title: 'Fejlesztési csomag mentése',
-    description: 'Egy pontos specifikációverzióhoz menti a szerkesztett fejlesztési tételeket a meglévő Project Maker szabályokkal.',
+    title: 'Save delivery package',
+    description: 'Saves edited delivery items for an exact specification version using existing Project Maker rules.',
     inputSchema: z.object({
       projectId: uuid,
       specificationRevisionId: uuid,
@@ -127,58 +127,58 @@ export function createProjectMakerMcpServer(
   )));
 
   server.registerTool('list_git_setups', {
-    title: 'Közös Git setupok listázása',
-    description: 'A telepítés közösen használható, maszkolt Git setupjait listázza.',
+    title: 'List shared Git setups',
+    description: 'Lists the deployment’s shared Git setups with credentials masked.',
     inputSchema: z.object({}),
     annotations: readOnly,
   }, () => call(actorId, () => facade.listGitSetups()));
 
   server.registerTool('preview_git_handoff', {
-    title: 'Git-átadási előnézet készítése',
-    description: 'Pontosan megmutatja a cél remote-ot, branchet, fájlt és tartalmat; még nem küld semmit.',
+    title: 'Preview Git handoff',
+    description: 'Shows the exact target remote, branch, file, and content without sending anything.',
     inputSchema: z.object({ projectId: uuid, gitSetupId: uuid }),
     annotations: readOnly,
   }, ({ projectId, gitSetupId }) => call(actorId, () => facade.previewGitHandoff(projectId, gitSetupId)));
 
   server.registerTool('confirm_git_handoff', {
-    title: 'Git-átadás megerősítése',
-    description: 'Kizárólag egy friss Project Maker-előnézet tokenjével indítja a megtartott fejlesztési csomag Git-átadását.',
+    title: 'Confirm Git handoff',
+    description: 'Initiates the retained delivery package Git handoff only with a fresh Project Maker preview token.',
     inputSchema: z.object({ projectId: uuid, previewToken: z.string().min(1).max(20_000) }),
     annotations: { ...internalWrite, idempotentHint: true, openWorldHint: true },
     _meta: { 'anthropic/requiresUserInteraction': true },
   }, ({ projectId, previewToken }) => call(actorId, () => facade.confirmGitHandoff(projectId, previewToken)));
 
   server.registerTool('get_question_bank', {
-    title: 'Question Bank lekérése',
-    description: 'A közös, aktuális Project Maker Question Bank-verziót adja vissza.',
+    title: 'Get Question Bank',
+    description: 'Returns the shared current Project Maker Question Bank version.',
     inputSchema: z.object({}),
     annotations: readOnly,
   }, () => call(actorId, () => facade.getQuestionBank()));
 
   server.registerTool('save_question_bank_question', {
-    title: 'Question Bank kérdés mentése',
-    description: 'Új közös kérdést hoz létre vagy egy meglévőt módosít, új Question Bank-verzióval.',
+    title: 'Save Question Bank question',
+    description: 'Creates a shared question or updates an existing one in a new Question Bank version.',
     inputSchema: saveQuestion,
     annotations: internalWrite,
   }, (input) => call(actorId, () => facade.saveQuestionBankQuestion(input as SaveQuestionBankQuestionInput)));
 
   server.registerTool('list_markdown_templates', {
-    title: 'Markdown sablonok listázása',
-    description: 'A közös specifikációs Markdown sablonokat és piszkozataikat listázza.',
+    title: 'List Markdown templates',
+    description: 'Lists shared specification Markdown templates and their drafts.',
     inputSchema: z.object({}),
     annotations: readOnly,
   }, () => call(actorId, () => facade.listMarkdownTemplates()));
 
   server.registerTool('save_markdown_template', {
-    title: 'Markdown sablonpiszkozat mentése',
-    description: 'Új közös sablont hoz létre vagy egy meglévő piszkozatát módosítja; nem publikál automatikusan.',
+    title: 'Save Markdown template draft',
+    description: 'Creates a shared template or updates an existing draft; it does not publish automatically.',
     inputSchema: saveTemplate,
     annotations: internalWrite,
   }, (input) => call(actorId, () => facade.saveMarkdownTemplate(input as SaveMarkdownTemplateInput)));
 
   server.registerTool('publish_markdown_template', {
-    title: 'Markdown sablon publikálása',
-    description: 'A megadott sablon aktuális piszkozatából új, változatlan publikált verziót készít.',
+    title: 'Publish Markdown template',
+    description: 'Creates a new immutable published version from the selected template’s current draft.',
     inputSchema: z.object({ templateId: uuid }),
     annotations: internalWrite,
   }, ({ templateId }) => call(actorId, () => facade.publishMarkdownTemplate(templateId)));

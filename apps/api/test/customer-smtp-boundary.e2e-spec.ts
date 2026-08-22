@@ -218,6 +218,6 @@ function assertPingHasNoInternalDeliveryContent(
   assert.equal(message.html, undefined);
   assert.equal(message.text.includes(revisionContent), false);
   assert.equal(message.text.includes(handoffText), false);
-  assert.doesNotMatch(message.text, /Nincs rögzített válasz/);
+  assert.doesNotMatch(message.text, /No answer recorded/);
   assert.doesNotMatch(message.text, /\.md\b|Claude Code|execution-plan revision/i);
 }

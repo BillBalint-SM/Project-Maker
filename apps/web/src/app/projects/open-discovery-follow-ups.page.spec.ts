@@ -36,10 +36,10 @@ describe('OpenDiscoveryFollowUpsPage', () => {
     await fixture.whenStable();
 
     const root = fixture.nativeElement as HTMLElement;
-    expect(root.querySelector('h1')?.textContent?.trim()).toBe('Tisztázandó tételek');
+    expect(root.querySelector('h1')?.textContent?.trim()).toBe('Discovery Follow-ups');
     expect(root.querySelectorAll('[data-testid="open-follow-up-row"]')).toHaveLength(1);
     expect(root.textContent).toContain('Hallgatói portál megújítása');
-    expect(root.textContent).toContain('Üzleti');
+    expect(root.textContent).toContain('Business');
     const action = root.querySelector('[data-testid="open-follow-up-action"]') as HTMLAnchorElement;
     const destination = new URL(action.getAttribute('href') ?? '', 'https://project-maker.test');
     expect(destination.pathname).toBe(
@@ -59,7 +59,7 @@ describe('OpenDiscoveryFollowUpsPage', () => {
           throwError(
             () =>
               new DiscoveryFollowUpsApiError(
-                'A tisztázandó tételek nem tölthetők be.',
+                'Discovery follow-ups could not be loaded.',
                 'load',
                 503,
               ),
@@ -76,13 +76,13 @@ describe('OpenDiscoveryFollowUpsPage', () => {
 
     const emptyFixture = TestBed.createComponent(OpenDiscoveryFollowUpsPage);
     await emptyFixture.whenStable();
-    expect(emptyFixture.nativeElement.textContent).toContain('Nincs nyitott tisztázandó tétel');
+    expect(emptyFixture.nativeElement.textContent).toContain('No open discovery follow-ups');
     expect(emptyFixture.nativeElement.querySelector('[data-testid="follow-ups-empty-portfolio"]')).not.toBeNull();
 
     const errorFixture = TestBed.createComponent(OpenDiscoveryFollowUpsPage);
     await errorFixture.whenStable();
     expect(errorFixture.nativeElement.querySelector('[role="alert"]')?.textContent).toContain(
-      'A tisztázandó tételek nem tölthetők be.',
+      'Discovery follow-ups could not be loaded.',
     );
     const retry = errorFixture.nativeElement.querySelector(
       '[data-testid="follow-ups-retry"]',
@@ -111,7 +111,7 @@ describe('OpenDiscoveryFollowUpsPage', () => {
 
     const alert = fixture.nativeElement.querySelector('[role="alert"]') as HTMLElement;
     expect(alert.textContent).toContain(
-      'A tisztázandó tételek nem tölthetők be. Próbáld meg újra.',
+      'Discovery follow-ups could not be loaded. Please try again.',
     );
     expect(alert.textContent).not.toContain('PostgreSQL');
     expect(alert.textContent).not.toContain('password');

@@ -20,8 +20,8 @@ export class DecisionReviewApiService {
           throwError(
             () => new Error(genericHttpErrorMessage(
               error,
-              'betölteni a döntési értékelést',
-              'A döntési értékelés nem tölthető be. Próbáld újra.',
+              'load the Decision Review',
+              'Unable to load the Decision Review. Try again.',
             )),
           ),
         ),
@@ -39,8 +39,8 @@ export class DecisionReviewApiService {
           throwError(
             () => new Error(genericHttpErrorMessage(
               error,
-              'menteni a döntési értékelést',
-              'A döntési értékelés nem menthető. Ellenőrizd a projekt állapotát, majd próbáld újra.',
+              'save the Decision Review',
+              'Unable to save the Decision Review. Check the project state and try again.',
             )),
           ),
         ),

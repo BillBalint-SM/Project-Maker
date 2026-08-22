@@ -26,7 +26,7 @@ describe('LoginPage', () => {
     fixture.detectChanges();
     await fixture.whenStable();
 
-    expect(fixture.nativeElement.querySelector('h1')?.textContent).toContain('Bejelentkezés');
+    expect(fixture.nativeElement.querySelector('h1')?.textContent).toContain('Sign in');
     const email = fixture.nativeElement.querySelector('#auth-email') as HTMLInputElement;
     const password = fixture.nativeElement.querySelector('#auth-password') as HTMLInputElement;
     email.value = user.email;

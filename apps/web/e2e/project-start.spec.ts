@@ -65,7 +65,7 @@ test.describe('project start journey', () => {
 
     await expect(page).toHaveURL(/\/$/);
     const projectCard = page.getByRole('link', { name: new RegExp(projectName) });
-    await expect(projectCard).toContainText('Kérdésséma szükséges');
+    await expect(projectCard).toContainText('Question schema required');
     await projectCard.click();
     await expect(page).toHaveURL(
       (url) =>
@@ -81,10 +81,10 @@ test.describe('project start journey', () => {
     await expect(page).toHaveURL(/\/projects\/[^/]+\/interview$/);
     await expect(page.getByTestId('project-schema-status')).toBeVisible();
     await expect(page.getByTestId('interview-question-selection')).toBeVisible();
-    await expect(page.getByText(/aktív kérdés kiválasztva/)).toBeVisible();
-    await expect(page.getByRole('heading', { name: 'Kezdő felmérési kör' })).toHaveCount(0);
+    await expect(page.getByText(/active questions selected/)).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Initial Intake round' })).toHaveCount(0);
     await expect(page.getByTestId('create-interview-round-button')).toHaveCount(0);
-    await expect(page.getByText(/pillanatkép-kérdés/)).toHaveCount(0);
+    await expect(page.getByText(/snapshot questions/)).toHaveCount(0);
   });
 
   test('keeps an accepted schema and offers only focused round-start recovery after refresh', async ({
@@ -107,7 +107,7 @@ test.describe('project start journey', () => {
     });
 
     await (await nativeButton(page, 'publish-project-schema-button')).click();
-    await expect(page.getByTestId('project-schema-status')).toContainText('Elfogadott kérdésséma');
+    await expect(page.getByTestId('project-schema-status')).toContainText('Accepted question schema');
     await expect(await nativeButton(page, 'retry-initial-intake-button')).toBeVisible();
 
     await page.reload();
@@ -217,8 +217,7 @@ test.describe('project start journey', () => {
   });
 
   test('edits and reloads valid Project basics before schema acceptance', async ({ page }) => {
-    await createProjectAndOpenSchema(page);
-    const projectId = projectIdFromInterviewUrl(page);
+    const { projectId, customerContactEmail } = await createProjectAndOpenSchema(page);
     const updatedName = `Módosított projektindítás ${Date.now()}`;
     const updatedEmail = `updated-project-start-${Date.now()}@example.test`;
 
@@ -239,6 +238,9 @@ test.describe('project start journey', () => {
     await page.getByTestId('edit-project-basics-link').click();
     await expect(page).toHaveURL(new RegExp(`/projects/${projectId}/settings(?:#project-basics)?$`));
     await expect(page.getByTestId('project-basics-editor')).toBeVisible();
+    await expect(page.getByTestId('draft-customer-contact-email-input')).toHaveValue(
+      customerContactEmail,
+    );
     await page.getByTestId('draft-project-name-input').fill(updatedName);
     await page.getByTestId('draft-customer-contact-email-input').fill(updatedEmail);
 
@@ -250,7 +252,7 @@ test.describe('project start journey', () => {
     await (await nativeButton(page, 'save-project-basics')).click();
     expect((await updateResponse).status()).toBe(200);
     await expect(page.getByTestId('project-basics-feedback')).toContainText(
-      'A projekt alapadatai mentve lettek.',
+      'Project details have been saved.',
     );
 
     await page.reload();
@@ -258,7 +260,7 @@ test.describe('project start journey', () => {
     await expect(page.getByTestId('draft-customer-contact-email-input')).toHaveValue(updatedEmail);
   });
 
-  test('keeps Project settings mutations single-flight while basics are saving', async ({ page }) => {
+  test('keeps the basics command single-flight while an independent archive command stays usable', async ({ page }) => {
     await createProjectAndOpenSchema(page);
     const projectId = projectIdFromInterviewUrl(page);
     await page.getByTestId('edit-project-basics-link').click();
@@ -278,10 +280,14 @@ test.describe('project start journey', () => {
     await (await nativeButton(page, 'save-project-basics')).click();
     await basicsRequestIntercepted;
 
-    await expect(await nativeButton(page, 'archive-project-button')).toBeDisabled();
+    await expect(await nativeButton(page, 'save-project-basics')).toBeDisabled();
+    await expect(await nativeButton(page, 'archive-project-button')).toBeEnabled();
+    await (await nativeButton(page, 'archive-project-button')).click();
+    await expect(page.getByTestId('project-archive-confirmation')).toBeVisible();
+    await (await nativeButton(page, 'cancel-project-archive-button')).click();
     releaseBasicsRequest?.();
     await expect(page.getByTestId('project-basics-feedback')).toContainText(
-      'A projekt alapadatai mentve lettek.',
+      'Project details have been saved.',
     );
   });
 
@@ -330,10 +336,10 @@ test.describe('project start journey', () => {
       await createProjectAndOpenSchema(page);
       const projectId = projectIdFromInterviewUrl(page);
       await expect(page.getByTestId('interview-no-active-questions')).toContainText(
-        'legalább egy alapkérdést aktiváljon',
+        'Activate at least one base question',
       );
       await expect(page.getByTestId('publish-project-schema-button')).toHaveCount(0);
-      await expect(page.getByRole('heading', { name: 'Kezdő felmérési kör' })).toHaveCount(0);
+      await expect(page.getByRole('heading', { name: 'Initial Intake round' })).toHaveCount(0);
 
       await page.reload();
       await expect(page.getByTestId('interview-no-active-questions')).toBeVisible();
@@ -370,16 +376,17 @@ async function setBaseQuestionActivity(
 
 async function createProjectAndOpenSchema(page: Page) {
   const uniquePart = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  const customerContactEmail = `project-start-${uniquePart}@example.test`;
 
   await page.goto('/projects/new');
 
-  await expect(page.getByRole('heading', { name: 'Új projekt' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'New project' })).toBeVisible();
   await page.getByTestId('project-name-input').fill(`Új projekt út ${uniquePart}`);
   await page.getByTestId('internal-owner-name-input').fill('Projektindító PO/PM');
   await page.getByTestId('customer-contact-name-input').fill('Projektindító Kapcsolattartó');
   await page
     .getByTestId('customer-contact-email-input')
-    .fill(`project-start-${uniquePart}@example.test`);
+    .fill(customerContactEmail);
 
   const createResponse = page.waitForResponse(
     (response) =>
@@ -389,6 +396,10 @@ async function createProjectAndOpenSchema(page: Page) {
   await (await nativeButton(page, 'create-project-submit')).click();
   expect((await createResponse).status()).toBe(201);
   await expect(page).toHaveURL(/\/projects\/[^/]+\/interview$/);
+  return {
+    projectId: projectIdFromInterviewUrl(page),
+    customerContactEmail,
+  };
 }
 
 async function nativeButton(page: { getByTestId(testId: string): Locator }, testId: string) {

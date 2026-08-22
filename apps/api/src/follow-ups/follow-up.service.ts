@@ -242,7 +242,7 @@ export class CustomerFollowUpService implements OnModuleInit, OnModuleDestroy {
     const messageDraft = input.messageDraft.trim();
     if (!messageDraft) {
       throw new BadRequestException(
-        'A Customer follow-up ping üzenete nem lehet üres.',
+        'The Customer follow-up message cannot be empty.',
       );
     }
 
@@ -255,7 +255,7 @@ export class CustomerFollowUpService implements OnModuleInit, OnModuleDestroy {
         throw new ConflictException({
           code: 'FOLLOW_UP_DRAFT_STALE',
           message:
-            'A Customer follow-up ping piszkozata időközben megváltozott. Töltsd újra az aktuális változatot, vagy tartsd meg a saját szövegedet.',
+            'The Customer follow-up draft changed. Reload the current version or keep your local text.',
         });
       }
       const referencedFollowUp = input.referencedFollowUpId
@@ -369,7 +369,7 @@ export class CustomerFollowUpService implements OnModuleInit, OnModuleDestroy {
           throw new ConflictException({
             code: 'FOLLOW_UP_PREVIEW_STALE',
             message:
-              'Az előnézet lejárt vagy már fel lett használva. Készíts új előnézetet a küldés előtt.',
+              'The preview expired or has already been used. Generate a new preview before sending.',
           });
         }
         const { reference, rendered } = await renderCurrentPing(
@@ -380,7 +380,7 @@ export class CustomerFollowUpService implements OnModuleInit, OnModuleDestroy {
         if (!state.previewSenderName || !state.previewSenderAddress) {
           throw new ConflictException({
             code: 'FOLLOW_UP_PREVIEW_STALE',
-            message: 'A feladó nincs rögzítve az előnézetben.',
+            message: 'The sender identity is missing from the preview.',
           });
         }
         const sender = {
@@ -396,7 +396,7 @@ export class CustomerFollowUpService implements OnModuleInit, OnModuleDestroy {
           throw new ConflictException({
             code: 'FOLLOW_UP_PREVIEW_STALE',
             message:
-              'A címzett, a piszkozat vagy a hivatkozott kérdés megváltozott. Ellenőrizd az új előnézetet.',
+              'The recipient, draft, or referenced follow-up changed. Review a new preview before sending.',
           });
         }
         const attemptRepository = manager.getRepository(
@@ -411,7 +411,7 @@ export class CustomerFollowUpService implements OnModuleInit, OnModuleDestroy {
           throw new ConflictException({
             code: 'FOLLOW_UP_DELIVERY_IN_PROGRESS',
             message:
-              'Az ügyfél-ping küldése már folyamatban van. Várj a kézbesítési eredményre.',
+              'The Customer follow-up is already being sent. Wait for the delivery outcome.',
           });
         }
         const latestAttempt =
@@ -469,7 +469,7 @@ export class CustomerFollowUpService implements OnModuleInit, OnModuleDestroy {
       throw new ConflictException({
         code: 'FOLLOW_UP_DELIVERY_UNKNOWN',
         message:
-          'A korábbi küldés eredménye nem bizonyítható. Ellenőrizd a postafiókot, majd csak a duplikáció kockázatának elfogadásával küldd újra.',
+          'The previous delivery outcome cannot be confirmed. Check the mailbox and retry only after acknowledging the duplicate-delivery risk.',
       });
     }
     return this.deliverClaimedManualPing(claim);
@@ -498,7 +498,7 @@ export class CustomerFollowUpService implements OnModuleInit, OnModuleDestroy {
           throw new ConflictException({
             code: 'FOLLOW_UP_RETRY_STALE',
             message:
-              'A kézbesítési állapot időközben megváltozott. Töltsd újra az aktuális állapotot.',
+              'The delivery state changed. Reload the current state.',
           });
         }
         if (
@@ -510,7 +510,7 @@ export class CustomerFollowUpService implements OnModuleInit, OnModuleDestroy {
           throw new ConflictException({
             code: 'FOLLOW_UP_RECEIPT_EVIDENCE',
             message:
-              'A Customer válasza igazolja az átvételt; ezt a logikai kézbesítést nem szabad újraküldeni.',
+              'A Customer reply confirms receipt; this logical delivery must not be sent again.',
           });
         }
         if (
@@ -520,7 +520,7 @@ export class CustomerFollowUpService implements OnModuleInit, OnModuleDestroy {
           throw new ConflictException({
             code: 'FOLLOW_UP_DUPLICATE_RISK_ACKNOWLEDGEMENT_REQUIRED',
             message:
-              'A korábbi küldés eredménye bizonytalan. Az újraküldéshez külön el kell fogadni a duplikáció kockázatát.',
+              'The previous delivery outcome is uncertain. A retry requires explicit acknowledgement of the duplicate-delivery risk.',
           });
         }
         if (
@@ -529,7 +529,7 @@ export class CustomerFollowUpService implements OnModuleInit, OnModuleDestroy {
         ) {
           throw new ConflictException({
             code: 'FOLLOW_UP_RETRY_NOT_AVAILABLE',
-            message: 'Ez a kézbesítési kísérlet nem próbálható újra.',
+            message: 'This delivery attempt cannot be retried.',
           });
         }
         const { reference, rendered } = await renderCurrentPing(
@@ -556,7 +556,7 @@ export class CustomerFollowUpService implements OnModuleInit, OnModuleDestroy {
           throw new ConflictException({
             code: 'FOLLOW_UP_RETRY_STALE',
             message:
-              'A címzett, a piszkozat vagy a hivatkozott kérdés megváltozott. Készíts új előnézetet.',
+              'The recipient, draft, or referenced follow-up changed. Generate a new preview.',
           });
         }
         const claimedAt = nextAttemptTimestamp(attemptedAt, latestAttempt);
@@ -567,7 +567,7 @@ export class CustomerFollowUpService implements OnModuleInit, OnModuleDestroy {
           throw new ConflictException({
             code: 'FOLLOW_UP_RETRY_STALE',
             message:
-              'A korábbi kézbesítés tartós levelezési azonossága hiányos.',
+              'The durable mail identity of the previous delivery is incomplete.',
           });
         }
         const outbound = latestAttempt.outboundCommunicationId
@@ -583,7 +583,7 @@ export class CustomerFollowUpService implements OnModuleInit, OnModuleDestroy {
             );
         if (!outbound)
           throw new InternalServerErrorException(
-            'A tartós kimenő kommunikáció hiányzik.',
+            'The durable outbound communication record is missing.',
           );
         latestAttempt.state = 'SENDING';
         latestAttempt.attemptedAt = claimedAt;
@@ -660,7 +660,7 @@ export class CustomerFollowUpService implements OnModuleInit, OnModuleDestroy {
         });
       if (!attempt || attempt.state !== 'SENDING') {
         throw new ConflictException(
-          'A Customer follow-up ping kézbesítési állapota megváltozott.',
+          'The Customer follow-up delivery state changed.',
         );
       }
       attempt.state = 'SENT';
@@ -769,7 +769,7 @@ export class CustomerFollowUpService implements OnModuleInit, OnModuleDestroy {
         throw new ServiceUnavailableException({
           code: 'FOLLOW_UP_DELIVERY_FAILED',
           message:
-            'Az ügyfél-ping küldése ismert kézbesítési hiba miatt sikertelen.',
+            'The Customer follow-up failed because of a confirmed delivery error.',
         });
       }
       return this.finalizeManualSuccess(claimed, result);
@@ -887,14 +887,14 @@ export class CustomerFollowUpService implements OnModuleInit, OnModuleDestroy {
       throw new ServiceUnavailableException({
         code: 'FOLLOW_UP_DELIVERY_FAILED',
         message:
-          'Az ügyfél-ping küldése ismert kézbesítési hiba miatt sikertelen.',
+          'The Customer follow-up failed because of a confirmed delivery error.',
       });
     }
     await this.finalizeManualUnknown(claimed);
     throw new ServiceUnavailableException({
       code: 'FOLLOW_UP_DELIVERY_UNKNOWN',
       message:
-        'Az ügyfél-ping kézbesítési eredménye bizonytalan. Ellenőrizd a postafiókot az újraküldés előtt.',
+        'The Customer follow-up delivery outcome is uncertain. Check the mailbox before retrying.',
     });
   }
 
@@ -1236,7 +1236,7 @@ async function requireOutbound(
 ): Promise<CustomerOutboundCommunicationEntity> {
   if (!outboundCommunicationId) {
     throw new ConflictException(
-      'A korábbi kézbesítés tartós levelezési azonossága hiányzik.',
+      'The durable mail identity of the previous delivery is missing.',
     );
   }
   const outbound = await manager
@@ -1246,7 +1246,7 @@ async function requireOutbound(
     });
   if (!outbound) {
     throw new ConflictException(
-      'A korábbi kézbesítés tartós kimenő kommunikációja hiányzik.',
+      'The durable outbound communication record for the previous delivery is missing.',
     );
   }
   return outbound;
@@ -1288,7 +1288,7 @@ async function requireClaimedScheduledState(
   });
   if (!attempt || !state || attempt.state !== 'SENDING') {
     throw new ConflictException(
-      'A Customer follow-up ping kézbesítési állapota megváltozott.',
+      'The Customer follow-up delivery state changed.',
     );
   }
   return { attempt, state };
@@ -1324,7 +1324,7 @@ async function requireOpenReference(
     throw new ConflictException({
       code: 'FOLLOW_UP_REFERENCE_INVALID',
       message:
-        'A hivatkozott Discovery follow-up már nem nyitott vagy nem ehhez a projekthez tartozik. Válassz egy aktuális nyitott kérdést.',
+        'The referenced Discovery follow-up is no longer open or does not belong to this Project. Select a current open follow-up.',
     });
   }
   return followUp;
@@ -1342,7 +1342,7 @@ async function renderCurrentPing(
   if (!state.messageDraft) {
     throw new ConflictException({
       code: 'FOLLOW_UP_DRAFT_REQUIRED',
-      message: 'Előbb ments egy nem üres Customer follow-up ping üzenetet.',
+      message: 'Save a non-empty Customer follow-up message first.',
     });
   }
   const reference = state.referencedFollowUpId
@@ -1371,7 +1371,7 @@ function requireCurrentDraftVersion(
     throw new ConflictException({
       code: 'FOLLOW_UP_DRAFT_STALE',
       message:
-        'A Customer follow-up ping piszkozata időközben megváltozott. Töltsd újra az aktuális változatot.',
+        'The Customer follow-up draft changed. Reload the current version.',
     });
   }
 }
