@@ -8,67 +8,56 @@
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "import": "./dist/index.js"
+      "default": "./dist/index.js"
     },
     "./runtime": {
       "types": "./dist/projects.d.ts",
-      "import": "./dist/projects.js",
-      "require": "./dist/runtime-cjs/projects.js"
+      "default": "./dist/projects.js"
     },
     "./active-project-queue": {
       "types": "./dist/active-project-queue.d.ts",
-      "import": "./dist/active-project-queue.js",
-      "require": "./dist/runtime-cjs/active-project-queue.js"
+      "default": "./dist/active-project-queue.js"
     },
     "./project-preparation-status": {
       "types": "./dist/project-preparation-status.d.ts",
-      "import": "./dist/project-preparation-status.js",
-      "require": "./dist/runtime-cjs/project-preparation-status.js"
+      "default": "./dist/project-preparation-status.js"
     },
     "./discovery-follow-ups": {
       "types": "./dist/discovery-follow-ups.d.ts",
-      "import": "./dist/discovery-follow-ups.js",
-      "require": "./dist/runtime-cjs/discovery-follow-ups.js"
+      "default": "./dist/discovery-follow-ups.js"
     },
     "./markdown-templates": {
       "types": "./dist/markdown-templates.d.ts",
-      "import": "./dist/markdown-templates.js",
-      "require": "./dist/runtime-cjs/markdown-templates.js"
+      "default": "./dist/markdown-templates.js"
     },
     "./customer-mail": {
       "types": "./dist/customer-mail.d.ts",
-      "import": "./dist/customer-mail.js",
-      "require": "./dist/runtime-cjs/customer-mail.js"
+      "default": "./dist/customer-mail.js"
     },
     "./general-playbook-runtime": {
       "types": "./dist/general-playbook-runtime.d.ts",
-      "import": "./dist/general-playbook-runtime.js",
-      "require": "./dist/runtime-cjs/general-playbook-runtime.js"
+      "default": "./dist/general-playbook-runtime.js"
     },
     "./discovery-runtime": {
       "types": "./dist/discovery.d.ts",
-      "import": "./dist/discovery.js",
-      "require": "./dist/runtime-cjs/discovery.js"
+      "default": "./dist/discovery.js"
     },
     "./decision-portfolio-runtime": {
       "types": "./dist/decision-portfolio.d.ts",
-      "import": "./dist/decision-portfolio.js",
-      "require": "./dist/runtime-cjs/decision-portfolio.js"
+      "default": "./dist/decision-portfolio.js"
     },
     "./customer-response-runtime": {
       "types": "./dist/customer-response.d.ts",
-      "import": "./dist/customer-response.js",
-      "require": "./dist/runtime-cjs/customer-response.js"
+      "default": "./dist/customer-response.js"
     },
     "./notifications-runtime": {
       "types": "./dist/notifications.d.ts",
-      "import": "./dist/notifications.js",
-      "require": "./dist/runtime-cjs/notifications.js"
+      "default": "./dist/notifications.js"
     }
   },
   "files": ["dist", "playbooks"],
   "scripts": {
-    "build": "tsc --project tsconfig.json && tsc --project tsconfig.runtime.json && node scripts/prepare-cjs-runtime.mjs",
+    "build": "tsc --project tsconfig.json",
     "test": "pnpm build && node --test test/*.test.mjs",
     "typecheck": "tsc --project tsconfig.json --noEmit"
   },

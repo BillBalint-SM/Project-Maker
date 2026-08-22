@@ -2,17 +2,18 @@
   "name": "@project-maker/api",
   "version": "0.1.0",
   "private": true,
+  "files": ["dist", "scripts/start.mjs"],
   "scripts": {
-    "build": "nest build && node scripts/copy-general-playbook.mjs",
+    "build": "nest build",
     "start": "nest start",
     "start:dev": "nest start --watch",
     "start:prod": "node dist/main.js",
     "migration:run": "typeorm-ts-node-commonjs -d src/database/migration-data-source.ts migration:run",
-    "migration:revert": "typeorm-ts-node-commonjs -d src/database/migration-data-source.ts migration:revert",
     "migration:show": "typeorm-ts-node-commonjs -d src/database/migration-data-source.ts migration:show",
-    "test": "tsc --project ./test/tsconfig.json && node --test --test-concurrency=1 ./dist-test/test/*.spec.js ./dist-test/test/*e2e-spec.js",
-    "test:mail-gateway": "tsc --project ./test/tsconfig.json && node --test --test-concurrency=1 ./dist-test/test/customer-mail-identity.spec.js ./dist-test/test/mail-gateway.config.spec.js ./dist-test/test/mail-gateway-checkpoint.spec.js ./dist-test/test/mail-delivery.module.spec.js ./dist-test/test/smtp-customer-outbound-mail.spec.js ./dist-test/test/imap-flow-mailbox.client.spec.js ./dist-test/test/imap-customer-mailbox-changes.spec.js ./dist-test/test/customer-smtp-boundary.e2e-spec.js ./dist-test/test/customer-follow-up-ping.e2e-spec.js ./dist-test/test/customer-mailbox-sync.e2e-spec.js ./dist-test/test/customer-replies.e2e-spec.js ./dist-test/test/interview-customer-handoff.e2e-spec.js ./dist-test/test/operator-mail-gateway-sender-migration.e2e-spec.js",
-    "test:mail-gateway:protocol": "tsc --project ./test/tsconfig.json && node --test --test-concurrency=1 ./dist-test/test/smtp-customer-outbound-mail.spec.js ./dist-test/test/imap-flow-mailbox.client.spec.js",
+    "test:compile": "node -e \"require('node:fs').rmSync('dist-test',{recursive:true,force:true})\" && tsc --project ./test/tsconfig.json",
+    "test": "pnpm test:compile && node --test --test-concurrency=1 ./dist-test/test/*.spec.js ./dist-test/test/*e2e-spec.js",
+    "test:mail-gateway": "pnpm test:compile && node --test --test-concurrency=1 ./dist-test/test/customer-mail-identity.spec.js ./dist-test/test/mail-gateway.config.spec.js ./dist-test/test/mail-gateway-checkpoint.spec.js ./dist-test/test/mail-delivery.module.spec.js ./dist-test/test/smtp-customer-outbound-mail.spec.js ./dist-test/test/imap-flow-mailbox.client.spec.js ./dist-test/test/imap-customer-mailbox-changes.spec.js ./dist-test/test/customer-smtp-boundary.e2e-spec.js ./dist-test/test/customer-follow-up-ping.e2e-spec.js ./dist-test/test/customer-mailbox-sync.e2e-spec.js ./dist-test/test/customer-replies.e2e-spec.js ./dist-test/test/interview-customer-handoff.e2e-spec.js ./dist-test/test/operator-mail-gateway-sender-migration.e2e-spec.js",
+    "test:mail-gateway:protocol": "pnpm test:compile && node --test --test-concurrency=1 ./dist-test/test/smtp-customer-outbound-mail.spec.js ./dist-test/test/imap-flow-mailbox.client.spec.js",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

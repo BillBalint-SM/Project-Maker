@@ -40,7 +40,7 @@
           }
         </ng-template>
         <form class="settings-form" [formGroup]="basicsForm" (ngSubmit)="saveProjectBasics()">
-          <fieldset data-testid="project-basics-fieldset" [disabled]="busy() || !canEditBasics()">
+          <fieldset data-testid="project-basics-fieldset" [disabled]="basicsSaving() || !canEditBasics()">
             <div class="field">
               <label for="draft-project-name">Projekt neve</label>
               <input pInputText id="draft-project-name" formControlName="name" data-testid="draft-project-name-input" />
@@ -68,7 +68,7 @@
             <p-message severity="success" role="status" data-testid="project-basics-feedback">{{ basicsFeedback() }}</p-message>
           }
           @if (canEditBasics()) {
-            <p-button type="submit" label="Alapadatok mentése" [loading]="basicsSaving()" [disabled]="busy() || basicsForm.invalid" data-testid="save-project-basics" />
+            <p-button type="submit" label="Alapadatok mentése" [loading]="basicsSaving()" [disabled]="basicsSaving() || basicsForm.invalid" data-testid="save-project-basics" />
           }
         </form>
       </p-card>
@@ -80,12 +80,12 @@
         <ng-template #subtitle>A playbook az első felmérési körig módosítható; utána a pontos verzió megmarad forrásként.</ng-template>
         <form class="settings-form" [formGroup]="playbookForm" (ngSubmit)="savePlaybook()">
           <label for="project-playbook-settings-select">Playbook</label>
-          <select id="project-playbook-settings-select" formControlName="playbook" [disabled]="busy() || isArchived()">
+          <select id="project-playbook-settings-select" formControlName="playbook" [disabled]="pending.isPending('save-playbook') || isArchived()">
             @for (playbook of playbooks(); track playbook.id + ':' + playbook.version) {
               <option [value]="playbook.id + ':' + playbook.version">{{ playbook.name }} · v{{ playbook.version }}</option>
             }
           </select>
-          <p-button type="submit" label="Playbook mentése" [disabled]="busy() || isArchived()" />
+          <p-button type="submit" label="Playbook mentése" [disabled]="pending.isPending('save-playbook') || isArchived()" />
         </form>
       </p-card>
 
@@ -101,7 +101,7 @@
           </dl>
         } @else {
         <form class="settings-form" [formGroup]="lifecycleForm" (ngSubmit)="saveProjectStatus()">
-          <fieldset data-testid="project-lifecycle-fieldset" [disabled]="busy()">
+          <fieldset data-testid="project-lifecycle-fieldset" [disabled]="lifecycleSaving() || transitioning()">
             <div class="field">
               <label for="project-lifecycle-status">Adminisztratív projektfázis</label>
               <p-select
@@ -121,7 +121,7 @@
           @if (lifecycleFeedback()) {
             <p-message severity="success" role="status" data-testid="project-lifecycle-feedback">{{ lifecycleFeedback() }}</p-message>
           }
-          <p-button type="submit" label="Adminisztratív projektfázis mentése" [loading]="lifecycleSaving()" [disabled]="busy() || lifecycleForm.invalid" data-testid="save-project-lifecycle-status" />
+          <p-button type="submit" label="Adminisztratív projektfázis mentése" [loading]="lifecycleSaving()" [disabled]="lifecycleSaving() || transitioning() || lifecycleForm.invalid" data-testid="save-project-lifecycle-status" />
         </form>
         }
       </p-card>
@@ -134,19 +134,19 @@
       @if (isArchived()) {
         <div class="danger-action">
           <div><h2>Projekt visszaállítása</h2><p>A napi munka és a módosítások ismét elérhetővé válnak.</p></div>
-          <p-button label="Projekt visszaállítása" [loading]="transitioning()" [disabled]="busy()" data-testid="restore-project-button" (onClick)="restoreProject()" />
+          <p-button label="Projekt visszaállítása" [loading]="transitioning()" [disabled]="transitioning()" data-testid="restore-project-button" (onClick)="restoreProject()" />
         </div>
       } @else {
         <div class="danger-action">
           <div><h2>Projekt archiválása</h2><p>Az adatok megmaradnak, de a projekt kikerül az aktív munkából és csak olvasható lesz.</p></div>
-          <p-button label="Projekt archiválása" severity="danger" [outlined]="true" [loading]="transitioning()" [disabled]="busy()" data-testid="archive-project-button" (onClick)="requestProjectArchive()" />
+          <p-button label="Projekt archiválása" severity="danger" [outlined]="true" [loading]="transitioning()" [disabled]="transitioning()" data-testid="archive-project-button" (onClick)="requestProjectArchive()" />
         </div>
       }
 
       @if (isDeletableDraft()) {
         <div class="danger-action">
           <div><h2>Projekt végleges törlése</h2><p>Csak mentett projektmunka nélküli piszkozat törölhető. A művelet nem vonható vissza.</p></div>
-          <p-button label="Projekt végleges törlése" severity="danger" [outlined]="true" [loading]="deleting()" [disabled]="busy()" data-testid="delete-project-button" (onClick)="requestProjectDeletion()" />
+          <p-button label="Projekt végleges törlése" severity="danger" [outlined]="true" [loading]="deleting()" [disabled]="deleting()" data-testid="delete-project-button" (onClick)="requestProjectDeletion()" />
         </div>
       }
     </p-card>

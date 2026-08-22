@@ -29,7 +29,6 @@ jobs:
       MAIL_GATEWAY_IMAP_USERNAME: ci-imap-user
       MAIL_GATEWAY_IMAP_PASSWORD: ci-imap-password
       MAIL_GATEWAY_IMAP_FOLDER: INBOX
-      MAIL_GATEWAY_CHECKPOINT_SECRET: ci-checkpoint-secret-with-at-least-32-characters
     services:
       postgres:
         image: postgres:18.4-alpine3.24
@@ -64,16 +63,12 @@ jobs:
       - name: Run database migrations
         run: pnpm --filter @project-maker/api migration:run
 
-      - name: Build shared contracts
-        run: pnpm --filter @project-maker/contracts build
-
       - name: Run verify
         run: pnpm verify
 
   mail-gateway:
     runs-on: ubuntu-latest
     env:
-      ACTIVE_PROJECT_QUEUE_CURSOR_SECRET: ci-mail-gateway-cursor-secret-at-least-32-characters
       CORS_ORIGIN: http://127.0.0.1:4200
       DATABASE_URL: postgres://project_maker_app:ci-password@127.0.0.1:5432/project_maker_mail_gateway_test
       CORRESPONDENCE_MAILBOX_NAME: Project Maker CI gateway
@@ -89,7 +84,6 @@ jobs:
       MAIL_GATEWAY_IMAP_USERNAME: ci-imap-user
       MAIL_GATEWAY_IMAP_PASSWORD: ci-imap-password
       MAIL_GATEWAY_IMAP_FOLDER: INBOX
-      MAIL_GATEWAY_CHECKPOINT_SECRET: ci-mail-gateway-checkpoint-secret-at-least-32-characters
     services:
       postgres:
         image: postgres:18.4-alpine3.24
@@ -135,63 +129,9 @@ jobs:
 
   container-smoke:
     runs-on: ubuntu-latest
-    env:
-      ACTIVE_PROJECT_QUEUE_CURSOR_SECRET: ci-cursor-secret-with-at-least-32-characters
-      COMPOSE_PROJECT_NAME: project-maker-container-smoke-${{ github.run_id }}-${{ github.run_attempt }}
-      CORS_ORIGIN: http://localhost:8080
-      CUSTOMER_RESPONSE_ORIGIN: http://localhost:8080
-      CUSTOMER_RESPONSE_PREVIEW_SECRET: ci-customer-response-preview-secret-at-least-32-characters
-      CORRESPONDENCE_MAILBOX_ADDRESS: project-maker-container-smoke@example.test
-      CORRESPONDENCE_MAILBOX_NAME: Project Maker CI
-      DATABASE_URL: postgres://project_maker_app:ci-password@postgres:5432/project_maker_container_smoke
-      GIT_CREDENTIAL_ENCRYPTION_KEY: ci-git-credential-encryption-key-at-least-32-characters
-      GIT_HANDOFF_PREVIEW_SECRET: ci-git-handoff-preview-secret-at-least-32-characters
-      MAIL_GATEWAY_SMTP_HOST: 127.0.0.1
-      MAIL_GATEWAY_SMTP_PORT: '2525'
-      MAIL_GATEWAY_SMTP_SECURITY: STARTTLS_REQUIRED
-      MAIL_GATEWAY_SMTP_USERNAME: ci-smtp-user
-      MAIL_GATEWAY_SMTP_PASSWORD: ci-smtp-password
-      MAIL_GATEWAY_IMAP_HOST: 127.0.0.1
-      MAIL_GATEWAY_IMAP_PORT: '2143'
-      MAIL_GATEWAY_IMAP_SECURITY: STARTTLS_REQUIRED
-      MAIL_GATEWAY_IMAP_USERNAME: ci-imap-user
-      MAIL_GATEWAY_IMAP_PASSWORD: ci-imap-password
-      MAIL_GATEWAY_IMAP_FOLDER: INBOX
-      MAIL_GATEWAY_CHECKPOINT_SECRET: ci-checkpoint-secret-with-at-least-32-characters
-      POSTGRES_DB: project_maker_container_smoke
-      POSTGRES_PASSWORD: ci-password
-      POSTGRES_USER: project_maker_app
-      WEB_PORT: '8080'
-
     steps:
       - name: Checkout
         uses: actions/checkout@v7
 
-      - name: Build API container image
-        run: docker compose --project-name "$COMPOSE_PROJECT_NAME" build api
-
-      - name: Verify contracts runtime import in the image
-        run: |
-          docker compose --project-name "$COMPOSE_PROJECT_NAME" run --rm --no-deps --entrypoint node api -e "
-            const { loadGeneralPlaybookV1 } = require('@project-maker/contracts/general-playbook-runtime');
-            loadGeneralPlaybookV1()
-              .then((playbook) => {
-                if (playbook.id !== 'general' || playbook.version !== 1) {
-                  throw new Error('The image did not load the canonical general v1 playbook.');
-                }
-              })
-              .catch((error) => {
-                console.error(error);
-                process.exitCode = 1;
-              });
-          "
-
-      - name: Start migrated API and PostgreSQL
-        run: docker compose --project-name "$COMPOSE_PROJECT_NAME" up --wait postgres api
-
-      - name: Smoke canonical policy consumers
-        run: docker compose --project-name "$COMPOSE_PROJECT_NAME" exec -T api node --input-type=module - < apps/api/test/container-smoke.mjs
-
-      - name: Remove container smoke resources
-        if: always()
-        run: docker compose --project-name "$COMPOSE_PROJECT_NAME" down --volumes --remove-orphans
+      - name: Run isolated production API container smoke
+        run: node scripts/run-container-smoke.mjs

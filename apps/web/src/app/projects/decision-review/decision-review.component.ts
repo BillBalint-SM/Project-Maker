@@ -17,11 +17,9 @@ import type {
   ProjectDecisionReview,
   UpdateDecisionReviewInput,
 } from '@project-maker/contracts';
+import { finalize } from 'rxjs';
 
-import {
-  PROJECT_OPERATION_POLICY,
-  releaseProjectOperationOnFinalize,
-} from '../project-operation-policy';
+import { ProjectCommandPending } from '../project-command-pending';
 import { DecisionReviewApiService } from './decision-review-api.service';
 
 const ratingLabels: Readonly<Record<DecisionReviewInputKey, string>> = {
@@ -55,7 +53,7 @@ export class DecisionReviewComponent {
 
   private readonly api = inject(DecisionReviewApiService);
   private readonly destroyRef = inject(DestroyRef);
-  readonly operationPolicy = inject(PROJECT_OPERATION_POLICY);
+  private readonly pending = new ProjectCommandPending();
   private requestToken = 0;
 
   readonly loading = signal(false);
@@ -96,20 +94,17 @@ export class DecisionReviewComponent {
 
   save(): void {
     const review = this.review();
-    if (!review || !review.editable || this.saving() || this.operationPolicy.busy()) {
+    if (!review || !review.editable || this.saving()) {
       return;
     }
-    const lease = this.operationPolicy.tryAcquire('decision-review-save');
-    if (!lease) {
-      return;
-    }
+    if (!this.pending.begin('save')) return;
 
     this.saving.set(true);
     this.saveError.set(null);
     this.api
       .save(this.projectId(), this.ratingForm.getRawValue() as UpdateDecisionReviewInput)
       .pipe(
-        releaseProjectOperationOnFinalize(lease),
+        finalize(() => this.pending.end('save')),
         takeUntilDestroyed(this.destroyRef),
       )
       .subscribe({

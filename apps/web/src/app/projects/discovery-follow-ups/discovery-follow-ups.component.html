@@ -52,7 +52,7 @@
     >
       <fieldset
         class="discovery-follow-up-fields"
-        [disabled]="mutationDisabled()"
+        [disabled]="mutationDisabled() || creating()"
       >
         <legend class="sr-only">Új tisztázandó tétel</legend>
         <div class="field">

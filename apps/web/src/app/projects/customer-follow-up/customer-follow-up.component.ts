@@ -31,12 +31,9 @@ import { InputTextModule } from 'primeng/inputtext';
 import { MessageModule } from 'primeng/message';
 import { ProgressSpinnerModule } from 'primeng/progressspinner';
 import { TextareaModule } from 'primeng/textarea';
+import { finalize } from 'rxjs';
 
-import {
-  PROJECT_OPERATION_POLICY,
-  type ProjectOperationLease,
-  releaseProjectOperationOnFinalize,
-} from '../project-operation-policy';
+import { ProjectCommandPending } from '../project-command-pending';
 import {
   CustomerFollowUpApiError,
   CustomerFollowUpApiService,
@@ -61,7 +58,6 @@ import {
 })
 export class CustomerFollowUpComponent implements OnInit {
   private readonly api = inject(CustomerFollowUpApiService);
-  private readonly operationPolicy = inject(PROJECT_OPERATION_POLICY);
   private readonly destroyRef = inject(DestroyRef);
   private readonly document = inject(DOCUMENT);
   private readonly injector = inject(Injector);
@@ -80,15 +76,11 @@ export class CustomerFollowUpComponent implements OnInit {
   readonly retryConfirmation = signal<CustomerFollowUpManualAttempt | null>(null);
   readonly referenceOptions = signal<readonly CustomerFollowUpReferenceOption[]>([]);
   readonly senderIdentity = signal<CorrespondenceMailboxIdentity | null>(null);
-  readonly saving = computed(
-    () => this.operationPolicy.activeOperation() === 'customer-follow-up-save',
-  );
-  readonly previewing = computed(
-    () => this.operationPolicy.activeOperation() === 'customer-follow-up-preview',
-  );
-  readonly pinging = computed(
-    () => this.operationPolicy.activeOperation() === 'customer-follow-up-ping',
-  );
+  private readonly pending = new ProjectCommandPending();
+  readonly savingDraft = computed(() => this.pending.isPending('save-draft'));
+  readonly savingSettings = computed(() => this.pending.isPending('save-settings'));
+  readonly previewing = computed(() => this.pending.isPending('preview'));
+  readonly pinging = computed(() => this.pending.isPending('send') || this.pending.isPending('retry'));
   readonly scheduleValidationPaused = computed(() => {
     const current = this.state();
     const attemptState = current?.latestManualAttempt?.state;
@@ -99,7 +91,6 @@ export class CustomerFollowUpComponent implements OnInit {
   });
   private previewFocusReturn: HTMLElement | null = null;
   private retryFocusReturn: HTMLElement | null = null;
-  private recoveredPendingLease: ProjectOperationLease | null = null;
   private recoveredPendingRefreshHandle: ReturnType<typeof setTimeout> | null = null;
 
   readonly settingsForm = new FormGroup({
@@ -127,8 +118,6 @@ export class CustomerFollowUpComponent implements OnInit {
   constructor() {
     this.destroyRef.onDestroy(() => {
       this.clearRecoveredPendingRefresh();
-      this.recoveredPendingLease?.release();
-      this.recoveredPendingLease = null;
     });
     let initialized = false;
     let wasArchived = false;
@@ -191,15 +180,12 @@ export class CustomerFollowUpComponent implements OnInit {
       intervalMinutes: value.intervalMinutes,
       expiresAt: value.expiresAt?.toISOString() ?? null,
     };
-    const lease = this.operationPolicy.tryAcquire('customer-follow-up-save');
-    if (!lease) {
-      return;
-    }
+    if (!this.pending.begin('save-settings')) return;
     this.actionError.set(null);
     this.api
       .updateSettings(this.projectId(), input)
       .pipe(
-        releaseProjectOperationOnFinalize(lease),
+        finalize(() => this.pending.end('save-settings')),
         takeUntilDestroyed(this.destroyRef),
       )
       .subscribe({
@@ -219,10 +205,7 @@ export class CustomerFollowUpComponent implements OnInit {
       return;
     }
     const value = this.draftForm.getRawValue();
-    const lease = this.operationPolicy.tryAcquire('customer-follow-up-save');
-    if (!lease) {
-      return;
-    }
+    if (!this.pending.begin('save-draft')) return;
     this.actionError.set(null);
     this.draftFeedback.set(null);
     this.api
@@ -232,7 +215,7 @@ export class CustomerFollowUpComponent implements OnInit {
         expectedVersion: current.draftVersion,
       })
       .pipe(
-        releaseProjectOperationOnFinalize(lease),
+        finalize(() => this.pending.end('save-draft')),
         takeUntilDestroyed(this.destroyRef),
       )
       .subscribe({
@@ -253,17 +236,14 @@ export class CustomerFollowUpComponent implements OnInit {
     const trigger = this.document.querySelector<HTMLElement>(
       '[data-testid="preview-follow-up-ping-button"] button',
     );
-    const lease = this.operationPolicy.tryAcquire('customer-follow-up-preview');
-    if (!lease) {
-      return;
-    }
+    if (!this.pending.begin('preview')) return;
     this.actionError.set(null);
     this.api
       .preview(this.projectId(), {
         expectedVersion: current.draftVersion,
       })
       .pipe(
-        releaseProjectOperationOnFinalize(lease),
+        finalize(() => this.pending.end('preview')),
         takeUntilDestroyed(this.destroyRef),
       )
       .subscribe({
@@ -296,10 +276,7 @@ export class CustomerFollowUpComponent implements OnInit {
       ? this.state()?.latestManualAttempt
       : null;
     if (uncertainAttempt && !acknowledgeDuplicateRisk) return;
-    const lease = this.operationPolicy.tryAcquire('customer-follow-up-ping');
-    if (!lease) {
-      return;
-    }
+    if (!this.pending.begin('send')) return;
     this.actionError.set(null);
     this.sendResult.set(null);
     this.api
@@ -310,7 +287,7 @@ export class CustomerFollowUpComponent implements OnInit {
           : {}),
       })
       .pipe(
-        releaseProjectOperationOnFinalize(lease),
+        finalize(() => this.pending.end('send')),
         takeUntilDestroyed(this.destroyRef),
       )
       .subscribe({
@@ -377,15 +354,14 @@ export class CustomerFollowUpComponent implements OnInit {
   retryPing(): void {
     const attempt = this.retryConfirmation();
     if (!attempt || this.controlsDisabled()) return;
-    const lease = this.operationPolicy.tryAcquire('customer-follow-up-ping');
-    if (!lease) return;
+    if (!this.pending.begin('retry')) return;
     this.actionError.set(null);
     this.sendResult.set(null);
     this.api.retry(this.projectId(), {
       attemptId: attempt.attemptId,
       acknowledgeDuplicateRisk: attempt.state === 'UNKNOWN',
     }).pipe(
-      releaseProjectOperationOnFinalize(lease),
+      finalize(() => this.pending.end('retry')),
       takeUntilDestroyed(this.destroyRef),
     ).subscribe({
       next: () => {
@@ -407,8 +383,7 @@ export class CustomerFollowUpComponent implements OnInit {
   }
 
   controlsDisabled(): boolean {
-    return this.operationPolicy.busy()
-      || this.archived()
+    return this.archived()
       || this.state()?.latestManualAttempt?.state === 'SENDING';
   }
 
@@ -494,15 +469,10 @@ export class CustomerFollowUpComponent implements OnInit {
 
   private synchronizeRecoveredPendingLease(state: CustomerFollowUpState): void {
     if (state.latestManualAttempt?.state === 'SENDING') {
-      if (!this.recoveredPendingLease && !this.operationPolicy.busy()) {
-        this.recoveredPendingLease = this.operationPolicy.tryAcquire('customer-follow-up-ping');
-      }
       this.scheduleRecoveredPendingRefresh();
       return;
     }
     this.clearRecoveredPendingRefresh();
-    this.recoveredPendingLease?.release();
-    this.recoveredPendingLease = null;
   }
 
   private scheduleRecoveredPendingRefresh(): void {

@@ -16,7 +16,7 @@
     </div>
   } @else if (review(); as decisionReview) {
     <form class="decision-review-form" [formGroup]="ratingForm" (ngSubmit)="save()">
-      <fieldset [disabled]="!decisionReview.editable || saving() || operationPolicy.busy()">
+      <fieldset [disabled]="!decisionReview.editable || saving()">
         <legend>Értékelési szempontok</legend>
         <p class="decision-review-help">
           Az értékek {{ decisionReview.ratingScale.minimum }}-től {{ decisionReview.ratingScale.maximum }}-ig adhatók meg. A fordított irányban számító szempontokat a súlylista jelöli.
@@ -50,7 +50,7 @@
         type="submit"
         label="Döntési értékelés mentése"
         [loading]="saving()"
-        [disabled]="!decisionReview.editable || saving() || operationPolicy.busy()"
+        [disabled]="!decisionReview.editable || saving()"
         data-testid="save-decision-review-button"
       />
     </form>

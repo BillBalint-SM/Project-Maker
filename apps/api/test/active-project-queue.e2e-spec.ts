@@ -458,7 +458,9 @@ describe('Active project queue (e2e)', () => {
     assert.equal(typeof first.body.nextCursor, 'string');
     const decodedToken = Buffer.from(first.body.nextCursor as string, 'base64url').toString('utf8');
     assert.doesNotMatch(decodedToken, new RegExp(token));
-    assert.throws(() => JSON.parse(decodedToken) as unknown);
+    const decodedEnvelope = JSON.parse(decodedToken) as { version?: unknown; payload?: unknown };
+    assert.equal(decodedEnvelope.version, 1);
+    assert.ok(decodedEnvelope.payload);
 
     const second = await request(app.getHttpServer())
       .get('/projects/active-queue')

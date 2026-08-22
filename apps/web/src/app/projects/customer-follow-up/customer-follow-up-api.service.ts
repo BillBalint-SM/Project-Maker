@@ -14,6 +14,8 @@ import type {
 } from '@project-maker/contracts';
 import { catchError, type Observable, throwError } from 'rxjs';
 
+import { genericHttpErrorMessage } from '../../shared/http-error-message';
+
 export class CustomerFollowUpApiError extends Error {
   constructor(
     message: string,
@@ -122,7 +124,7 @@ export class CustomerFollowUpApiService {
       console.error('Customer follow-up request failed before receiving an HTTP response.', error);
       return throwError(() =>
         new CustomerFollowUpApiError(
-          `Nem sikerült ${action}. Próbáld meg újra.`,
+          genericHttpErrorMessage(error, action),
           null,
         ),
       );
@@ -169,7 +171,7 @@ export class CustomerFollowUpApiService {
     }
     return throwError(() =>
       new CustomerFollowUpApiError(
-        `Nem sikerült ${action}. Próbáld meg újra.`,
+        genericHttpErrorMessage(error, action),
         code,
       ),
     );

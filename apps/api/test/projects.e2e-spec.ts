@@ -147,24 +147,27 @@ describe('ProjectsController (e2e)', () => {
   });
 
   it('manages a named Markdown template draft through preview and publication', async () => {
+    const templateName = `Rövid átadási terv ${randomUUID()}`;
     const initialLibrary = await request(app.getHttpServer())
       .get('/settings/markdown-templates')
       .expect(200);
 
-    assert.equal(initialLibrary.body.length, 1);
-    assert.equal(initialLibrary.body[0].name, 'Alapértelmezett projektterv');
-    assert.equal(initialLibrary.body[0].latestPublishedVersion, 1);
-    assert.equal(initialLibrary.body[0].isDefault, true);
+    const defaultTemplate = initialLibrary.body.find(
+      (template: { name: string }) => template.name === 'Alapértelmezett projektterv',
+    );
+    assert.ok(defaultTemplate);
+    assert.equal(defaultTemplate.latestPublishedVersion, 1);
+    assert.equal(defaultTemplate.isDefault, true);
 
     const created = await request(app.getHttpServer())
       .post('/settings/markdown-templates')
       .send({
-        name: 'Rövid átadási terv',
+        name: templateName,
         draftContent: '# {{project.name}}\n\n{{project.context}}\n\n{{project.readiness?}}',
       })
       .expect(201);
 
-    assert.equal(created.body.name, 'Rövid átadási terv');
+    assert.equal(created.body.name, templateName);
     assert.equal(created.body.latestPublishedVersion, null);
     assert.equal(created.body.isDefault, false);
 
@@ -183,9 +186,9 @@ describe('ProjectsController (e2e)', () => {
     const library = await request(app.getHttpServer())
       .get('/settings/markdown-templates')
       .expect(200);
-    assert.deepEqual(
-      library.body.map((template: { name: string }) => template.name),
-      ['Alapértelmezett projektterv', 'Rövid átadási terv'],
+    assert.equal(
+      library.body.filter((template: { name: string }) => template.name === templateName).length,
+      1,
     );
   });
 
