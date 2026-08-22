@@ -11,7 +11,7 @@ The pnpm monorepo contains:
 
 Only Nginx publishes a host port. It serves the web application and proxies `/api/*` plus the bearer-authenticated `/mcp` endpoint to the internal API. The intended deployment is reachable through the Operator organization's VPN. Internal users authenticate with self-managed local email-and-password accounts; all Internal users share the same application capability level, with no roles, memberships, or per-Project permissions. Public Customer responses use narrowly scoped capability links at `/respond` and do not create Customer accounts.
 
-The PrimeNG license registration is intentional application bootstrap data. Do not copy its value into documentation, diagnostics, or logs. Review framework and license compatibility before a major Angular or PrimeNG upgrade.
+Review framework and component compatibility before a major Angular or PrimeNG upgrade.
 
 ## Documentation
 
