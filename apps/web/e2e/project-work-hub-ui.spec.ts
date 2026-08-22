@@ -1,16 +1,9 @@
 import { expect, test } from '@playwright/test';
-import path from 'node:path';
 
 import {
   expectVisibleKeyboardFocus,
   tabTo,
 } from './keyboard-assertions';
-
-const captureScreenshots = process.env.CAPTURE_PROJECT_WORK_HUB_SCREENSHOTS === '1';
-const screenshotDirectory = path.resolve(
-  __dirname,
-  '../../../docs/assets/user-guide',
-);
 
 const globalNavigationLabels = [
   'Portfolio',
@@ -34,33 +27,11 @@ test('exposes the exact global navigation and sends the reply count to the filte
       body: JSON.stringify({ newReplyCount: 3, projectCount: 1, projects: [] }),
     });
   });
-  if (captureScreenshots) {
-    const project = await page.request.post('/api/projects', {
-      data: {
-        name: 'Weboldal megújítás',
-        customerContactName: 'Minta Kapcsolattartó',
-        customerContactEmail: 'weboldal-megujitas@example.test',
-        internalOwnerName: 'Kovács Anna',
-        nextActionOwnerRole: 'INTERNAL_OWNER',
-        nextAction: 'Egyeztesd a jóváhagyási időpontot.',
-        dueAt: '2026-08-25T10:00:00.000Z',
-      },
-    });
-    expect(project.status()).toBe(201);
-  }
-
   await page.goto('/');
 
   await expect(page.locator('[data-nav-label]')).toHaveText(globalNavigationLabels);
   const replyCount = page.getByTestId('global-customer-reply-count');
   await expect(replyCount).toHaveAccessibleName('Open 3 new Customer replies');
-  if (captureScreenshots) {
-    await expect(page.getByText('Weboldal megújítás', { exact: true })).toBeVisible();
-    await page.screenshot({
-      path: path.join(screenshotDirectory, '11-project-work-hub-desktop.png'),
-      fullPage: true,
-    });
-  }
   const mainNavigation = page.getByRole('navigation', { name: 'Main navigation' });
   const navigationToggle = page.getByTestId('navigation-toggle');
   await expect(navigationToggle).toHaveAttribute('aria-expanded', 'false');
