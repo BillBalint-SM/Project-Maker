@@ -1,3 +1,4 @@
+import { DOCUMENT } from '@angular/common';
 import { Component, inject, OnInit, signal } from '@angular/core';
 import {
   AbstractControl,
@@ -58,6 +59,7 @@ type QuestionFormControls = {
 })
 export class QuestionBankPage implements OnInit {
   private readonly api = inject(QuestionBankApiService);
+  private readonly document = inject(DOCUMENT);
 
   readonly questionTypes = baseQuestionTypeOptions;
   readonly questionTypeLabel = baseQuestionTypeLabel;
@@ -69,6 +71,8 @@ export class QuestionBankPage implements OnInit {
   readonly saving = signal(false);
   readonly showForm = signal(false);
   readonly editingId = signal<string | null>(null);
+  readonly referenceSavingId = signal<string | null>(null);
+  readonly selectedReferenceFiles = signal<ReadonlyMap<string, File>>(new Map());
 
   readonly questionForm = new FormGroup<QuestionFormControls>({
     stableKey: new FormControl('', {
@@ -233,6 +237,69 @@ export class QuestionBankPage implements OnInit {
         this.saving.set(false);
       },
     });
+  }
+
+  chooseReferenceFile(questionId: string, event: Event): void {
+    const file = (event.target as HTMLInputElement).files?.[0] ?? null;
+    this.selectedReferenceFiles.update((current) => {
+      const next = new Map(current);
+      if (file) next.set(questionId, file);
+      else next.delete(questionId);
+      return next;
+    });
+    this.actionError.set(null);
+    this.feedback.set(null);
+  }
+
+  selectedReferenceFile(questionId: string): File | null {
+    return this.selectedReferenceFiles().get(questionId) ?? null;
+  }
+
+  addReferenceFile(question: BaseQuestion): void {
+    const file = this.selectedReferenceFile(question.id);
+    if (!file || this.referenceSavingId() !== null) return;
+    this.referenceSavingId.set(question.id);
+    this.actionError.set(null);
+    this.feedback.set(null);
+    this.api.addReferenceFile(question.id, file).subscribe({
+      next: (bank) => {
+        this.bank.set(bank);
+        this.selectedReferenceFiles.set(new Map());
+        this.referenceSavingId.set(null);
+        this.feedback.set('A referenciafájl új kérdésbankverzióban elérhető.');
+      },
+      error: (error: Error) => {
+        this.actionError.set(error.message);
+        this.referenceSavingId.set(null);
+      },
+    });
+  }
+
+  removeReferenceFile(question: BaseQuestion, fileId: string, originalName: string): void {
+    if (
+      this.referenceSavingId() !== null ||
+      !this.document.defaultView?.confirm(`Eltávolítod ezt a referenciafájlt: ${originalName}?`)
+    ) {
+      return;
+    }
+    this.referenceSavingId.set(question.id);
+    this.actionError.set(null);
+    this.feedback.set(null);
+    this.api.removeReferenceFile(question.id, fileId).subscribe({
+      next: (bank) => {
+        this.bank.set(bank);
+        this.referenceSavingId.set(null);
+        this.feedback.set('A referenciafájl az új kérdésbankverzióból eltávolítva.');
+      },
+      error: (error: Error) => {
+        this.actionError.set(error.message);
+        this.referenceSavingId.set(null);
+      },
+    });
+  }
+
+  referenceFileUrl(questionId: string, fileId: string): string {
+    return this.api.referenceFileDownloadUrl(questionId, fileId);
   }
 
   private resetForm(question: BaseQuestion | null, order: number): void {

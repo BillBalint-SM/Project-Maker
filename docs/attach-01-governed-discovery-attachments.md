@@ -3,15 +3,29 @@
 ## Outcome
 
 Authenticated Internal users can attach and download bounded files where a
-Question Bank reference, Initial Intake answer, or Discovery follow-up needs
-source material. This is not a general document library and Customer inbound
-attachments remain outside this feature.
+Question Bank reference, Initial Intake checklist snapshot, or Discovery
+follow-up needs source material. This is not a general document library and
+Customer inbound attachments remain outside this feature.
+
+Two ownership models remain deliberately separate:
+
+- a **Question Bank reference file** belongs to one Operator organization
+  Question Bank question revision in a Published Question Bank version; a
+  Project question schema retains that exact selected reference-file set;
+- a **Project work attachment** belongs to one Project and one Initial Intake
+  checklist snapshot or Discovery follow-up.
+
+The two models share the same validation and PostgreSQL durability policy, but
+not an ownership table or API. Question Bank file bytes are reused across copied
+question revisions; a Project draft deletion can remove Project work attachments
+but never an Operator organization Question Bank reference file.
 
 ## Smallest accepted flow
 
-1. The employee selects one or more files on the owning screen.
+1. The employee selects one file on the owning screen.
 2. The API validates the authenticated actor, mutable owner, configured size
-   limit, allowed extension/media signature, and safe filename.
+   limit, allowed extension/media signature, and safe filename. PDF, PNG, JPEG,
+   and inert UTF-8 TXT are allowed; every other type is rejected.
 3. The API stores the bytes and relationship in PostgreSQL in one transaction.
 4. The owner screen lists the attachment and provides an authenticated download
    and, while the owner remains editable, a confirmed remove action.
@@ -24,16 +38,21 @@ idempotency subsystem for this reversible internal action.
 
 - Reuse the accepted PostgreSQL `bytea` boundary from
   [ADR-0005](adr/0005-store-bounded-attachments-in-postgresql.md).
-- Keep one configurable per-file size limit and a small allow-list of business
-  document types. Reject empty, executable, HTML/SVG, archive, malformed, or
-  mismatched content.
+- Keep one configurable per-file size limit: `ATTACHMENT_MAX_MIB` defaults to
+  50 and may only lower the 50 MiB product maximum. Allow only PDF, PNG, JPEG,
+  and inert UTF-8 TXT. Reject empty files and every disallowed or mismatched
+  extension, declared media type, or supported file signature. Executable,
+  HTML/SVG, and archive types are therefore outside the allow-list; the first
+  release does not claim format-deep parsing.
 - Store the original display name separately from a generated storage identity.
   Never use user text as a path.
 - Download only through the authenticated, owner-scoped API with
   `Content-Disposition: attachment`, `X-Content-Type-Options: nosniff`, and a
   safe filename. There are no public URLs or inline previews.
-- Archived Projects are read-only but retained attachments remain downloadable.
-  Historical Question Bank and resolved follow-up references remain readable.
+- Archived Projects are read-only but retained Project work attachments remain
+  downloadable. Historical Published Question Bank versions and Project schemas
+  retain readable exact reference-file sets; resolved follow-up references also
+  remain readable.
 - Attachment bytes, filenames, free text, and scanner details do not enter audit
   payloads or ordinary application logs.
 
@@ -42,8 +61,8 @@ idempotency subsystem for this reversible internal action.
 When the Operator deployment already provides a supported antivirus service,
 the upload path may scan before storage and reject a positive or inconclusive
 result. Scanner integration is configuration, not a prerequisite for ATTACH-01:
-the application does not provision ClamAV, require fresh-signature jobs, or block
-all uploads merely because no scanner is configured.
+the application does not provision a scanner, require fresh-signature jobs, or
+block all uploads merely because no scanner is configured.
 
 The file-type allow-list, inert download behavior, authentication, and size
 limits remain mandatory with or without a scanner.
@@ -75,12 +94,13 @@ abstraction until an observed requirement makes one necessary.
 
 ## Delivery shape
 
-Deliver ATTACH-01 in two coherent slices at most:
+ATTACH-01 is delivered in two coherent ownership slices:
 
-1. shared storage/access module plus Question Bank reference ownership;
-2. Project attachment ownership on Initial Intake and Discovery follow-ups plus
-   the one critical browser flow.
+1. Question Bank reference-file ownership and exact version/schema retention;
+2. Project work-attachment ownership on Initial Intake and Discovery follow-ups
+   plus the one critical browser flow.
 
-The roadmap changes to `DELIVERED` when those affected paths pass. Unrelated
-mail, Portfolio, output, backup-drill, and repository-wide cross-product suites
-do not gate delivery.
+The delivered evidence is the focused attachment API/migration proof and one
+representative browser upload/download/remove path. Unrelated mail, Portfolio,
+output, backup-drill, and repository-wide cross-product suites do not gate
+delivery.

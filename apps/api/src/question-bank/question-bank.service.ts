@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 
 import {
   BadRequestException,
@@ -7,6 +7,7 @@ import {
   InternalServerErrorException,
   NotFoundException,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import type {
   BaseQuestion,
@@ -14,9 +15,15 @@ import type {
   BaseQuestionType,
   ProjectQuestionSchema,
   ProjectSchemaQuestion,
+  QuestionReferenceFile,
 } from '@project-maker/contracts';
 import { DataSource, EntityManager, In, Repository } from 'typeorm';
 
+import {
+  resolveAttachmentLimitBytes,
+  validateAttachmentFile,
+  type UploadedAttachmentFile,
+} from '../attachments/attachment-file-policy';
 import { AuditEvent } from '../audit/audit-event.entity';
 import { Project } from '../projects/project.entity';
 import { BaseQuestionEntity } from './base-question.entity';
@@ -25,14 +32,24 @@ import { PublishProjectQuestionSchemaDto } from './dto/publish-project-question-
 import { UpdateBaseQuestionDto } from './dto/update-base-question.dto';
 import { ProjectQuestionSchemaEntity } from './project-question-schema.entity';
 import { ProjectSchemaQuestionEntity } from './project-schema-question.entity';
+import { QuestionReferenceFileContentEntity } from './question-reference-file-content.entity';
+import { QuestionReferenceFileEntity } from './question-reference-file.entity';
+import { loadQuestionReferenceFiles } from './question-reference-file-projection';
 
 @Injectable()
 export class QuestionBankService {
+  private readonly maxAttachmentBytes: number;
+
   constructor(
     @InjectRepository(BaseQuestionEntity)
     private readonly baseQuestionRepository: Repository<BaseQuestionEntity>,
     private readonly dataSource: DataSource,
-  ) {}
+    config: ConfigService,
+  ) {
+    this.maxAttachmentBytes = resolveAttachmentLimitBytes(
+      config.get<string>('ATTACHMENT_MAX_MIB'),
+    );
+  }
 
   async getBaseQuestions(): Promise<BaseQuestionBank> {
     const version = await findLatestBankVersion(this.baseQuestionRepository.manager);
@@ -83,7 +100,8 @@ export class QuestionBankService {
       nextQuestions.push(newQuestion);
       validateBankRevision(nextQuestions);
       await manager.getRepository(BaseQuestionEntity).save(nextQuestions);
-      return toBaseQuestionBank(currentVersion + 1, nextQuestions);
+      await copyReferenceFiles(manager, currentQuestions, nextQuestions);
+      return loadBaseQuestionBank(manager, currentVersion + 1);
     });
   }
 
@@ -154,8 +172,98 @@ export class QuestionBankService {
       });
       validateBankRevision(nextQuestions);
       await manager.getRepository(BaseQuestionEntity).save(nextQuestions);
-      return toBaseQuestionBank(nextVersion, nextQuestions);
+      await copyReferenceFiles(manager, currentQuestions, nextQuestions);
+      return loadBaseQuestionBank(manager, nextVersion);
     });
+  }
+
+  async addReferenceFile(
+    questionId: string,
+    file: UploadedAttachmentFile | undefined,
+  ): Promise<BaseQuestionBank> {
+    if (!file) throw new BadRequestException('One reference file is required.');
+    const validatedFile = validateAttachmentFile(file, this.maxAttachmentBytes);
+    return this.dataSource.transaction(async (manager) => {
+      await lockBankPublishing(manager);
+      const currentVersion = await findLatestBankVersion(manager);
+      const currentQuestions = await loadBankEntities(manager, currentVersion);
+      const target = await requireLatestQuestion(manager, currentQuestions, questionId);
+      const nextQuestions = copyBankRevision(currentQuestions, currentVersion + 1);
+      validateBankRevision(nextQuestions);
+      await manager.getRepository(BaseQuestionEntity).save(nextQuestions);
+      await copyReferenceFiles(manager, currentQuestions, nextQuestions);
+
+      const content = manager.getRepository(QuestionReferenceFileContentEntity).create({
+        id: randomUUID(),
+        originalName: validatedFile.originalName,
+        contentType: validatedFile.mimetype,
+        sizeBytes: validatedFile.size,
+        sha256: createHash('sha256').update(validatedFile.buffer).digest('hex'),
+        content: validatedFile.buffer,
+      });
+      const savedContent = await manager
+        .getRepository(QuestionReferenceFileContentEntity)
+        .save(content);
+      const nextTarget = nextQuestions.find(
+        (question) => question.stableKey === target.stableKey,
+      );
+      if (!nextTarget) {
+        throw new InternalServerErrorException('Published Question Bank successor is incomplete.');
+      }
+      await manager.getRepository(QuestionReferenceFileEntity).save({
+        questionId: nextTarget.id,
+        fileId: savedContent.id,
+      });
+      return loadBaseQuestionBank(manager, currentVersion + 1);
+    });
+  }
+
+  async removeReferenceFile(
+    questionId: string,
+    fileId: string,
+  ): Promise<BaseQuestionBank> {
+    return this.dataSource.transaction(async (manager) => {
+      await lockBankPublishing(manager);
+      const currentVersion = await findLatestBankVersion(manager);
+      const currentQuestions = await loadBankEntities(manager, currentVersion);
+      await requireLatestQuestion(manager, currentQuestions, questionId);
+      if (!await manager.getRepository(QuestionReferenceFileEntity).existsBy({
+        questionId,
+        fileId,
+      })) {
+        throw new NotFoundException('Question Bank reference file not found.');
+      }
+      const nextQuestions = copyBankRevision(currentQuestions, currentVersion + 1);
+      validateBankRevision(nextQuestions);
+      await manager.getRepository(BaseQuestionEntity).save(nextQuestions);
+      await copyReferenceFiles(manager, currentQuestions, nextQuestions, {
+        questionId,
+        fileId,
+      });
+      return loadBaseQuestionBank(manager, currentVersion + 1);
+    });
+  }
+
+  async downloadReferenceFile(
+    questionId: string,
+    fileId: string,
+  ): Promise<QuestionReferenceFileContentEntity> {
+    if (!await this.dataSource.manager.getRepository(QuestionReferenceFileEntity).existsBy({
+      questionId,
+      fileId,
+    })) {
+      throw new NotFoundException('Question Bank reference file not found.');
+    }
+    const content = await this.dataSource.manager
+      .getRepository(QuestionReferenceFileContentEntity)
+      .createQueryBuilder('referenceFile')
+      .addSelect('referenceFile.content')
+      .where('referenceFile.id = :fileId', { fileId })
+      .getOne();
+    if (!content) {
+      throw new InternalServerErrorException('Stored Question Bank reference file is incomplete.');
+    }
+    return content;
   }
 
   async getProjectSchema(projectId: string): Promise<ProjectQuestionSchema> {
@@ -251,7 +359,15 @@ export class QuestionBankService {
           questionCount: String(schemaQuestions.length),
         },
       });
-      return toProjectSchema(schema, schemaQuestions, selectedQuestions.map(({ question }) => question));
+      return toProjectSchema(
+        schema,
+        schemaQuestions,
+        selectedQuestions.map(({ question }) => question),
+        await loadQuestionReferenceFiles(
+          manager,
+          selectedQuestions.map(({ question }) => question.id),
+        ),
+      );
     });
   }
 }
@@ -287,7 +403,15 @@ async function loadBaseQuestionBank(
   manager: EntityManager,
   version: number,
 ): Promise<BaseQuestionBank> {
-  return toBaseQuestionBank(version, await loadBankEntities(manager, version));
+  const questions = await loadBankEntities(manager, version);
+  return toBaseQuestionBank(
+    version,
+    questions,
+    await loadQuestionReferenceFiles(
+      manager,
+      questions.map(({ id }) => id),
+    ),
+  );
 }
 
 function copyBankRevision(
@@ -304,6 +428,56 @@ function copyBankRevision(
       publishedAt,
     }),
   );
+}
+
+async function copyReferenceFiles(
+  manager: EntityManager,
+  currentQuestions: readonly BaseQuestionEntity[],
+  nextQuestions: readonly BaseQuestionEntity[],
+  excluded?: { readonly questionId: string; readonly fileId: string },
+): Promise<void> {
+  if (currentQuestions.length === 0) return;
+  const currentById = new Map(currentQuestions.map((question) => [question.id, question]));
+  const nextIdByKey = new Map(nextQuestions.map((question) => [question.stableKey, question.id]));
+  const currentReferences = await manager.getRepository(QuestionReferenceFileEntity).findBy({
+    questionId: In(currentQuestions.map(({ id }) => id)),
+  });
+  const copies = currentReferences.flatMap((reference) => {
+    if (
+      reference.questionId === excluded?.questionId &&
+      reference.fileId === excluded.fileId
+    ) {
+      return [];
+    }
+    const currentQuestion = currentById.get(reference.questionId);
+    const nextQuestionId = currentQuestion
+      ? nextIdByKey.get(currentQuestion.stableKey)
+      : undefined;
+    if (!nextQuestionId) {
+      throw new InternalServerErrorException(
+        'Published Question Bank reference-file successor is incomplete.',
+      );
+    }
+    return [{ questionId: nextQuestionId, fileId: reference.fileId }];
+  });
+  if (copies.length > 0) {
+    await manager.getRepository(QuestionReferenceFileEntity).save(copies);
+  }
+}
+
+async function requireLatestQuestion(
+  manager: EntityManager,
+  currentQuestions: readonly BaseQuestionEntity[],
+  questionId: string,
+): Promise<BaseQuestionEntity> {
+  const target = currentQuestions.find((question) => question.id === questionId);
+  if (target) return target;
+  if (await manager.getRepository(BaseQuestionEntity).existsBy({ id: questionId })) {
+    throw new ConflictException(
+      'Question Bank reference-file changes must target the latest published bank version.',
+    );
+  }
+  throw new NotFoundException('Base question not found.');
 }
 
 function normalizeQuestion(question: BaseQuestionEntity): BaseQuestionEntity {
@@ -394,22 +568,37 @@ async function loadProjectSchema(
   if (baseQuestions.length !== schemaQuestions.length) {
     throw new InternalServerErrorException('Stored project question schema is incomplete.');
   }
-  return toProjectSchema(schema, schemaQuestions, baseQuestions);
+  return toProjectSchema(
+    schema,
+    schemaQuestions,
+    baseQuestions,
+    await loadQuestionReferenceFiles(
+      manager,
+      baseQuestions.map(({ id }) => id),
+    ),
+  );
 }
 
 function toBaseQuestionBank(
   version: number,
   questions: readonly BaseQuestionEntity[],
+  referenceFilesByQuestionId: ReadonlyMap<string, readonly QuestionReferenceFile[]>,
 ): BaseQuestionBank {
   return {
     version,
     questions: [...questions]
       .sort((left, right) => left.order - right.order || left.stableKey.localeCompare(right.stableKey))
-      .map(toBaseQuestion),
+      .map((question) => toBaseQuestion(
+        question,
+        referenceFilesByQuestionId.get(question.id) ?? [],
+      )),
   };
 }
 
-function toBaseQuestion(question: BaseQuestionEntity): BaseQuestion {
+function toBaseQuestion(
+  question: BaseQuestionEntity,
+  referenceFiles: readonly QuestionReferenceFile[],
+): BaseQuestion {
   return {
     id: question.id,
     stableKey: question.stableKey,
@@ -427,6 +616,7 @@ function toBaseQuestion(question: BaseQuestionEntity): BaseQuestion {
     options: question.options,
     source: question.source,
     publishedAt: toIso(question.publishedAt, 'publishedAt'),
+    referenceFiles,
   };
 }
 
@@ -434,6 +624,7 @@ function toProjectSchema(
   schema: ProjectQuestionSchemaEntity,
   schemaQuestions: readonly ProjectSchemaQuestionEntity[],
   baseQuestions: readonly BaseQuestionEntity[],
+  referenceFilesByQuestionId: ReadonlyMap<string, readonly QuestionReferenceFile[]>,
 ): ProjectQuestionSchema {
   const baseQuestionsById = new Map(baseQuestions.map((question) => [question.id, question]));
   const questions = schemaQuestions.map((schemaQuestion): ProjectSchemaQuestion => {
@@ -454,6 +645,7 @@ function toProjectSchema(
       order: schemaQuestion.order,
       hint: baseQuestion.hint,
       options: baseQuestion.options,
+      referenceFiles: referenceFilesByQuestionId.get(baseQuestion.id) ?? [],
     };
   });
   return {

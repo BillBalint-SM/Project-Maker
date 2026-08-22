@@ -1,4 +1,4 @@
-import type { BaseQuestionType } from './question-bank.js';
+import type { BaseQuestionType, QuestionReferenceFile } from './question-bank.js';
 
 export const interviewRoundTypes = [
   'INITIAL_INTAKE',
@@ -42,6 +42,7 @@ export interface RoundQuestionSnapshot {
   readonly answeredAt: string | null;
   readonly checklistStatus: string;
   readonly assessmentRationale: string | null;
+  readonly referenceFiles?: readonly QuestionReferenceFile[];
 }
 
 export interface InterviewRound {

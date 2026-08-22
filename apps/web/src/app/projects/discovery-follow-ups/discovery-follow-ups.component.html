@@ -244,6 +244,14 @@
                 #{{ source.order }} · {{ source.topic }} · {{ source.controlPoint }}
               </p>
             }
+            <app-project-attachment-block
+              [projectId]="projectId()"
+              ownerKind="DISCOVERY_FOLLOW_UP"
+              [ownerId]="followUp.id"
+              [mutable]="projectStatus() !== 'ARCHIVED' && isCanonicalOpen(followUp)"
+              [attachments]="attachmentsFor(followUp.id)"
+              (changed)="attachmentChanged()"
+            />
             @if (isCanonicalOpen(followUp)) {
               <p-button
                 label="Tisztázandó tételek szerkesztése"

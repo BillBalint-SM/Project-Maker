@@ -167,12 +167,69 @@ describe('Evidence-based discovery (e2e)', () => {
       })
       .expect(201);
     await request(app.getHttpServer())
+      .post(`/projects/${project.body.id as string}/attachments`)
+      .field('ownerKind', 'DISCOVERY_FOLLOW_UP')
+      .field('ownerId', followUp.body.id as string)
+      .attach('file', Buffer.from('unsafe filename', 'utf8'), {
+        filename: 'unsafe<name>.txt',
+        contentType: 'text/plain',
+      })
+      .expect(400);
+    const removableAttachment = await request(app.getHttpServer())
+      .post(`/projects/${project.body.id as string}/attachments`)
+      .field('ownerKind', 'DISCOVERY_FOLLOW_UP')
+      .field('ownerId', followUp.body.id as string)
+      .attach('file', Buffer.from('temporary note', 'utf8'), {
+        filename: 'ideiglenes.txt',
+        contentType: 'text/plain',
+      })
+      .expect(201);
+    const listedAttachments = await request(app.getHttpServer())
+      .get(`/projects/${project.body.id as string}/attachments`)
+      .expect(200);
+    assert.deepEqual(
+      new Set(listedAttachments.body.map(({ id }: { id: string }) => id)),
+      new Set([attachment.body.id as string, removableAttachment.body.id as string]),
+    );
+    await request(app.getHttpServer())
+      .delete(
+        `/projects/${project.body.id as string}/attachments/${removableAttachment.body.id as string}`,
+      )
+      .expect(204);
+    await request(app.getHttpServer())
+      .get(
+        `/projects/${project.body.id as string}/attachments/${removableAttachment.body.id as string}/download`,
+      )
+      .expect(404);
+    await request(app.getHttpServer())
       .get(
         `/projects/${project.body.id as string}/attachments/${attachment.body.id as string}/download`,
       )
       .expect('Content-Type', /text\/plain/)
       .expect('Content-Disposition', /attachment/)
       .expect(200);
+
+    await request(app.getHttpServer())
+      .post(
+        `/projects/${project.body.id as string}/discovery-follow-ups/${followUp.body.id as string}/resolve`,
+      )
+      .send({
+        status: 'Megválaszolva',
+        decisionOrAnswer: 'A retry endpoint dokumentálva lett.',
+      })
+      .expect(200);
+    await request(app.getHttpServer())
+      .post(`/projects/${project.body.id as string}/attachments`)
+      .field('ownerKind', 'DISCOVERY_FOLLOW_UP')
+      .field('ownerId', followUp.body.id as string)
+      .attach('file', Buffer.from('late note', 'utf8'), {
+        filename: 'kesoi.txt',
+        contentType: 'text/plain',
+      })
+      .expect(409);
+    await request(app.getHttpServer())
+      .delete(`/projects/${project.body.id as string}/attachments/${attachment.body.id as string}`)
+      .expect(409);
 
     await request(app.getHttpServer())
       .post(`/projects/${project.body.id as string}/archive`)

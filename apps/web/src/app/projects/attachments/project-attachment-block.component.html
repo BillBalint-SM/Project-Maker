@@ -1,0 +1,66 @@
+<section
+  class="attachment-block"
+  [attr.aria-label]="'Kapcsolódó fájlok: ' + ownerId()"
+  [attr.data-testid]="'project-attachment-block-' + ownerId()"
+>
+  <h3>Kapcsolódó fájlok</h3>
+
+  @if (error()) {
+    <p-message severity="error" role="alert">{{ error() }}</p-message>
+  }
+  @if (feedback()) {
+    <p-message severity="success" role="status">{{ feedback() }}</p-message>
+  }
+
+  <ul class="attachment-list">
+    @for (attachment of attachments(); track attachment.id) {
+      <li>
+        <span>
+          <strong>{{ attachment.originalName }}</strong>
+          <small>{{ sizeLabel(attachment.sizeBytes) }}</small>
+        </span>
+        <span class="attachment-actions">
+          <a
+            [href]="downloadUrl(attachment.id)"
+            [attr.data-testid]="'download-project-attachment-' + attachment.id"
+          >Letöltés</a>
+          @if (mutable()) {
+            <p-button
+              label="Eltávolítás"
+              severity="danger"
+              [text]="true"
+              [disabled]="busy()"
+              [attr.data-testid]="'remove-project-attachment-' + attachment.id"
+              (onClick)="remove(attachment)"
+            />
+          }
+        </span>
+      </li>
+    } @empty {
+      <li class="empty">Még nincs kapcsolódó fájl.</li>
+    }
+  </ul>
+
+  @if (mutable()) {
+    <div class="attachment-upload">
+      <label>
+        Fájl
+        <input
+          #fileInput
+          type="file"
+          accept=".pdf,.png,.jpg,.jpeg,.txt"
+          [disabled]="busy()"
+          data-testid="project-attachment-file"
+          (change)="chooseFile($event)"
+        />
+      </label>
+      <p-button
+        label="Fájl hozzáadása"
+        [loading]="busy()"
+        [disabled]="busy() || !selectedFile()"
+        data-testid="upload-project-attachment"
+        (onClick)="upload()"
+      />
+    </div>
+  }
+</section>

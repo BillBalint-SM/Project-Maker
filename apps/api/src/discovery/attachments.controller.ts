@@ -15,7 +15,11 @@ import {
 import { FileInterceptor } from '@nestjs/platform-express';
 import type { GovernedAttachment } from '@project-maker/contracts';
 
-import { AttachmentsService, type UploadedAttachmentFile } from './attachments.service';
+import {
+  attachmentContentDisposition,
+  type UploadedAttachmentFile,
+} from '../attachments/attachment-file-policy';
+import { AttachmentsService } from './attachments.service';
 import { UploadAttachmentDto } from './dto/upload-attachment.dto';
 
 @Controller('projects/:projectId/attachments')
@@ -28,7 +32,7 @@ export class AttachmentsController {
   }
 
   @Post()
-  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 50 * 1024 * 1024, files: 1 } }))
+  @UseInterceptors(FileInterceptor('file'))
   upload(
     @Param('projectId', new ParseUUIDPipe()) projectId: string,
     @Body() input: UploadAttachmentDto,
@@ -50,7 +54,7 @@ export class AttachmentsController {
     response.setHeader('Content-Type', attachment.contentType);
     response.setHeader('Content-Length', attachment.sizeBytes);
     response.setHeader('X-Content-Type-Options', 'nosniff');
-    response.setHeader('Content-Disposition', contentDisposition(attachment.originalName));
+    response.setHeader('Content-Disposition', attachmentContentDisposition(attachment.originalName));
     response.send(attachment.content);
   }
 
@@ -62,9 +66,4 @@ export class AttachmentsController {
   ): Promise<void> {
     return this.attachments.delete(projectId, attachmentId);
   }
-}
-
-function contentDisposition(filename: string): string {
-  const extension = filename.match(/\.[A-Za-z0-9]+$/)?.[0] ?? '';
-  return `attachment; filename="attachment${extension}"; filename*=UTF-8''${encodeURIComponent(filename)}`;
 }

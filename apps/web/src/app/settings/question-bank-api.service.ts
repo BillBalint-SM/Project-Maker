@@ -32,6 +32,29 @@ export class QuestionBankApiService {
       .pipe(catchError((error: unknown) => failApiRequest(error, 'menteni az alapkérdés módosításait')));
   }
 
+  addReferenceFile(questionId: string, file: File): Observable<BaseQuestionBank> {
+    const body = new FormData();
+    body.set('file', file, file.name);
+    return this.http
+      .post<BaseQuestionBank>(
+        `/api/settings/base-questions/${encodeURIComponent(questionId)}/reference-files`,
+        body,
+      )
+      .pipe(catchError((error: unknown) => failApiRequest(error, 'hozzáadni a referenciafájlt')));
+  }
+
+  removeReferenceFile(questionId: string, fileId: string): Observable<BaseQuestionBank> {
+    return this.http
+      .delete<BaseQuestionBank>(
+        `/api/settings/base-questions/${encodeURIComponent(questionId)}/reference-files/${encodeURIComponent(fileId)}`,
+      )
+      .pipe(catchError((error: unknown) => failApiRequest(error, 'eltávolítani a referenciafájlt')));
+  }
+
+  referenceFileDownloadUrl(questionId: string, fileId: string): string {
+    return `/api/settings/base-questions/${encodeURIComponent(questionId)}/reference-files/${encodeURIComponent(fileId)}/download`;
+  }
+
   loadProjectSchema(projectId: string): Observable<ProjectQuestionSchema | null> {
     const encodedProjectId = encodeURIComponent(projectId);
     return this.http

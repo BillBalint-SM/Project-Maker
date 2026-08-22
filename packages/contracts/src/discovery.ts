@@ -74,7 +74,6 @@ export interface UpdateInsightInput {
 }
 
 export const governedAttachmentOwnerKinds = [
-  'QUESTION_BANK',
   'ROUND_SNAPSHOT',
   'DISCOVERY_FOLLOW_UP',
 ] as const;

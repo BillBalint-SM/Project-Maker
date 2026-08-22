@@ -1202,6 +1202,16 @@ describe('Question bank and interview rounds (PostgreSQL e2e)', () => {
       .expect(201);
     assert.equal(partialCompletionResponse.body.status, 'ENDED');
 
+    const retainedSnapshotAttachment = await request(app.getHttpServer())
+      .post(`/projects/${projectId}/attachments`)
+      .field('ownerKind', 'ROUND_SNAPSHOT')
+      .field('ownerId', snapshotId)
+      .attach('file', Buffer.from('initial intake source', 'utf8'), {
+        filename: 'felmeresi-forras.txt',
+        contentType: 'text/plain',
+      })
+      .expect(201);
+
     const clearedPartialResponse = await request(app.getHttpServer())
       .patch(answerUrl)
       .send({ value: null })
@@ -1248,6 +1258,22 @@ describe('Question bank and interview rounds (PostgreSQL e2e)', () => {
        WHERE "round_id" = $1`,
       [roundId],
     );
+
+    await request(app.getHttpServer())
+      .post(`/projects/${projectId}/attachments`)
+      .field('ownerKind', 'ROUND_SNAPSHOT')
+      .field('ownerId', snapshotId)
+      .attach('file', Buffer.from('late source', 'utf8'), {
+        filename: 'kesoi-forras.txt',
+        contentType: 'text/plain',
+      })
+      .expect(409);
+    await request(app.getHttpServer())
+      .delete(`/projects/${projectId}/attachments/${retainedSnapshotAttachment.body.id as string}`)
+      .expect(409);
+    await request(app.getHttpServer())
+      .get(`/projects/${projectId}/attachments/${retainedSnapshotAttachment.body.id as string}/download`)
+      .expect(200);
 
     const stateBeforeRejectedCommands = await dataSource.query<
       Array<{ status: string; rationale: string; updatedAt: Date; auditCount: string }>

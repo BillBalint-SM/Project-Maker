@@ -3,7 +3,6 @@ import { inject, Injectable } from '@angular/core';
 import { catchError, type Observable, throwError } from 'rxjs';
 import type {
   CreateInsightInput,
-  GovernedAttachment,
   Insight,
   ProjectContact,
   SaveProjectContactInput,
@@ -45,23 +44,6 @@ export class DiscoveryApiService {
   updateInsight(projectId: string, insightId: string, input: UpdateInsightInput): Observable<Insight> {
     return this.http.put<Insight>(this.url(projectId, `insights/${encodeURIComponent(insightId)}`), input)
       .pipe(catchError((error: unknown) => fail(error, 'frissíteni az insightot')));
-  }
-
-  listAttachments(projectId: string): Observable<readonly GovernedAttachment[]> {
-    return this.get<readonly GovernedAttachment[]>(projectId, 'attachments', 'betölteni a mellékleteket');
-  }
-
-  uploadAttachment(projectId: string, ownerId: string, file: File): Observable<GovernedAttachment> {
-    const body = new FormData();
-    body.set('ownerKind', 'DISCOVERY_FOLLOW_UP');
-    body.set('ownerId', ownerId);
-    body.set('file', file, file.name);
-    return this.http.post<GovernedAttachment>(this.url(projectId, 'attachments'), body)
-      .pipe(catchError((error: unknown) => fail(error, 'feltölteni a mellékletet')));
-  }
-
-  downloadUrl(projectId: string, attachmentId: string): string {
-    return this.url(projectId, `attachments/${encodeURIComponent(attachmentId)}/download`);
   }
 
   private get<T>(projectId: string, path: string, action: string): Observable<T> {
