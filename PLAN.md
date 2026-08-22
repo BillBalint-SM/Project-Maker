@@ -216,8 +216,14 @@ workflows, two HTTP contracts, product copy, and authoritative documentation.
   from a previous session could race the next user's badges. Red tests proved
   both cross-session races; badge publications and Notification snapshots are
   now session-scoped, while the shell retains the last valid current-user
-  count and ignores stale updates. Final review and re-measurement remain open.
+  count and ignores stale updates. Final review and re-measurement were still
+  open at this checkpoint.
 - 2026-08-22: final adversarial review reopened `UX-AUDIT-004` for overlapping
   Formal Decision availability retries. A red out-of-order detector proved
   that an older active result could replace a newer archived result. The page
   now accepts only the latest availability request, keeping the UI fail-closed.
+- 2026-08-22: independent adversarial and specification re-reviews of the
+  complete `4632fe5...07c875b` range found no unresolved P1/P2. Final
+  measurement: 20/20 leaf gates, 10/10 branch gates, 31/31 web test files,
+  104/104 component tests, 5/5 adjacent API tests, 4/4 browser recoveries, and
+  9/9 root gates.
