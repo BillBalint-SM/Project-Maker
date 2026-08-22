@@ -60,13 +60,14 @@ describe('Question Bank reference files (e2e)', () => {
     const firstReference = firstPublishedTarget.referenceFiles[0];
     assert.equal(firstReference.originalName, 'ügyfél-háttér.txt');
 
-    await request(app.getHttpServer())
+    const downloadedReference = await request(app.getHttpServer())
       .get(
         `/settings/base-questions/${firstPublishedTarget.id}/reference-files/${firstReference.id}/download`,
       )
       .expect('Content-Type', /text\/plain/)
       .expect('Content-Disposition', /attachment/)
       .expect(200);
+    assert.equal(downloadedReference.text, 'elfogadott üzleti háttér');
 
     const project = await request(app.getHttpServer())
       .post('/projects')

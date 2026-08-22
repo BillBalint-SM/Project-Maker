@@ -17,9 +17,9 @@
 - [Bounded attachment storage decision](adr/0005-store-bounded-attachments-in-postgresql.md)
 - [Current requirement checklist](../.planning/REQUIREMENTS.md) — checked only with delivery evidence.
 
-## Accepted designs pending implementation
+## Delivered attachment design and evidence
 
-- [ATTACH-01 governed discovery attachments](attach-01-governed-discovery-attachments.md) — final implementation plan for bounded Question Bank guidance and Project-owned discovery files without a general document library.
+- [ATTACH-01 governed discovery attachments](attach-01-governed-discovery-attachments.md) — delivered boundary for bounded Question Bank guidance and Project-owned discovery files without a general document library.
 - [ATTACH-01 primary-source research](research/attach-01-file-upload-best-practices.md) — security, streaming, scanner, retry, storage, accessibility, recovery, and performance evidence behind the final plan.
 
 ## End-user guidance
