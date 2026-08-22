@@ -565,11 +565,11 @@ describe('Correlated Customer replies', () => {
     assert.equal(serializedAudit.includes(`Válasz accepted-${suffix}`), false);
     const activity = await request(app.getHttpServer()).get(`/projects/${projectId}/activity`).expect(200);
     assert.equal(
-      activity.body.events.some((event: { summary: string }) => event.summary.includes('ügyfél')),
+      activity.body.events.some((event: { summary: string }) => event.summary.includes('Customer')),
       true,
     );
     assert.equal(
-      activity.body.events.some((event: { summary: string }) => event.summary.includes('Customer')),
+      activity.body.events.some((event: { summary: string }) => event.summary.includes('ügyfél')),
       false,
     );
 

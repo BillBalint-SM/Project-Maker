@@ -57,7 +57,7 @@ export class CustomerMailTriagePage implements OnInit {
   link(message: UnmatchedCustomerMessageView): void {
     const correspondenceId = this.selectedTargets()[message.id];
     if (!correspondenceId) {
-      this.commandError.set('Az üzenet társításához válassz ügyféllevelezést.');
+      this.commandError.set('Select Customer correspondence before linking the message.');
       return;
     }
     this.runCommand(message, {
@@ -72,7 +72,7 @@ export class CustomerMailTriagePage implements OnInit {
   }
 
   eventLabel(type: MailSystemEventView['type']): string {
-    return type === 'DELIVERY_REPORT' ? 'Kézbesítési jelentés' : 'Automatikus távolléti válasz';
+    return type === 'DELIVERY_REPORT' ? 'Delivery report' : 'Automated out-of-office reply';
   }
 
   private runCommand(

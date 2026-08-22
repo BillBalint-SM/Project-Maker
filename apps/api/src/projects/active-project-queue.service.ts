@@ -35,14 +35,14 @@ const urgencyOrder: Readonly<Record<ActiveProjectUrgency, number>> = {
   IN_PROGRESS: 3,
 };
 const urgencyLabels: Readonly<Record<ActiveProjectUrgency, string>> = {
-  CUSTOMER_REPLY: 'Új ügyfélválasz',
-  OVERDUE: 'Lejárt a következő lépés',
-  DUE_SOON: 'Hamarosan lejár',
-  IN_PROGRESS: 'Folyamatban',
+  CUSTOMER_REPLY: 'New Customer reply',
+  OVERDUE: 'Next action overdue',
+  DUE_SOON: 'Due soon',
+  IN_PROGRESS: 'In progress',
 };
 const coordinationAction: ActiveProjectQueueAction = {
   target: 'PROJECT_COORDINATION',
-  label: 'Következő lépés kezelése',
+  label: 'Manage next action',
 };
 
 interface QueueCursor {
@@ -162,7 +162,7 @@ function primaryActionFor(
   preparationAction: ActiveProjectQueueAction,
 ): ActiveProjectQueueAction {
   if (urgency === 'CUSTOMER_REPLY') {
-    return { target: 'CUSTOMER_CORRESPONDENCE', label: 'Ügyféllevelezés megnyitása' };
+    return { target: 'CUSTOMER_CORRESPONDENCE', label: 'Open Customer correspondence' };
   }
   if (urgency === 'OVERDUE' || urgency === 'DUE_SOON') {
     return coordinationAction;

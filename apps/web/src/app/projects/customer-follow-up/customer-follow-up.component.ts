@@ -191,7 +191,7 @@ export class CustomerFollowUpComponent implements OnInit {
       .subscribe({
         next: (state) => {
           this.applyState(state, { preserveDraft: this.draftForm.dirty });
-          this.draftFeedback.set('Az automatikus ügyfél-emlékeztető beállításai mentve lettek.');
+          this.draftFeedback.set('Automated Customer follow-up settings saved.');
           this.committedChange.emit();
         },
         error: (error: Error) => this.actionError.set(error.message),
@@ -221,7 +221,7 @@ export class CustomerFollowUpComponent implements OnInit {
       .subscribe({
         next: (state) => {
           this.applyState(state, { preserveSettings: this.settingsForm.dirty });
-          this.draftFeedback.set('Piszkozat mentve.');
+          this.draftFeedback.set('Customer follow-up draft saved.');
           this.committedChange.emit();
         },
         error: (error: Error) => this.actionError.set(error.message),
@@ -293,7 +293,7 @@ export class CustomerFollowUpComponent implements OnInit {
       .subscribe({
         next: () => {
           this.preview.set(null);
-          this.sendResult.set('Átadva a levelezőrendszernek.');
+          this.sendResult.set('Accepted by the mail system for delivery.');
           this.reloadState();
           this.focusAfterNextRender('[data-testid="follow-up-send-result"]');
           this.committedChange.emit();
@@ -367,7 +367,7 @@ export class CustomerFollowUpComponent implements OnInit {
       next: () => {
         this.retryConfirmation.set(null);
         this.retryFocusReturn = null;
-        this.sendResult.set('Átadva a levelezőrendszernek.');
+        this.sendResult.set('Accepted by the mail system for delivery.');
         this.reloadState();
         this.focusAfterNextRender('[data-testid="follow-up-send-result"]');
         this.committedChange.emit();
@@ -389,18 +389,18 @@ export class CustomerFollowUpComponent implements OnInit {
 
   deliveryStatusLabel(status: FollowUpDeliveryStatus): string {
     return {
-      NEVER: 'Még nem történt küldés',
-      SENT: 'Sikeresen elküldve',
-      FAILED: 'Sikertelen küldés',
+      NEVER: 'No delivery attempts yet',
+      SENT: 'Accepted by the mail system',
+      FAILED: 'Delivery failed',
     }[status];
   }
 
   deliveryErrorLabel(code: string | null): string {
-    if (!code) return 'Nincs jelzett hiba';
+      if (!code) return 'No issue reported';
     if (code === 'SMTP_DELIVERY_UNKNOWN') {
-      return 'A kézbesítés eredménye bizonytalan.';
+        return 'Delivery outcome is unknown.';
     }
-    return 'A levelezőrendszer elutasította a küldést.';
+    return 'The mail system rejected the delivery attempt.';
   }
 
   reloadState(focusSelector?: string, preserveActionError = false): void {

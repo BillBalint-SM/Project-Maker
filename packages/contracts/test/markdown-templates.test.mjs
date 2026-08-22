@@ -14,13 +14,13 @@ test('Markdown template placeholders publish one ordered required/optional defin
   assert.deepEqual(
     markdownTemplatePlaceholderDefinitions.map(({ name, label, optional }) => [name, label, optional]),
     [
-      ['project.name', 'Projekt neve', false],
-      ['revision.metadata', 'Specifikációverzió metaadatai', false],
-      ['project.context', 'Projektkontextus', false],
-      ['project.schema', 'Elfogadott projekt-kérdésséma', true],
-      ['project.initialIntake', 'Kezdő felmérés', true],
-      ['project.readiness', 'Felkészültség', true],
-      ['project.decisionReview', 'Döntési értékelés', true],
+      ['project.name', 'Project name', false],
+      ['revision.metadata', 'Specification version metadata', false],
+      ['project.context', 'Project context', false],
+      ['project.schema', 'Accepted Project question schema', true],
+      ['project.initialIntake', 'Initial Intake', true],
+      ['project.readiness', 'Estimation readiness', true],
+      ['project.decisionReview', 'Decision Review', true],
     ],
   );
 });

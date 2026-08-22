@@ -181,11 +181,11 @@ export class QuestionBankPage implements OnInit {
     const value = this.questionForm.getRawValue();
     const options = parseOptions(value.options);
     if (isSelectType(value.type) && options.length === 0) {
-      this.actionError.set('A választós kérdéshez legalább egy válaszlehetőség szükséges.');
+      this.actionError.set('Select-type questions require at least one response option.');
       return;
     }
     if (new Set(options).size !== options.length) {
-      this.actionError.set('Egy válaszlehetőség csak egyszer szerepelhet.');
+      this.actionError.set('Each response option may be used only once.');
       return;
     }
 
@@ -227,7 +227,7 @@ export class QuestionBankPage implements OnInit {
       next: (bank) => {
         this.bank.set(bank);
         this.saving.set(false);
-        this.feedback.set(editingId ? 'Az alapkérdés módosításai mentve.' : 'Az alapkérdés létrejött.');
+        this.feedback.set(editingId ? 'Base question changes saved.' : 'Base question created.');
         this.showForm.set(false);
         this.editingId.set(null);
         this.resetForm(null, bank.questions.length + 1);
@@ -266,7 +266,7 @@ export class QuestionBankPage implements OnInit {
         this.bank.set(bank);
         this.selectedReferenceFiles.set(new Map());
         this.referenceSavingId.set(null);
-        this.feedback.set('A referenciafájl új kérdésbankverzióban elérhető.');
+        this.feedback.set('Reference file added in a new Question Bank version.');
       },
       error: (error: Error) => {
         this.actionError.set(error.message);
@@ -278,7 +278,7 @@ export class QuestionBankPage implements OnInit {
   removeReferenceFile(question: BaseQuestion, fileId: string, originalName: string): void {
     if (
       this.referenceSavingId() !== null ||
-      !this.document.defaultView?.confirm(`Eltávolítod ezt a referenciafájlt: ${originalName}?`)
+      !this.document.defaultView?.confirm(`Remove reference file “${originalName}”?`)
     ) {
       return;
     }
@@ -289,7 +289,7 @@ export class QuestionBankPage implements OnInit {
       next: (bank) => {
         this.bank.set(bank);
         this.referenceSavingId.set(null);
-        this.feedback.set('A referenciafájl az új kérdésbankverzióból eltávolítva.');
+        this.feedback.set('Reference file removed in a new Question Bank version.');
       },
       error: (error: Error) => {
         this.actionError.set(error.message);

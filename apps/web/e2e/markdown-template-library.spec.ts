@@ -8,11 +8,11 @@ test.describe.serial('OUTPUT-01 Markdown template library employee workflow', ()
     request,
   }, testInfo) => {
     const suffix = `${testInfo.workerIndex}-${Date.now()}`;
-    const templateName = `Átadási sablon ${suffix}`;
+    const templateName = `Delivery template ${suffix}`;
     const projectResponse = await request.post('/api/projects', {
       data: {
-        name: `OUTPUT-01 böngészős projekt ${suffix}`,
-        customerContactName: 'Teszt Ügyfél',
+        name: `OUTPUT-01 browser project ${suffix}`,
+        customerContactName: 'Test Customer',
         customerContactEmail: 'output-01@example.test',
         internalOwnerName: 'Output PO/PM',
       },
@@ -21,46 +21,46 @@ test.describe.serial('OUTPUT-01 Markdown template library employee workflow', ()
     const project = (await projectResponse.json()) as { readonly id: string };
 
     await page.goto('/settings/markdown-templates');
-    await expect(page.getByRole('heading', { name: 'Specifikációs sablonok' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Specification templates' })).toBeVisible();
     await expect(
-      page.getByRole('listitem').filter({ hasText: 'Specifikációverzió metaadatai' }),
+      page.getByRole('listitem').filter({ hasText: 'Specification version metadata' }),
     ).toBeVisible();
     await expect(
-      page.getByRole('listitem').filter({ hasText: 'Kezdő felmérés' }),
+      page.getByRole('listitem').filter({ hasText: 'Initial Intake' }),
     ).toBeVisible();
     await page.getByTestId('new-markdown-template-button').click();
     await page.getByTestId('markdown-template-name-input').fill(templateName);
     await page
       .getByTestId('markdown-template-content-input')
-      .fill('# Átadási terv — {{project.name}}\n\n{{revision.metadata}}\n\n{{project.context}}');
+      .fill('# Delivery plan — {{project.name}}\n\n{{revision.metadata}}\n\n{{project.context}}');
     await page.getByTestId('save-markdown-template-button').click();
-    await expect(page.getByTestId('markdown-template-feedback')).toContainText('Piszkozat mentve');
+    await expect(page.getByTestId('markdown-template-feedback')).toContainText('Draft saved');
 
     await page
       .getByTestId('markdown-template-content-input')
-      .fill('  # Átadási terv — {{project.name}}\n\n{{revision.metadata}}\n\n{{project.context}}\n\nMentett változat  ');
+      .fill('  # Delivery plan — {{project.name}}\n\n{{revision.metadata}}\n\n{{project.context}}\n\nSaved version  ');
     await expect(page.getByTestId('preview-markdown-template-button').locator('button')).toBeDisabled();
     await expect(page.getByTestId('publish-markdown-template-button').locator('button')).toBeDisabled();
     await page.getByTestId('save-markdown-template-button').click();
     await expect(page.getByTestId('publish-markdown-template-button').locator('button')).toBeEnabled();
     await expect(page.getByTestId('markdown-template-content-input')).toHaveValue(
-      '# Átadási terv — {{project.name}}\n\n{{revision.metadata}}\n\n{{project.context}}\n\nMentett változat',
+      '# Delivery plan — {{project.name}}\n\n{{revision.metadata}}\n\n{{project.context}}\n\nSaved version',
     );
 
     await page.getByTestId('preview-markdown-template-button').click();
-    await expect(page.getByTestId('markdown-template-preview')).toContainText('# Átadási terv — Minta projekt');
+    await expect(page.getByTestId('markdown-template-preview')).toContainText('# Delivery plan — Sample project');
     await page.getByTestId('publish-markdown-template-button').click();
-    await expect(page.getByTestId('markdown-template-version')).toContainText('Publikált v1');
+    await expect(page.getByTestId('markdown-template-version')).toContainText('Published v1');
 
     await page.getByTestId('new-markdown-template-button').click();
-    await page.getByTestId('markdown-template-name-input').fill(`Hibás sablon ${suffix}`);
+    await page.getByTestId('markdown-template-name-input').fill(`Invalid template ${suffix}`);
     await page.getByTestId('markdown-template-content-input').fill('# {{process.env}}');
     await page.getByTestId('save-markdown-template-button').click();
-    await expect(page.getByRole('alert')).toContainText('nem támogatott vagy hibás helyőrzőt');
+    await expect(page.getByRole('alert')).toContainText('unsupported or invalid placeholder');
     await expect(page.getByRole('alert')).not.toContainText('process.env');
 
     await page.goto(`/projects/${project.id}/markdown`);
-    await expect(page.getByRole('heading', { name: 'Projekt-specifikáció' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Project Specification' })).toBeVisible();
     const templateSelect = page.getByTestId('markdown-template-select');
     const templateOption = templateSelect.locator('option').filter({ hasText: templateName });
     const templateId = await templateOption.getAttribute('value');
@@ -77,7 +77,7 @@ test.describe.serial('OUTPUT-01 Markdown template library employee workflow', ()
     expect((await generationResponse).status()).toBe(201);
 
     await expect(page.getByTestId('markdown-revision-template')).toContainText(`${templateName} · v1`);
-    await expect(page.getByTestId('markdown-content-preview')).toContainText('Átadási terv');
+    await expect(page.getByTestId('markdown-content-preview')).toContainText('Delivery plan');
     await expect(page.getByTestId('markdown-content-preview')).not.toContainText('```json');
 
     await page.reload();
@@ -114,22 +114,22 @@ test.describe.serial('OUTPUT-01 Markdown template library employee workflow', ()
     const blockedProject = (await blockedProjectResponse.json()) as { readonly id: string };
     await page.goto(`/projects/${blockedProject.id}/markdown`);
     await expect(page.getByTestId('markdown-template-select').locator('option:checked')).toContainText(
-      'Alapértelmezett projektterv',
+      'Default Project Specification',
     );
     await page.getByTestId('markdown-template-select').selectOption(required.id);
     await page.getByTestId('generate-markdown-button').click();
     await expect(page.getByTestId('markdown-action-error')).toContainText(
-      'Elfogadott projekt-kérdésséma',
+      'Accepted Project question schema',
     );
 
     await page.getByTestId('markdown-template-select').selectOption(optional.id);
     await page.getByTestId('generate-markdown-button').click();
-    await expect(page.getByTestId('markdown-success')).toContainText('specifikáció');
-    await expect(page.getByTestId('markdown-content-preview')).not.toContainText('## Felkészültség');
-    await expect(page.getByTestId('markdown-content-preview')).not.toContainText('## Döntési értékelés');
+    await expect(page.getByTestId('markdown-success')).toContainText('Specification');
+    await expect(page.getByTestId('markdown-content-preview')).not.toContainText('## Readiness');
+    await expect(page.getByTestId('markdown-content-preview')).not.toContainText('## Decision Review');
 
     expect((await request.post(`/api/projects/${blockedProject.id}/archive`)).status()).toBe(201);
     await page.getByTestId('generate-markdown-button').click();
-    await expect(page.getByTestId('markdown-action-error')).toContainText('Archivált projekt');
+    await expect(page.getByTestId('markdown-action-error')).toContainText('archived project');
   });
 });

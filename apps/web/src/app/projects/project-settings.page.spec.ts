@@ -16,14 +16,14 @@ const projectId = '11111111-1111-4111-8111-111111111111';
 const preparationStatus: ProjectPreparationStatus = {
   projectId,
   state: 'SCHEMA_REQUIRED',
-  label: 'Kérdésséma szükséges',
-  primaryAction: { target: 'INTERVIEW', label: 'Felmérés megnyitása' },
+  label: 'Question schema required',
+  primaryAction: { target: 'INTERVIEW', label: 'Open Initial Intake' },
 };
 const postSchemaPreparationStatus: ProjectPreparationStatus = {
   projectId,
   state: 'INTAKE_IN_PROGRESS',
-  label: 'Kezdő felmérés folyamatban',
-  primaryAction: { target: 'INTERVIEW', label: 'Felmérés folytatása' },
+  label: 'Initial Intake in progress',
+  primaryAction: { target: 'INTERVIEW', label: 'Continue Initial Intake' },
 };
 const followUpState: CustomerFollowUpState = {
   projectId,
@@ -65,12 +65,12 @@ describe('ProjectSettingsPage', () => {
     const { fixture } = await createPage(project);
 
     const root = fixture.nativeElement as HTMLElement;
-    expect(root.textContent).toContain('A teljes mentett munkafolyamat és történet olvasható');
+    expect(root.textContent).toContain('Its saved workflow and history remain readable');
     expect(root.querySelector('[data-testid="restore-project-button"]')).not.toBeNull();
     expect(root.querySelector('[data-testid="archive-project-button"]')).toBeNull();
     expect(root.querySelector('[data-testid="delete-project-button"]')).toBeNull();
     expect(root.querySelector('[data-testid="project-lifecycle-status-value"]')?.textContent)
-      .toContain('Archivált');
+      .toContain('Archived');
     expect(root.querySelector('[data-testid="project-lifecycle-status-select"]')).toBeNull();
     expect(
       (root.querySelector('[data-testid="project-basics-fieldset"]') as HTMLFieldSetElement)
@@ -115,7 +115,7 @@ describe('ProjectSettingsPage', () => {
         .querySelector('[data-testid="project-settings-action-success"]')
         ?.textContent,
     ).toContain(
-      'A projekt az archiválás előtti állapotban, az Ügyfél-visszajelzésre vár fázisban folytatható. Korábbi esemény vagy küldés nem ismétlődött meg.',
+      'The project can resume in its pre-archive Awaiting Customer feedback phase. Earlier events and sends have not been repeated.',
     );
   });
 
@@ -134,7 +134,7 @@ describe('ProjectSettingsPage', () => {
       (fixture.nativeElement as HTMLElement)
         .querySelector('[data-testid="project-lifecycle-feedback"]')
         ?.textContent,
-    ).toContain('Az adminisztratív projektfázis frissítve lett.');
+    ).toContain('The administrative project phase has been updated.');
   });
 
   it('keeps independent saves pending and combines out-of-order responses', async () => {
@@ -248,7 +248,7 @@ describe('ProjectSettingsPage', () => {
     expect(api.updateProjectBasics).toHaveBeenCalledTimes(2);
     expect(fixture.componentInstance.basicsError()).toBeNull();
     expect(fixture.componentInstance.basicsFeedback()).toBe(
-      'A projekt alapadatai mentve lettek.',
+      'Project details have been saved.',
     );
     expect(fixture.componentInstance.view()?.project.name).toBe('Újrapróbált projekt');
   });

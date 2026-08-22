@@ -169,10 +169,10 @@ describe('ProjectsController (e2e)', () => {
       .expect(200);
 
     const defaultTemplate = initialLibrary.body.find(
-      (template: { name: string }) => template.name === 'Alapértelmezett projektterv',
+      (template: { name: string }) => template.name === 'Default Project Specification',
     );
     assert.ok(defaultTemplate);
-    assert.equal(defaultTemplate.latestPublishedVersion, 1);
+    assert.equal(defaultTemplate.latestPublishedVersion, 2);
     assert.equal(defaultTemplate.isDefault, true);
 
     const created = await request(app.getHttpServer())
@@ -190,8 +190,8 @@ describe('ProjectsController (e2e)', () => {
     const preview = await request(app.getHttpServer())
       .post(`/settings/markdown-templates/${created.body.id as string}/preview`)
       .expect(201);
-    assert.match(preview.body.content, /^# Minta projekt/m);
-    assert.match(preview.body.content, /Projektkontextus/);
+    assert.match(preview.body.content, /^# Sample project/m);
+    assert.match(preview.body.content, /Project Context/);
     assert.equal(preview.body.content.includes('{{'), false);
 
     const published = await request(app.getHttpServer())
@@ -234,7 +234,7 @@ describe('ProjectsController (e2e)', () => {
     });
     assert.match(firstRevision.body.content, /^# Átadás — R1 project /m);
     assert.match(firstRevision.body.content, /markdown\\-template\\-provenance/);
-    assert.match(firstRevision.body.content, /## Specifikációverzió/);
+    assert.match(firstRevision.body.content, /## Specification Version/);
     assert.equal(firstRevision.body.content.includes('```json'), false);
 
     const rememberedConfiguration = await request(app.getHttpServer())
@@ -269,7 +269,7 @@ describe('ProjectsController (e2e)', () => {
       .expect(200);
     assert.equal(
       activity.body.events.some(
-        (event: { readonly summary?: string }) => event.summary === 'Új specifikációverzió készült.',
+        (event: { readonly summary?: string }) => event.summary === 'Specification version created.',
       ),
       true,
     );
@@ -303,7 +303,7 @@ describe('ProjectsController (e2e)', () => {
     );
     assert.deepEqual(ordered.map((revision: { version: number }) => revision.version), [1, 2]);
     assert.equal(ordered[1].previousRevisionId, ordered[0].id);
-    assert.deepEqual(ordered.map((revision: { template: { version: number } }) => revision.template.version), [1, 1]);
+    assert.deepEqual(ordered.map((revision: { template: { version: number } }) => revision.template.version), [2, 2]);
 
     await dataSource.query('ALTER TABLE "markdown_revisions" DISABLE TRIGGER "trg_markdown_revisions_immutable"');
     try {
@@ -370,7 +370,7 @@ describe('ProjectsController (e2e)', () => {
       .send({ name: 'Nem biztonságos sablon', draftContent: '{{process.env}}' })
       .expect(400)
       .expect(({ body }) =>
-        assert.equal(body.message, 'Nem támogatott specifikációs sablon-helyőrző: process.env.'),
+        assert.equal(body.message, 'Unsupported specification template placeholder: process.env.'),
       );
     await request(app.getHttpServer())
       .post('/settings/markdown-templates')
@@ -382,7 +382,7 @@ describe('ProjectsController (e2e)', () => {
       .expect(({ body }) =>
         assert.equal(
           body.message,
-          'Az opcionális specifikációs sablon helyőrzőjének önálló Markdown-blokkban kell állnia.',
+          'An optional specification template placeholder must appear in its own Markdown block.',
         ),
       );
 
@@ -401,11 +401,11 @@ describe('ProjectsController (e2e)', () => {
       .post(`/projects/${projectId}/markdown-revisions`)
       .send({ reason: 'MANUAL', templateId: template.body.id })
       .expect(409)
-      .expect(({ body }) => assert.match(body.message, /Elfogadott projekt-kérdésséma/));
+      .expect(({ body }) => assert.match(body.message, /Accepted Project question schema/));
 
     for (const [placeholder, expectedLabel] of [
-      ['project.readiness', 'Felkészültség'],
-      ['project.decisionReview', 'Döntési értékelés'],
+      ['project.readiness', 'Estimation readiness'],
+      ['project.decisionReview', 'Decision Review'],
     ] as const) {
       const requiredTemplate = await request(app.getHttpServer())
         .post('/settings/markdown-templates')
@@ -450,7 +450,7 @@ describe('ProjectsController (e2e)', () => {
       .post(`/projects/${projectId}/markdown-revisions`)
       .send({ reason: 'MANUAL' })
       .expect(409)
-      .expect(({ body }) => assert.match(body.message, /Archivált projekt/));
+      .expect(({ body }) => assert.match(body.message, /archived project/i));
   });
 
   it('renders every Decision Review input in domain language', async () => {
@@ -485,12 +485,12 @@ describe('ProjectsController (e2e)', () => {
       .post(`/projects/${projectId}/markdown-revisions`)
       .send({ reason: 'MANUAL', templateId: template.body.id })
       .expect(201);
-    assert.match(revision.body.content, /Üzleti érték: 5/);
-    assert.match(revision.body.content, /Stratégiai illeszkedés: 4/);
-    assert.match(revision.body.content, /Sürgősség: 3/);
-    assert.match(revision.body.content, /Bizonyosság: 4/);
-    assert.match(revision.body.content, /Komplexitás: 2/);
-    assert.match(revision.body.content, /Kockázat: 1/);
+    assert.match(revision.body.content, /Business value: 5/);
+    assert.match(revision.body.content, /Strategic alignment: 4/);
+    assert.match(revision.body.content, /Urgency: 3/);
+    assert.match(revision.body.content, /Confidence: 4/);
+    assert.match(revision.body.content, /Complexity: 2/);
+    assert.match(revision.body.content, /Risk: 1/);
     assert.equal(revision.body.content.includes('ESTIMATE_'), false);
   });
 
@@ -517,7 +517,7 @@ describe('ProjectsController (e2e)', () => {
       .expect(201);
     assert.match(
       revision.body.content,
-      /- Válasz:\n  > Első bekezdés\n  >\n  > Második bekezdés/,
+      /- Answer:\n  > Első bekezdés\n  >\n  > Második bekezdés/,
     );
     assert.equal(revision.body.content.includes('\n\nMásodik bekezdés'), false);
   });
@@ -532,9 +532,9 @@ describe('ProjectsController (e2e)', () => {
     assert.deepEqual(response.body, {
       projectId,
       state: 'SCHEMA_REQUIRED',
-      label: 'Kérdésséma szükséges',
+      label: 'Question schema required',
       primaryAction: {
-        label: 'Felmérés megnyitása',
+        label: 'Open Initial Intake',
         target: 'INTERVIEW',
       },
     });
@@ -552,7 +552,7 @@ describe('ProjectsController (e2e)', () => {
     assert.deepEqual(response.body.events, [
       {
         occurredAt: response.body.events[0]?.occurredAt,
-        summary: 'A projekt archiválva lett.',
+        summary: 'Project archived.',
       },
     ]);
     assert.match(response.body.events[0]?.occurredAt ?? '', /^\d{4}-\d{2}-\d{2}T/);
@@ -563,12 +563,12 @@ describe('ProjectsController (e2e)', () => {
   it('selects the latest five allow-listed business events before applying the activity limit', async () => {
     const projectId = await createProject('allow-listed-project-activity');
     const allowedEvents = [
-      ['PROJECT_ARCHIVED', 'A projekt archiválva lett.'],
-      ['PROJECT_RESTORED', 'A projekt visszaállítva lett.'],
-      ['DISCOVERY_FOLLOW_UP_CREATED', 'Új tisztázandó tétel jött létre.'],
-      ['DISCOVERY_FOLLOW_UP_UPDATED', 'Egy tisztázandó tétel frissítve lett.'],
-      ['DISCOVERY_FOLLOW_UP_RESOLVED', 'Egy tisztázandó tétel lezárva lett.'],
-      ['PROJECT_DECISION_INPUTS_UPDATED', 'A döntési értékelés frissítve lett.'],
+      ['PROJECT_ARCHIVED', 'Project archived.'],
+      ['PROJECT_RESTORED', 'Project restored.'],
+      ['DISCOVERY_FOLLOW_UP_CREATED', 'Discovery follow-up created.'],
+      ['DISCOVERY_FOLLOW_UP_UPDATED', 'Discovery follow-up updated.'],
+      ['DISCOVERY_FOLLOW_UP_RESOLVED', 'Discovery follow-up resolved.'],
+      ['PROJECT_DECISION_INPUTS_UPDATED', 'Decision Review updated.'],
     ] as const;
 
     for (const [index, [eventType]] of allowedEvents.entries()) {
@@ -622,9 +622,9 @@ describe('ProjectsController (e2e)', () => {
     assert.deepEqual(response.body, {
       projectId,
       state: 'INTAKE_IN_PROGRESS',
-      label: 'Felmérés folyamatban',
+      label: 'Initial Intake in progress',
       primaryAction: {
-        label: 'Felmérés megnyitása',
+        label: 'Open Initial Intake',
         target: 'INTERVIEW',
       },
     });
@@ -644,9 +644,9 @@ describe('ProjectsController (e2e)', () => {
     assert.deepEqual(response.body, {
       projectId,
       state: 'DECISION_REVIEW_REQUIRED',
-      label: 'Döntési értékelés szükséges',
+      label: 'Decision Review required',
       primaryAction: {
-        label: 'Döntési értékelés megnyitása',
+        label: 'Open Decision Review',
         target: 'DECISION_REVIEW',
       },
     });
@@ -668,9 +668,9 @@ describe('ProjectsController (e2e)', () => {
     assert.deepEqual(response.body, {
       projectId,
       state: 'DECISION_REVIEW_REQUIRED',
-      label: 'Döntési értékelés szükséges',
+      label: 'Decision Review required',
       primaryAction: {
-        label: 'Döntési értékelés megnyitása',
+        label: 'Open Decision Review',
         target: 'DECISION_REVIEW',
       },
     });
@@ -704,9 +704,9 @@ describe('ProjectsController (e2e)', () => {
     assert.deepEqual(response.body, {
       projectId,
       state: 'CLARIFICATION_REQUIRED',
-      label: 'Tisztázás szükséges',
+      label: 'Clarification required',
       primaryAction: {
-        label: 'Becslési felkészültség megnyitása',
+        label: 'Open Estimation Readiness',
         target: 'READINESS',
       },
     });
@@ -738,9 +738,9 @@ describe('ProjectsController (e2e)', () => {
     assert.deepEqual(response.body, {
       projectId,
       state: 'ESTIMATE_PREPARABLE',
-      label: 'Becslés előkészíthető',
+      label: 'Ready for estimation preparation',
       primaryAction: {
-        label: 'Döntési értékelés megnyitása',
+        label: 'Open Decision Review',
         target: 'DECISION_REVIEW',
       },
     });
@@ -772,9 +772,9 @@ describe('ProjectsController (e2e)', () => {
     assert.deepEqual(response.body, {
       projectId,
       state: 'CLARIFICATION_REQUIRED',
-      label: 'Tisztázás szükséges',
+      label: 'Clarification required',
       primaryAction: {
-        label: 'Becslési felkészültség megnyitása',
+        label: 'Open Estimation Readiness',
         target: 'READINESS',
       },
     });
@@ -806,9 +806,9 @@ describe('ProjectsController (e2e)', () => {
     assert.deepEqual(response.body, {
       projectId,
       state: 'ESTIMATE_READY',
-      label: 'Becslésre kész',
+      label: 'Ready for estimation',
       primaryAction: {
-        label: 'Döntési értékelés megnyitása',
+        label: 'Open Decision Review',
         target: 'DECISION_REVIEW',
       },
     });
@@ -943,7 +943,7 @@ describe('ProjectsController (e2e)', () => {
       available: true,
       editable: true,
       decisionScore: 68,
-      decisionScoreLabel: 'Magas',
+      decisionScoreLabel: 'High',
       recommendation: 'ESTIMATE_READY',
       readinessPercentage: 100,
       hasCriticalGap: false,
@@ -986,7 +986,7 @@ describe('ProjectsController (e2e)', () => {
 
     assert.equal(response.body.available, true);
     assert.equal(response.body.decisionScore, 67);
-    assert.equal(response.body.decisionScoreLabel, 'Magas');
+    assert.equal(response.body.decisionScoreLabel, 'High');
     assert.equal(response.body.readinessPercentage, 89);
     assert.equal(response.body.hasCriticalGap, true);
     assert.equal(response.body.estimateBlockingGapCount, 1);

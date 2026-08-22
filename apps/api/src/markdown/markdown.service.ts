@@ -98,7 +98,7 @@ export class MarkdownService {
   ): Promise<MarkdownRevision> {
     validateCreateInput(input);
     if (project.status === 'ARCHIVED') {
-      throw new ConflictException('Archivált projekthez nem hozható létre specifikációverzió; előbb állítsd vissza a projektet.');
+      throw new ConflictException('A specification version cannot be created for an archived project; restore the project first.');
     }
 
     const revisionRepository = manager.getRepository(MarkdownRevisionEntity);
@@ -185,7 +185,7 @@ export class MarkdownService {
     const defaultTemplate = templates.find((template) => template.isDefault);
     const selectedTemplateId = project.markdownTemplateId ?? defaultTemplate?.id;
     if (!selectedTemplateId) {
-      throw new ConflictException('Nem érhető el publikált specifikációs sablon.');
+      throw new ConflictException('No published specification template is available.');
     }
     return { selectedTemplateId, templates };
   }
@@ -416,10 +416,10 @@ function toProjectWorkspace(project: Project): ProjectWorkspace {
       id: project.playbookId,
       version: project.playbookVersion,
       name: project.playbookId === 'system-integration'
-        ? 'Rendszerintegráció'
+        ? 'System integration'
         : project.playbookId === 'data-migration'
-          ? 'Adatmigráció'
-          : 'Általános projektfelmérés',
+          ? 'Data migration'
+          : 'General project discovery',
     },
     initiativeId: project.initiativeId,
     createdAt: toIso(project.createdAt, 'project createdAt'),
@@ -433,7 +433,7 @@ function summarizeChanges(
   version: number,
 ): string {
   if (!previousRevision) {
-    return 'Első specifikációverzió; nincs korábbi verzió.';
+    return 'Initial specification version; no previous version exists.';
   }
 
   const previousSnapshot = previousRevision.sourceSnapshot;
@@ -441,14 +441,14 @@ function summarizeChanges(
     .map((section) => describeSectionChanges(previousSnapshot[section], currentSnapshot[section], section))
     .filter((section): section is SectionChangeReport => section !== null);
   if (sectionChanges.length === 0) {
-    return `A(z) ${version}. specifikációverzió forráspillanatképe nem változott a(z) ${previousRevision.version}. verzió óta.`;
+    return `The source snapshot for specification version ${version} is unchanged since version ${previousRevision.version}.`;
   }
 
   const details = sectionChanges.flatMap((section) => {
     const shownCount = section.paths.length;
-    const changeCount = `${section.total} forrásútvonal`;
+    const changeCount = `${section.total} source path${section.total === 1 ? '' : 's'}`;
     const heading = `- ${formatSectionName(section.section)} (${changeCount}${
-      section.total > shownCount ? `; ebből ${shownCount} látható` : ''
+      section.total > shownCount ? `; ${shownCount} shown` : ''
     }):`;
     const pathLines = section.paths.map(
       (change) => `  - ${formatChangeKind(change.kind)}: ${formatChangePath(change.path)}.`,
@@ -459,11 +459,11 @@ function summarizeChanges(
     return [
       heading,
       ...pathLines,
-      `  - További ${section.total - shownCount} változásútvonal nincs felsorolva; a teljes összefüggéshez hasonlítsd össze a jelenlegi és az előző pillanatképet.`,
+       `  - ${section.total - shownCount} additional changed path${section.total - shownCount === 1 ? '' : 's'} not listed; compare the current and previous snapshots for the complete context.`,
     ];
   });
   return [
-    `A(z) ${version}. specifikációverzió a következő változásokat rögzíti a(z) ${previousRevision.version}. verzió óta:`,
+    `Specification version ${version} records the following changes since version ${previousRevision.version}:`,
     ...details,
   ].join('\n');
 }
@@ -696,15 +696,15 @@ function renderValues(input: MarkdownRenderInput): Readonly<Record<string, strin
   return {
     'project.name': escapeMarkdownInline(input.sourceSnapshot.project.name),
     'revision.metadata': [
-      '## Specifikációverzió',
+      '## Specification Version',
       '',
-      `- Verzió: ${input.version}`,
-      `- Generálás oka: ${input.reason === 'MANUAL' ? 'Kézi' : 'Mérföldkő'}`,
-      `- Mérföldkő: ${input.milestone ? escapeMarkdownInline(input.milestone) : 'Nincs'}`,
-      `- Létrehozva (UTC): ${input.createdAt.toISOString()}`,
-      `- Előző verzió: ${input.previousRevision ? `v${input.previousRevision.version}` : 'Nincs'}`,
+      `- Version: ${input.version}`,
+      `- Generation reason: ${input.reason === 'MANUAL' ? 'Manual' : 'Milestone'}`,
+      `- Milestone: ${input.milestone ? escapeMarkdownInline(input.milestone) : 'None'}`,
+      `- Created (UTC): ${input.createdAt.toISOString()}`,
+      `- Previous version: ${input.previousRevision ? `v${input.previousRevision.version}` : 'None'}`,
       '',
-      '### Változások az előző verzió óta',
+      '### Changes Since the Previous Version',
       '',
       input.changeSummary,
     ].join('\n'),
@@ -718,23 +718,23 @@ function renderValues(input: MarkdownRenderInput): Readonly<Record<string, strin
 
 function renderProjectContext(project: ProjectWorkspace): string {
   return [
-    '## Projektkontextus',
+    '## Project Context',
     '',
-    `- Projekt: ${escapeMarkdownInline(project.name)}`,
-    `- Ügyfélkapcsolat: ${escapeMarkdownInline(project.customerContactName)}`,
-    `- Kapcsolati e-mail: ${escapeMarkdownInline(project.customerContactEmail)}`,
-    `- Adminisztratív projektfázis: ${escapeMarkdownInline(projectStatusLabel(project.status))}`,
-    `- Következő lépés felelőse: ${project.nextActionOwner.displayName ? escapeMarkdownInline(project.nextActionOwner.displayName) : 'Nincs kijelölve'}`,
-    `- Következő lépés: ${project.nextAction ? escapeMarkdownInline(project.nextAction) : 'Nincs megadva'}`,
+    `- Project: ${escapeMarkdownInline(project.name)}`,
+    `- Customer contact: ${escapeMarkdownInline(project.customerContactName)}`,
+    `- Contact email: ${escapeMarkdownInline(project.customerContactEmail)}`,
+    `- Administrative project phase: ${escapeMarkdownInline(projectStatusLabel(project.status))}`,
+    `- Next-action owner: ${project.nextActionOwner.displayName ? escapeMarkdownInline(project.nextActionOwner.displayName) : 'Not assigned'}`,
+    `- Next action: ${project.nextAction ? escapeMarkdownInline(project.nextAction) : 'Not specified'}`,
   ].join('\n');
 }
 
 function renderProjectSchema(schema: ProjectQuestionSchema | null): string | null {
   if (!schema) return null;
   return [
-    '## Elfogadott projekt-kérdésséma',
+    '## Accepted Project Question Schema',
     '',
-    `Sémaverzió: ${schema.schemaVersion}; kérdésbank-verzió: ${schema.bankVersion}.`,
+    `Schema version: ${schema.schemaVersion}; Question Bank version: ${schema.bankVersion}.`,
     '',
     ...schema.questions.map(
       (question) => `${question.order}. **${escapeMarkdownInline(question.topic)} — ${escapeMarkdownInline(question.controlPoint)}**: ${escapeMarkdownInline(question.text)}`,
@@ -749,14 +749,14 @@ function renderInitialIntake(rounds: readonly InterviewRound[]): string | null {
   return [
     '## Initial Intake',
     '',
-    `Állapot: ${round.status === 'ENDED' ? 'Lezárt' : 'Folyamatban'}.`,
+    `Status: ${round.status === 'ENDED' ? 'Ended' : 'In progress'}.`,
     '',
     ...round.questions.flatMap((question) => [
       `### ${question.order}. ${escapeMarkdownInline(question.text)}`,
       '',
-      `- Ellenőrzési pont: ${escapeMarkdownInline(question.controlPoint)}`,
+      `- Control point: ${escapeMarkdownInline(question.controlPoint)}`,
       renderAnswerField(question.answer),
-      `- Felmérési állapot: ${escapeMarkdownInline(question.checklistStatus)}`,
+      `- Assessment status: ${escapeMarkdownInline(checklistStatusLabel(question.checklistStatus))}`,
       '',
     ]),
   ].join('\n').trim();
@@ -767,16 +767,16 @@ function renderReadiness(readiness: ProjectReadiness): string | null {
     return null;
   }
   return [
-    '## Felkészültség',
+    '## Readiness',
     '',
-    `- Teljesség: ${readiness.completionPercentage}% — ${escapeMarkdownInline(readiness.completionLabel)}`,
-    `- Felkészültség: ${readiness.readinessPercentage}% — ${escapeMarkdownInline(readiness.readinessBand)}`,
+    `- Completion: ${readiness.completionPercentage}% — ${escapeMarkdownInline(readiness.completionLabel)}`,
+    `- Readiness: ${readiness.readinessPercentage}% — ${escapeMarkdownInline(readiness.readinessBand)}`,
     '',
-    '### Nyitott gapek',
+    '### Open gaps',
     '',
     ...(readiness.gaps.length === 0
-      ? ['Nincs nyitott gap.']
-      : readiness.gaps.map((gap) => `- **${escapeMarkdownInline(gap.severity)} · ${escapeMarkdownInline(gap.category)}**: ${escapeMarkdownInline(gap.message)} Következő lépés: ${escapeMarkdownInline(gap.nextStep)}`)),
+      ? ['No open gaps.']
+      : readiness.gaps.map((gap) => `- **${escapeMarkdownInline(gap.severity)} · ${escapeMarkdownInline(gap.category)}**: ${escapeMarkdownInline(gap.message)} Next action: ${escapeMarkdownInline(gap.nextStep)}`)),
   ].join('\n');
 }
 
@@ -785,23 +785,23 @@ function renderDecisionReview(review: ProjectDecisionReview): string | null {
     return null;
   }
   return [
-    '## Döntési értékelés',
+    '## Decision Review',
     '',
-    '### Értékelési bemenetek',
+    '### Assessment inputs',
     '',
-    `- Üzleti érték: ${review.inputs.businessValue}`,
-    `- Stratégiai illeszkedés: ${review.inputs.strategicAlignment}`,
-    `- Sürgősség: ${review.inputs.urgency}`,
-    `- Bizonyosság: ${review.inputs.confidence}`,
-    `- Komplexitás: ${review.inputs.complexity}`,
-    `- Kockázat: ${review.inputs.risk}`,
+    `- Business value: ${review.inputs.businessValue}`,
+    `- Strategic alignment: ${review.inputs.strategicAlignment}`,
+    `- Urgency: ${review.inputs.urgency}`,
+    `- Confidence: ${review.inputs.confidence}`,
+    `- Complexity: ${review.inputs.complexity}`,
+    `- Risk: ${review.inputs.risk}`,
     '',
-    '### Eredmény',
+    '### Outcome',
     '',
-    `- Döntési pontszám: ${review.decisionScore} — ${escapeMarkdownInline(review.decisionScoreLabel)}`,
-    `- Ajánlás: ${decisionRecommendationLabel(review.recommendation)}`,
-    `- Felkészültség: ${review.readinessPercentage}%`,
-    `- Becslést blokkoló gapek: ${review.estimateBlockingGapCount}`,
+    `- Decision score: ${review.decisionScore} — ${escapeMarkdownInline(review.decisionScoreLabel)}`,
+    `- Recommendation: ${decisionRecommendationLabel(review.recommendation)}`,
+    `- Readiness: ${review.readinessPercentage}%`,
+    `- Estimate-blocking gaps: ${review.estimateBlockingGapCount}`,
     ...review.clarificationMessages.map((message) => `- ${escapeMarkdownInline(message)}`),
   ].join('\n');
 }
@@ -810,14 +810,26 @@ function decisionRecommendationLabel(
   recommendation: DecisionRecommendation,
 ): string {
   return recommendation === 'CLARIFICATION_REQUIRED'
-    ? 'Pontosítás szükséges'
+    ? 'Clarification required'
     : recommendation === 'ESTIMATE_PREPARATION_POSSIBLE'
-      ? 'Becslés előkészíthető'
-      : 'Becslésre kész';
+      ? 'Estimate preparation possible'
+      : 'Ready for estimation';
+}
+
+function checklistStatusLabel(status: string): string {
+  return status === 'Nincs meg'
+    ? 'Missing'
+    : status === 'Részben megvan'
+      ? 'Partially complete'
+      : status === 'Kész'
+        ? 'Complete'
+        : status === 'Nem releváns'
+          ? 'Not applicable'
+          : status;
 }
 
 function formatAnswer(answer: InterviewRound['questions'][number]['answer']): string {
-  if (answer === null) return 'Nincs válasz';
+  if (answer === null) return 'No answer';
   if (Array.isArray(answer)) return answer.map((item) => escapeMarkdownInline(String(item))).join(', ');
   return escapeMarkdownInline(String(answer));
 }
@@ -825,12 +837,12 @@ function formatAnswer(answer: InterviewRound['questions'][number]['answer']): st
 function renderAnswerField(answer: InterviewRound['questions'][number]['answer']): string {
   const formatted = formatAnswer(answer).replace(/\r\n?/g, '\n');
   if (!formatted.includes('\n')) {
-    return `- Válasz: ${formatted}`;
+    return `- Answer: ${formatted}`;
   }
   const quotedLines = formatted
     .split('\n')
     .map((line) => `  >${line.length > 0 ? ` ${line}` : ''}`);
-  return ['- Válasz:', ...quotedLines].join('\n');
+  return ['- Answer:', ...quotedLines].join('\n');
 }
 
 function escapeMarkdownInline(value: string): string {
@@ -839,14 +851,14 @@ function escapeMarkdownInline(value: string): string {
 
 function formatSectionName(section: SourceSnapshotSection): string {
   return section === 'projectSchema'
-    ? 'Projekt kérdésséma'
+    ? 'Project question schema'
     : section === 'interviewRounds'
-      ? 'Interjúkörök és válaszok'
-      : 'Projekt munkatér';
+      ? 'Interview rounds and answers'
+      : 'Project workspace';
 }
 
 function formatChangeKind(kind: ChangeKind): string {
-  return kind === 'added' ? 'hozzáadva' : kind === 'removed' ? 'eltávolítva' : 'módosítva';
+  return kind === 'added' ? 'added' : kind === 'removed' ? 'removed' : 'changed';
 }
 
 function createAuditPayload(

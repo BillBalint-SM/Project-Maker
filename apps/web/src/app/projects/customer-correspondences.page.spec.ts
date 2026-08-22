@@ -80,7 +80,7 @@ describe('CustomerCorrespondencesPage', () => {
         },
         {
           provide: NotificationsApiService,
-          useValue: { load: () => of({ items: [], totalCount: 0, limit: 25 }) },
+          useValue: { load: () => of({ items: [], totalCount: 0 }) },
         },
       ],
     }).compileComponents();
@@ -90,14 +90,14 @@ describe('CustomerCorrespondencesPage', () => {
     expect(fixture.nativeElement.querySelector('.message-text')?.textContent).toContain('<img src=x onerror=steal()>');
     expect(fixture.nativeElement.querySelector('.message-text img')).toBeNull();
     expect((fixture.nativeElement.querySelector('details') as HTMLDetailsElement).open).toBe(false);
-    expect(fixture.nativeElement.textContent).toContain('Az ügyfélkapcsolatok között nem szereplő válaszfeladó');
+    expect(fixture.nativeElement.textContent).toContain('Reply sender is not listed among Project contacts');
     const close = Array.from(fixture.nativeElement.querySelectorAll('button'))
-      .find((button) => (button as HTMLButtonElement).textContent?.trim() === 'Lezárás') as HTMLButtonElement;
+      .find((button) => (button as HTMLButtonElement).textContent?.trim() === 'Close correspondence') as HTMLButtonElement;
     close.click();
     await fixture.whenStable();
-    expect(fixture.nativeElement.querySelector('[role="alert"]')?.textContent).toContain('Töltsd újra az adatokat');
+    expect(fixture.nativeElement.querySelector('[role="alert"]')?.textContent).toContain('Reload the data');
     expect(fixture.nativeElement.querySelector('.message-text')?.textContent).toContain('<img src=x onerror=steal()>');
-    expect(fixture.nativeElement.textContent).toContain('Ügyféllevelezés újratöltése');
+    expect(fixture.nativeElement.textContent).toContain('Reload Customer correspondence');
     const reviewed = fixture.nativeElement.querySelector('[data-testid="mark-reviewed-correspondence-1"]') as HTMLButtonElement;
     expect(reviewed).not.toBeNull();
     reviewed.click();
@@ -107,7 +107,7 @@ describe('CustomerCorrespondencesPage', () => {
     expect(summary).toHaveBeenCalledTimes(1);
     const classification = fixture.nativeElement.querySelector('[data-testid="classification-message-1"]') as HTMLSelectElement;
     expect(Array.from(classification.options).map((option) => option.text)).toEqual([
-      'Válassz besorolást', 'Elfogadva', 'Módosítást kér', 'Kérdés vagy válasz', 'Egyéb',
+      'Select classification', 'Accepted', 'Change requested', 'Question or answer', 'Other',
     ]);
     expect(fixture.nativeElement.querySelector('[data-testid="follow-up-draft-form"]')).not.toBeNull();
     expect(fixture.nativeElement.querySelector('[data-testid="follow-up-settings-form"]')).toBeNull();

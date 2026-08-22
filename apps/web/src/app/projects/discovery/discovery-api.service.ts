@@ -14,12 +14,12 @@ export class DiscoveryApiService {
   private readonly http = inject(HttpClient);
 
   listContacts(projectId: string): Observable<readonly ProjectContact[]> {
-    return this.get<readonly ProjectContact[]>(projectId, 'contacts', 'betölteni a projektkapcsolatokat');
+    return this.get<readonly ProjectContact[]>(projectId, 'contacts', 'load the Project contacts');
   }
 
   createContact(projectId: string, input: SaveProjectContactInput): Observable<ProjectContact> {
     return this.http.post<ProjectContact>(this.url(projectId, 'contacts'), input)
-      .pipe(catchError((error: unknown) => fail(error, 'létrehozni a projektkapcsolatot')));
+      .pipe(catchError((error: unknown) => fail(error, 'create the Project contact')));
   }
 
   updateContact(projectId: string, contactId: string, input: SaveProjectContactInput): Observable<ProjectContact> {
@@ -29,11 +29,11 @@ export class DiscoveryApiService {
 
   deleteContact(projectId: string, contactId: string): Observable<void> {
     return this.http.delete<void>(this.url(projectId, `contacts/${encodeURIComponent(contactId)}`))
-      .pipe(catchError((error: unknown) => fail(error, 'törölni a projektkapcsolatot')));
+      .pipe(catchError((error: unknown) => fail(error, 'delete the Project contact')));
   }
 
   listInsights(projectId: string): Observable<readonly Insight[]> {
-    return this.get<readonly Insight[]>(projectId, 'insights', 'betölteni az insightokat');
+    return this.get<readonly Insight[]>(projectId, 'insights', 'load the Insights');
   }
 
   createInsight(projectId: string, input: CreateInsightInput): Observable<Insight> {
@@ -43,7 +43,7 @@ export class DiscoveryApiService {
 
   updateInsight(projectId: string, insightId: string, input: UpdateInsightInput): Observable<Insight> {
     return this.http.put<Insight>(this.url(projectId, `insights/${encodeURIComponent(insightId)}`), input)
-      .pipe(catchError((error: unknown) => fail(error, 'frissíteni az insightot')));
+      .pipe(catchError((error: unknown) => fail(error, 'update the Insight')));
   }
 
   private get<T>(projectId: string, path: string, action: string): Observable<T> {
@@ -58,7 +58,7 @@ export class DiscoveryApiService {
 
 function fail(error: unknown, action: string): Observable<never> {
   const detail = error instanceof HttpErrorResponse && error.status === 409
-    ? ' Frissítsd az oldalt, mert az állapot közben megváltozott.'
+    ? ' Refresh the page because the state changed in the meantime.'
     : '';
-  return throwError(() => new Error(`Nem sikerült ${action}.${detail}`));
+  return throwError(() => new Error(`Unable to ${action}.${detail}`));
 }

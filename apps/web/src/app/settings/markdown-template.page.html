@@ -1,26 +1,26 @@
 <section aria-labelledby="markdown-settings-title">
   <div class="page-heading settings-heading">
-    <span class="eyebrow">Szervezeti beállítás</span>
-    <h1 id="markdown-settings-title">Specifikációs sablonok</h1>
-    <p>Névvel ellátott sablonokat szerkeszthetsz, előnézetben ellenőrizhetsz és változatlan publikált verzióként tehetsz elérhetővé.</p>
+    <span class="eyebrow">Organization settings</span>
+    <h1 id="markdown-settings-title">Specification templates</h1>
+    <p>Create named templates, review them in preview, and publish immutable versions for future specification generation.</p>
   </div>
 
   @if (actionError()) { <p-message severity="error" role="alert">{{ actionError() }}</p-message> }
   @if (feedback()) { <p-message severity="success" role="status" data-testid="markdown-template-feedback">{{ feedback() }}</p-message> }
 
   @if (loading()) {
-    <div class="state-panel"><p-progress-spinner ariaLabel="Specifikációs sablonok betöltése" /><p>Specifikációs sablonok betöltése…</p></div>
+    <div class="state-panel"><p-progress-spinner ariaLabel="Loading specification templates" /><p>Loading specification templates…</p></div>
   } @else if (loadError()) {
-    <div class="state-panel" role="alert"><h2>A sablonok nem tölthetők be</h2><p>{{ loadError() }}</p><p-button label="Sablonok újratöltése" (onClick)="load()" /></div>
+    <div class="state-panel" role="alert"><h2>Templates are unavailable</h2><p>{{ loadError() }}</p><p-button label="Reload templates" (onClick)="load()" /></div>
   } @else {
-    <div class="toolbar"><p-button label="Új sablon" icon="pi pi-plus" data-testid="new-markdown-template-button" (onClick)="newTemplate()" /></div>
+    <div class="toolbar"><p-button label="New template" icon="pi pi-plus" data-testid="new-markdown-template-button" (onClick)="newTemplate()" /></div>
     <div class="template-layout">
       <p-card>
-        <ng-template #title>Sablonkönyvtár</ng-template>
+        <ng-template #title>Template library</ng-template>
         <div class="template-list">
           @for (template of templates(); track template.id) {
             <button type="button" [class.active]="selected()?.id === template.id" (click)="select(template)">
-              <span><strong>{{ template.name }}</strong><small>{{ template.isDefault ? 'Alapértelmezett' : 'Egyedi sablon' }}</small></span>
+              <span><strong>{{ template.name }}</strong><small>{{ template.isDefault ? 'Default template' : 'Custom template' }}</small></span>
               @if (template.latestPublishedVersion) { <p-tag [value]="'v' + template.latestPublishedVersion" severity="success" /> }
             </button>
           }
@@ -29,31 +29,31 @@
 
       <div class="editor-column">
         <p-card>
-          <ng-template #title>{{ selected() ? 'Sablon piszkozata' : 'Új sablon' }}</ng-template>
+          <ng-template #title>{{ selected() ? 'Template draft' : 'New template' }}</ng-template>
           <form [formGroup]="form" (ngSubmit)="save()" class="template-form">
             <fieldset [disabled]="working()">
-              <div class="field"><label for="template-name">Név</label><input id="template-name" pInputText formControlName="name" data-testid="markdown-template-name-input" /></div>
-              <div class="field"><label for="template-content">Markdown forrás</label><textarea id="template-content" rows="18" formControlName="draftContent" data-testid="markdown-template-content-input"></textarea></div>
+              <div class="field"><label for="template-name">Name</label><input id="template-name" pInputText formControlName="name" data-testid="markdown-template-name-input" [attr.aria-invalid]="form.controls.name.invalid && form.controls.name.touched" [attr.aria-describedby]="form.controls.name.invalid && form.controls.name.touched ? 'template-name-error' : null" />@if (form.controls.name.invalid && form.controls.name.touched) { <small id="template-name-error" data-testid="markdown-template-name-error" role="alert">Template name is required.</small> }</div>
+              <div class="field"><label for="template-content">Markdown source</label><textarea id="template-content" rows="18" formControlName="draftContent" data-testid="markdown-template-content-input"></textarea></div>
             </fieldset>
             <div class="actions">
-              <p-button type="submit" label="Piszkozat mentése" [loading]="working()" data-testid="save-markdown-template-button" />
-              <p-button type="button" label="Előnézet" severity="secondary" [disabled]="!selected() || working() || form.dirty" data-testid="preview-markdown-template-button" (onClick)="showPreview()" />
-              <p-button type="button" label="Publikálás" severity="secondary" [outlined]="true" [disabled]="!selected() || working() || form.dirty" data-testid="publish-markdown-template-button" (onClick)="publish()" />
+              <p-button type="submit" label="Save draft" [loading]="working()" [disabled]="form.invalid || working()" data-testid="save-markdown-template-button" />
+              <p-button type="button" label="Preview" severity="secondary" [disabled]="!selected() || working() || form.dirty" data-testid="preview-markdown-template-button" (onClick)="showPreview()" />
+              <p-button type="button" label="Publish" severity="secondary" [outlined]="true" [disabled]="!selected() || working() || form.dirty" data-testid="publish-markdown-template-button" (onClick)="publish()" />
             </div>
             @if (selected(); as current) {
-              <p data-testid="markdown-template-version">{{ current.latestPublishedVersion ? 'Publikált v' + current.latestPublishedVersion : 'Még nincs publikált verzió' }}</p>
+              <p data-testid="markdown-template-version">{{ current.latestPublishedVersion ? 'Published v' + current.latestPublishedVersion : 'No published version yet' }}</p>
             }
           </form>
         </p-card>
 
         <p-card>
-          <ng-template #title>Biztonságos helyőrzők</ng-template>
-          <p>A projektadat-függő blokkok <code>?</code> jellel opcionálissá tehetők. Az opcionális helyőrző mindig külön Markdown blokk legyen; ha nincs adat, a közvetlenül előtte álló címsorral együtt kimarad.</p>
-          <ul>@for (placeholder of placeholders; track placeholder.name) { <li><code>{{ '{{' + placeholder.name + (placeholder.optional ? '?' : '') + '}}' }}</code> — {{ placeholder.label }} · {{ placeholder.optional ? 'opcionálisan elhagyható' : 'mindig kötelező' }}</li> }</ul>
+          <ng-template #title>Safe placeholders</ng-template>
+          <p>Use <code>?</code> to make project-data blocks optional. An optional placeholder must occupy its own Markdown block; when no data is available, that block and its immediately preceding heading are omitted.</p>
+          <ul>@for (placeholder of placeholders; track placeholder.name) { <li><code>{{ '{{' + placeholder.name + (placeholder.optional ? '?' : '') + '}}' }}</code> — {{ placeholder.label }} · {{ placeholder.optional ? 'optional' : 'required' }}</li> }</ul>
         </p-card>
 
         @if (preview(); as content) {
-          <p-card><ng-template #title>Előnézet</ng-template><pre data-testid="markdown-template-preview">{{ content }}</pre></p-card>
+          <p-card><ng-template #title>Preview</ng-template><pre data-testid="markdown-template-preview">{{ content }}</pre></p-card>
         }
       </div>
     </div>

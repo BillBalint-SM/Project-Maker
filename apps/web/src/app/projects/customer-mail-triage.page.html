@@ -1,20 +1,20 @@
 <section aria-labelledby="triage-title">
-  <a routerLink="/">← Vissza a projektportfólióhoz</a>
+  <a routerLink="/">← Back to Portfolio Overview</a>
   <header>
-    <span class="eyebrow">Ügyfélkapcsolat</span>
-    <h1 id="triage-title">Nem társított ügyfélüzenetek</h1>
-    <p>Minden üzenetről külön dönthetsz: meglévő levelezéshez társítod, vagy nem relevánsként elveted.</p>
+    <span class="eyebrow">Customer Communication</span>
+    <h1 id="triage-title">Unmatched Customer Messages</h1>
+    <p>For each message, either link it to existing Customer correspondence or dismiss it as not relevant.</p>
   </header>
 
   @if (loading()) {
     <div class="state-panel" aria-live="polite">
-      <p-progress-spinner ariaLabel="Nem társított ügyfélüzenetek betöltése" />
-      <p>Az üzenetek betöltése folyamatban van…</p>
+      <p-progress-spinner ariaLabel="Loading unmatched Customer messages" />
+      <p>Loading messages…</p>
     </div>
   } @else if (loadError()) {
     <div class="state-panel" role="alert">
       <p>{{ loadError() }}</p>
-      <p-button label="Üzenetek újratöltése" (onClick)="load()" />
+      <p-button label="Reload messages" (onClick)="load()" />
     </div>
   } @else if (view(); as triage) {
     @if (commandError()) {
@@ -22,9 +22,9 @@
     }
 
     <section aria-labelledby="unmatched-title">
-      <h2 id="unmatched-title">Feldolgozandó üzenetek</h2>
+      <h2 id="unmatched-title">Messages to Process</h2>
       @if (triage.unmatchedMessages.length === 0) {
-        <p data-testid="triage-empty">Nincs feldolgozandó, nem társított üzenet.</p>
+        <p data-testid="triage-empty">There are no unmatched messages to process.</p>
       } @else {
         <div class="message-list">
           @for (message of triage.unmatchedMessages; track message.id) {
@@ -32,30 +32,30 @@
               <div class="message-heading">
                 <div>
                   <span class="kind">
-                    {{ message.kind === 'UNKNOWN_AUTOMATION' ? 'Ellenőrzendő automatikus levél' : 'Nem társított ügyfélüzenet' }}
+                    {{ message.kind === 'UNKNOWN_AUTOMATION' ? 'Automated message requiring review' : 'Unmatched Customer message' }}
                   </span>
-                  <h3>{{ message.subject || 'Tárgy nélküli üzenet' }}</h3>
+                  <h3>{{ message.subject || 'Message without a subject' }}</h3>
                 </div>
                 <time [attr.datetime]="message.receivedAt">
-                  {{ message.receivedAt | date: 'yyyy. MM. dd. HH:mm' }}
+                  {{ message.receivedAt | date: 'dd MMM yyyy, HH:mm' }}
                 </time>
               </div>
-              <p class="sender">Feladó: {{ message.senderAddress || 'Ismeretlen' }}</p>
-              <p class="message-text">{{ message.visibleText || 'Az üzenetnek nincs megjeleníthető szövege.' }}</p>
+              <p class="sender">Sender: {{ message.senderAddress || 'Unknown' }}</p>
+              <p class="message-text">{{ message.visibleText || 'The message has no displayable text.' }}</p>
               @if (message.attachmentCount > 0) {
-                <p>{{ message.attachmentCount }} melléklet</p>
+                <p>{{ message.attachmentCount }} attachments</p>
               }
               <div class="message-actions">
-                <label [for]="'target-' + message.id">Ügyféllevelezés</label>
+                <label [for]="'target-' + message.id">Customer correspondence</label>
                 <select
                   [id]="'target-' + message.id"
                   [disabled]="pendingMessageId() !== null"
                   (change)="selectTarget(message.id, $event)"
                 >
-                  <option value="">Válassz levelezést…</option>
+                  <option value="">Select correspondence…</option>
                   @for (target of triage.eligibleCorrespondences; track target.correspondenceId) {
                     <option [value]="target.correspondenceId">
-                      {{ target.projectName }} — {{ target.createdAt | date: 'yyyy. MM. dd.' }}
+                      {{ target.projectName }} — {{ target.createdAt | date: 'dd MMM yyyy' }}
                     </option>
                   }
                 </select>
@@ -64,14 +64,14 @@
                   [disabled]="pendingMessageId() !== null"
                   [attr.data-testid]="'link-message-' + message.id"
                   (click)="link(message)"
-                >Üzenet társítása</button>
+                >Link message</button>
                 <button pButton
                   type="button"
                   class="p-button-outlined"
                   [disabled]="pendingMessageId() !== null"
                   [attr.data-testid]="'dismiss-message-' + message.id"
                   (click)="dismiss(message)"
-                >Nem releváns</button>
+                >Not relevant</button>
               </div>
             </article>
           }
@@ -80,16 +80,16 @@
     </section>
 
     <section aria-labelledby="events-title">
-      <h2 id="events-title">Levelezőrendszer-események</h2>
+      <h2 id="events-title">Mail System Events</h2>
       @if (triage.mailSystemEvents.length === 0) {
-        <p>Nincs új levelezőrendszer-esemény.</p>
+        <p>There are no new mail system events.</p>
       } @else {
         <ul class="event-list">
           @for (event of triage.mailSystemEvents; track event.id) {
             <li>
               <strong>{{ eventLabel(event.type) }}</strong>
               <time [attr.datetime]="event.occurredAt">
-                {{ event.occurredAt | date: 'yyyy. MM. dd. HH:mm' }}
+                {{ event.occurredAt | date: 'dd MMM yyyy, HH:mm' }}
               </time>
             </li>
           }

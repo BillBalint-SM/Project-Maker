@@ -1,6 +1,10 @@
 import { provideHttpClient } from '@angular/common/http';
 import { ApplicationConfig } from '@angular/core';
-import { provideRouter, withRouterConfig } from '@angular/router';
+import {
+  provideRouter,
+  withRouterConfig,
+  withViewTransitions,
+} from '@angular/router';
 import { providePrimeNG } from 'primeng/config';
 
 import { routes } from './app.routes';
@@ -15,13 +19,14 @@ export const appConfig: ApplicationConfig = {
     provideRouter(
       routes,
       withRouterConfig({ paramsInheritanceStrategy: 'always' }),
+      withViewTransitions({ skipInitialTransition: true }),
     ),
     providePrimeNG({
       license: PRIMEUI_LICENSE,
       theme: {
         preset: ProjectMakerPreset,
         options: {
-          darkModeSelector: false,
+          darkModeSelector: '.pm-dark',
         },
       },
     }),

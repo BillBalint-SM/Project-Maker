@@ -31,9 +31,8 @@ export function calculateDecisionReview(
   const dimensions = toDimensions(policy);
   const decisionScore = calculateScore(inputs, readiness.readinessPercentage, dimensions, policy);
   const estimateBlockingGapCount = countEstimateBlockingGaps(readiness, policy);
-  const hasCriticalGap = readiness.gaps.some(
-    (gap) => gap.severity === requirePolicyLabel(policy.statuses.readinessGapSeverity, 0, 'critical gap'),
-  );
+  requirePolicyLabel(policy.statuses.readinessGapSeverity, 0, 'critical gap');
+  const hasCriticalGap = readiness.gaps.some((gap) => gap.severity === 'Critical');
   const clarificationReasons = deriveClarificationReasons(
     decisionScore,
     readiness.readinessPercentage,
@@ -211,15 +210,15 @@ function clarificationMessages(
   return reasons.map((reason) => {
     switch (reason) {
       case 'CRITICAL_GAP':
-        return 'Kritikus felkészültségi hiány maradt.';
+        return 'A critical readiness gap remains unresolved.';
       case 'READINESS_BELOW_CLARIFICATION_THRESHOLD':
-        return `A felkészültség ${clarificationRules.readinessBelow}% alatt van.`;
+        return `Readiness is below the ${clarificationRules.readinessBelow}% clarification threshold.`;
       case 'TOO_MANY_ESTIMATE_BLOCKING_GAPS':
-        return `Több mint ${clarificationRules.estimateBlockingGapsAbove} becslést blokkoló hiány maradt.`;
+        return `More than ${clarificationRules.estimateBlockingGapsAbove} estimation-blocking gaps remain unresolved.`;
       case 'DECISION_SCORE_BELOW_ESTIMATE_PREPARATION_THRESHOLD':
-        return `A döntési pontszám még nem éri el a ${preparationRules.decisionScoreAtLeast}-ös becslés-előkészítési küszöböt.`;
+        return `The Decision Score has not reached the ${preparationRules.decisionScoreAtLeast}-point estimation-preparation threshold.`;
       case 'READINESS_BELOW_ESTIMATE_PREPARATION_THRESHOLD':
-        return `A felkészültség még nem éri el a ${preparationRules.readinessAtLeast}%-os becslés-előkészítési küszöböt.`;
+        return `Readiness has not reached the ${preparationRules.readinessAtLeast}% estimation-preparation threshold.`;
     }
   });
 }
@@ -230,12 +229,15 @@ function decisionScoreLabel(decisionScore: number, policy: GeneralPlaybook): str
     throw new TypeError('Decision policy score thresholds are not ordered.');
   }
   if (decisionScore >= thresholds.high) {
-    return requirePolicyLabel(policy.statuses.decisionScoreLabel, 0, 'high Decision Score');
+    requirePolicyLabel(policy.statuses.decisionScoreLabel, 0, 'high Decision Score');
+    return 'High';
   }
   if (decisionScore >= thresholds.medium) {
-    return requirePolicyLabel(policy.statuses.decisionScoreLabel, 1, 'medium Decision Score');
+    requirePolicyLabel(policy.statuses.decisionScoreLabel, 1, 'medium Decision Score');
+    return 'Medium';
   }
-  return requirePolicyLabel(policy.statuses.decisionScoreLabel, 2, 'low Decision Score');
+  requirePolicyLabel(policy.statuses.decisionScoreLabel, 2, 'low Decision Score');
+  return 'Low';
 }
 
 function requirePolicyLabel(values: readonly string[], index: number, meaning: string): string {

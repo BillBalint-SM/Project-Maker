@@ -21,7 +21,7 @@ test('redirects the legacy Project root to the daily status while preserving ret
   await expect(page).toHaveURL(
     `/projects/${project.id}/status?returnTo=${encodeURIComponent(returnTo)}`,
   );
-  await expect(page.getByRole('heading', { name: 'Projektállapot' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Project Status' })).toBeVisible();
 });
 
 test('resumes schema-required projects directly and keeps the server-derived status available', async ({ page }) => {
@@ -45,9 +45,9 @@ test('resumes schema-required projects directly and keeps the server-derived sta
 
   await page.goto(`/projects/${project.id}/status`);
 
-  await expect(page.getByRole('heading', { name: 'Projektállapot' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Project Status' })).toBeVisible();
   await expect(page.getByTestId('project-context-shell')).toContainText(
-    'Kérdésséma szükséges',
+    'Question schema required',
   );
   await page.getByTestId('project-context-primary-action').click();
   await expect(page).toHaveURL(
@@ -56,13 +56,13 @@ test('resumes schema-required projects directly and keeps the server-derived sta
 
   await page.goto(`/projects/${project.id}/readiness`);
   await expect(
-    page.getByRole('heading', { name: 'Becslési felkészültség', exact: true }),
+    page.getByRole('heading', { name: 'Estimation Readiness', exact: true }),
   ).toBeVisible();
   await expect(page.getByTestId('readiness-review-card')).toBeVisible();
 
   await page.goto(`/projects/${project.id}/decision-review`);
   await expect(
-    page.getByRole('heading', { name: 'Döntési értékelés', exact: true }),
+    page.getByRole('heading', { name: 'Decision Review', exact: true }),
   ).toBeVisible();
   await expect(page.getByTestId('decision-review-card')).toBeVisible();
 });
@@ -101,12 +101,12 @@ test('surfaces project coordination and redacted recent activity', async ({ page
   await expect(page.getByTestId('project-status-coordination')).toContainText(
     'Egyeztesd a következő interjú időpontját.',
   );
-  await expect(page.getByTestId('project-status-coordination')).toContainText('2026. 08. 20.');
+  await expect(page.getByTestId('project-status-coordination')).toContainText('2026-08-20 14:00');
   await expect(page.getByTestId('project-status-customer-communication')).toContainText(
-    'Nincs feldolgozatlan új ügyfélválasz.',
+    'There are no unprocessed new Customer replies.',
   );
   await expect(page.getByTestId('project-status-activity')).toContainText(
-    'A projekt archiválva lett.',
+    'Project archived.',
   );
   await expect(page.getByTestId('project-status-activity')).not.toContainText('PROJECT_ARCHIVED');
 
@@ -141,7 +141,7 @@ test('keeps administrative phase editing in Project settings and persists the se
 
   const statusSelect = page.getByTestId('project-lifecycle-status-select');
   await statusSelect.click();
-  await page.getByRole('option', { name: 'Ügyfél-visszajelzésre vár', exact: true }).click();
+  await page.getByRole('option', { name: 'Awaiting Customer feedback', exact: true }).click();
   const saveResponse = page.waitForResponse(
     (response) =>
       response.request().method() === 'PATCH' &&
@@ -150,12 +150,12 @@ test('keeps administrative phase editing in Project settings and persists the se
   await page.getByTestId('save-project-lifecycle-status').locator('button').click();
   expect((await saveResponse).status()).toBe(200);
   await expect(page.getByTestId('project-lifecycle-feedback')).toContainText(
-    'Az adminisztratív projektfázis frissítve lett.',
+    'The administrative project phase has been updated.',
   );
 
   await page.reload();
   await expect(page.getByTestId('project-lifecycle-status-select')).toContainText(
-    'Ügyfél-visszajelzésre vár',
+    'Awaiting Customer feedback',
   );
 
   const archiveResponse = page.waitForResponse(
@@ -175,9 +175,9 @@ test('keeps administrative phase editing in Project settings and persists the se
   await page.getByTestId('restore-project-button').locator('button').click();
   expect((await restoreResponse).status()).toBe(201);
   await expect(page.getByTestId('project-lifecycle-status-select')).toContainText(
-    'Ügyfél-visszajelzésre vár',
+    'Awaiting Customer feedback',
   );
   await expect(page.getByTestId('project-settings-action-success')).toContainText(
-    'Korábbi esemény vagy küldés nem ismétlődött meg.',
+    'The project can resume in its pre-archive Awaiting Customer feedback phase. Earlier events and sends have not been repeated.',
   );
 });

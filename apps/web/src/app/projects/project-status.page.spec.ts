@@ -18,7 +18,7 @@ describe('ProjectStatusPage', () => {
       projectId,
       projectName: 'Ügyfélválaszos projekt',
       urgency: 'CUSTOMER_REPLY',
-      urgencyLabel: 'Új ügyfélválasz',
+      urgencyLabel: 'New Customer reply',
       preparationStatus: {
         projectId,
         state: 'INTAKE_IN_PROGRESS',
@@ -32,7 +32,7 @@ describe('ProjectStatusPage', () => {
       progress: { kind: 'INTERVIEW_ANSWERS', answeredQuestions: 4, totalQuestions: 9 },
       primaryAction: {
         target: 'CUSTOMER_CORRESPONDENCE',
-        label: 'Ügyféllevelezés megnyitása',
+        label: 'Open Customer correspondence',
       },
     };
     const project: ProjectWorkspace = {
@@ -151,7 +151,7 @@ describe('ProjectStatusPage', () => {
     expect(coordination?.textContent).toContain(
       'Az ügyféladatok átmenetileg nem érhetők el.',
     );
-    expect(customerCommunication?.textContent).toContain('Nincs feldolgozatlan új ügyfélválasz.');
+    expect(customerCommunication?.textContent).toContain('There are no unprocessed new Customer replies.');
   });
 
   it('updates only daily coordination fields and refreshes the canonical work state', async () => {

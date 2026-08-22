@@ -14,7 +14,7 @@ export class CustomerMailTriageApiService {
   view(): Observable<CustomerMailTriageView> {
     return this.http.get<CustomerMailTriageView>('/api/customer-mail-triage').pipe(
       catchError(() => throwError(() => new Error(
-        'A nem társított ügyfélüzenetek most nem tölthetők be.',
+        'Unmatched Customer messages could not be loaded.',
       ))),
     );
   }
@@ -28,7 +28,7 @@ export class CustomerMailTriageApiService {
       command,
     ).pipe(
       catchError(() => throwError(() => new Error(
-        'Az üzenet feldolgozása nem sikerült. Frissítsd a listát, majd próbáld újra.',
+        'The message could not be processed. Refresh the list and try again.',
       ))),
     );
   }

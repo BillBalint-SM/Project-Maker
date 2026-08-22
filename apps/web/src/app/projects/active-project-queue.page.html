@@ -1,10 +1,10 @@
 <section aria-labelledby="active-queue-title">
-  <a class="back-link" routerLink="/">← Vissza a projektportfólióhoz</a>
+  <a class="back-link" routerLink="/">← Back to Portfolio Overview</a>
 
   <div class="page-heading">
-    <span class="eyebrow">Portfólió</span>
-    <h1 id="active-queue-title">Aktív munkasor</h1>
-    <p>Az aktív projektek következő teendői sürgősség szerint rendezve.</p>
+    <span class="eyebrow">Portfolio</span>
+    <h1 id="active-queue-title">Active Project Queue</h1>
+    <p>Next actions for active projects, prioritized by urgency.</p>
   </div>
 
   @if (cursorRecoveryNotice()) {
@@ -14,13 +14,13 @@
   }
 
   <section class="queue-filters" aria-labelledby="queue-filter-title">
-    <h2 id="queue-filter-title">Lista szűrése</h2>
+    <h2 id="queue-filter-title">Filter list</h2>
     <label class="search-field">
-      <span>Projektnév</span>
-      <input type="search" [formControl]="search" placeholder="Keresés projektnévben" data-testid="queue-search" />
+      <span>Project name</span>
+      <input type="search" [formControl]="search" placeholder="Search project names" data-testid="queue-search" />
     </label>
     <fieldset>
-      <legend>Sürgősség</legend>
+      <legend>Urgency</legend>
       @for (option of urgencyOptions; track option[0]) {
         <label>
           <input
@@ -34,7 +34,7 @@
       }
     </fieldset>
     <fieldset>
-      <legend>Becslési felkészültség</legend>
+      <legend>Estimation readiness</legend>
       @for (option of preparationOptions; track option[0]) {
         <label>
           <input type="checkbox" [checked]="selectedPreparationStates().includes(option[0])" (change)="togglePreparationState(option[0])" />
@@ -51,9 +51,9 @@
       severity="secondary"
       data-testid="queue-refresh"
       (click)="refresh()"
-    >Lista frissítése</button>
+    >Refresh list</button>
     @if (page(); as loadedPage) {
-      <span>Utolsó lekérés: {{ loadedPage.retrievedAt | date: 'yyyy. MM. dd. HH:mm' }}</span>
+      <span>Last retrieved: {{ loadedPage.retrievedAt | date: 'yyyy-MM-dd HH:mm' }}</span>
     }
   </div>
 
@@ -63,50 +63,50 @@
 
   @if (stale()) {
     <div class="state-panel queue-stale" data-testid="active-queue-stale">
-      <h2>A lista elavult lehet.</h2>
+      <h2>The list may be stale.</h2>
       <p>{{ updateError() }}</p>
       <button pButton type="button" severity="secondary" data-testid="queue-update-retry" (click)="retry()">
-        Sikertelen lekérés újrapróbálása
+        Retry failed request
       </button>
     </div>
   }
 
   @if (loading()) {
     <div class="state-panel" data-testid="active-queue-loading" aria-live="polite">
-      <p-progress-spinner ariaLabel="Az aktív munkasor betöltése" />
-      <p>Az aktív munkasor betöltése…</p>
+      <p-progress-spinner ariaLabel="Loading active project queue" />
+      <p>Loading active project queue…</p>
     </div>
   } @else if (loadError()) {
     <div class="state-panel" data-testid="active-queue-error" role="alert">
-      <h2>Az aktív munkasor nem tölthető be</h2>
+      <h2>The active project queue could not be loaded</h2>
       <p>{{ loadError() }}</p>
       <button pButton type="button" severity="secondary" data-testid="queue-initial-retry" (click)="retry()">
-        Lista újratöltése
+        Reload list
       </button>
     </div>
   } @else if (page(); as queuePage) {
     @if (queuePage.totalCount === 0) {
       <div class="state-panel" data-testid="active-queue-empty">
         @if (hasActiveFilters()) {
-          <h2>Nincs találat</h2>
-          <p>Nincs a keresésnek és a kiválasztott szűrőknek megfelelő aktív projekt.</p>
+          <h2>No results</h2>
+          <p>No active projects match the search and selected filters.</p>
           <button pButton type="button" severity="secondary" data-testid="queue-clear-filters" (click)="clearFilters()">
-            Szűrők törlése
+            Clear filters
           </button>
         } @else {
-          <h2>Nincs aktív projekt</h2>
-          <p>A listában minden nem archivált projekt megjelenik.</p>
-          <a pButton severity="secondary" routerLink="/">Vissza a projektportfólióhoz</a>
-          <a pButton routerLink="/projects/new">Új projekt létrehozása</a>
+          <h2>No active projects</h2>
+          <p>All non-archived projects are shown in this list.</p>
+          <a pButton severity="secondary" routerLink="/">Back to Portfolio Overview</a>
+          <a pButton routerLink="/projects/new">Create a new project</a>
         }
       </div>
     } @else {
       <div class="queue-summary" aria-live="polite">
         <strong>
-          {{ queuePage.items.length }} projekt látható az összesen {{ queuePage.totalCount }} aktív projektből
+          {{ queuePage.items.length }} of {{ queuePage.totalCount }} active projects shown
         </strong>
         @if (updating()) {
-          <span>Frissítés folyamatban…</span>
+          <span>Refreshing…</span>
         }
       </div>
 
@@ -116,7 +116,7 @@
             <div class="group-heading">
               <h2 [id]="'queue-group-' + group.urgency">{{ group.label }}</h2>
               <span>
-                {{ group.items.length }} látható, összesen {{ queuePage.groupCounts[group.urgency] }} projekt
+                {{ group.items.length }} shown of {{ queuePage.groupCounts[group.urgency] }} projects
               </span>
             </div>
             <ul>
@@ -136,26 +136,26 @@
                   </div>
                   <dl>
                     <div>
-                      <dt>Következő lépés</dt>
-                      <dd>{{ item.nextAction || 'Nincs megadva' }}</dd>
+                      <dt>Next action</dt>
+                      <dd>{{ item.nextAction || 'Not specified' }}</dd>
                     </div>
                     <div>
-                      <dt>Felelős</dt>
-                      <dd>{{ item.nextActionOwner.displayName || 'Nincs kijelölve' }}</dd>
+                      <dt>Owner</dt>
+                      <dd>{{ item.nextActionOwner.displayName || 'Not assigned' }}</dd>
                     </div>
                     <div>
-                      <dt>Határidő</dt>
-                      <dd>{{ item.dueAt ? (item.dueAt | date: 'yyyy. MM. dd. HH:mm') : 'Nincs megadva' }}</dd>
+                      <dt>Due date</dt>
+                      <dd>{{ item.dueAt ? (item.dueAt | date: 'yyyy-MM-dd HH:mm') : 'Not specified' }}</dd>
                     </div>
                     @if (item.urgency === 'CUSTOMER_REPLY') {
                       <div>
-                        <dt>Új válaszok</dt>
+                        <dt>New replies</dt>
                         <dd>{{ item.newReplyCount }}</dd>
                       </div>
                     }
                     @if (progressLabel(item.progress); as progress) {
                       <div>
-                        <dt>Előrehaladás</dt>
+                        <dt>Progress</dt>
                         <dd>{{ progress }}</dd>
                       </div>
                     }
@@ -174,7 +174,7 @@
         }
       </div>
 
-      <nav class="queue-pagination" aria-label="Az aktív munkasor lapozása">
+      <nav class="queue-pagination" aria-label="Active project queue pagination">
         <button
           pButton
           type="button"
@@ -182,14 +182,14 @@
           data-testid="queue-previous-page"
           [disabled]="!queuePage.previousCursor"
           (click)="navigateToCursor(queuePage.previousCursor!)"
-        >Előző oldal</button>
+        >Previous page</button>
         <button
           pButton
           type="button"
           data-testid="queue-next-page"
           [disabled]="!queuePage.nextCursor"
           (click)="navigateToCursor(queuePage.nextCursor!)"
-        >Következő oldal</button>
+        >Next page</button>
       </nav>
     }
   }

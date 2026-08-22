@@ -1,8 +1,8 @@
 <section aria-labelledby="markdown-title">
   <div class="page-heading markdown-heading">
-    <span class="eyebrow">Generált dokumentum</span>
-    <h1 id="markdown-title">Projekt-specifikáció</h1>
-    <p>Hozz létre változatlan specifikációverziót a projekt aktuális előkészítési adataiból, majd tekintsd át vagy töltsd le Markdown formátumban.</p>
+    <span class="eyebrow">Generated document</span>
+    <h1 id="markdown-title">Project Specification</h1>
+    <p>Generate an immutable specification version from the project's current preparation data, then review or download it in Markdown format.</p>
   </div>
 
   @if (actionError()) {
@@ -18,15 +18,15 @@
 
   @if (loading()) {
     <div class="state-panel" data-testid="markdown-loading" aria-live="polite">
-      <p-progress-spinner ariaLabel="Specifikációverziók betöltése" />
-      <p>Specifikációverziók betöltése…</p>
+      <p-progress-spinner ariaLabel="Loading specification versions" />
+      <p>Loading specification versions…</p>
     </div>
   } @else if (loadError()) {
     <div class="state-panel" data-testid="markdown-error" role="alert">
-      <h2>A specifikációverziók nem tölthetők be</h2>
+      <h2>Specification versions could not be loaded</h2>
       <p>{{ loadError() }}</p>
       <p-button
-        label="Verziók újratöltése"
+        label="Reload versions"
         severity="secondary"
         data-testid="retry-markdown-button"
         (onClick)="loadRevisions()"
@@ -35,9 +35,9 @@
   } @else {
     <div class="generate-card">
       <p-card>
-        <ng-template #title>Új specifikációverzió generálása</ng-template>
+        <ng-template #title>Generate specification version</ng-template>
         <ng-template #subtitle>
-          A projekt- és felmérési adatok változatlan forráspillanatképként kerülnek a specifikációverzióba.
+          Project and interview data are captured as an immutable source snapshot in the specification version.
         </ng-template>
         <form
           class="generation-form"
@@ -47,16 +47,16 @@
         >
           <fieldset [disabled]="generating()">
             <div class="field">
-              <label for="markdown-template">Publikált sablon</label>
+              <label for="markdown-template">Published template</label>
               <select id="markdown-template" class="full-width" formControlName="templateId" data-testid="markdown-template-select">
                 @for (template of configuration()?.templates ?? []; track template.id) {
                   <option [value]="template.id">{{ template.name }} · v{{ template.latestPublishedVersion }}</option>
                 }
               </select>
-              <small>A sikeres generálás után ezt a választást jegyzi meg a projekt.</small>
+              <small>The project retains this selection after successful generation.</small>
             </div>
             <div class="field">
-              <label for="markdown-reason">Létrehozás oka</label>
+              <label for="markdown-reason">Generation reason</label>
               <select
                 id="markdown-reason"
                 class="full-width"
@@ -67,29 +67,29 @@
                   <option [value]="option.value">{{ option.label }}</option>
                 }
               </select>
-              <small>Válassz mérföldkő-okot, ha a pillanatkép egy névvel ellátott átadási ellenőrzési pontot rögzít.</small>
+              <small>Select a milestone reason when this snapshot records a named handoff checkpoint.</small>
             </div>
 
             <div class="field">
-              <label for="markdown-milestone">Mérföldkő</label>
+              <label for="markdown-milestone">Milestone</label>
               <input
                 id="markdown-milestone"
                 pInputText
                 class="full-width"
                 formControlName="milestone"
-                placeholder="Például: Felmérés lezárva"
+                placeholder="For example: Initial Intake completed"
                 data-testid="markdown-milestone-input"
                 [attr.aria-required]="generationForm.controls.reason.value === 'MILESTONE'"
                 [attr.aria-invalid]="generationForm.controls.milestone.invalid && generationForm.controls.milestone.touched"
                 [attr.aria-describedby]="generationForm.controls.milestone.invalid && generationForm.controls.milestone.touched ? 'markdown-milestone-help markdown-milestone-error' : 'markdown-milestone-help'"
               />
-              <small id="markdown-milestone-help">Csak mérföldkő-verziónál kötelező; kézi generálásnál hagyd üresen.</small>
+              <small id="markdown-milestone-help">Required only for milestone versions; leave blank for manual generation.</small>
               @if (generationForm.controls.milestone.invalid && generationForm.controls.milestone.touched) {
                 <small class="field-error" id="markdown-milestone-error">
                   @if (generationForm.controls.milestone.hasError('required')) {
-                    Add meg a mérföldkő nevét.
+                    Enter a milestone name.
                   } @else if (generationForm.controls.milestone.hasError('maxlength')) {
-                    A mérföldkő legfeljebb 255 karakter lehet.
+                    The milestone must not exceed 255 characters.
                   }
                 </small>
               }
@@ -104,7 +104,7 @@
             (click)="generateRevision()"
           >
             <span class="pi pi-file-edit" aria-hidden="true"></span>
-            <span>{{ generating() ? 'Generálás…' : 'Specifikációverzió generálása' }}</span>
+            <span>{{ generating() ? 'Generating…' : 'Generate specification version' }}</span>
           </button>
         </form>
       </p-card>
@@ -112,13 +112,13 @@
 
     <div class="markdown-grid">
       <p-card>
-        <ng-template #title>Verziótörténet</ng-template>
-        <ng-template #subtitle>A legújabb specifikációverzió jelenik meg elsőként.</ng-template>
+        <ng-template #title>Version history</ng-template>
+        <ng-template #subtitle>The newest specification version is shown first.</ng-template>
 
         @if (revisions().length === 0) {
           <div class="state-panel compact" data-testid="markdown-no-revisions">
-            <h2>Még nincs specifikációverzió</h2>
-            <p>Generáld az első verziót a letölthető kanonikus specifikációhoz.</p>
+            <h2>No specification versions yet</h2>
+            <p>Generate the first version to create the downloadable canonical specification.</p>
           </div>
         } @else {
           <ol class="revision-list" data-testid="markdown-revision-list">
@@ -134,10 +134,10 @@
                   [attr.data-testid]="'markdown-revision-link-' + revision.id"
                 >
                   <span>
-                    <strong>Specifikációverzió v{{ revision.version }}</strong>
+                    <strong>Specification version v{{ revision.version }}</strong>
                     <small>{{ reasonLabel(revision.reason) }}{{ revision.milestone ? ' · ' + revision.milestone : '' }}</small>
                   </span>
-                  <time [attr.datetime]="revision.createdAt">{{ revision.createdAt | date: 'yyyy. MM. dd. HH:mm' }}</time>
+                  <time [attr.datetime]="revision.createdAt">{{ revision.createdAt | date: 'dd MMM yyyy, HH:mm' }}</time>
                 </a>
               </li>
             }
@@ -146,18 +146,18 @@
       </p-card>
 
       <p-card>
-        <ng-template #title>Specifikációverzió részletei</ng-template>
+        <ng-template #title>Specification version details</ng-template>
         @if (detailLoading()) {
           <div class="state-panel compact" data-testid="markdown-detail-loading" aria-live="polite">
-            <p-progress-spinner ariaLabel="Specifikációverzió betöltése" />
-            <p>A specifikációverzió részleteinek betöltése…</p>
+            <p-progress-spinner ariaLabel="Loading specification version" />
+            <p>Loading specification version details…</p>
           </div>
         } @else if (detailError()) {
           <div class="state-panel compact" data-testid="markdown-detail-error" role="alert">
-            <h2>A specifikációverzió részletei nem tölthetők be</h2>
+            <h2>Specification version details could not be loaded</h2>
             <p>{{ detailError() }}</p>
             <p-button
-              label="Specifikációverzió újratöltése"
+              label="Reload specification version"
               severity="secondary"
               data-testid="retry-markdown-detail-button"
               (onClick)="retryRevision()"
@@ -167,33 +167,33 @@
           <article class="revision-detail" data-testid="markdown-revision-detail">
             <div class="revision-detail-heading">
               <div>
-                <span class="eyebrow">Változatlan pillanatkép</span>
-                <h2>Specifikációverzió v{{ current.version }}</h2>
+                <span class="eyebrow">Immutable snapshot</span>
+                <h2>Specification version v{{ current.version }}</h2>
               </div>
               <p-tag [value]="reasonLabel(current.reason)" [severity]="current.reason === 'MILESTONE' ? 'success' : 'info'" />
             </div>
 
             <dl class="revision-metadata" data-testid="markdown-revision-metadata">
               <div>
-                <dt>Létrehozva</dt>
-                <dd><time [attr.datetime]="current.createdAt">{{ current.createdAt | date: 'yyyy. MM. dd. HH:mm' }}</time></dd>
+                <dt>Created</dt>
+                <dd><time [attr.datetime]="current.createdAt">{{ current.createdAt | date: 'dd MMM yyyy, HH:mm' }}</time></dd>
               </div>
               <div>
-                <dt>Mérföldkő</dt>
-                <dd>{{ current.milestone || 'Nincs' }}</dd>
+                <dt>Milestone</dt>
+                <dd>{{ current.milestone || 'None' }}</dd>
               </div>
               <div>
-                <dt>Forrásverzió</dt>
+                <dt>Source version</dt>
                 <dd data-testid="markdown-source-version">v{{ current.sourceSnapshot.version }}</dd>
               </div>
               <div>
-                <dt>Sablon</dt>
+                <dt>Template</dt>
                 <dd data-testid="markdown-revision-template">
-                  @if (current.template; as template) { {{ template.name }} · v{{ template.version }} } @else { Korábbi, eredethivatkozás nélküli specifikációverzió }
+                  @if (current.template; as template) { {{ template.name }} · v{{ template.version }} } @else { Earlier specification version without provenance }
                 </dd>
               </div>
               <div>
-                <dt>Előző verzió</dt>
+                <dt>Previous version</dt>
                 <dd>
                   @if (current.previousRevisionId; as previousRevisionId) {
                     <a
@@ -202,17 +202,17 @@
                       queryParamsHandling="merge"
                       data-testid="markdown-previous-revision-link"
                     >
-                      Előző verzió megtekintése
+                      View previous version
                     </a>
                   } @else {
-                    <span>Első verzió</span>
+                    <span>Initial version</span>
                   }
                 </dd>
               </div>
             </dl>
 
             <section class="change-summary" aria-labelledby="markdown-change-summary-title">
-              <h3 id="markdown-change-summary-title">Változásösszefoglaló</h3>
+              <h3 id="markdown-change-summary-title">Change summary</h3>
               <p data-testid="markdown-change-summary">{{ current.changeSummary }}</p>
             </section>
 
@@ -223,19 +223,19 @@
                 download="execution-plan.md"
                 data-testid="markdown-download-link"
               >
-                Markdown letöltése
+                Download Markdown
               </a>
             </div>
 
             <section aria-labelledby="markdown-preview-title">
-              <h3 id="markdown-preview-title">Tartalmi előnézet</h3>
+              <h3 id="markdown-preview-title">Content preview</h3>
               <pre class="content-preview" data-testid="markdown-content-preview">{{ current.content }}</pre>
             </section>
           </article>
         } @else {
           <div class="state-panel compact" data-testid="markdown-detail-empty">
-            <h2>Válassz specifikációverziót</h2>
-            <p>Válassz egy verziót a történetből a forrás és a tartalom megtekintéséhez.</p>
+            <h2>Select a specification version</h2>
+            <p>Select a version from the history to review its source and content.</p>
           </div>
         }
       </p-card>

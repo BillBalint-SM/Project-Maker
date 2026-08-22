@@ -1,6 +1,7 @@
 .customer-response {
-  border: 1px solid var(--p-content-border-color);
-  border-radius: 0.8rem;
+  background: color-mix(in oklch, var(--pm-surface-2) 58%, transparent);
+  border: 1px solid var(--pm-border);
+  border-radius: var(--pm-radius-md);
   margin: 1.25rem 0;
   padding: 1rem;
 }
@@ -41,16 +42,17 @@
 
 .request-preview,
 .request-history article {
-  background: var(--p-content-hover-background);
-  border-radius: 0.65rem;
+  background: color-mix(in oklch, var(--pm-surface-3) 55%, transparent);
+  border: 1px solid color-mix(in oklch, var(--pm-border) 72%, transparent);
+  border-radius: var(--pm-radius-sm);
   margin-top: 1rem;
   padding: 1rem;
 }
 
 .request-preview pre {
-  background: var(--p-content-background);
-  border: 1px solid var(--p-content-border-color);
-  border-radius: 0.5rem;
+  background: var(--pm-canvas-deep);
+  border: 1px solid var(--pm-border);
+  border-radius: var(--pm-radius-sm);
   overflow-wrap: anywhere;
   padding: 0.8rem;
   white-space: pre-wrap;

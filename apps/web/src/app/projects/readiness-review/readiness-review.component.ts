@@ -69,7 +69,7 @@ export class ReadinessReviewComponent {
 
   openChecklistGap(snapshotId: string | null): void {
     if (!snapshotId) {
-      throw new Error('Az ellenőrzőlista-hiányhoz nem érkezett kérdésazonosító.');
+      throw new Error('The checklist gap does not include a question identifier.');
     }
 
     void this.router.navigate(

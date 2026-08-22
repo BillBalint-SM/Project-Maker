@@ -23,18 +23,18 @@ import { ProjectCommandPending } from '../project-command-pending';
 import { DecisionReviewApiService } from './decision-review-api.service';
 
 const ratingLabels: Readonly<Record<DecisionReviewInputKey, string>> = {
-  businessValue: 'Üzleti érték',
-  strategicAlignment: 'Stratégiai illeszkedés',
-  urgency: 'Sürgősség',
-  confidence: 'Bizonyosság',
-  complexity: 'Komplexitás',
-  risk: 'Kockázat',
+  businessValue: 'Business value',
+  strategicAlignment: 'Strategic alignment',
+  urgency: 'Urgency',
+  confidence: 'Confidence',
+  complexity: 'Complexity',
+  risk: 'Risk',
 };
 
 const recommendationLabels: Readonly<Record<string, string>> = {
-  CLARIFICATION_REQUIRED: 'Pontosítás szükséges',
-  ESTIMATE_PREPARATION_POSSIBLE: 'Becslés előkészíthető',
-  ESTIMATE_READY: 'Becslésre kész',
+  CLARIFICATION_REQUIRED: 'Clarification required',
+  ESTIMATE_PREPARATION_POSSIBLE: 'Ready to prepare an estimate',
+  ESTIMATE_READY: 'Ready for estimation',
 };
 
 @Component({

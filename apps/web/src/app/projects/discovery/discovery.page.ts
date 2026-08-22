@@ -84,7 +84,7 @@ export class DiscoveryPage implements OnInit {
 
   load(): void {
     if (!this.projectId) {
-      this.error.set('Hiányzik a projekt azonosítója.');
+      this.error.set('The project identifier is missing.');
       this.loading.set(false);
       return;
     }
@@ -128,7 +128,7 @@ export class DiscoveryPage implements OnInit {
     request.pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: () => {
         this.resetContact();
-        this.finishSave('A projektkapcsolat mentve lett.');
+        this.finishSave('The Project contact has been saved.');
       },
       error: (error: Error) => this.failSave(error),
     });
@@ -142,13 +142,17 @@ export class DiscoveryPage implements OnInit {
     this.contactNote = contact.note ?? '';
   }
 
+  cancelContactEdit(): void {
+    this.resetContact();
+  }
+
   deleteContact(contactId: string): void {
-    if (this.saving() || this.archived() || !confirm('Törlöd ezt a projektkapcsolatot?')) return;
+    if (this.saving() || this.archived() || !confirm('Delete this project contact?')) return;
     this.startSave();
     this.discovery.deleteContact(this.projectId, contactId)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
-        next: () => this.finishSave('A projektkapcsolat törölve lett.'),
+        next: () => this.finishSave('Project contact deleted.'),
         error: (error: Error) => this.failSave(error),
       });
   }
@@ -156,7 +160,7 @@ export class DiscoveryPage implements OnInit {
   startRound(): void {
     const selectedStableKeys = this.roundStableKey ? [this.roundStableKey] : undefined;
     const adHocQuestions = this.roundType === 'CLARIFICATION' && this.adHocQuestion.trim()
-      ? [{ text: this.adHocQuestion.trim(), topic: this.adHocTopic.trim() || 'Tisztázás' }]
+      ? [{ text: this.adHocQuestion.trim(), topic: this.adHocTopic.trim() || 'Clarification' }]
       : undefined;
     if (this.saving() || this.archived() || (!selectedStableKeys && !adHocQuestions)) return;
     this.startSave();
@@ -204,7 +208,7 @@ export class DiscoveryPage implements OnInit {
       }).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
         next: () => {
           this.resetInsight();
-          this.finishSave('Az insight frissítve lett.');
+          this.finishSave('Insight updated.');
         },
         error: (error: Error) => this.failSave(error),
       });
@@ -224,7 +228,7 @@ export class DiscoveryPage implements OnInit {
           }
         : null;
     if (!input) {
-      this.failSave(new Error('Válassz mentett választ vagy meglévő bizonyítékforrást.'));
+      this.failSave(new Error('Select a saved response or an existing evidence source.'));
       return;
     }
     this.discovery.createInsight(this.projectId, input)
@@ -232,7 +236,7 @@ export class DiscoveryPage implements OnInit {
       .subscribe({
         next: () => {
           this.resetInsight();
-          this.finishSave('A bizonyítékalapú insight mentve lett.');
+          this.finishSave('Evidence-based insight saved.');
         },
         error: (error: Error) => this.failSave(error),
       });
@@ -289,7 +293,7 @@ function nullable(value: string): string | null {
 }
 
 function roundLabel(type: InterviewRoundType): string {
-  if (type === 'STAKEHOLDER') return 'Stakeholder kör';
-  if (type === 'CLARIFICATION') return 'Tisztázó kör';
-  return 'Kezdő felmérés';
+  if (type === 'STAKEHOLDER') return 'Stakeholder round';
+  if (type === 'CLARIFICATION') return 'Clarification round';
+  return 'Initial Intake';
 }

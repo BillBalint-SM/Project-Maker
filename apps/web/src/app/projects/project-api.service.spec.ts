@@ -29,7 +29,7 @@ describe('ProjectApiService', () => {
     http.verify();
   });
 
-  it('maps Project activity failures to safe, actionable Hungarian copy', async () => {
+  it('maps Project activity failures to safe, actionable English copy', async () => {
     TestBed.configureTestingModule({
       providers: [ProjectApiService, provideHttpClient(), provideHttpClientTesting()],
     });
@@ -45,7 +45,7 @@ describe('ProjectApiService', () => {
     );
 
     await expect(activity).rejects.toThrow(
-      'Nem sikerült betölteni a legutóbbi projektaktivitást. A szolgáltatás átmenetileg nem érhető el. Várj röviden, majd próbáld újra.',
+      'Unable to load the latest project activity. The service is temporarily unavailable. Wait briefly and try again.',
     );
     expect(diagnostics).toHaveBeenCalledWith(
       'Project API request failed.',

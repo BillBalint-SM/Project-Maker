@@ -11,7 +11,7 @@ export class NotificationsApiService {
   load(): Observable<NotificationList> {
     return this.http.get<NotificationList>('/api/notifications').pipe(
       tap((result) => this.current.set(result)),
-      catchError(() => throwError(() => new Error('Az értesítések most nem tölthetők be.'))),
+      catchError(() => throwError(() => new Error('Notifications are currently unavailable.'))),
     );
   }
 }

@@ -2,7 +2,7 @@
 section { max-width: 72rem; margin: 0 auto; }
 header { margin: 1.5rem 0 2rem; }
 .message-list { display: grid; gap: 1rem; }
-.message-card { border: 1px solid var(--p-surface-300); border-radius: .75rem; padding: 1rem; background: var(--p-surface-0); }
+.message-card { border: 1px solid var(--pm-border); border-radius: var(--pm-radius-md); padding: 1rem; background: color-mix(in oklch, var(--pm-surface-2) 82%, transparent); box-shadow: var(--pm-shadow-sm); }
 .message-heading { display: flex; gap: 1rem; justify-content: space-between; align-items: start; }
 .message-heading h3 { margin: .25rem 0; }
 .kind, .sender, time { color: var(--p-text-muted-color); }

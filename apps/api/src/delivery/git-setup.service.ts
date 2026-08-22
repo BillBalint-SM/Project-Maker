@@ -25,7 +25,7 @@ export class GitSetupService {
 
   async create(input: SaveGitSetupDto): Promise<GitSetup> {
     const normalized = normalizeSetup(input);
-    if (!input.credential) throw new BadRequestException('Az új Git setuphoz credential szükséges.');
+    if (!input.credential) throw new BadRequestException('A credential is required for a new Git setup.');
     const actor = currentAuditActorId();
     try {
       const saved = await this.dataSource.transaction(async (manager) => {
@@ -51,9 +51,9 @@ export class GitSetupService {
         const row = await manager.getRepository(GitSetupEntity).findOne({
           where: { id }, lock: { mode: 'pessimistic_write' },
         });
-        if (!row) throw new NotFoundException('A Git setup nem található.');
+        if (!row) throw new NotFoundException('Git setup not found.');
         if (row.authenticationMode !== normalized.authenticationMode && !input.credential) {
-          throw new BadRequestException('Az authentikációs mód váltásához új credential szükséges.');
+          throw new BadRequestException('A new credential is required when changing the authentication method.');
         }
         Object.assign(row, normalized, {
           credentialCiphertext: input.credential
@@ -76,7 +76,7 @@ export class GitSetupService {
   async remove(id: string): Promise<void> {
     await this.dataSource.transaction(async (manager) => {
       const row = await manager.getRepository(GitSetupEntity).findOneBy({ id });
-      if (!row) throw new NotFoundException('A Git setup nem található.');
+      if (!row) throw new NotFoundException('Git setup not found.');
       await manager.getRepository(GitSetupEntity).remove(row);
       await manager.getRepository(AuditEvent).save({
         id: randomUUID(), projectId: null, eventType: 'GIT_SETUP_DELETED',
@@ -87,7 +87,7 @@ export class GitSetupService {
 
   async entity(id: string): Promise<GitSetupEntity> {
     const row = await this.dataSource.getRepository(GitSetupEntity).findOneBy({ id });
-    if (!row) throw new NotFoundException('A Git setup nem található.');
+    if (!row) throw new NotFoundException('Git setup not found.');
     return row;
   }
 
@@ -97,8 +97,8 @@ export class GitSetupService {
 function normalizeSetup(input: SaveGitSetupDto): Pick<GitSetupEntity,
   'name' | 'remoteUrl' | 'branch' | 'authenticationMode' | 'username' | 'repositoryWebUrl'> {
   const name = required(input.name, 'A setup neve');
-  const remoteUrl = required(input.remoteUrl, 'A Git remote');
-  const branch = required(input.branch, 'A cél branch');
+  const remoteUrl = required(input.remoteUrl, 'Git remote');
+  const branch = required(input.branch, 'Target branch');
   const username = optional(input.username);
   const repositoryWebUrl = optional(input.repositoryWebUrl);
   validateBranch(branch);
@@ -127,28 +127,28 @@ function validateRemote(remote: string, mode: GitSetupEntity['authenticationMode
 function validateBranch(branch: string): void {
   if (branch.startsWith('-') || branch.startsWith('.') || branch.endsWith('.') || branch.endsWith('/') ||
       /[\s\\~^:?*\[]/.test(branch) || branch.includes('..') || branch.includes('//') || branch.includes('@{')) {
-    throw new BadRequestException('A cél branch neve érvénytelen.');
+    throw new BadRequestException('The target branch name is invalid.');
   }
 }
 
 function validateWebUrl(value: string): void {
   let url: URL;
-  try { url = new URL(value); } catch { throw new BadRequestException('A repository web URL érvénytelen.'); }
+  try { url = new URL(value); } catch { throw new BadRequestException('The repository web URL is invalid.'); }
   if (!['http:', 'https:'].includes(url.protocol) || !url.hostname || url.username || url.password) {
-    throw new BadRequestException('A repository web URL érvénytelen.');
+    throw new BadRequestException('The repository web URL is invalid.');
   }
 }
 
-function invalidRemote(): never { throw new BadRequestException('Csak credential nélküli HTTPS vagy SSH Git remote használható.'); }
+function invalidRemote(): never { throw new BadRequestException('Only HTTPS or SSH Git remotes without embedded credentials are supported.'); }
 function required(value: string, label: string): string {
   const normalized = value.trim();
-  if (!normalized) throw new BadRequestException(`${label} nem lehet üres.`);
+  if (!normalized) throw new BadRequestException(`${label} cannot be empty.`);
   return normalized;
 }
 function optional(value: string | null | undefined): string | null { return value?.trim() || null; }
 function mapWriteError(error: unknown): unknown {
   if (error instanceof QueryFailedError && (error.driverError as { code?: string }).code === '23505') {
-    return new ConflictException('Már létezik ilyen nevű Git setup.');
+    return new ConflictException('A Git setup with this name already exists.');
   }
   return error;
 }

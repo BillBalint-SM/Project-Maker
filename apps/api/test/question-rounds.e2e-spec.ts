@@ -1817,10 +1817,10 @@ describe('Question bank and interview rounds (PostgreSQL e2e)', () => {
     const blockedGap = blockedReadiness.gaps.find((gap) => gap.id === `follow-up-${followUpId}`);
     assert.deepEqual(blockedGap, {
       id: `follow-up-${followUpId}`,
-      severity: policy.statuses.readinessGapSeverity[0],
-      category: 'Tisztázandó tétel',
-      message: 'Egy tisztázandó tétel blokkolt állapotban van.',
-      nextStep: 'Oldd fel a blokkoló tisztázandó tételt.',
+      severity: 'Critical',
+      category: 'Discovery follow-up',
+      message: 'A Discovery follow-up is blocked.',
+      nextStep: 'Resolve the blocking Discovery follow-up.',
       target: 'follow-ups',
       snapshotId: null,
       followUpId,
@@ -1831,7 +1831,7 @@ describe('Question bank and interview rounds (PostgreSQL e2e)', () => {
     assert.ok(!blockedReadiness.gaps.some((gap) => gap.id === 'checklist-general-003'));
     assert.equal(
       blockedReadiness.gaps.find((gap) => gap.id === 'checklist-general-002')?.severity,
-      policy.statuses.readinessGapSeverity[1],
+      'Important',
     );
 
     const blockedSerialized = JSON.stringify(blockedReadiness);

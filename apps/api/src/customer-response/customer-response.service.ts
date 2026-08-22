@@ -58,7 +58,7 @@ import type {
 
 const requestLifetimeMs = 14 * 24 * 60 * 60 * 1_000;
 const previewLifetimeMs = 30 * 60 * 1_000;
-const unavailableMessage = 'A válaszkérés nem érhető el.';
+const unavailableMessage = 'This clarification request is unavailable.';
 
 interface PreviewPayload {
   readonly previewId: string;
@@ -131,14 +131,14 @@ export class CustomerResponseService {
     input: PreviewCustomerResponseRequestDto,
   ): Promise<CustomerResponseRequestPreview> {
     const publicOrigin = this.publicOrigin();
-    if (!this.mailer.isConfigured()) throw new ConflictException('Az ügyféllevelezés nincs konfigurálva.');
+    if (!this.mailer.isConfigured()) throw new ConflictException('Customer correspondence is not configured.');
     const project = await requireActiveProject(this.dataSource.manager, projectId);
     const eligible = await this.eligiblePrompts(projectId);
     const byKey = new Map(eligible.map((prompt) => [promptKey(prompt.sourceKind, prompt.sourceId), prompt]));
     const keys = input.prompts.map((prompt) => promptKey(prompt.sourceKind, prompt.sourceId));
-    if (new Set(keys).size !== keys.length) throw new BadRequestException('Egy kérdés csak egyszer jelölhető ki.');
+    if (new Set(keys).size !== keys.length) throw new BadRequestException('Each question may be selected only once.');
     const prompts = keys.map((key) => byKey.get(key));
-    if (prompts.some((prompt) => !prompt)) throw new BadRequestException('A kijelölt kérdés nem érhető el.');
+    if (prompts.some((prompt) => !prompt)) throw new BadRequestException('A selected question is no longer available.');
     const now = Date.now();
     const payload: PreviewPayload = {
       previewId: randomUUID(),
@@ -168,10 +168,10 @@ export class CustomerResponseService {
   async confirm(projectId: string, input: ConfirmCustomerResponseRequestDto): Promise<CustomerResponseRequest> {
     const payload = decodePreview(input.previewToken, this.previewSecret());
     if (payload.projectId !== projectId || Date.parse(payload.previewExpiresAt) <= Date.now()) {
-      throw new ConflictException('Az előnézet lejárt. Készíts új előnézetet.');
+      throw new ConflictException('The preview has expired. Generate a new preview.');
     }
     if (payload.publicOrigin !== this.publicOrigin() || !this.mailer.isConfigured()) {
-      throw new ConflictException('Az ügyfél-válaszfelület vagy a levelezés nem érhető el.');
+      throw new ConflictException('The Customer response form or correspondence gateway is unavailable.');
     }
     const prepared = await this.dataSource.transaction(async (manager) => {
       await requireActiveProject(manager, projectId, true);
@@ -242,7 +242,7 @@ export class CustomerResponseService {
       await requireActiveProject(manager, projectId, true);
       const request = await requireRequest(manager, projectId, requestId, true);
       if (request.state !== 'OPEN' || !['FAILED', 'UNKNOWN'].includes(request.deliveryState)) {
-        throw new ConflictException('Ez a válaszkérés nem próbálható újra.');
+        throw new ConflictException('This clarification request cannot be retried.');
       }
       request.deliveryState = 'SENDING';
       request.attemptedAt = new Date();
@@ -270,7 +270,7 @@ export class CustomerResponseService {
     await this.dataSource.transaction(async (manager) => {
       await requireActiveProject(manager, projectId, true);
       const request = await requireRequest(manager, projectId, requestId, true);
-      if (request.state !== 'OPEN') throw new ConflictException('Csak nyitott válaszkérés vonható vissza.');
+      if (request.state !== 'OPEN') throw new ConflictException('Only an open clarification request can be revoked.');
       request.state = 'REVOKED';
       request.revokedAt = new Date();
       await manager.getRepository(CustomerResponseRequestEntity).save(request);
@@ -320,10 +320,10 @@ export class CustomerResponseService {
       const prompts = await manager.getRepository(CustomerResponsePromptEntity).find({
         where: { requestId: request.id }, order: { order: 'ASC' },
       });
-      if (input.answers.length !== prompts.length) throw new BadRequestException('Minden kérdés megválaszolása kötelező.');
+      if (input.answers.length !== prompts.length) throw new BadRequestException('Every question requires an answer.');
       const answerByPrompt = new Map(input.answers.map((answer) => [answer.promptId, answer.answer.trim()]));
       if (answerByPrompt.size !== prompts.length || prompts.some((prompt) => !answerByPrompt.has(prompt.id))) {
-        throw new BadRequestException('Minden kérdés pontosan egyszer válaszolható meg.');
+        throw new BadRequestException('Every question must be answered exactly once.');
       }
       const submittedAt = new Date();
       const submission = await manager.getRepository(CustomerResponseSubmissionEntity).save({
@@ -351,7 +351,7 @@ export class CustomerResponseService {
       const submission = await manager.getRepository(CustomerResponseSubmissionEntity).findOne({
         where: { requestId }, lock: { mode: 'pessimistic_write' },
       });
-      if (!submission) throw new ConflictException('A válasz még nem érkezett be.');
+      if (!submission) throw new ConflictException('The Customer response has not been received yet.');
       if (!submission.reviewedAt) {
         submission.reviewedAt = new Date();
         const actorId = currentAuditActorId();
@@ -396,7 +396,7 @@ export class CustomerResponseService {
   }
 
   private async deliver(prepared: CustomerResponseRequestEntity): Promise<void> {
-    if (!prepared.outboundCommunicationId) throw new ConflictException('A tartós kimenő kommunikáció hiányzik.');
+    if (!prepared.outboundCommunicationId) throw new ConflictException('The durable outbound communication record is missing.');
     const outbound = await this.dataSource.getRepository(CustomerOutboundCommunicationEntity)
       .findOneByOrFail({ id: prepared.outboundCommunicationId });
     let deliveryState: 'SENT' | 'FAILED' | 'UNKNOWN' = 'SENT';
@@ -422,7 +422,7 @@ export class CustomerResponseService {
     }
     await this.dataSource.transaction(async (manager) => {
       const request = await requireRequest(manager, prepared.projectId, prepared.id, true);
-      if (request.deliveryState !== 'SENDING') throw new ConflictException('A küldési állapot megváltozott.');
+      if (request.deliveryState !== 'SENDING') throw new ConflictException('The delivery state changed while the request was being processed.');
       request.deliveryState = deliveryState;
       request.sentAt = deliveryState === 'SENT' ? new Date() : null;
       request.failureCode = deliveryState === 'SENT' ? null : deliveryState === 'FAILED' ? 'MAIL_SUBMISSION_FAILED' : 'SUBMISSION_RESULT_UNKNOWN';
@@ -500,14 +500,14 @@ export class CustomerResponseService {
   private publicOrigin(): string {
     const origin = this.config.get<string>('CUSTOMER_RESPONSE_ORIGIN')?.replace(/\/$/, '');
     if (!origin || !/^https?:\/\/[^/]+$/.test(origin)) {
-      throw new ConflictException('Az ügyfél-válaszfelület nincs konfigurálva.');
+      throw new ConflictException('The public Customer response form is not configured.');
     }
     return origin;
   }
 
   private previewSecret(): string {
     const secret = this.config.get<string>('CUSTOMER_RESPONSE_PREVIEW_SECRET') ?? '';
-    if (secret.length < 32) throw new ConflictException('Az ügyfél-válaszkérés előnézeti kulcsa nincs konfigurálva.');
+    if (secret.length < 32) throw new ConflictException('The Customer clarification preview signing key is not configured.');
     return secret;
   }
 
@@ -530,15 +530,15 @@ function senderFields(sender: { name: string; address: string }): { senderName: 
 function renderRequest(payload: PreviewPayload, capability: string) {
   const responseUrl = `${payload.publicOrigin}/respond#${capability}`;
   const promptText = payload.prompts.map((prompt, index) => `${index + 1}. ${prompt.topic}: ${prompt.text}`).join('\n');
-  const subject = `${payload.projectName} – rövid pontosítás kérése`;
+  const subject = `${payload.projectName} – clarification request`;
   const textContent = [
-    `Kedves ${payload.recipientName}!`, '',
-    `A(z) ${payload.projectName} projekthez az alábbi rövid pontosításokat kérjük:`, '',
+    `Dear ${payload.recipientName},`, '',
+    `Please provide the following clarifications for the ${payload.projectName} Project:`, '',
     promptText, '',
-    `Válaszadás: ${responseUrl}`, '',
-    `A hivatkozás ${new Date(payload.requestExpiresAt).toLocaleDateString('hu-HU')} napig használható.`,
+    `Open the response form: ${responseUrl}`, '',
+    `This link remains valid until ${new Date(payload.requestExpiresAt).toLocaleDateString('en-GB')}.`,
   ].join('\n');
-  const htmlContent = `<p>Kedves ${escapeHtml(payload.recipientName)}!</p><p>A(z) <strong>${escapeHtml(payload.projectName)}</strong> projekthez az alábbi rövid pontosításokat kérjük:</p><ol>${payload.prompts.map((prompt) => `<li><strong>${escapeHtml(prompt.topic)}</strong>: ${escapeHtml(prompt.text)}</li>`).join('')}</ol><p><a href="${escapeHtml(responseUrl)}">Válaszadás megnyitása</a></p><p>A hivatkozás ${escapeHtml(new Date(payload.requestExpiresAt).toLocaleDateString('hu-HU'))} napig használható.</p>`;
+  const htmlContent = `<p>Dear ${escapeHtml(payload.recipientName)},</p><p>Please provide the following clarifications for the <strong>${escapeHtml(payload.projectName)}</strong> Project:</p><ol>${payload.prompts.map((prompt) => `<li><strong>${escapeHtml(prompt.topic)}</strong>: ${escapeHtml(prompt.text)}</li>`).join('')}</ol><p><a href="${escapeHtml(responseUrl)}">Open the response form</a></p><p>This link remains valid until ${escapeHtml(new Date(payload.requestExpiresAt).toLocaleDateString('en-GB'))}.</p>`;
   return { subject, textContent, htmlContent };
 }
 
@@ -550,15 +550,15 @@ function encodePreview(payload: PreviewPayload, secret: string): string {
 
 function decodePreview(token: string, secret: string): PreviewPayload {
   const [body, signature] = token.split('.');
-  if (!body || !signature) throw new BadRequestException('Érvénytelen előnézet.');
+  if (!body || !signature) throw new BadRequestException('Invalid preview.');
   const expected = createHmac('sha256', secret).update(body).digest();
   let received: Buffer;
-  try { received = Buffer.from(signature, 'base64url'); } catch { throw new BadRequestException('Érvénytelen előnézet.'); }
+  try { received = Buffer.from(signature, 'base64url'); } catch { throw new BadRequestException('Invalid preview.'); }
   if (received.length !== expected.length || !timingSafeEqual(received, expected)) {
-    throw new BadRequestException('Érvénytelen előnézet.');
+    throw new BadRequestException('Invalid preview.');
   }
   try { return JSON.parse(Buffer.from(body, 'base64url').toString('utf8')) as PreviewPayload; }
-  catch { throw new BadRequestException('Érvénytelen előnézet.'); }
+  catch { throw new BadRequestException('Invalid preview.'); }
 }
 
 async function requireProject(manager: EntityManager, projectId: string, lock = false): Promise<Project> {

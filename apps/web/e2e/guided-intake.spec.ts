@@ -4,7 +4,6 @@ import { resolve } from 'node:path';
 import { expect, test, type APIRequestContext, type Locator, type Page } from '@playwright/test';
 
 const apiOrigin = 'http://127.0.0.1:3000';
-const hungarianTextPattern = /[áéíóöőúüűÁÉÍÓÖŐÚÜŰ]/;
 const textAutosaveDelayMs = 750;
 const textAutosavePreBoundaryProbeMs = 700;
 const textAutosaveSchedulingToleranceMs = 50;
@@ -52,7 +51,7 @@ interface DatabaseClient {
   query(sql: string, parameters?: readonly unknown[]): Promise<unknown>;
 }
 
-test.describe.serial('guided intake real Hungarian browser flow', () => {
+test.describe.serial('guided Initial Intake browser flow', () => {
   test.setTimeout(120_000);
 
   test.afterEach(async () => {
@@ -67,9 +66,7 @@ test.describe.serial('guided intake real Hungarian browser flow', () => {
     const fixture = await createGuidedIntakeProject(request, testInfo);
 
     await page.goto(`/projects/${fixture.projectId}/interview`);
-    await expect(page.locator('section[aria-labelledby="interview-title"]')).toContainText(
-      hungarianTextPattern,
-    );
+    await expect(page.getByRole('heading', { name: 'Initial Intake', exact: true })).toBeVisible();
     await expect(page.getByTestId('project-schema-status')).toBeVisible();
 
     const createButton = await nativeButton(page, 'retry-initial-intake-button');
@@ -90,7 +87,7 @@ test.describe.serial('guided intake real Hungarian browser flow', () => {
 
     await expect(page.getByTestId('active-round-resume-state')).toBeVisible();
     await expect(page.getByTestId(`round-question-guidance-${textQuestion.id}`)).toContainText(
-      hungarianTextPattern,
+      'Control point:',
     );
     await expect(page.getByTestId(`round-answer-save-state-${textQuestion.id}`)).toBeVisible();
 
@@ -119,7 +116,7 @@ test.describe.serial('guided intake real Hungarian browser flow', () => {
     expect(textPatchElapsedMs).toBeLessThan(textAutosaveDelayMs + textAutosaveBrowserToleranceMs);
     await expectSavedAnswer(request, fixture.projectId, textQuestion.id, textAnswer);
     await expect(page.getByTestId(`round-answer-save-state-${textQuestion.id}`)).toContainText(
-      /Mentve/,
+      'Saved',
     );
 
     const booleanSaveResponsePromise = waitForAnswerPatch(
@@ -158,7 +155,7 @@ test.describe.serial('guided intake real Hungarian browser flow', () => {
     await expectActiveRoundStatus(request, fixture.projectId, 'ENDED');
     await expect(page).toHaveURL(`/projects/${fixture.projectId}/readiness`);
     await expect(
-      page.getByRole('heading', { name: 'Becslési felkészültség', exact: true }),
+      page.getByRole('heading', { name: 'Estimation Readiness', exact: true }),
     ).toBeVisible();
   });
 
@@ -170,12 +167,12 @@ test.describe.serial('guided intake real Hungarian browser flow', () => {
 
     await page.goto(`/projects/${project.id}/interview`);
 
-    await expect(page.locator('section[aria-labelledby="interview-title"]')).toContainText(
-      hungarianTextPattern,
+    await expect(page.getByRole('heading', { name: 'Initial Intake', exact: true })).toBeVisible();
+    await expect(page.getByTestId('project-schema-status')).toContainText(
+      'No accepted question schema yet.',
     );
-    await expect(page.getByTestId('project-schema-status')).toContainText(hungarianTextPattern);
     await expect(page.getByTestId('create-interview-round-button')).toHaveCount(0);
-    await expect(page.getByRole('heading', { name: 'Kezdő felmérési kör' })).toHaveCount(0);
+    await expect(page.getByRole('heading', { name: 'Initial Intake round' })).toHaveCount(0);
     await expect(page.getByTestId('round-questions')).toHaveCount(0);
     expect(await getActiveRound(request, project.id)).toBeNull();
   });

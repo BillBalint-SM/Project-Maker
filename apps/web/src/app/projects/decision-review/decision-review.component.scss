@@ -69,8 +69,9 @@
 .decision-review-dimensions,
 .decision-review-result dl > div,
 .decision-review-result li {
-  border: 1px solid var(--p-content-border-color);
-  border-radius: 0.75rem;
+  background: color-mix(in oklch, var(--pm-surface-2) 58%, transparent);
+  border: 1px solid var(--pm-border);
+  border-radius: var(--pm-radius-sm);
   padding: 1rem;
 }
 

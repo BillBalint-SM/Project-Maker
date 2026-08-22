@@ -15,37 +15,37 @@ export class MarkdownTemplateApiService {
 
   list(): Observable<readonly MarkdownTemplateSummary[]> {
     return this.http.get<readonly MarkdownTemplateSummary[]>('/api/settings/markdown-templates')
-      .pipe(catchError((error: unknown) => fail(error, 'betölteni a specifikációs sablonokat')));
+      .pipe(catchError((error: unknown) => fail(error, 'load specification templates')));
   }
 
   create(input: CreateMarkdownTemplateInput): Observable<MarkdownTemplateSummary> {
     return this.http.post<MarkdownTemplateSummary>('/api/settings/markdown-templates', input)
-      .pipe(catchError((error: unknown) => fail(error, 'létrehozni a specifikációs sablont')));
+      .pipe(catchError((error: unknown) => fail(error, 'create the specification template')));
   }
 
   update(id: string, input: UpdateMarkdownTemplateDraftInput): Observable<MarkdownTemplateSummary> {
     return this.http.put<MarkdownTemplateSummary>(`/api/settings/markdown-templates/${encodeURIComponent(id)}/draft`, input)
-      .pipe(catchError((error: unknown) => fail(error, 'menteni a specifikációs sablon piszkozatát')));
+      .pipe(catchError((error: unknown) => fail(error, 'save the specification template draft')));
   }
 
   preview(id: string): Observable<MarkdownTemplatePreview> {
     return this.http.post<MarkdownTemplatePreview>(`/api/settings/markdown-templates/${encodeURIComponent(id)}/preview`, {})
-      .pipe(catchError((error: unknown) => fail(error, 'előnézetet készíteni')));
+      .pipe(catchError((error: unknown) => fail(error, 'generate a preview')));
   }
 
   publish(id: string): Observable<MarkdownTemplateSummary> {
     return this.http.post<MarkdownTemplateSummary>(`/api/settings/markdown-templates/${encodeURIComponent(id)}/publish`, {})
-      .pipe(catchError((error: unknown) => fail(error, 'publikálni a specifikációs sablont')));
+      .pipe(catchError((error: unknown) => fail(error, 'publish the specification template')));
   }
 }
 
 function fail(error: unknown, action: string): Observable<never> {
   const message = error instanceof HttpErrorResponse
     ? error.status === 409
-      ? `Nem sikerült ${action}, mert a sablon időközben megváltozott. Frissítsd az oldalt, majd próbáld újra.`
+      ? `Unable to ${action} because the template changed in the meantime. Refresh the page and try again.`
       : error.status === 400
-        ? 'A specifikációs sablon nem támogatott vagy hibás helyőrzőt tartalmaz. Ellenőrizd a használható helyőrzőket, majd mentsd újra.'
-      : `Nem sikerült ${action}. Ellenőrizd az adatokat, majd próbáld újra.`
-    : `Nem sikerült ${action}. Próbáld újra.`;
+        ? 'The specification template contains an unsupported or invalid placeholder. Review the available placeholders and save again.'
+      : `Unable to ${action}. Check the supplied values and try again.`
+    : `Unable to ${action}. Try again.`;
   return throwError(() => new Error(message));
 }

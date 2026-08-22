@@ -68,12 +68,12 @@ test('explains that an open Initial Intake must be ended before customer handoff
 
   await expect(page).toHaveURL(`/projects/${project.id}/interview#customer-handoff`);
   await expect(page.getByTestId('interview-handoff-prerequisite')).toContainText(
-    'Előbb zárd le a kezdő felmérési kört ezen az oldalon.',
+    'The interview summary is not available yet. Complete the Initial Intake round on this page first.',
   );
   await expect(page.getByTestId('interview-handoff')).toHaveCount(0);
 });
 
-test('explains the Felmérés prerequisite when no Initial Intake exists', async ({
+test('explains the Initial Intake prerequisite when no Initial Intake exists', async ({
   page,
   request,
 }) => {
@@ -86,7 +86,7 @@ test('explains the Felmérés prerequisite when no Initial Intake exists', async
 
   await expect(page).toHaveURL(`/projects/${project.id}/interview#customer-handoff`);
   await expect(page.getByTestId('interview-handoff-prerequisite')).toContainText(
-    'Előbb fogadd el a kérdéssémát és indítsd el a kezdő felmérést ezen az oldalon.',
+    'The interview summary is not available yet. Accept the question schema and start the Initial Intake on this page first.',
   );
   await expect(page.getByTestId('project-schema-status')).toBeVisible();
 });

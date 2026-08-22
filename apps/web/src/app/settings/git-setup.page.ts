@@ -15,7 +15,7 @@ import { DeliveryApiService } from '../projects/delivery/delivery-api.service';
 
 const authenticationOptions: { readonly label: string; readonly value: GitAuthenticationMode }[] = [
   { label: 'HTTPS token', value: 'HTTPS_TOKEN' },
-  { label: 'SSH kulcs', value: 'SSH_KEY' },
+  { label: 'SSH key', value: 'SSH_KEY' },
 ];
 
 @Component({
@@ -88,8 +88,8 @@ export class GitSetupPage implements OnInit {
       : value.privateKey.trim() ? { privateKey: value.privateKey, passphrase: emptyToNull(value.passphrase) } : undefined;
     if (!editingId && !credential) {
       this.error.set(value.authenticationMode === 'HTTPS_TOKEN'
-        ? 'Az új HTTPS setuphoz add meg a hozzáférési tokent.'
-        : 'Az új SSH setuphoz add meg a privát kulcsot.');
+        ? 'Enter an access token for the new HTTPS connection.'
+        : 'Enter a private key for the new SSH connection.');
       return;
     }
     const input: SaveGitSetupInput = {
@@ -110,7 +110,7 @@ export class GitSetupPage implements OnInit {
     request.pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: () => {
         this.saving.set(false);
-        this.feedback.set(editingId ? 'A közös Git setup frissült.' : 'A közös Git setup létrejött.');
+        this.feedback.set(editingId ? 'Shared Git connection updated.' : 'Shared Git connection created.');
         this.cancelEdit();
         this.load();
       },
@@ -164,7 +164,7 @@ export class GitSetupPage implements OnInit {
   }
 
   remove(setup: GitSetup): void {
-    if (this.saving() || !window.confirm(`Törlöd a(z) „${setup.name}” közös Git setupot?`)) return;
+    if (this.saving() || !window.confirm(`Delete the shared Git connection “${setup.name}”?`)) return;
     this.saving.set(true);
     this.error.set(null);
     this.feedback.set(null);
@@ -172,7 +172,7 @@ export class GitSetupPage implements OnInit {
       next: () => {
         if (this.editingId() === setup.id) this.cancelEdit();
         this.saving.set(false);
-        this.feedback.set('A Git setup törölve lett. A korábbi átadások története megmaradt.');
+        this.feedback.set('Git connection deleted. The history of previous delivery handoffs has been retained.');
         this.load();
       },
       error: (error: Error) => {

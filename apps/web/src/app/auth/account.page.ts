@@ -65,7 +65,7 @@ export class AccountPage {
         next: () => {
           this.pending.set(false);
           this.passwordForm.reset();
-          this.feedback.set('A jelszó megváltozott.');
+          this.feedback.set('Password updated.');
         },
         error: (error: Error) => {
           this.pending.set(false);
@@ -106,7 +106,7 @@ export class AccountPage {
           this.mcpPending.set(false);
           this.mcpToken.set(connection.token);
           this.mcpStatus.set({ configured: true, createdAt: connection.createdAt });
-          this.feedback.set('A Claude Code-kapcsolati token elkészült. Add hozzá most a mutatott paranccsal.');
+          this.feedback.set('Claude Code connection token generated. Add it now using the displayed command.');
         },
         error: (error: Error) => {
           this.mcpPending.set(false);
@@ -128,7 +128,7 @@ export class AccountPage {
           this.mcpPending.set(false);
           this.mcpToken.set(null);
           this.mcpStatus.set({ configured: false, createdAt: null });
-          this.feedback.set('A Claude Code-kapcsolat megszűnt.');
+          this.feedback.set('Claude Code connection revoked.');
         },
         error: (error: Error) => {
           this.mcpPending.set(false);
@@ -142,9 +142,9 @@ export class AccountPage {
     if (!command) return;
     try {
       await navigator.clipboard.writeText(command);
-      this.feedback.set('A kapcsolódási parancs a vágólapra került.');
+      this.feedback.set('Connection command copied to the clipboard.');
     } catch {
-      this.actionError.set('A másolás nem sikerült. Jelöld ki és másold a parancsot kézzel.');
+      this.actionError.set('Unable to copy the command. Select and copy it manually.');
     }
   }
 

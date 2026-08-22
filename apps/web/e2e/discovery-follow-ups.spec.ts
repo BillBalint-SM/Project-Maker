@@ -311,7 +311,7 @@ test('edits an open discovery follow-up through the real API while keeping row a
     .getByTestId('discovery-follow-up-edit-category-select')
     .getByRole('combobox');
   await editCategory.click();
-  await page.getByRole('option', { name: 'Technikai', exact: true }).click();
+  await page.getByRole('option', { name: 'Technical', exact: true }).click();
   await page
     .getByTestId('discovery-follow-up-edit-question-input')
     .fill('Edited browser question.');
@@ -345,7 +345,7 @@ test('edits an open discovery follow-up through the real API while keeping row a
   expect((await editResponse).status()).toBe(200);
 
   const editedItem = page.getByTestId('discovery-follow-up-item').first();
-  await expect(editedItem).toContainText('Technikai');
+  await expect(editedItem).toContainText('Technical');
   await expect(editedItem).toContainText('Edited browser question.');
   await expect(editedItem).toContainText('Edited browser owner');
   await expect(editedItem).toContainText('Edited browser next step.');
@@ -355,7 +355,7 @@ test('edits an open discovery follow-up through the real API while keeping row a
 
   await page.reload();
   const persistedEditedItem = page.getByTestId('discovery-follow-up-item').first();
-  await expect(persistedEditedItem).toContainText('Technikai');
+  await expect(persistedEditedItem).toContainText('Technical');
   await expect(persistedEditedItem).toContainText('Edited browser question.');
   await expect(persistedEditedItem).toContainText('Edited browser owner');
   await expect(
@@ -455,7 +455,7 @@ test('keeps the browser edit draft after a real version conflict until the curre
     page
       .getByTestId('discovery-follow-up-edit-category-select')
       .getByRole('combobox'),
-  ).toHaveText('Technikai');
+  ).toHaveText('Technical');
   await expect(
     page.getByTestId('discovery-follow-up-edit-question-input'),
   ).toHaveValue('Server question after concurrent update.');
@@ -495,7 +495,7 @@ test('keeps the browser edit draft after a real version conflict until the curre
 
   await page.reload();
   const persistedConflictItem = page.getByTestId('discovery-follow-up-item');
-  await expect(persistedConflictItem).toContainText('Technikai');
+  await expect(persistedConflictItem).toContainText('Technical');
   await expect(persistedConflictItem).toContainText(
     'Server question after concurrent update.',
   );
@@ -558,7 +558,7 @@ test('keeps only cancel available when a conflict refresh finds a terminal disco
   expect((await staleBrowserResponse).status()).toBe(409);
 
   await expect(page.getByTestId('discovery-follow-up-status')).toHaveText(
-    'Megválaszolva',
+    'Answered',
   );
   await expect(
     nativeButton(page, 'reload-discovery-follow-up-edit-button'),
@@ -567,7 +567,7 @@ test('keeps only cancel available when a conflict refresh finds a terminal disco
     nativeButton(page, 'retry-discovery-follow-up-edit-refresh-button'),
   ).toHaveCount(0);
   await expect(page.getByTestId('discovery-follow-up-edit-conflict')).toContainText(
-    'A lezárt tisztázandó tétel már nem szerkeszthető.',
+    'This Discovery follow-up has already been resolved and can no longer be edited.',
   );
   await expect(
     nativeButton(page, 'cancel-discovery-follow-up-edit-button'),
@@ -951,7 +951,7 @@ test('resolves a discovery follow-up in the readiness context and persists its d
   await resolutionStatusCombobox.click();
   await resolutionStatusCombobox.press('ArrowDown');
   await resolutionStatusCombobox.press('Enter');
-  await expect(resolutionStatusCombobox).toHaveText('Megválaszolva');
+  await expect(resolutionStatusCombobox).toHaveText('Answered');
   await page
     .getByTestId('discovery-follow-up-decision-or-answer-input')
     .fill('The sponsor approved the scope.');
@@ -980,14 +980,14 @@ test('resolves a discovery follow-up in the readiness context and persists its d
   await expect(
     page.getByTestId('discovery-follow-up-action-success'),
   ).toBeVisible();
-  await expect(page.getByTestId('discovery-follow-up-status')).toHaveText('Megválaszolva');
+  await expect(page.getByTestId('discovery-follow-up-status')).toHaveText('Answered');
   await expect(
     page.getByTestId('discovery-follow-up-decision-or-answer'),
   ).toContainText('The sponsor approved the scope.');
   await expect(page.getByTestId('resolve-discovery-follow-up-button')).toHaveCount(0);
 
   await page.reload();
-  await expect(page.getByTestId('discovery-follow-up-status')).toHaveText('Megválaszolva');
+  await expect(page.getByTestId('discovery-follow-up-status')).toHaveText('Answered');
   await expect(
     page.getByTestId('discovery-follow-up-decision-or-answer'),
   ).toContainText('The sponsor approved the scope.');
@@ -1031,7 +1031,7 @@ test('clears an open discovery follow-up resolution draft across settings archiv
     page
       .getByTestId('discovery-follow-up-resolution-status-select')
       .getByRole('combobox'),
-  ).not.toHaveText('Megválaszolva');
+  ).not.toHaveText('Answered');
   await expect(
     page.getByTestId('discovery-follow-up-decision-or-answer-input'),
   ).toHaveValue('');
@@ -1045,7 +1045,7 @@ test('creates a discovery follow-up, preserves its local date after reload, and 
   await page.goto('/projects/' + project.id + '/readiness');
 
   await page.getByTestId('discovery-follow-up-category-select').click();
-  await page.getByRole('option', { name: 'Üzleti', exact: true }).click();
+  await page.getByRole('option', { name: 'Business', exact: true }).click();
   await page.getByTestId('discovery-follow-up-question-input').fill(
     'Which approval is needed?',
   );
@@ -1076,14 +1076,14 @@ test('creates a discovery follow-up, preserves its local date after reload, and 
     page.getByTestId('discovery-follow-up-action-success'),
   ).toBeVisible();
   await expect(page.getByTestId('discovery-follow-up-item')).toHaveCount(1);
-  await expect(page.getByTestId('discovery-follow-up-status')).toHaveText('Nyitott');
+  await expect(page.getByTestId('discovery-follow-up-status')).toHaveText('Open');
   await expect(page.getByTestId('discovery-follow-up-due-date')).toHaveText(
     '2026-09-21',
   );
 
   await page.reload();
   await expect(page.getByTestId('discovery-follow-up-item')).toHaveCount(1);
-  await expect(page.getByTestId('discovery-follow-up-status')).toHaveText('Nyitott');
+  await expect(page.getByTestId('discovery-follow-up-status')).toHaveText('Open');
   await expect(page.getByTestId('discovery-follow-up-due-date')).toHaveText(
     '2026-09-21',
   );
@@ -1501,7 +1501,7 @@ test('refreshes source candidates after a stale source-link conflict', async ({
   expect((await refreshedCandidatesResponse).status()).toBe(200);
   await expect(
     page.getByTestId('discovery-follow-up-action-error'),
-  ).toContainText('A kezdő felmérés forráslistája frissült. Válassz újra.');
+  ).toContainText('The Initial Intake source list changed. Select a source again.');
   await expect(
     itemButton(item, 'save-discovery-follow-up-source-link-button'),
   ).toBeDisabled();
@@ -1839,9 +1839,9 @@ test('keeps source removal non-modal and closes it with Escape from a focused ba
   await expect(
     page.locator('[aria-modal="true"]').filter({ has: confirmation }),
   ).toHaveCount(0);
-  await expect(confirmation).toHaveAccessibleName('Törlöd a forráshivatkozást?');
+  await expect(confirmation).toHaveAccessibleName('Remove the source link?');
   await expect(confirmation).toHaveAccessibleDescription(
-    'A rögzített eredet megszűnik. Egy későbbi felmérési kör után előfordulhat, hogy a régi forrás már nem rendelhető vissza.',
+    'The recorded provenance will be removed. After a later Initial Intake round, the previous source may no longer be available to link again.',
   );
   await expect(settingsNavigation).toBeFocused();
   await page.keyboard.press('Escape');

@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" role="img" aria-labelledby="title description">
+  <title id="title">Project Maker</title>
+  <desc id="description">A connected project path forming an angular letter P.</desc>
+  <defs>
+    <linearGradient id="pm-path" x1="18" y1="18" x2="78" y2="78" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#31b7ff" />
+      <stop offset="0.52" stop-color="#f044ff" />
+      <stop offset="1" stop-color="#ffe45c" />
+    </linearGradient>
+    <radialGradient id="pm-surface" cx="0" cy="0" r="1" gradientTransform="translate(27 18) rotate(51) scale(94)">
+      <stop stop-color="#18285a" />
+      <stop offset="0.55" stop-color="#0b1025" />
+      <stop offset="1" stop-color="#050611" />
+    </radialGradient>
+    <filter id="pm-glow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="2.5" result="blur" />
+      <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
+    </filter>
+  </defs>
+  <rect x="3" y="3" width="90" height="90" rx="24" fill="url(#pm-surface)" stroke="#31b7ff" stroke-opacity="0.42" stroke-width="2" />
+  <path d="M25 73V24h27c13.3 0 22 8.1 22 20.2S65.3 64 52 64H37" fill="none" stroke="url(#pm-path)" stroke-linecap="round" stroke-linejoin="round" stroke-width="7" filter="url(#pm-glow)" />
+  <path d="m61.5 35.5 9 8.7-9 8.8" fill="none" stroke="#ffe45c" stroke-linecap="round" stroke-linejoin="round" stroke-width="4" />
+  <circle cx="25" cy="24" r="5" fill="#31b7ff" />
+  <circle cx="52" cy="24" r="5" fill="#f044ff" />
+  <circle cx="74" cy="44" r="5" fill="#ffe45c" />
+  <circle cx="25" cy="73" r="5" fill="#f044ff" />
+</svg>

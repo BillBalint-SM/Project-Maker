@@ -15,6 +15,7 @@
 .heading-row {
   gap: 1.5rem;
   justify-content: space-between;
+  min-width: 0;
 }
 
 .heading-row .page-heading {
@@ -59,8 +60,9 @@
 }
 
 .checkbox-grid {
-  border: 1px solid var(--p-content-border-color);
-  border-radius: 0.7rem;
+  background: color-mix(in oklch, var(--pm-surface-2) 62%, transparent);
+  border: 1px solid var(--pm-border);
+  border-radius: var(--pm-radius-sm);
   display: grid;
   gap: 0.75rem 1.25rem;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -97,16 +99,33 @@
 }
 
 .question-item {
-  background: var(--p-content-background);
-  border: 1px solid var(--p-content-border-color);
-  border-radius: 0.9rem;
+  background: linear-gradient(145deg, color-mix(in oklch, var(--pm-surface-2) 84%, transparent), color-mix(in oklch, var(--pm-surface-1) 96%, transparent));
+  border: 1px solid var(--pm-border);
+  border-radius: var(--pm-radius-md);
+  box-shadow: var(--pm-shadow-sm), inset 0 1px 0 color-mix(in oklch, var(--pm-text) 5%, transparent);
+  overflow: hidden;
   padding: 1.25rem;
+  position: relative;
+}
+
+.question-item::before {
+  background: linear-gradient(90deg, var(--pm-blue), var(--pm-magenta), var(--pm-yellow));
+  content: "";
+  height: 1px;
+  inset: 0 12% auto;
+  position: absolute;
 }
 
 .question-item-heading {
   align-items: flex-start;
   gap: 1rem;
   justify-content: space-between;
+  min-width: 0;
+}
+
+.question-item-heading > div:first-child {
+  flex: 1;
+  min-width: 0;
 }
 
 .question-item h2 {
@@ -116,13 +135,14 @@
 }
 
 .question-key {
-  color: var(--p-primary-color);
+  color: var(--pm-cyan);
   font-size: 0.76rem;
   font-weight: 800;
   letter-spacing: 0.05em;
 }
 
 .question-tags {
+  flex: 0 1 auto;
   flex-wrap: wrap;
   gap: 0.4rem;
   justify-content: flex-end;
@@ -162,7 +182,7 @@
 }
 
 .reference-files {
-  border-top: 1px solid var(--p-content-border-color);
+  border-top: 1px solid var(--pm-border);
   display: grid;
   gap: 0.65rem;
   margin: 1rem 0;
@@ -195,6 +215,27 @@
   display: flex;
   gap: 0.75rem;
   justify-content: space-between;
+  min-width: 0;
+}
+
+.reference-files li {
+  background: color-mix(in oklch, var(--pm-surface-2) 58%, transparent);
+  border-radius: var(--pm-radius-sm);
+  padding: 0.65rem 0.75rem;
+}
+
+.reference-files li > span:first-child {
+  flex: 1;
+  min-width: 0;
+}
+
+.reference-files li strong {
+  overflow-wrap: anywhere;
+}
+
+.reference-file-actions {
+  flex: 0 0 auto;
+  flex-wrap: wrap;
 }
 
 .reference-files li strong,
@@ -214,7 +255,7 @@
   gap: 0.35rem;
 }
 
-@media (max-width: 52rem) {
+@media (max-width: 75rem) {
   .form-grid,
   .question-details,
   .checkbox-grid {

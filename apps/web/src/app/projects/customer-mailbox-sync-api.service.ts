@@ -24,7 +24,7 @@ export class CustomerMailboxSyncApiService {
 
   private failure(): Observable<never> {
     return throwError(
-      () => new Error('Az ügyfélpostafiók állapota most nem érhető el. A projektmunkát ettől folytathatod.'),
+      () => new Error('The Customer mailbox state is currently unavailable. You can continue project work.'),
     );
   }
 }

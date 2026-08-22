@@ -255,7 +255,7 @@ async function normalizeEvidenceSource(
     throw new NotFoundException('Project Customer message excerpt not found.');
   }
   return {
-    title: optional(source.title) ?? 'Ügyfélüzenet-részlet',
+    title: optional(source.title) ?? 'Customer message excerpt',
     payload: {
       messageId: message.id,
       excerpt,

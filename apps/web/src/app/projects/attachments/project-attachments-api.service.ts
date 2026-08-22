@@ -13,7 +13,7 @@ export class ProjectAttachmentsApiService {
   list(projectId: string): Observable<readonly GovernedAttachment[]> {
     return this.http
       .get<readonly GovernedAttachment[]>(this.url(projectId, 'attachments'))
-      .pipe(catchError((error: unknown) => fail(error, 'betölteni a kapcsolódó fájlokat')));
+      .pipe(catchError((error: unknown) => fail(error, 'load the related files')));
   }
 
   upload(
@@ -28,13 +28,13 @@ export class ProjectAttachmentsApiService {
     body.set('file', file, file.name);
     return this.http
       .post<GovernedAttachment>(this.url(projectId, 'attachments'), body)
-      .pipe(catchError((error: unknown) => fail(error, 'feltölteni a kapcsolódó fájlt')));
+      .pipe(catchError((error: unknown) => fail(error, 'upload the related file')));
   }
 
   remove(projectId: string, attachmentId: string): Observable<void> {
     return this.http
       .delete<void>(this.url(projectId, `attachments/${encodeURIComponent(attachmentId)}`))
-      .pipe(catchError((error: unknown) => fail(error, 'eltávolítani a kapcsolódó fájlt')));
+      .pipe(catchError((error: unknown) => fail(error, 'remove the related file')));
   }
 
   downloadUrl(projectId: string, attachmentId: string): string {
@@ -48,7 +48,7 @@ export class ProjectAttachmentsApiService {
 
 function fail(error: unknown, action: string): Observable<never> {
   const nextStep = error instanceof HttpErrorResponse && error.status === 409
-    ? ' A projekt vagy a kapcsolódó munkatétel időközben lezárult. Frissítsd az oldalt.'
-    : ' Ellenőrizd a fájl típusát és méretét, majd próbáld újra.';
-  return throwError(() => new Error(`Nem sikerült ${action}.${nextStep}`));
+    ? ' The project or related work item has since been closed. Refresh the page.'
+    : ' Check the file type and size, then try again.';
+  return throwError(() => new Error(`Unable to ${action}.${nextStep}`));
 }

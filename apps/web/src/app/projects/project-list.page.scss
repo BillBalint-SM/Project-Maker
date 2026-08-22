@@ -14,9 +14,10 @@
 .portfolio-filters,
 .saved-views {
   align-items: end;
-  background: var(--p-content-background);
-  border: 1px solid var(--p-content-border-color);
-  border-radius: 0.8rem;
+  background: color-mix(in oklch, var(--pm-surface-1) 92%, transparent);
+  border: 1px solid var(--pm-border);
+  border-radius: var(--pm-radius-md);
+  box-shadow: inset 0 1px 0 color-mix(in oklch, var(--pm-text) 5%, transparent);
   display: flex;
   flex-wrap: wrap;
   gap: 0.75rem;
@@ -46,8 +47,8 @@
 .portfolio-filters select,
 .saved-views input,
 .saved-views select {
-  border: 1px solid var(--p-content-border-color);
-  border-radius: 0.5rem;
+  border: 1px solid var(--pm-border);
+  border-radius: var(--pm-radius-sm);
   min-height: 2.55rem;
   padding: 0.55rem;
   width: 100%;
@@ -59,7 +60,7 @@
 }
 
 .saved-views {
-  background: var(--p-content-hover-background);
+  background: color-mix(in oklch, var(--pm-surface-2) 78%, transparent);
   margin-top: 0.75rem;
 }
 
@@ -85,9 +86,11 @@
 
 .mailbox-sync-panel {
   align-items: center;
-  background: color-mix(in srgb, var(--p-primary-50) 55%, white);
-  border: 1px solid var(--p-content-border-color);
-  border-radius: 1rem;
+  background:
+    linear-gradient(125deg, color-mix(in oklch, var(--pm-blue) 11%, var(--pm-surface-2)), color-mix(in oklch, var(--pm-magenta) 7%, var(--pm-surface-1)));
+  border: 1px solid color-mix(in oklch, var(--pm-blue) 34%, var(--pm-surface-3));
+  border-radius: var(--pm-radius-lg);
+  box-shadow: var(--pm-shadow-sm);
   display: flex;
   gap: 1.5rem;
   justify-content: space-between;
@@ -116,16 +119,19 @@
 }
 
 .project-card {
-  background: var(--p-content-background);
-  border: 1px solid var(--p-content-border-color);
-  border-radius: 1rem;
-  box-shadow: 0 0.3rem 1.25rem color-mix(in srgb, var(--pm-deep-navy) 5%, transparent);
+  background:
+    linear-gradient(145deg, color-mix(in oklch, var(--pm-surface-2) 86%, transparent), color-mix(in oklch, var(--pm-surface-1) 96%, transparent));
+  border: 1px solid var(--pm-border);
+  border-radius: var(--pm-radius-lg);
+  box-shadow: var(--pm-shadow-sm), inset 0 1px 0 color-mix(in oklch, var(--pm-text) 5%, transparent);
   color: inherit;
   display: flex;
   flex-direction: column;
   gap: 1.4rem;
   min-height: 16rem;
+  overflow: hidden;
   padding: 1.35rem;
+  position: relative;
   text-decoration: none;
   transition:
     border-color 160ms ease,
@@ -133,9 +139,18 @@
     box-shadow 160ms ease;
 }
 
+.project-card::before {
+  background: linear-gradient(90deg, var(--pm-blue), var(--pm-magenta) 68%, var(--pm-yellow));
+  content: "";
+  height: 2px;
+  inset: 0 14% auto;
+  opacity: 0.72;
+  position: absolute;
+}
+
 .project-card:hover {
-  border-color: var(--p-primary-color);
-  box-shadow: 0 0.8rem 2rem color-mix(in srgb, var(--pm-deep-navy) 10%, transparent);
+  border-color: var(--pm-border-strong);
+  box-shadow: var(--pm-shadow-md), var(--pm-glow-blue);
   transform: translateY(-2px);
 }
 
@@ -144,12 +159,21 @@
   display: flex;
   gap: 1rem;
   justify-content: space-between;
+  min-width: 0;
 }
 
 .project-card h2 {
+  flex: 1;
   font-size: 1.15rem;
   line-height: 1.35;
   margin: 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.project-card-header p-tag {
+  flex: 0 1 auto;
+  max-width: 48%;
 }
 
 .project-card dl {
@@ -164,7 +188,7 @@
 }
 
 .project-card dt {
-  color: var(--p-text-muted-color);
+  color: var(--pm-yellow);
   font-size: 0.75rem;
   font-weight: 700;
   letter-spacing: 0.06em;
@@ -177,9 +201,13 @@
 }
 
 .open-label {
-  color: var(--p-primary-color);
+  color: var(--pm-cyan);
   font-weight: 700;
   margin-top: auto;
+}
+
+.project-card:hover .open-label {
+  color: var(--pm-yellow);
 }
 
 .portfolio-pagination {

@@ -1,18 +1,18 @@
 <section aria-labelledby="notifications-title">
   <div class="heading-row">
     <div class="page-heading">
-      <span class="eyebrow">Közös figyelem</span>
-      <h1 id="notifications-title">Értesítések</h1>
-      <p>Az aktuálisan megoldandó helyzetek közös listája. Nincs személyes olvasatlanság, elrejtés vagy beállítás.</p>
+      <span class="eyebrow">Shared attention</span>
+      <h1 id="notifications-title">Notifications</h1>
+      <p>A shared list of current items requiring attention. Notifications are not personal and cannot be hidden or configured.</p>
     </div>
-    <p-button label="Frissítés" icon="pi pi-refresh" [loading]="loading()" (onClick)="load()" />
+    <p-button label="Refresh" icon="pi pi-refresh" [loading]="loading()" (onClick)="load()" />
   </div>
 
   @if (error(); as message) { <p-message severity="error" role="alert">{{ message }}</p-message> }
   @if (loading()) {
-    <div class="state-panel" aria-live="polite">Az értesítések betöltése…</div>
+    <div class="state-panel" aria-live="polite">Loading notifications…</div>
   } @else if (result(); as current) {
-    <p>{{ current.totalCount }} aktuális értesítés. A lista legfeljebb {{ current.limit }} tételt mutat.</p>
+    <p>{{ current.totalCount }} active notifications.</p>
     <ol class="notification-list" data-testid="notification-list">
       @for (item of current.items; track item.key) {
         <li [class]="'severity-' + item.severity.toLowerCase()">
@@ -20,12 +20,12 @@
             <span class="kind">{{ kindLabel(item.kind) }}</span>
             <h2>{{ item.projectName }}</h2>
             <p>{{ item.reason }}</p>
-            <time [attr.datetime]="item.attentionAt">{{ item.attentionAt | date: 'yyyy. MM. dd. HH:mm' }}</time>
+            <time [attr.datetime]="item.attentionAt">{{ item.attentionAt | date: 'dd MMM yyyy, HH:mm' }}</time>
           </div>
-          <a pButton [routerLink]="item.actionUrl">Megnyitás</a>
+          <a pButton [routerLink]="item.actionUrl">Open</a>
         </li>
       } @empty {
-        <li class="state-panel">Nincs aktuális értesítés.</li>
+        <li class="state-panel">No active notifications.</li>
       }
     </ol>
   }

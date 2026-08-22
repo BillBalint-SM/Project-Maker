@@ -31,7 +31,7 @@ dt { color: var(--p-text-muted-color); font-size: 0.78rem; font-weight: 700; tex
 dd { margin: 0; overflow-wrap: anywhere; }
 details { margin-bottom: 1rem; }
 summary { cursor: pointer; font-weight: 700; margin-bottom: 0.65rem; }
-pre { background: var(--pm-deep-navy); border-radius: 0.65rem; color: white; font: 0.75rem/1.45 ui-monospace, SFMono-Regular, Consolas, monospace; max-height: 22rem; overflow: auto; padding: 0.8rem; white-space: pre-wrap; }
+pre { background: var(--pm-canvas-deep); border: 1px solid var(--pm-border); border-radius: var(--pm-radius-sm); color: var(--pm-text); font: 0.75rem/1.45 ui-monospace, SFMono-Regular, Consolas, monospace; max-height: 22rem; overflow: auto; padding: 0.8rem; white-space: pre-wrap; }
 .handoff-list { display: grid; gap: 0.75rem; list-style: none; margin: 0; padding: 0; }
 .handoff-list li { border-bottom: 1px solid var(--p-content-border-color); display: grid; gap: 0.35rem; padding-bottom: 0.75rem; }
 .handoff-list li:last-child { border-bottom: 0; padding-bottom: 0; }

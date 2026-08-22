@@ -49,7 +49,7 @@ export class OpenDiscoveryFollowUpsPage implements OnInit {
                 error:
                   error instanceof DiscoveryFollowUpsApiError
                     ? error.message
-                    : 'A tisztázandó tételek nem tölthetők be. Próbáld meg újra.',
+                    : 'Discovery follow-ups could not be loaded. Please try again.',
               }),
             ),
           ),
@@ -61,7 +61,7 @@ export class OpenDiscoveryFollowUpsPage implements OnInit {
           this.items.set(items);
           this.loadError.set(null);
           if (this.retryRequested) {
-            this.liveStatus.set('A tisztázandó tételek ismét elérhetők.');
+            this.liveStatus.set('Discovery follow-ups are available again.');
           }
         } else {
           this.loadError.set(error);

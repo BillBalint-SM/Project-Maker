@@ -31,13 +31,13 @@ test('searches and filters the Active project queue with reload-safe replace-his
   await page.goto('/');
   await page.getByTestId('active-project-queue-link').click();
   await expect(page).toHaveURL('/projects/active');
-  await expect(page.getByRole('heading', { name: 'Aktív munkasor' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Active Project Queue' })).toBeVisible();
   await page.getByTestId('queue-search').fill(`  ARVIZTURO MUNKASOR ${uniquePart.toUpperCase()}  `);
 
   const projectLink = page.getByTestId(`queue-project-${project.id}`);
   await expect(projectLink).toBeVisible();
   await expect(page.getByTestId(`queue-project-${ordinaryProject.id}`)).toBeVisible();
-  await page.getByLabel('Lejárt', { exact: true }).check();
+  await page.getByLabel('Overdue', { exact: true }).check();
   await expect(projectLink).toBeVisible();
   await expect(page.getByTestId(`queue-project-${ordinaryProject.id}`)).toHaveCount(0);
   await expect(page).toHaveURL(/q=ARVIZTURO(?:%20|\+)MUNKASOR/);
@@ -45,7 +45,7 @@ test('searches and filters the Active project queue with reload-safe replace-his
 
   await page.reload();
   await expect(page.getByTestId('queue-search')).toHaveValue(`ARVIZTURO MUNKASOR ${uniquePart.toUpperCase()}`);
-  await expect(page.getByLabel('Lejárt', { exact: true })).toBeChecked();
+  await expect(page.getByLabel('Overdue', { exact: true })).toBeChecked();
   await expect(projectLink).toBeVisible();
 
   await page.goBack();
@@ -77,11 +77,11 @@ test('completes the keyboard employee journey and restores the paged queue URL a
   await expect(page).toHaveURL('/projects/active');
 
   await page.getByTestId('queue-search').fill(uniquePart);
-  const overdueFilter = page.getByLabel('Lejárt', { exact: true });
+  const overdueFilter = page.getByLabel('Overdue', { exact: true });
   await tabTo(page, overdueFilter);
   await page.keyboard.press('Space');
   await expect(overdueFilter).toBeChecked();
-  await expect(page.getByRole('region', { name: 'Lejárt a következő lépés' })).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Next action overdue' })).toBeVisible();
   await expect(page.locator('.queue-row')).toHaveCount(10);
 
   const nextPage = page.getByTestId('queue-next-page');
@@ -166,7 +166,7 @@ test('completes the keyboard employee journey and restores the paged queue URL a
   );
 
   const primaryAction = page.getByTestId('project-context-primary-action');
-  await expect(primaryAction).toHaveText('Következő lépés kezelése');
+  await expect(primaryAction).toHaveText('Manage next action');
   await tabTo(page, primaryAction);
   await page.keyboard.press('Enter');
   await expect(page.getByTestId('workspace-form')).toBeVisible();
@@ -183,7 +183,7 @@ test('completes the keyboard employee journey and restores the paged queue URL a
   await page.keyboard.press('Enter');
   await expect(page).toHaveURL(queueUrl);
   await expect(page.getByTestId('queue-search')).toHaveValue(uniquePart);
-  await expect(page.getByLabel('Lejárt', { exact: true })).toBeChecked();
+  await expect(page.getByLabel('Overdue', { exact: true })).toBeChecked();
   await expect(page.locator('.queue-row')).toHaveCount(1);
 });
 
@@ -206,11 +206,11 @@ test('pages through one urgency group with history and recovers an obsolete curs
   await page.getByTestId('queue-search').fill(uniquePart);
   await expect(page).toHaveURL(new RegExp(`q=${uniquePart}`));
   await expect(page.locator('.queue-row')).toHaveCount(10);
-  await expect(page.getByRole('heading', { name: 'Lejárt a következő lépés' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Next action overdue' })).toBeVisible();
   await page.getByTestId('queue-next-page').click();
   await expect(page).toHaveURL(/cursor=/);
   await expect(page.locator('.queue-row')).toHaveCount(1);
-  await expect(page.getByRole('heading', { name: 'Lejárt a következő lépés' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Next action overdue' })).toBeVisible();
 
   await page.goBack();
   await expect(page).not.toHaveURL(/cursor=/);
@@ -220,7 +220,7 @@ test('pages through one urgency group with history and recovers an obsolete curs
   await page.goto(`/projects/active?q=${encodeURIComponent(uniquePart)}&cursor=invalid`);
   await expect(page).not.toHaveURL(/cursor=/);
   await expect(page.getByTestId('queue-cursor-recovery')).toContainText(
-    'A korábbi oldal már nem állítható helyre. Az első oldalt mutatjuk.',
+    'The previous page is no longer available. Showing the first page.',
   );
   await expect(page.locator('.queue-row')).toHaveCount(10);
 });
@@ -255,17 +255,17 @@ test('keeps queue context through a failed refresh and announces recovery', asyn
   failNextQueueRequest = true;
   await page.keyboard.press('Enter');
 
-  await expect(page.getByTestId('active-queue-stale')).toContainText('A lista elavult lehet.');
+  await expect(page.getByTestId('active-queue-stale')).toContainText('The list may be stale.');
   await expect(projectLink).toBeVisible();
   await expect(refresh).toBeFocused();
   await expect(page.getByTestId('queue-live-status')).toContainText(
-    'A lista frissítése nem sikerült. A korábbi adatok maradtak láthatók.',
+    'The list could not be refreshed. Previously loaded data remains visible.',
   );
 
   await page.getByTestId('queue-update-retry').click();
   await expect(page.getByTestId('active-queue-stale')).toHaveCount(0);
   await expect(projectLink).toBeVisible();
-  await expect(page.getByTestId('queue-live-status')).toContainText('A lista ismét elérhető.');
+  await expect(page.getByTestId('queue-live-status')).toContainText('The list is available again.');
 });
 
 test('offers filter reset and portfolio actions for the two empty queue states', async ({ page }) => {
@@ -284,18 +284,18 @@ test('offers filter reset and portfolio actions for the two empty queue states',
   });
 
   await page.goto('/projects/active?q=nincs-ilyen-projekt&urgency=OVERDUE');
-  await expect(page.getByRole('heading', { name: 'Nincs találat' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'No results' })).toBeVisible();
   await expect(page.getByTestId('queue-search')).toHaveValue('nincs-ilyen-projekt');
   await page.getByTestId('queue-clear-filters').click();
 
   await expect(page).toHaveURL('/projects/active');
-  await expect(page.getByRole('heading', { name: 'Nincs aktív projekt' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'No active projects' })).toBeVisible();
   await expect(
     page
       .getByTestId('active-queue-empty')
-      .getByRole('link', { name: 'Vissza a projektportfólióhoz' }),
+      .getByRole('link', { name: 'Back to Portfolio Overview' }),
   ).toHaveAttribute('href', '/');
-  await expect(page.getByRole('link', { name: 'Új projekt létrehozása' })).toHaveAttribute('href', '/projects/new');
+  await expect(page.getByRole('link', { name: 'Create a new project' })).toHaveAttribute('href', '/projects/new');
 });
 
 test('reflows ordered semantic work groups without losing row content on a narrow viewport', async ({ page }) => {
@@ -331,8 +331,8 @@ test('reflows ordered semantic work groups without losing row content on a narro
 
   const groups = page.getByTestId('active-queue-group');
   await expect(groups).toHaveCount(2);
-  await expect(groups.nth(0).getByRole('heading')).toHaveText('Lejárt a következő lépés');
-  await expect(groups.nth(1).getByRole('heading')).toHaveText('Folyamatban');
+  await expect(groups.nth(0).getByRole('heading')).toHaveText('Next action overdue');
+  await expect(groups.nth(1).getByRole('heading')).toHaveText('In progress');
   await expect(groups.nth(0).getByRole('listitem')).toContainText('Egyeztesd a következő workshopot.');
   await expect(groups.nth(0).getByRole('listitem')).toContainText('Kovács Anna');
   await expect(page.getByTestId(`queue-action-${overdueProject.id}`)).toBeVisible();

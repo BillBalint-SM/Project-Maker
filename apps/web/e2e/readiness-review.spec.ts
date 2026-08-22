@@ -67,6 +67,36 @@ function nativeButton(page: Page, testId: string): Locator {
 test.describe.serial('SCORE-01 readiness employee workflow', () => {
   test.setTimeout(120_000);
 
+  test('explains that readiness requires the complete canonical general v1 schema', async ({
+    page,
+    request,
+  }) => {
+    const project = await createProject(request, 'Unsupported readiness schema browser flow');
+    const readinessRoute = `**/api/projects/${project.id}/readiness`;
+
+    await page.route(readinessRoute, async (route) => {
+      await route.fulfill({
+        contentType: 'application/json',
+        body: JSON.stringify({
+          available: false,
+          projectId: project.id,
+          reason: 'UNSUPPORTED_SCHEMA',
+        } satisfies ProjectReadiness),
+      });
+    });
+
+    await page.goto(`/projects/${project.id}/readiness`);
+
+    const unavailableState = page.getByTestId('readiness-review-unavailable-unsupported-schema');
+    await expect(unavailableState).toBeVisible();
+    await expect(unavailableState).toContainText(
+      'This assessment requires the complete 30-question general v1 schema',
+    );
+    await expect(unavailableState).toContainText(
+      'Create a new Initial Intake using the complete 30-question general v1 schema.',
+    );
+  });
+
   test('persists assessment decisions, completes intake, refreshes readiness, and opens remediation targets', async ({
     page,
     request,
@@ -92,12 +122,12 @@ test.describe.serial('SCORE-01 readiness employee workflow', () => {
     await nativeButton(page, `set-partial-assessment-${partialQuestion.id}`).click();
     expect((await partialResponse).status()).toBe(200);
     await expect(page.getByTestId(`round-assessment-status-${partialQuestion.id}`)).toHaveText(
-      'Részben megvan',
+      'Partially complete',
     );
 
     await page.reload();
     await expect(page.getByTestId(`round-assessment-status-${partialQuestion.id}`)).toHaveText(
-      'Részben megvan',
+      'Partially complete',
     );
 
     const completedResponse = waitForRoundCompletion(
@@ -110,7 +140,7 @@ test.describe.serial('SCORE-01 readiness employee workflow', () => {
     expect(completedRound).toBe(201);
     await expect(page).toHaveURL(`/projects/${fixture.projectId}/readiness`);
     await expect(
-      page.getByRole('heading', { name: 'Becslési felkészültség', exact: true }),
+      page.getByRole('heading', { name: 'Estimation Readiness', exact: true }),
     ).toBeVisible();
 
     const remediationRound = await createInitialIntakeRound(request, fixture.projectId);
@@ -545,9 +575,9 @@ test('shows and retries readiness states without blocking Project navigation or 
   const noInitialIntakeState = page.getByTestId(
     'readiness-review-unavailable-no-initial-intake',
   );
-  await expect(noInitialIntakeState).toContainText('Még nincs kezdő felmérés');
+  await expect(noInitialIntakeState).toContainText('No Initial Intake yet');
   await expect(noInitialIntakeState).toContainText(
-    'Indíts kezdő felmérést a felkészültségi értékelés elkészítéséhez.',
+    'Start an Initial Intake to create a readiness assessment.',
   );
   await expect(page.getByTestId('readiness-review-summary')).toHaveCount(0);
   await expect(page.getByTestId('project-context-nav-status')).toBeVisible();
@@ -563,7 +593,7 @@ test('shows and retries readiness states without blocking Project navigation or 
     reason: 'NO_INITIAL_INTAKE',
   });
   await expect(page.getByTestId('discovery-follow-up-item')).toHaveCount(1);
-  await expect(noInitialIntakeState).toContainText('Még nincs kezdő felmérés');
+  await expect(noInitialIntakeState).toContainText('No Initial Intake yet');
   await expect(page.getByTestId('readiness-review-summary')).toHaveCount(0);
   await expect(page.getByTestId('project-context-shell')).toBeVisible();
   await expect(page.getByTestId('discovery-follow-up-action-error')).toHaveCount(0);

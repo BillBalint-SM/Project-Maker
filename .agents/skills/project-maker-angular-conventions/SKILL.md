@@ -53,8 +53,11 @@ an otherwise focused change.
   `app.theme.ts`.
 - Keep application license handling intentional and out of documentation,
   diagnostics, and generated output.
-- Write engineering artifacts in English and user-facing product copy in
-  Hungarian. Map internal failures to safe, actionable Hungarian messages.
+- Write engineering artifacts and user-facing product copy in professional
+  English, using established software-development and project-management
+  terminology. Map internal failures to safe, actionable English messages.
+  Preserve user-authored content, immutable history, and legacy wire/storage
+  vocabularies; localize legacy values at presentation boundaries.
 
 ## Tests and bundle discipline
 

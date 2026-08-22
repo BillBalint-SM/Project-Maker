@@ -25,13 +25,13 @@ const optionalPlaceholderBlockPattern = /^{{\s*([a-zA-Z][a-zA-Z0-9.]*)\s*\?\s*}}
 const headingBlockPattern = /^#{1,6}[ \t]+\S[^\r\n]*$/;
 
 const previewValues: Readonly<Record<string, string | null>> = {
-  'project.name': 'Minta projekt',
-  'revision.metadata': '## Specifikációverzió\n\n- Ok: Kézi generálás\n- Verzió: 1',
-  'project.context': '## Projektkontextus\n\n- Ügyfél: Minta ügyfél\n- Felelős: Minta tulajdonos',
-  'project.schema': '## Elfogadott kérdésséma\n\n30 kiválasztott kérdés.',
-  'project.initialIntake': '## Initial Intake\n\nA minta felmérés lezárult.',
-  'project.readiness': '## Felkészültség\n\n65 pont.',
-  'project.decisionReview': '## Döntési értékelés\n\nBecslés előkészíthető.',
+  'project.name': 'Sample project',
+  'revision.metadata': '## Specification Version\n\n- Reason: Manual generation\n- Version: 1',
+  'project.context': '## Project Context\n\n- Customer: Sample Customer\n- Owner: Sample owner',
+  'project.schema': '## Accepted Project Question Schema\n\n30 selected questions.',
+  'project.initialIntake': '## Initial Intake\n\nThe sample interview has ended.',
+  'project.readiness': '## Readiness\n\n65 points.',
+  'project.decisionReview': '## Decision Review\n\nEstimate preparation is possible.',
 };
 
 @Injectable()
@@ -55,8 +55,8 @@ export class MarkdownTemplateService {
   }
 
   async create(input: CreateMarkdownTemplateInput): Promise<MarkdownTemplateSummary> {
-    const name = requireText(input.name, 'A sablon neve');
-    const draftContent = requireText(input.draftContent, 'A sablon piszkozata');
+    const name = requireText(input.name, 'Template name');
+    const draftContent = requireText(input.draftContent, 'Template draft');
     validateTemplateContent(draftContent);
     const template = this.dataSource.getRepository(MarkdownTemplateEntity).create({
       id: randomUUID(),
@@ -68,7 +68,7 @@ export class MarkdownTemplateService {
       return toSummary(await this.dataSource.getRepository(MarkdownTemplateEntity).save(template), null);
     } catch (error) {
       if (isUniqueViolation(error)) {
-        throw new ConflictException('Már létezik ilyen nevű specifikációs sablon.');
+        throw new ConflictException('A specification template with this name already exists.');
       }
       throw error;
     }
@@ -76,15 +76,15 @@ export class MarkdownTemplateService {
 
   async updateDraft(id: string, input: UpdateMarkdownTemplateDraftInput): Promise<MarkdownTemplateSummary> {
     const template = await this.findTemplate(id);
-    template.name = requireText(input.name, 'A sablon neve');
-    template.draftContent = requireText(input.draftContent, 'A sablon piszkozata');
+    template.name = requireText(input.name, 'Template name');
+    template.draftContent = requireText(input.draftContent, 'Template draft');
     validateTemplateContent(template.draftContent);
     try {
       const saved = await this.dataSource.getRepository(MarkdownTemplateEntity).save(template);
       return toSummary(saved, await this.latestVersion(id));
     } catch (error) {
       if (isUniqueViolation(error)) {
-        throw new ConflictException('Már létezik ilyen nevű specifikációs sablon.');
+        throw new ConflictException('A specification template with this name already exists.');
       }
       throw error;
     }
@@ -129,14 +129,14 @@ export class MarkdownTemplateService {
       ? await this.findTemplate(templateId)
       : await this.dataSource.getRepository(MarkdownTemplateEntity).findOneBy({ isDefault: true });
     if (!template) {
-      throw new ConflictException('Nem érhető el alapértelmezett specifikációs sablon.');
+      throw new ConflictException('No default specification template is available.');
     }
     const version = await this.dataSource.getRepository(MarkdownTemplateVersionEntity).findOne({
       where: { templateId: template.id },
       order: { version: 'DESC' },
     });
     if (!version) {
-      throw new ConflictException('A kiválasztott specifikációs sablonnak nincs publikált verziója.');
+      throw new ConflictException('The selected specification template has no published version.');
     }
     return { template, version };
   }
@@ -162,11 +162,11 @@ export function validateTemplateContent(content: string): void {
   const matches = [...content.matchAll(placeholderPattern)];
   const residue = content.replace(placeholderPattern, '');
   if (residue.includes('{{') || residue.includes('}}')) {
-    throw new BadRequestException('A specifikációs sablon hibás formátumú helyőrzőt tartalmaz.');
+    throw new BadRequestException('The specification template contains a malformed placeholder.');
   }
   for (const match of matches) {
     if (!allowedPlaceholders.has(match[1] ?? '')) {
-      throw new BadRequestException(`Nem támogatott specifikációs sablon-helyőrző: ${match[1] ?? ''}.`);
+      throw new BadRequestException(`Unsupported specification template placeholder: ${match[1] ?? ''}.`);
     }
   }
   for (const block of splitMarkdownBlocks(content)) {
@@ -175,7 +175,7 @@ export function validateTemplateContent(content: string): void {
     );
     if (hasOptionalPlaceholder && !optionalPlaceholderBlockPattern.test(block.trim())) {
       throw new BadRequestException(
-        'Az opcionális specifikációs sablon helyőrzőjének önálló Markdown-blokkban kell állnia.',
+        'An optional specification template placeholder must appear in its own Markdown block.',
       );
     }
   }
@@ -197,7 +197,7 @@ export function renderTemplate(
     }
     const definition = placeholderDefinitions.get(name as MarkdownTemplatePlaceholderName);
     throw new ConflictException(
-      `A kötelező sablonblokk nem áll rendelkezésre: ${definition?.label ?? 'ismeretlen projektadat'}.`,
+      `Required template block is unavailable: ${definition?.label ?? 'unknown project data'}.`,
     );
   }).replace(/\n{3,}/g, '\n\n').trim()}\n`;
 }
@@ -243,7 +243,7 @@ function toSummary(template: MarkdownTemplateEntity, latestPublishedVersion: num
 function requireText(value: string, label: string): string {
   const normalized = value.trim();
   if (!normalized) {
-    throw new BadRequestException(`${label} nem lehet üres.`);
+    throw new BadRequestException(`${label} must not be blank.`);
   }
   return normalized;
 }

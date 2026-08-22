@@ -26,25 +26,25 @@ export class ProjectApiService {
   listProjects(): Observable<readonly ProjectWorkspace[]> {
     return this.http
       .get<readonly ProjectWorkspace[]>('/api/projects')
-      .pipe(catchError((error: unknown) => this.fail(error, 'betölteni a projekteket')));
+      .pipe(catchError((error: unknown) => this.fail(error, 'load the projects')));
   }
 
   loadPortfolio(): Observable<readonly ProjectPortfolioEntry[]> {
     return this.http
       .get<readonly ProjectPortfolioEntry[]>('/api/projects/portfolio')
-      .pipe(catchError((error: unknown) => this.fail(error, 'betölteni a projektportfóliót')));
+      .pipe(catchError((error: unknown) => this.fail(error, 'load the Project Portfolio')));
   }
 
   createProject(input: CreateProjectInput): Observable<ProjectWorkspace> {
     return this.http
       .post<ProjectWorkspace>('/api/projects', input)
-      .pipe(catchError((error: unknown) => this.fail(error, 'létrehozni a projektet')));
+      .pipe(catchError((error: unknown) => this.fail(error, 'create the project')));
   }
 
   listPlaybooks(): Observable<readonly PackagedPlaybookSummary[]> {
     return this.http
       .get<readonly PackagedPlaybookSummary[]>('/api/playbooks')
-      .pipe(catchError((error: unknown) => this.fail(error, 'betölteni a playbookokat')));
+      .pipe(catchError((error: unknown) => this.fail(error, 'load the playbooks')));
   }
 
   updateProjectPlaybook(
@@ -53,7 +53,7 @@ export class ProjectApiService {
   ): Observable<ProjectWorkspace> {
     return this.http
       .put<ProjectWorkspace>(`/api/projects/${encodeURIComponent(projectId)}/playbook`, input)
-      .pipe(catchError((error: unknown) => this.fail(error, 'menteni a projekt playbookját')));
+      .pipe(catchError((error: unknown) => this.fail(error, 'save the project playbook')));
   }
 
   updateProjectBasics(
@@ -65,7 +65,7 @@ export class ProjectApiService {
         `/api/projects/${encodeURIComponent(projectId)}/basics`,
         input,
       )
-      .pipe(catchError((error: unknown) => this.fail(error, 'menteni a projekt alapadatait')));
+      .pipe(catchError((error: unknown) => this.fail(error, 'save the project basics')));
   }
 
   loadProjectSettings(projectId: string): Observable<ProjectSettingsView> {
@@ -73,7 +73,7 @@ export class ProjectApiService {
       project: this.loadProjectWorkspace(projectId),
       preparationStatus: this.loadPreparationStatus(projectId),
     }).pipe(
-      catchError((error: unknown) => this.fail(error, 'betölteni a projektbeállításokat')),
+      catchError((error: unknown) => this.fail(error, 'load Project Settings')),
     );
   }
 
@@ -84,7 +84,7 @@ export class ProjectApiService {
       )
       .pipe(
         catchError((error: unknown) =>
-          this.fail(error, 'betölteni a projekt felkészültségi állapotát'),
+          this.fail(error, 'load the project preparation state'),
         ),
       );
   }
@@ -92,13 +92,13 @@ export class ProjectApiService {
   loadWorkState(projectId: string): Observable<ProjectWorkState> {
     return this.http
       .get<ProjectWorkState>(`/api/projects/${encodeURIComponent(projectId)}/work-state`)
-      .pipe(catchError((error: unknown) => this.fail(error, 'betölteni a projekt aktuális feladatát')));
+      .pipe(catchError((error: unknown) => this.fail(error, 'load the project work state')));
   }
 
   loadProjectActivity(projectId: string): Observable<ProjectActivityFeed> {
     return this.http
       .get<ProjectActivityFeed>(`/api/projects/${encodeURIComponent(projectId)}/activity`)
-      .pipe(catchError((error: unknown) => this.fail(error, 'betölteni a legutóbbi projektaktivitást')));
+      .pipe(catchError((error: unknown) => this.fail(error, 'load the latest project activity')));
   }
 
   loadProjectWorkspace(projectId: string): Observable<ProjectWorkspace> {
@@ -106,12 +106,12 @@ export class ProjectApiService {
       map((projects) => {
         const project = projects.find((candidate) => candidate.id === projectId);
         if (!project) {
-          throw new Error('A projekt nem található. Térj vissza a projektlistához, és ellenőrizd újra.');
+          throw new Error('The project was not found. Return to the Project Portfolio and check again.');
         }
         return project;
       }),
       catchError((error: unknown) =>
-        this.fail(error, 'betölteni a projektkoordináció szerkesztési adatait'),
+        this.fail(error, 'load the project coordination data'),
       ),
     );
   }
@@ -125,7 +125,7 @@ export class ProjectApiService {
         `/api/projects/${encodeURIComponent(projectId)}/workspace`,
         input,
       )
-      .pipe(catchError((error: unknown) => this.fail(error, 'menteni a projektkoordinációt')));
+      .pipe(catchError((error: unknown) => this.fail(error, 'save project coordination')));
   }
 
   deleteProject(projectId: string): Observable<void> {
@@ -140,7 +140,7 @@ export class ProjectApiService {
         `/api/projects/${encodeURIComponent(projectId)}/archive`,
         {},
       )
-      .pipe(catchError((error: unknown) => this.fail(error, 'archiválni a projektet')));
+      .pipe(catchError((error: unknown) => this.fail(error, 'archive the project')));
   }
 
   restoreProject(projectId: string): Observable<ProjectWorkspace> {
@@ -149,7 +149,7 @@ export class ProjectApiService {
         `/api/projects/${encodeURIComponent(projectId)}/restore`,
         {},
       )
-      .pipe(catchError((error: unknown) => this.fail(error, 'visszaállítani a projektet')));
+      .pipe(catchError((error: unknown) => this.fail(error, 'restore the project')));
   }
 
   private fail(error: unknown, action: string): Observable<never> {
@@ -166,26 +166,26 @@ interface ActionableError {
   readonly diagnostics: { readonly action: string; readonly status: number; readonly statusText: string } | null;
 }
 
-const deleteProjectAction = 'végleg törölni a projektet';
+const deleteProjectAction = 'permanently delete the project';
 
 function toActionableError(error: unknown, action: string): ActionableError {
   if (!(error instanceof HttpErrorResponse)) {
     return {
-      userMessage: `Nem sikerült ${action}. Frissítsd az oldalt, majd próbáld újra.`,
+      userMessage: `Unable to ${action}. Refresh the page and try again.`,
       diagnostics: null,
     };
   }
 
   if (error.status === 0) {
     return {
-      userMessage: `Nem sikerült ${action}, mert a szolgáltatás nem érhető el. Ellenőrizd a hálózati kapcsolatot, majd próbáld újra.`,
+      userMessage: `Unable to ${action} because the service is unavailable. Check the network connection and try again.`,
       diagnostics: { action, status: error.status, statusText: error.statusText },
     };
   }
 
   const nextStep = projectErrorNextStep(error.status, action);
   return {
-    userMessage: `Nem sikerült ${action}. ${nextStep}`,
+    userMessage: `Unable to ${action}. ${nextStep}`,
     diagnostics: { action, status: error.status, statusText: error.statusText },
   };
 }
@@ -193,22 +193,22 @@ function toActionableError(error: unknown, action: string): ActionableError {
 function projectErrorNextStep(status: number, action: string): string {
   if (status === 409) {
     if (action === deleteProjectAction) {
-      return 'Csak DRAFT projekt törölhető. Ügyfélkommunikációs vagy Git-átadási előzmény esetén archiváld a projektet.';
+      return 'Only a DRAFT project can be deleted. Archive the project when Customer correspondence or Git handoff history exists.';
     }
-    return 'Töltsd újra a projektet, ellenőrizd a legfrissebb állapotát, majd ismételd meg a műveletet.';
+    return 'Reload the project, check its latest state, then repeat the action.';
   }
 
   if (status === 503) {
-    return 'A szolgáltatás átmenetileg nem érhető el. Várj röviden, majd próbáld újra.';
+    return 'The service is temporarily unavailable. Wait briefly and try again.';
   }
 
   if (status === 404) {
-    return 'Térj vissza a projektlistához, és ellenőrizd, hogy a projekt még létezik-e.';
+    return 'Return to the Project Portfolio and check that the project still exists.';
   }
 
   if (status === 400 || status === 422) {
-    return 'Ellenőrizd a megadott értékeket, majd próbáld újra.';
+    return 'Check the submitted values and try again.';
   }
 
-  return 'Frissítsd az oldalt, majd próbáld újra. Ha a hiba megmarad, jelezd az üzemeltetőnek.';
+  return 'Refresh the page and try again. If the error persists, contact the Operator organization.';
 }

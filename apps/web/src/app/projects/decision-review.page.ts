@@ -45,9 +45,9 @@ export class DecisionReviewPage implements OnInit {
   readonly feedback = signal<string | null>(null);
   readonly archived = signal(false);
   readonly outcomeOptions = [
-    { value: 'GO' as const, label: 'Mehet' },
-    { value: 'CONDITIONAL_GO' as const, label: 'Feltételesen mehet' },
-    { value: 'NO_GO' as const, label: 'Nem mehet' },
+    { value: 'GO' as const, label: 'Go' },
+    { value: 'CONDITIONAL_GO' as const, label: 'Conditional Go' },
+    { value: 'NO_GO' as const, label: 'No-Go' },
   ];
   readonly decisionForm = new FormGroup({
     outcome: new FormControl<FormalDecisionOutcome>('GO', { nonNullable: true }),
@@ -77,7 +77,7 @@ export class DecisionReviewPage implements OnInit {
 
   loadDecisions(): void {
     if (!this.projectId) {
-      this.error.set('A projekt azonosítója hiányzik az útvonalból.');
+      this.error.set('The project identifier is missing from the route.');
       this.loading.set(false);
       return;
     }
@@ -122,7 +122,7 @@ export class DecisionReviewPage implements OnInit {
     ).subscribe({
       next: () => {
         this.saving.set(false);
-        this.feedback.set('A formális döntés rögzítve lett. A projektet nem módosította automatikusan.');
+        this.feedback.set('The formal decision has been recorded. The project was not changed automatically.');
         this.decisionForm.reset({
           outcome: 'GO',
           decisionDate: today(),

@@ -1,113 +1,113 @@
 <section aria-labelledby="projects-title">
   <div class="heading-row">
     <div class="page-heading">
-      <span class="eyebrow">Portfólió</span>
-      <h1 id="projects-title">Projektportfólió</h1>
-      <p>Lapozható, szerveroldalon szűrt projektáttekintés a legfrissebb státusszal és döntéssel.</p>
+      <span class="eyebrow">Portfolio</span>
+      <h1 id="projects-title">Portfolio Overview</h1>
+      <p>A paginated, server-filtered view of projects with their latest status update and formal decision.</p>
     </div>
     <div class="heading-actions">
-      <a pButton routerLink="/projects/active" data-testid="active-project-queue-link">Aktív munkasor</a>
-      <a pButton routerLink="/projects/new" severity="secondary" data-testid="new-project-button">Új projekt</a>
+      <a pButton routerLink="/projects/active" data-testid="active-project-queue-link">Active Project Queue</a>
+      <a pButton routerLink="/projects/new" severity="secondary" data-testid="new-project-button">New Project</a>
     </div>
   </div>
 
-  <form class="portfolio-filters" [formGroup]="filterForm" (ngSubmit)="applyFilters()" aria-label="Portfóliószűrők">
+  <form class="portfolio-filters" [formGroup]="filterForm" (ngSubmit)="applyFilters()" aria-label="Portfolio filters">
     <label>
-      <span>Keresés</span>
-      <input type="search" formControlName="search" placeholder="Projekt vagy felelős" />
+      <span>Search</span>
+      <input type="search" formControlName="search" placeholder="Project or owner" />
     </label>
     <label>
-      <span>Egészség</span>
+      <span>Health</span>
       <select formControlName="health" data-testid="portfolio-health-filter">
-        <option value="">Mind</option>
+        <option value="">All</option>
         @for (option of healthOptions; track option.value) { <option [value]="option.value">{{ option.label }}</option> }
       </select>
     </label>
     <label>
-      <span>Döntés</span>
+      <span>Decision</span>
       <select formControlName="decision" data-testid="portfolio-decision-filter">
-        <option value="">Mind</option>
+        <option value="">All</option>
         @for (option of decisionOptions; track option.value) { <option [value]="option.value">{{ option.label }}</option> }
       </select>
     </label>
     <label>
-      <span>Projektkör</span>
+      <span>Project scope</span>
       <select formControlName="archiveScope">
-        <option value="ACTIVE">Aktív</option>
-        <option value="ARCHIVED">Archivált</option>
-        <option value="ALL">Mind</option>
+        <option value="ACTIVE">Active</option>
+        <option value="ARCHIVED">Archived</option>
+        <option value="ALL">All</option>
       </select>
     </label>
     <label>
-      <span>Rendezés</span>
+      <span>Sort by</span>
       <select formControlName="sort">
         @for (option of sortOptions; track option.value) { <option [value]="option.value">{{ option.label }}</option> }
       </select>
     </label>
     <div class="filter-actions">
-      <p-button type="submit" label="Szűrés" data-testid="apply-portfolio-filters" />
-      <button pButton type="button" class="p-button-text" (click)="clearFilters()">Alaphelyzet</button>
+      <p-button type="submit" label="Apply filters" data-testid="apply-portfolio-filters" />
+      <button pButton type="button" class="p-button-text" (click)="clearFilters()">Reset</button>
     </div>
   </form>
 
-  <div class="saved-views" aria-label="Mentett portfóliónézetek">
+  <div class="saved-views" aria-label="Saved portfolio views">
     <label>
-      <span>Mentett nézet</span>
+      <span>Saved view</span>
       <select (change)="applySavedView($event)">
-        <option value="">Válassz…</option>
+        <option value="">Select…</option>
         @for (view of savedViews(); track view.name) { <option [value]="view.name">{{ view.name }}</option> }
       </select>
     </label>
     <label>
-      <span>Aktuális nézet neve</span>
+      <span>Current view name</span>
       <input type="text" [formControl]="viewName" maxlength="80" />
     </label>
-    <button pButton type="button" class="p-button-outlined" [disabled]="!viewName.value.trim()" (click)="saveCurrentView()">Mentés ebben a böngészőben</button>
+    <button pButton type="button" class="p-button-outlined" [disabled]="!viewName.value.trim()" (click)="saveCurrentView()">Save in this browser</button>
     @for (view of savedViews(); track view.name) {
-      <button type="button" class="saved-view-delete" (click)="deleteSavedView(view.name)" [attr.aria-label]="view.name + ' mentett nézet törlése'">{{ view.name }} ×</button>
+      <button type="button" class="saved-view-delete" (click)="deleteSavedView(view.name)" [attr.aria-label]="'Delete saved view ' + view.name">{{ view.name }} ×</button>
     }
   </div>
   @if (viewFeedback()) { <p class="view-feedback" role="status">{{ viewFeedback() }}</p> }
 
   <aside class="mailbox-sync-panel" aria-labelledby="mailbox-sync-title">
     <div>
-      <span class="eyebrow">Ügyfélkommunikáció</span>
-      <h2 id="mailbox-sync-title">Ügyfélpostafiók</h2>
+      <span class="eyebrow">Customer communication</span>
+      <h2 id="mailbox-sync-title">Correspondence Mailbox</h2>
       @if (mailboxLoading()) {
-        <p data-testid="mailbox-sync-status">Postafiók állapotának betöltése…</p>
+        <p data-testid="mailbox-sync-status">Loading mailbox status…</p>
       } @else if (mailboxStatus(); as status) {
         <p data-testid="mailbox-sync-status">{{ mailboxStateLabel(status.state) }}</p>
-        <small>Utolsó sikeres frissítés: {{ status.lastSuccessfulSyncAt ? (status.lastSuccessfulSyncAt | date: 'yyyy. MM. dd. HH:mm') : 'még nem történt' }}</small>
+        <small>Last successful refresh: {{ status.lastSuccessfulSyncAt ? (status.lastSuccessfulSyncAt | date: 'yyyy-MM-dd HH:mm') : 'not yet performed' }}</small>
       }
       @if (mailboxError()) { <p class="mailbox-sync-error" role="alert">{{ mailboxError() }}</p> }
     </div>
     <div class="mailbox-actions">
-      <a pButton routerLink="/customer-mail-triage" severity="secondary" data-testid="customer-mail-triage-link">Nem társított üzenetek</a>
-      <p-button label="Üzenetek frissítése" icon="pi pi-refresh" severity="secondary" data-testid="refresh-customer-mailbox" [loading]="mailboxRefreshing()" [disabled]="mailboxLoading() || mailboxRefreshing()" (onClick)="refreshMailbox()" />
+      <a pButton routerLink="/customer-mail-triage" severity="secondary" data-testid="customer-mail-triage-link">Unmatched messages</a>
+      <p-button label="Refresh messages" icon="pi pi-refresh" severity="secondary" data-testid="refresh-customer-mailbox" [loading]="mailboxRefreshing()" [disabled]="mailboxLoading() || mailboxRefreshing()" (onClick)="refreshMailbox()" />
     </div>
   </aside>
 
   @if (loading()) {
     <div class="state-panel" data-testid="projects-loading" aria-live="polite">
-      <p-progress-spinner ariaLabel="A projektek betöltése" />
-      <p>A projektek betöltése…</p>
+      <p-progress-spinner ariaLabel="Loading projects" />
+      <p>Loading projects…</p>
     </div>
   } @else if (loadError()) {
     <div class="state-panel" data-testid="projects-error" role="alert">
-      <h2>A projektek nem tölthetők be</h2>
+      <h2>Projects could not be loaded</h2>
       <p>{{ loadError() }}</p>
-      <p-button label="Projektlista újratöltése" severity="secondary" data-testid="retry-projects-button" (onClick)="loadProjects()" />
+      <p-button label="Reload project list" severity="secondary" data-testid="retry-projects-button" (onClick)="loadProjects()" />
     </div>
   } @else if (portfolio(); as currentPortfolio) {
     @if (currentPortfolio.items.length === 0) {
       <div class="state-panel" data-testid="projects-empty">
-        <h2>Nincs találat</h2>
-        <p>A jelenlegi szűrőknek egy projekt sem felel meg.</p>
-        <button pButton type="button" class="p-button-outlined" (click)="clearFilters()">Szűrők törlése</button>
-        <a pButton routerLink="/projects/new" data-testid="empty-create-project-button">Új projekt létrehozása</a>
+        <h2>No results</h2>
+        <p>No projects match the current filters.</p>
+        <button pButton type="button" class="p-button-outlined" (click)="clearFilters()">Clear filters</button>
+        <a pButton routerLink="/projects/new" data-testid="empty-create-project-button">Create a new project</a>
       </div>
     } @else {
-      <p class="result-count">{{ currentPortfolio.totalCount }} projekt · {{ currentPortfolio.page }} / {{ currentPortfolio.pageCount }} oldal</p>
+      <p class="result-count">{{ currentPortfolio.totalCount }} projects · page {{ currentPortfolio.page }} of {{ currentPortfolio.pageCount }}</p>
       <div class="project-grid" data-testid="portfolio-results">
         @for (entry of currentPortfolio.items; track entry.project.id) {
           <a class="project-card" [routerLink]="projectRoute(entry)" [queryParams]="projectContextQueryParams" [fragment]="entry.workState ? actionFragment(entry.workState.primaryAction.target) : undefined" [attr.data-testid]="'project-card-' + entry.project.id">
@@ -116,26 +116,26 @@
               <p-tag [value]="portfolioStatusLabel(entry)" />
             </div>
             @if (entry.goal || entry.initiative) {
-              <p class="roadmap-path">{{ entry.goal?.name ?? 'Nincs üzleti cél' }}@if (entry.initiative) { / {{ entry.initiative.name }} }</p>
+              <p class="roadmap-path">{{ entry.goal?.name ?? 'No business goal' }}@if (entry.initiative) { / {{ entry.initiative.name }} }</p>
             }
             @if (entry.latestDecision) { <p-tag [value]="decisionLabel(entry.latestDecision.outcome)" severity="secondary" /> }
             @if (entry.workState; as workState) {
               <p-tag [value]="workState.urgencyLabel" severity="secondary" />
-              @if (workState.newReplyCount > 0) { <span class="reply-indicator">{{ workState.newReplyCount }} új ügyfélválasz</span> }
+              @if (workState.newReplyCount > 0) { <span class="reply-indicator">{{ workState.newReplyCount }} new Customer replies</span> }
             }
             <dl>
-              <div><dt>Következő lépés felelőse</dt><dd>{{ entry.project.nextActionOwner.displayName || 'Nincs kijelölve' }}</dd></div>
-              <div><dt>Következő lépés</dt><dd>{{ entry.latestStatus?.nextStep ?? entry.project.nextAction ?? 'Nincs megadva' }}</dd></div>
+              <div><dt>Next-action owner</dt><dd>{{ entry.project.nextActionOwner.displayName || 'Not assigned' }}</dd></div>
+              <div><dt>Next action</dt><dd>{{ entry.latestStatus?.nextStep ?? entry.project.nextAction ?? 'Not specified' }}</dd></div>
             </dl>
             @if (progressLabel(entry.workState?.progress); as progress) { <p class="project-progress">{{ progress }}</p> }
-            <span class="open-label">{{ entry.workState?.primaryAction?.label ?? 'Projektállapot megnyitása' }} <span aria-hidden="true">→</span></span>
+            <span class="open-label">{{ entry.workState?.primaryAction?.label ?? 'Open Project Status' }} <span aria-hidden="true">→</span></span>
           </a>
         }
       </div>
-      <nav class="portfolio-pagination" aria-label="Projektportfólió lapozása">
-        <button pButton type="button" class="p-button-outlined" [disabled]="currentPortfolio.page <= 1" (click)="goToPage(currentPortfolio.page - 1)">Előző</button>
+      <nav class="portfolio-pagination" aria-label="Portfolio pagination">
+        <button pButton type="button" class="p-button-outlined" [disabled]="currentPortfolio.page <= 1" (click)="goToPage(currentPortfolio.page - 1)">Previous</button>
         <span>{{ currentPortfolio.page }} / {{ currentPortfolio.pageCount }}</span>
-        <button pButton type="button" class="p-button-outlined" [disabled]="currentPortfolio.page >= currentPortfolio.pageCount" (click)="goToPage(currentPortfolio.page + 1)">Következő</button>
+        <button pButton type="button" class="p-button-outlined" [disabled]="currentPortfolio.page >= currentPortfolio.pageCount" (click)="goToPage(currentPortfolio.page + 1)">Next</button>
       </nav>
     }
   }

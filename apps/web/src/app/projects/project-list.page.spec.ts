@@ -51,7 +51,7 @@ describe('ProjectListPage correspondence mailbox synchronization', () => {
 
     expect(
       fixture.nativeElement.querySelector('[data-testid="mailbox-sync-status"]')?.textContent,
-    ).toContain('Postafiók-szinkron késik');
+    ).toContain('Correspondence mailbox sync is delayed');
     expect(
       fixture.nativeElement.querySelector('[data-testid="active-project-queue-link"]')?.getAttribute('href'),
     ).toBe('/projects/active');
@@ -65,7 +65,7 @@ describe('ProjectListPage correspondence mailbox synchronization', () => {
     expect(mailboxApi.refresh).toHaveBeenCalledTimes(1);
     expect(
       fixture.nativeElement.querySelector('[data-testid="mailbox-sync-status"]')?.textContent,
-    ).toContain('Postafiók naprakész');
+    ).toContain('Correspondence mailbox is current');
   });
 
   it('renders the canonical primary task and factual progress without per-Project status calls', async () => {
@@ -90,12 +90,12 @@ describe('ProjectListPage correspondence mailbox synchronization', () => {
         projectId: '11111111-1111-4111-8111-111111111111',
         projectName: 'Ügyfélválaszos projekt',
         urgency: 'CUSTOMER_REPLY',
-        urgencyLabel: 'Új ügyfélválasz',
+        urgencyLabel: 'New Customer reply',
         preparationStatus: {
           projectId: '11111111-1111-4111-8111-111111111111',
           state: 'INTAKE_IN_PROGRESS',
-          label: 'Felmérés folyamatban',
-          primaryAction: { target: 'INTERVIEW', label: 'Felmérés megnyitása' },
+          label: 'Initial Intake in progress',
+          primaryAction: { target: 'INTERVIEW', label: 'Open Initial Intake' },
         },
         nextAction: 'Egyeztesd a pontosított terjedelmet.',
         nextActionOwner: { role: 'INTERNAL_OWNER', displayName: 'PO Péter', complete: true },
@@ -104,7 +104,7 @@ describe('ProjectListPage correspondence mailbox synchronization', () => {
         progress: { kind: 'INTERVIEW_ANSWERS', answeredQuestions: 4, totalQuestions: 9 },
         primaryAction: {
           target: 'CUSTOMER_CORRESPONDENCE',
-          label: 'Ügyféllevelezés megnyitása',
+          label: 'Open Customer correspondence',
         },
       },
     };
@@ -167,9 +167,9 @@ describe('ProjectListPage correspondence mailbox synchronization', () => {
       '/projects/11111111-1111-4111-8111-111111111111/customer-correspondences',
     );
     expect(destination.searchParams.get('returnTo')).toBe('/');
-    expect(card?.textContent).toContain('Ügyféllevelezés megnyitása');
-    expect(card?.textContent).toContain('4 / 9 kérdés megválaszolva');
-    expect(card?.textContent).toContain('Új ügyfélválasz');
+    expect(card?.textContent).toContain('Open Customer correspondence');
+    expect(card?.textContent).toContain('4 / 9 questions answered');
+    expect(card?.textContent).toContain('New Customer reply');
   });
 });
 

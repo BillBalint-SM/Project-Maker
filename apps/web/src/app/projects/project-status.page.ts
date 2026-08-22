@@ -63,20 +63,20 @@ export class ProjectStatusPage implements OnInit {
   readonly statusFeedback = signal<string | null>(null);
   readonly editingStatusId = signal<string | null>(null);
   readonly healthOptions = [
-    { value: 'ON_TRACK' as const, label: 'Terv szerint' },
-    { value: 'AT_RISK' as const, label: 'Kockázatos' },
-    { value: 'BLOCKED' as const, label: 'Blokkolt' },
+    { value: 'ON_TRACK' as const, label: 'On track' },
+    { value: 'AT_RISK' as const, label: 'At risk' },
+    { value: 'BLOCKED' as const, label: 'Blocked' },
   ];
   readonly ownerRoleOptions = computed(() => {
     const project = this.coordinationWorkspace();
     return [
       {
-        label: `Belső projektgazda – ${project?.internalOwnerName || 'név nincs beállítva'}`,
+        label: `Internal project owner – ${project?.internalOwnerName || 'name not set'}`,
         value: 'INTERNAL_OWNER' as const,
         disabled: !project?.internalOwnerName,
       },
       {
-        label: `Ügyfélkapcsolattartó – ${project?.customerContactName || 'név nincs beállítva'}`,
+        label: `Customer contact – ${project?.customerContactName || 'name not set'}`,
         value: 'CUSTOMER_CONTACT' as const,
         disabled: !project?.customerContactName,
       },
@@ -125,7 +125,7 @@ export class ProjectStatusPage implements OnInit {
 
   loadCoordinationEditor(): void {
     if (!this.projectId) {
-      this.coordinationLoadError.set('A projekt azonosítója hiányzik az útvonalból.');
+      this.coordinationLoadError.set('The project identifier is missing from the route.');
       this.coordinationLoading.set(false);
       return;
     }
@@ -196,7 +196,7 @@ export class ProjectStatusPage implements OnInit {
         this.resetCoordinationForm(updatedProject);
         this.coordinationSaving.set(false);
         this.coordinationEditing.set(false);
-        this.coordinationFeedback.set('A projektkoordináció frissítve lett.');
+        this.coordinationFeedback.set('Project coordination has been updated.');
         this.projectContext.reload();
       },
       error: (error: Error) => {
@@ -208,7 +208,7 @@ export class ProjectStatusPage implements OnInit {
 
   loadActivity(): void {
     if (!this.projectId) {
-      this.activityError.set('A projekt azonosítója hiányzik az útvonalból.');
+      this.activityError.set('The project identifier is missing from the route.');
       this.activityLoading.set(false);
       return;
     }
@@ -232,7 +232,7 @@ export class ProjectStatusPage implements OnInit {
 
   loadStatusUpdates(): void {
     if (!this.projectId) {
-      this.statusUpdatesError.set('A projekt azonosítója hiányzik az útvonalból.');
+      this.statusUpdatesError.set('The project identifier is missing from the route.');
       this.statusUpdatesLoading.set(false);
       return;
     }
@@ -273,7 +273,7 @@ export class ProjectStatusPage implements OnInit {
     request.pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: () => {
         this.statusSaving.set(false);
-        this.statusFeedback.set(editingId ? 'A legfrissebb státusz frissítve lett.' : 'Az új státusz rögzítve lett.');
+        this.statusFeedback.set(editingId ? 'The latest status update has been updated.' : 'The new status update has been recorded.');
         this.cancelStatusEdit(false);
         this.loadStatusUpdates();
       },

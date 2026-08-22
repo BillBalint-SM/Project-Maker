@@ -10,18 +10,18 @@ export const projectStatuses = [
 export type ProjectStatus = (typeof projectStatuses)[number];
 
 export const administrativeProjectPhaseOptions = [
-  { label: 'Előkészítés alatt', value: 'DRAFT' },
-  { label: 'Felmérési szakasz', value: 'INTAKE_IN_PROGRESS' },
-  { label: 'Belső egyeztetésre vár', value: 'WAITING_INTERNAL' },
-  { label: 'Ügyfél-visszajelzésre vár', value: 'WAITING_CUSTOMER' },
-  { label: 'Tervezésre átadva', value: 'READY_FOR_PLANNING' },
+  { label: 'In preparation', value: 'DRAFT' },
+  { label: 'Discovery in progress', value: 'INTAKE_IN_PROGRESS' },
+  { label: 'Awaiting internal alignment', value: 'WAITING_INTERNAL' },
+  { label: 'Awaiting Customer feedback', value: 'WAITING_CUSTOMER' },
+  { label: 'Handed over for planning', value: 'READY_FOR_PLANNING' },
 ] as const satisfies readonly {
   readonly label: string;
   readonly value: Exclude<ProjectStatus, 'ARCHIVED'>;
 }[];
 
 export function projectStatusLabel(status: ProjectStatus): string {
-  if (status === 'ARCHIVED') return 'Archivált';
+  if (status === 'ARCHIVED') return 'Archived';
   return administrativeProjectPhaseOptions.find((option) => option.value === status)?.label ?? status;
 }
 

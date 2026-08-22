@@ -20,14 +20,14 @@ import { ProjectContextState } from './project-context.state';
 import { validatedProjectReturnTarget } from './project-return-target';
 
 const projectContextLinks = [
-  { key: 'status', label: 'Projektállapot', path: 'status' },
-  { key: 'interview', label: 'Felmérés', path: 'interview' },
-  { key: 'discovery', label: 'Felfedezések', path: 'discovery' },
-  { key: 'readiness', label: 'Becslési felkészültség', path: 'readiness' },
-  { key: 'decision-review', label: 'Döntési értékelés', path: 'decision-review' },
-  { key: 'markdown', label: 'Projekt-specifikáció', path: 'markdown' },
-  { key: 'delivery', label: 'Fejlesztési csomag', path: 'delivery' },
-  { key: 'settings', label: 'Projektbeállítások', path: 'settings' },
+  { key: 'status', label: 'Project Status', path: 'status' },
+  { key: 'interview', label: 'Initial Intake', path: 'interview' },
+  { key: 'discovery', label: 'Discovery', path: 'discovery' },
+  { key: 'readiness', label: 'Estimation Readiness', path: 'readiness' },
+  { key: 'decision-review', label: 'Decision Review', path: 'decision-review' },
+  { key: 'markdown', label: 'Project Specification', path: 'markdown' },
+  { key: 'delivery', label: 'Delivery Package', path: 'delivery' },
+  { key: 'settings', label: 'Project Settings', path: 'settings' },
 ] as const;
 
 const contextLinkMatchOptions: IsActiveMatchOptions = {
@@ -71,12 +71,12 @@ export class ProjectContextPage implements OnInit {
   readonly returnLabel = computed(() => {
     const target = this.returnTarget();
     if (target.startsWith('/projects/active')) {
-      return 'Vissza az aktív munkasorhoz';
+      return 'Back to Active Project Queue';
     }
     if (target === '/follow-ups') {
-      return 'Vissza a tisztázandó tételekhez';
+      return 'Back to Discovery Follow-ups';
     }
-    return 'Vissza a projektportfólióhoz';
+    return 'Back to Portfolio Overview';
   });
   readonly contextQueryParams = computed(() => ({ returnTo: this.returnTarget() }));
   readonly primaryActionRoute = computed(() => {

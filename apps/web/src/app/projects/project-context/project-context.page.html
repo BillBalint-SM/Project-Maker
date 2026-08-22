@@ -7,23 +7,23 @@
     <span aria-hidden="true">←</span> {{ returnLabel() }}
   </a>
 
-  <header class="context-header" aria-label="Kiválasztott projekt">
+  <header class="context-header" aria-label="Selected project">
     <div class="project-identity">
-      <span class="eyebrow">Projekt</span>
+      <span class="eyebrow">Project</span>
       @if (context.workState(); as workState) {
         <strong class="project-name" data-testid="project-context-name">{{ workState.projectName }}</strong>
         <p-tag [value]="workState.preparationStatus.label" data-testid="project-context-preparation" />
       } @else {
-        <strong class="project-name">Projekt</strong>
+        <strong class="project-name">Project</strong>
         @if (context.loading()) {
           <span class="context-loading" aria-live="polite">
-            <p-progress-spinner ariaLabel="Projekt betöltése" />
-            Projekt betöltése…
+            <p-progress-spinner ariaLabel="Loading project" />
+            Loading project…
           </span>
         } @else if (context.loadError(); as error) {
           <span class="context-error" role="alert">{{ error }}</span>
           <button pButton type="button" severity="secondary" (click)="context.reload()">
-            Projekt újratöltése
+            Reload project
           </button>
         }
       }
@@ -31,7 +31,7 @@
 
     @if (context.workState(); as workState) {
       <div class="primary-task">
-        <span class="eyebrow">Következő feladat</span>
+        <span class="eyebrow">Next task</span>
         <strong>{{ workState.urgencyLabel }}</strong>
         <a
           pButton
@@ -43,7 +43,7 @@
       </div>
     }
 
-    <nav class="context-navigation" aria-label="Projekt navigációja">
+    <nav class="context-navigation" aria-label="Project navigation">
       @for (link of contextLinks; track link.key) {
         <a
           [routerLink]="contextRoute(link.path)"

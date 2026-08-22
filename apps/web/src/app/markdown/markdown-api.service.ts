@@ -22,14 +22,14 @@ export class MarkdownApiService {
         `/api/projects/${encodedProjectId}/markdown-revisions`,
         input,
       )
-      .pipe(catchError((error: unknown) => failApiRequest(error, 'generálni a specifikációverziót')));
+      .pipe(catchError((error: unknown) => failApiRequest(error, 'generate the specification version')));
   }
 
   loadConfiguration(projectId: string): Observable<MarkdownGenerationConfiguration> {
     const encodedProjectId = encodeURIComponent(projectId);
     return this.http
       .get<MarkdownGenerationConfiguration>(`/api/projects/${encodedProjectId}/markdown-revisions/configuration`)
-      .pipe(catchError((error: unknown) => failApiRequest(error, 'betölteni a specifikációs sablonokat')));
+      .pipe(catchError((error: unknown) => failApiRequest(error, 'load the specification templates')));
   }
 
   listRevisions(projectId: string): Observable<readonly MarkdownRevision[]> {
@@ -38,7 +38,7 @@ export class MarkdownApiService {
       .get<readonly MarkdownRevision[]>(
         `/api/projects/${encodedProjectId}/markdown-revisions`,
       )
-      .pipe(catchError((error: unknown) => failApiRequest(error, 'betölteni a specifikációverziókat')));
+      .pipe(catchError((error: unknown) => failApiRequest(error, 'load the specification versions')));
   }
 
   loadRevision(projectId: string, revisionId: string): Observable<MarkdownRevision> {
@@ -48,7 +48,7 @@ export class MarkdownApiService {
       .get<MarkdownRevision>(
         `/api/projects/${encodedProjectId}/markdown-revisions/${encodedRevisionId}`,
       )
-      .pipe(catchError((error: unknown) => failApiRequest(error, 'betölteni a specifikációverziót')));
+      .pipe(catchError((error: unknown) => failApiRequest(error, 'load the specification version')));
   }
 
   downloadUrl(projectId: string, revisionId: string): string {
@@ -80,27 +80,27 @@ function failApiRequest(error: unknown, action: string): Observable<never> {
 function mapApiError(error: unknown, action: string): ActionableApiError {
   if (!(error instanceof HttpErrorResponse)) {
     return {
-      userMessage: `Nem sikerült ${action}. Frissítsd az oldalt, majd próbáld újra.`,
+      userMessage: `Unable to ${action}. Refresh the page and try again.`,
       diagnostics: null,
     };
   }
 
   if (error.status === 0) {
     return {
-      userMessage: `Nem sikerült ${action}, mert a szolgáltatás nem érhető el. Ellenőrizd a kapcsolatot, majd próbáld újra.`,
+      userMessage: `Unable to ${action} because the service is unavailable. Check the connection and try again.`,
       diagnostics: { action, status: error.status, statusText: error.statusText },
     };
   }
 
   const nextStep =
     error.status === 404
-      ? 'Ellenőrizd, hogy a projekt vagy a specifikációverzió még létezik-e.'
+      ? 'Check that the project or specification version still exists.'
       : error.status === 409
         ? safeMarkdownConflictMessage(error) ??
-          'Frissítsd a projektet a legújabb specifikációverzióért, majd próbáld újra.'
-        : 'Ellenőrizd a kiválasztott létrehozási okot, majd próbáld újra.';
+          'Refresh the project to load the latest specification version, then try again.'
+        : 'Check the selected generation reason and try again.';
   return {
-    userMessage: `Nem sikerült ${action}. ${nextStep}`,
+    userMessage: `Unable to ${action}. ${nextStep}`,
     diagnostics: { action, status: error.status, statusText: error.statusText },
   };
 }
@@ -108,11 +108,11 @@ function mapApiError(error: unknown, action: string): ActionableApiError {
 function safeMarkdownConflictMessage(error: HttpErrorResponse): string | null {
   if (!isRecord(error.error) || typeof error.error['message'] !== 'string') return null;
   const message = error.error['message'];
-  if (message.startsWith('A kötelező sablonblokk nem áll rendelkezésre:')) {
-    return `${message} Pótold a megnevezett projektadatot, majd próbáld újra.`;
+  if (message.startsWith('Required template block is unavailable:')) {
+    return `${message} Add the named project data and try again.`;
   }
-  if (message.startsWith('Archivált projekthez nem hozható létre specifikációverzió')) {
-    return 'Archivált projekthez nem hozható létre specifikációverzió. Előbb állítsd vissza a projektet a Projektbeállításokban.';
+  if (message.startsWith('A specification version cannot be created for an archived project')) {
+    return 'A specification version cannot be created for an archived project. Restore the project in Project Settings first.';
   }
   return null;
 }

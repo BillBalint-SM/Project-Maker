@@ -17,16 +17,16 @@ export function renderCustomerFollowUpPing(
   const referenceLines = reference
     ? [
         '',
-        'Kapcsolódó nyitott kérdés',
-        `Kérdés: ${reference.question}`,
-        `Következő lépés: ${reference.nextStep}`,
-        `Határidő: ${reference.dueDate}`,
+        'Related open Discovery follow-up',
+        `Question: ${reference.question}`,
+        `Next action: ${reference.nextStep}`,
+        `Due date: ${reference.dueDate}`,
       ]
     : [];
   return {
     recipientName: project.customerContactName,
     recipientEmail: project.customerContactEmail,
-    subject: `Pontosítás kérése — ${project.name}`,
+    subject: `Clarification request — ${project.name}`,
     text: [messageDraft, ...referenceLines].join('\n'),
     referencedFollowUpVersion: reference?.version ?? null,
   };

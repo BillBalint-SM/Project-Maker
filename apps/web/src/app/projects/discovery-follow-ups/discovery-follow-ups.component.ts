@@ -56,6 +56,7 @@ import {
 import {
   discoveryFollowUpCategoryLabel,
   discoveryFollowUpCategoryOptions,
+  discoveryFollowUpStatusLabel,
 } from './discovery-follow-up-label';
 
 interface EditConflictRefreshSnapshot {
@@ -135,8 +136,9 @@ export class DiscoveryFollowUpsComponent implements OnInit {
 
   readonly categoryOptions = discoveryFollowUpCategoryOptions;
   readonly categoryLabel = discoveryFollowUpCategoryLabel;
+  readonly statusLabel = discoveryFollowUpStatusLabel;
   readonly resolvedStatusOptions = resolvedDiscoveryFollowUpStatuses.map(
-    (value) => ({ label: value, value }),
+    (value) => ({ label: discoveryFollowUpStatusLabel(value), value }),
   );
   readonly sourceOptionChoices = computed(() =>
     this.sourceOptions().map((option) => ({
@@ -392,7 +394,7 @@ export class DiscoveryFollowUpsComponent implements OnInit {
             sortDiscoveryFollowUps([...current, created]),
           );
           this.resetCreationForm();
-          this.feedback.set('A tisztázandó tétel létrejött.');
+          this.feedback.set('Discovery follow-up created.');
           this.committedChange.emit();
         },
         error: (error: Error) => {
@@ -461,7 +463,7 @@ export class DiscoveryFollowUpsComponent implements OnInit {
             ),
           );
           this.clearSourceLinkState();
-          this.feedback.set('A tisztázandó tétel forrása frissült.');
+          this.feedback.set('Discovery follow-up source updated.');
           this.committedChange.emit();
         },
         error: (error: Error) => {
@@ -539,7 +541,7 @@ export class DiscoveryFollowUpsComponent implements OnInit {
       this.savingSourceLinkId() !== null
     ) {
       this.actionError.set(
-        'A forrás nem távolítható el, amíg egy másik projektművelet folyamatban van. Várd meg a befejezését, majd próbáld meg ismét.',
+        'The source cannot be removed while another Project action is in progress. Wait for it to finish, then try again.',
       );
       return;
     }
@@ -549,7 +551,7 @@ export class DiscoveryFollowUpsComponent implements OnInit {
       current.source === null
     ) {
       this.actionError.set(
-        'A forráshivatkozás nem törölhető, mert a tisztázandó tétel már nem nyitott vagy nincs hozzárendelt forrása. Frissítsd a tisztázandó tételeket, majd próbáld újra.',
+        'The source link cannot be removed because this Discovery follow-up is no longer open or has no linked source. Refresh Discovery follow-ups and try again.',
       );
       return;
     }
@@ -581,7 +583,7 @@ export class DiscoveryFollowUpsComponent implements OnInit {
               ),
             ),
           );
-          this.feedback.set('A tisztázandó tétel forráshivatkozása törölve.');
+          this.feedback.set('Discovery follow-up source link removed.');
           this.committedChange.emit();
         },
         error: (error: Error) => this.actionError.set(error.message),
@@ -702,7 +704,7 @@ export class DiscoveryFollowUpsComponent implements OnInit {
             ),
           );
           this.clearEditState();
-          this.feedback.set('A tisztázandó tétel módosításai mentve.');
+          this.feedback.set('Discovery follow-up changes saved.');
           this.committedChange.emit();
         },
         error: (error: Error) => {
@@ -713,7 +715,7 @@ export class DiscoveryFollowUpsComponent implements OnInit {
           ) {
             this.editConflictId.set(followUpId);
             this.actionError.set(
-              'A tisztázandó tétel időközben megváltozott. A piszkozat megmaradt; mentés előtt töltsd be az aktuális verziót.',
+              'This Discovery follow-up changed in the meantime. Your draft is retained; load the current version before saving.',
             );
             this.refreshAfterEditConflict(followUpId);
             return;
@@ -759,14 +761,14 @@ export class DiscoveryFollowUpsComponent implements OnInit {
           this.followUps.set(sortDiscoveryFollowUps(followUps));
           if (!refreshedFollowUp) {
             this.actionError.set(
-              'A tisztázandó tétel frissítés után nem található. Mentés előtt próbáld újra a frissítést.',
+              'The Discovery follow-up could not be found after refresh. Retry the refresh before saving.',
             );
             return;
           }
 
           if (!this.isCanonicalOpen(refreshedFollowUp)) {
             this.actionError.set(
-              'A lezárt tisztázandó tétel már nem szerkeszthető. Vesd el ezt a piszkozatot.',
+              'This Discovery follow-up has already been resolved and can no longer be edited. Discard this draft.',
             );
           }
 
@@ -886,7 +888,7 @@ export class DiscoveryFollowUpsComponent implements OnInit {
           );
           this.openedResolutionId.set(null);
           this.resetResolutionForm();
-          this.feedback.set('A tisztázandó tétel lezárva.');
+          this.feedback.set('Discovery follow-up resolved.');
           this.committedChange.emit();
         },
         error: (error: Error) => {

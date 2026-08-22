@@ -44,32 +44,32 @@ export class DecisionPortfolioApiService {
       params = params.append('preparation', preparation);
     }
     return this.http.get<PortfolioPage>('/api/projects/portfolio-page', { params }).pipe(
-      catchError((error: unknown) => this.fail(error, 'betölteni a projektportfóliót')),
+      catchError((error: unknown) => this.fail(error, 'load the Project Portfolio')),
     );
   }
 
   roadmap(includeArchived = false): Observable<BusinessRoadmap> {
     const params = includeArchived ? new HttpParams().set('includeArchived', 'true') : undefined;
     return this.http.get<BusinessRoadmap>('/api/roadmap', { params }).pipe(
-      catchError((error: unknown) => this.fail(error, 'betölteni a roadmapot')),
+      catchError((error: unknown) => this.fail(error, 'load the roadmap')),
     );
   }
 
   createGoal(input: SaveRoadmapGroupInput): Observable<BusinessGoal> {
     return this.http.post<BusinessGoal>('/api/roadmap/goals', input).pipe(
-      catchError((error: unknown) => this.fail(error, 'létrehozni az üzleti célt')),
+      catchError((error: unknown) => this.fail(error, 'create the Business Goal')),
     );
   }
 
   updateGoal(goalId: string, input: SaveRoadmapGroupInput): Observable<BusinessGoal> {
     return this.http.put<BusinessGoal>(`/api/roadmap/goals/${encodeURIComponent(goalId)}`, input).pipe(
-      catchError((error: unknown) => this.fail(error, 'menteni az üzleti célt')),
+      catchError((error: unknown) => this.fail(error, 'save the Business Goal')),
     );
   }
 
   deleteGoal(goalId: string): Observable<void> {
     return this.http.delete<void>(`/api/roadmap/goals/${encodeURIComponent(goalId)}`).pipe(
-      catchError((error: unknown) => this.fail(error, 'törölni az üzleti célt')),
+      catchError((error: unknown) => this.fail(error, 'delete the Business Goal')),
     );
   }
 
@@ -77,20 +77,20 @@ export class DecisionPortfolioApiService {
     return this.http.post<Initiative>(
       `/api/roadmap/goals/${encodeURIComponent(goalId)}/initiatives`,
       input,
-    ).pipe(catchError((error: unknown) => this.fail(error, 'létrehozni a kezdeményezést')));
+    ).pipe(catchError((error: unknown) => this.fail(error, 'create the Initiative')));
   }
 
   updateInitiative(initiativeId: string, input: SaveRoadmapGroupInput): Observable<Initiative> {
     return this.http.put<Initiative>(
       `/api/roadmap/initiatives/${encodeURIComponent(initiativeId)}`,
       input,
-    ).pipe(catchError((error: unknown) => this.fail(error, 'menteni a kezdeményezést')));
+    ).pipe(catchError((error: unknown) => this.fail(error, 'save the Initiative')));
   }
 
   deleteInitiative(initiativeId: string): Observable<void> {
     return this.http.delete<void>(
       `/api/roadmap/initiatives/${encodeURIComponent(initiativeId)}`,
-    ).pipe(catchError((error: unknown) => this.fail(error, 'törölni a kezdeményezést')));
+    ).pipe(catchError((error: unknown) => this.fail(error, 'delete the Initiative')));
   }
 
   assignProject(
@@ -100,13 +100,13 @@ export class DecisionPortfolioApiService {
     return this.http.put<ProjectWorkspace>(
       `/api/projects/${encodeURIComponent(projectId)}/initiative`,
       input,
-    ).pipe(catchError((error: unknown) => this.fail(error, 'hozzárendelni a projektet')));
+    ).pipe(catchError((error: unknown) => this.fail(error, 'assign the project')));
   }
 
   statusUpdates(projectId: string): Observable<readonly ProjectStatusUpdate[]> {
     return this.http.get<readonly ProjectStatusUpdate[]>(
       `/api/projects/${encodeURIComponent(projectId)}/status-updates`,
-    ).pipe(catchError((error: unknown) => this.fail(error, 'betölteni a státuszjelentéseket')));
+    ).pipe(catchError((error: unknown) => this.fail(error, 'load the status updates')));
   }
 
   createStatusUpdate(
@@ -116,7 +116,7 @@ export class DecisionPortfolioApiService {
     return this.http.post<ProjectStatusUpdate>(
       `/api/projects/${encodeURIComponent(projectId)}/status-updates`,
       input,
-    ).pipe(catchError((error: unknown) => this.fail(error, 'menteni a státuszjelentést')));
+    ).pipe(catchError((error: unknown) => this.fail(error, 'save the status update')));
   }
 
   updateStatusUpdate(
@@ -127,13 +127,13 @@ export class DecisionPortfolioApiService {
     return this.http.put<ProjectStatusUpdate>(
       `/api/projects/${encodeURIComponent(projectId)}/status-updates/${encodeURIComponent(statusUpdateId)}`,
       input,
-    ).pipe(catchError((error: unknown) => this.fail(error, 'frissíteni a státuszjelentést')));
+    ).pipe(catchError((error: unknown) => this.fail(error, 'update the status update')));
   }
 
   decisions(projectId: string): Observable<readonly FormalDecision[]> {
     return this.http.get<readonly FormalDecision[]>(
       `/api/projects/${encodeURIComponent(projectId)}/decisions`,
-    ).pipe(catchError((error: unknown) => this.fail(error, 'betölteni a döntéseket')));
+    ).pipe(catchError((error: unknown) => this.fail(error, 'load the decisions')));
   }
 
   createDecision(
@@ -143,7 +143,7 @@ export class DecisionPortfolioApiService {
     return this.http.post<FormalDecision>(
       `/api/projects/${encodeURIComponent(projectId)}/decisions`,
       input,
-    ).pipe(catchError((error: unknown) => this.fail(error, 'rögzíteni a döntést')));
+    ).pipe(catchError((error: unknown) => this.fail(error, 'record the decision')));
   }
 
   private fail(error: unknown, action: string): Observable<never> {
@@ -155,7 +155,7 @@ export class DecisionPortfolioApiService {
         ? (error.error as { message: string }).message
         : null;
     return throwError(
-      () => new Error(serverMessage ?? `Nem sikerült ${action}. Frissítsd az oldalt, majd próbáld újra.`),
+      () => new Error(serverMessage ?? `Unable to ${action}. Refresh the page and try again.`),
     );
   }
 }

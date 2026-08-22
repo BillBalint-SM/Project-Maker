@@ -38,18 +38,18 @@ const preparationOrder: readonly ProjectPreparationState[] = [
 ];
 
 const urgencyOptions = [
-  ['CUSTOMER_REPLY', 'Új ügyfélválasz'],
-  ['OVERDUE', 'Lejárt'],
-  ['DUE_SOON', 'Hamarosan lejár'],
-  ['IN_PROGRESS', 'Folyamatban'],
+  ['CUSTOMER_REPLY', 'New Customer reply'],
+  ['OVERDUE', 'Overdue'],
+  ['DUE_SOON', 'Due soon'],
+  ['IN_PROGRESS', 'In progress'],
 ] as const satisfies readonly (readonly [ActiveProjectUrgency, string])[];
 const preparationOptions = [
-  ['SCHEMA_REQUIRED', 'Kérdésséma szükséges'],
-  ['INTAKE_IN_PROGRESS', 'Felmérés folyamatban'],
-  ['CLARIFICATION_REQUIRED', 'Tisztázás szükséges'],
-  ['DECISION_REVIEW_REQUIRED', 'Döntési értékelés szükséges'],
-  ['ESTIMATE_PREPARABLE', 'Becslés előkészíthető'],
-  ['ESTIMATE_READY', 'Becslésre kész'],
+  ['SCHEMA_REQUIRED', 'Question schema required'],
+  ['INTAKE_IN_PROGRESS', 'Initial Intake in progress'],
+  ['CLARIFICATION_REQUIRED', 'Clarification required'],
+  ['DECISION_REVIEW_REQUIRED', 'Decision Review required'],
+  ['ESTIMATE_PREPARABLE', 'Ready for estimate preparation'],
+  ['ESTIMATE_READY', 'Ready for estimation'],
 ] as const satisfies readonly (readonly [ProjectPreparationState, string])[];
 
 interface QueueGroup {
@@ -148,13 +148,13 @@ export class ActiveProjectQueuePageComponent implements OnInit {
         catchError((error: unknown) => {
           if (error instanceof ActiveProjectQueueCursorRequestError) {
             this.cursorRecoveryNotice.set(
-              'A korábbi oldal már nem állítható helyre. Az első oldalt mutatjuk.',
+              'The previous page is no longer available. Showing the first page.',
             );
             this.preserveRecoveryNoticeForNextPage = true;
             void this.navigateToFirstPage(request.query);
             return EMPTY;
           }
-          const message = error instanceof Error ? error.message : 'Ismeretlen betöltési hiba.';
+          const message = error instanceof Error ? error.message : 'Unknown loading error.';
           return of({ request, page: null, error: message });
         }),
       )),
@@ -171,16 +171,16 @@ export class ActiveProjectQueuePageComponent implements OnInit {
         this.stale.set(false);
         this.updateError.set(null);
         if (request.kind === 'REFRESH') {
-          this.liveStatus.set('A lista frissítve.');
+          this.liveStatus.set('The list has been refreshed.');
         } else if (request.kind === 'RETRY') {
-          this.liveStatus.set('A lista ismét elérhető.');
+          this.liveStatus.set('The list is available again.');
         }
       } else if (error) {
         this.failedRequest = request;
         if (this.page()) {
           this.stale.set(true);
           this.updateError.set(error);
-          this.liveStatus.set('A lista frissítése nem sikerült. A korábbi adatok maradtak láthatók.');
+          this.liveStatus.set('The list could not be refreshed. Previously loaded data remains visible.');
         } else {
           this.loadError.set(error);
         }

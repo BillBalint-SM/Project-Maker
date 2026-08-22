@@ -35,6 +35,6 @@ export class CustomerRepliesApiService {
     ).pipe(catchError(() => this.failure()));
   }
   private failure(): Observable<never> {
-    return throwError(() => new Error('Az ügyfélválaszok most nem érhetők el. A többi projektmunka folytatható; próbáld meg később újratölteni ezt az oldalt.'));
+    return throwError(() => new Error('Customer replies are currently unavailable. Other project work can continue; reload this page later.'));
   }
 }

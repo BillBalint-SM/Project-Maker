@@ -18,13 +18,13 @@ export interface MarkdownTemplatePlaceholderDefinition {
 }
 
 export const markdownTemplatePlaceholderDefinitions: readonly MarkdownTemplatePlaceholderDefinition[] = [
-  { name: 'project.name', label: 'Projekt neve', optional: false },
-  { name: 'revision.metadata', label: 'Specifikációverzió metaadatai', optional: false },
-  { name: 'project.context', label: 'Projektkontextus', optional: false },
-  { name: 'project.schema', label: 'Elfogadott projekt-kérdésséma', optional: true },
-  { name: 'project.initialIntake', label: 'Kezdő felmérés', optional: true },
-  { name: 'project.readiness', label: 'Felkészültség', optional: true },
-  { name: 'project.decisionReview', label: 'Döntési értékelés', optional: true },
+  { name: 'project.name', label: 'Project name', optional: false },
+  { name: 'revision.metadata', label: 'Specification version metadata', optional: false },
+  { name: 'project.context', label: 'Project context', optional: false },
+  { name: 'project.schema', label: 'Accepted Project question schema', optional: true },
+  { name: 'project.initialIntake', label: 'Initial Intake', optional: true },
+  { name: 'project.readiness', label: 'Estimation readiness', optional: true },
+  { name: 'project.decisionReview', label: 'Decision Review', optional: true },
 ];
 
 export interface MarkdownTemplateSummary {

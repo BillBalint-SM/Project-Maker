@@ -40,7 +40,7 @@ export class AuthService {
     const normalizedEmail = normalizeEmail(email);
     this.assertRateLimit(`signup:${normalizedEmail}`);
     if (await this.users.existsBy({ email: normalizedEmail })) {
-      throw new ConflictException('Ehhez az e-mail-címhez már tartozik fiók.');
+      throw new ConflictException('An account already exists for this email address.');
     }
 
     const user = await this.users.save({
@@ -125,7 +125,7 @@ export class AuthService {
   ): Promise<AuthResult> {
     const user = await this.users.findOneByOrFail({ id: userId, active: true });
     if (!(await passwordMatches(currentPassword, user.passwordHash))) {
-      throw new UnauthorizedException('A jelenlegi jelszó nem megfelelő.');
+      throw new UnauthorizedException('The current password is incorrect.');
     }
 
     user.passwordHash = await hashPassword(newPassword);
@@ -157,7 +157,7 @@ export class AuthService {
     const accepted =
       user && (includeInactive || user.active) && (await passwordMatches(password, user.passwordHash));
     if (!accepted) {
-      throw new UnauthorizedException('Hibás e-mail-cím vagy jelszó.');
+      throw new UnauthorizedException('Incorrect email address or password.');
     }
 
     this.attempts.delete(rateLimitKey);
@@ -181,7 +181,7 @@ export class AuthService {
     );
     if (recentAttempts.length >= rateLimitMaximum) {
       throw new HttpException(
-        'Túl sok próbálkozás. Kérjük, próbáld újra később.',
+        'Too many attempts. Please try again later.',
         HttpStatus.TOO_MANY_REQUESTS,
       );
     }

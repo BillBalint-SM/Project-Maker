@@ -37,7 +37,7 @@ export class AuthGuard implements CanActivate {
       const token = mcpTokenFrom(request);
       const user = token ? await this.auth.resolveMcpToken(token) : null;
       if (!user) {
-        throw new UnauthorizedException('Érvényes Project Maker MCP-token szükséges.');
+        throw new UnauthorizedException('A valid Project Maker MCP token is required.');
       }
       request.internalUser = user;
       setCurrentAuditActor(user.id);
@@ -52,7 +52,7 @@ export class AuthGuard implements CanActivate {
       const origin = request.headers['origin'];
       const allowedOrigin = this.config.get<string>('CUSTOMER_RESPONSE_ORIGIN');
       if (!allowedOrigin || typeof origin !== 'string' || origin !== allowedOrigin) {
-        throw new ForbiddenException('A kérés forrása nem engedélyezett.');
+        throw new ForbiddenException('The request origin is not allowed.');
       }
     }
     if (shouldBypassAuthenticationInTests()) {
@@ -62,7 +62,7 @@ export class AuthGuard implements CanActivate {
     if (!isCustomerPublic && isUnsafeMethod(request.method)) {
       const origin = request.headers['origin'];
       if (typeof origin !== 'string' || origin !== this.config.get<string>('CORS_ORIGIN')) {
-        throw new ForbiddenException('A kérés forrása nem engedélyezett.');
+        throw new ForbiddenException('The request origin is not allowed.');
       }
     }
 
@@ -80,7 +80,7 @@ export class AuthGuard implements CanActivate {
     if (isPublic || isCustomerPublic || user) {
       return true;
     }
-    throw new UnauthorizedException('A folytatáshoz bejelentkezés szükséges.');
+    throw new UnauthorizedException('Sign-in is required to continue.');
   }
 }
 

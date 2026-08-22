@@ -1,25 +1,25 @@
 <p-card data-testid="decision-review-card">
-  <ng-template #title>Döntési értékelés</ng-template>
+  <ng-template #title>Decision Review</ng-template>
   <ng-template #subtitle>
-    A pontszám és az ajánlás a hat értékelésből és az aktuális felkészültségből készül.
+    The score and recommendation are based on six ratings and the current readiness assessment.
   </ng-template>
 
   @if (loading()) {
     <div class="decision-review-state" data-testid="decision-review-loading" aria-live="polite">
-      <p-progress-spinner ariaLabel="Döntési értékelés betöltése" />
-      <p>Betöltés folyamatban…</p>
+      <p-progress-spinner ariaLabel="Loading decision review" />
+      <p>Loading decision review…</p>
     </div>
   } @else if (loadError(); as error) {
     <div class="decision-review-state" data-testid="decision-review-error" role="alert">
       <p>{{ error }}</p>
-      <p-button label="Döntési értékelés újratöltése" data-testid="retry-decision-review-button" (onClick)="retry()" />
+      <p-button label="Reload decision review" data-testid="retry-decision-review-button" (onClick)="retry()" />
     </div>
   } @else if (review(); as decisionReview) {
     <form class="decision-review-form" [formGroup]="ratingForm" (ngSubmit)="save()">
       <fieldset [disabled]="!decisionReview.editable || saving()">
-        <legend>Értékelési szempontok</legend>
+        <legend>Evaluation criteria</legend>
         <p class="decision-review-help">
-          Az értékek {{ decisionReview.ratingScale.minimum }}-től {{ decisionReview.ratingScale.maximum }}-ig adhatók meg. A fordított irányban számító szempontokat a súlylista jelöli.
+          Rate each criterion from {{ decisionReview.ratingScale.minimum }} to {{ decisionReview.ratingScale.maximum }}. Inverted criteria are identified in the weighting model.
         </p>
         <div class="decision-review-inputs">
           @for (dimension of decisionReview.dimensions; track dimension.id) {
@@ -30,7 +30,7 @@
                 [attr.data-testid]="'decision-rating-' + dimension.id"
                 [formControlName]="dimension.id"
               >
-                <option [ngValue]="null">Nincs megadva</option>
+                <option [ngValue]="null">Not rated</option>
                 @for (rating of ratingOptions(); track rating) {
                   <option [ngValue]="rating">{{ rating }}</option>
                 }
@@ -41,14 +41,14 @@
       </fieldset>
 
       @if (!decisionReview.editable) {
-        <p class="decision-review-read-only" data-testid="decision-review-read-only">Az archivált projekt értékelése csak olvasható. A módosításhoz állítsd vissza a projektet.</p>
+        <p class="decision-review-read-only" data-testid="decision-review-read-only">The archived project's decision review is read-only. Restore the project to make changes.</p>
       }
       @if (saveError(); as error) {
         <p class="decision-review-save-error" data-testid="decision-review-save-error" role="alert">{{ error }}</p>
       }
       <p-button
         type="submit"
-        label="Döntési értékelés mentése"
+        label="Save decision review"
         [loading]="saving()"
         [disabled]="!decisionReview.editable || saving()"
         data-testid="save-decision-review-button"
@@ -56,12 +56,12 @@
     </form>
 
     <section aria-labelledby="decision-review-policy-title">
-      <h2 id="decision-review-policy-title">Értékelési súlyok</h2>
+      <h2 id="decision-review-policy-title">Evaluation weights</h2>
       <ul class="decision-review-dimensions" data-testid="decision-review-dimensions">
         @for (dimension of decisionReview.dimensions; track dimension.id) {
           <li>
             {{ ratingLabels[dimension.id] }} · {{ dimension.weight * 100 }}%
-            @if (dimension.inverted) { · fordított }
+            @if (dimension.inverted) { · inverted }
           </li>
         }
       </ul>
@@ -69,35 +69,35 @@
 
     @if (!decisionReview.available) {
       <section class="decision-review-state" data-testid="decision-review-unavailable">
-        <h2>A pontszám még nem elérhető</h2>
+        <h2>Decision score unavailable</h2>
         @if (decisionReview.unavailableReasons.includes('INCOMPLETE_INPUT')) {
-          <p>Adj meg mind a hat értékelési szempontot a döntési pontszám kiszámításához.</p>
+          <p>Rate all six criteria to calculate the decision score.</p>
         }
         @if (decisionReview.unavailableReasons.includes('NO_INITIAL_INTAKE')) {
-          <p>Indíts vagy fejezz be kezdő felmérést a felkészültségi adatokhoz.</p>
+          <p>Start or complete an Initial Intake to provide readiness data.</p>
         }
         @if (decisionReview.unavailableReasons.includes('UNSUPPORTED_SCHEMA')) {
-          <p>Az aktuális kezdő felmérés kérdéssémája nem támogatja a felkészültségi értékelést.</p>
+          <p>The current Initial Intake question schema does not support readiness assessment.</p>
         }
       </section>
     } @else {
       <section class="decision-review-result" data-testid="decision-review-available" aria-labelledby="decision-review-result-title">
-        <h2 id="decision-review-result-title">Értékelés eredménye</h2>
+        <h2 id="decision-review-result-title">Decision review result</h2>
         <dl>
           <div data-testid="decision-review-score">
-            <dt>Döntési pontszám</dt>
+            <dt>Decision score</dt>
             <dd>{{ decisionReview.decisionScore }} · {{ decisionReview.decisionScoreLabel }}</dd>
           </div>
           <div data-testid="decision-review-recommendation">
-            <dt>Ajánlás</dt>
+            <dt>Recommendation</dt>
             <dd>{{ recommendationLabels[decisionReview.recommendation] }}</dd>
           </div>
           <div data-testid="decision-review-readiness">
-            <dt>Felkészültség</dt>
+            <dt>Readiness</dt>
             <dd>{{ decisionReview.readinessPercentage }}%</dd>
           </div>
           <div data-testid="decision-review-blocking-gap-count">
-            <dt>Becslést blokkoló hiányok</dt>
+            <dt>Estimation-blocking gaps</dt>
             <dd>{{ decisionReview.estimateBlockingGapCount }}</dd>
           </div>
         </dl>

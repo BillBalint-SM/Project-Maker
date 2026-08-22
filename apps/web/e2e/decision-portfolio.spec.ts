@@ -19,22 +19,37 @@ test('connects project status, formal decision, roadmap, and filtered portfolio'
   await page.getByTestId('status-summary').fill('A külső függőség blokkolja a projektet.');
   await page.getByTestId('status-next-step').fill('Beszállítói döntés megszerzése.');
   await (await nativeButton(page, 'save-status-update')).click();
-  await expect(page.getByTestId('status-update-history')).toContainText('Blokkolt');
+  await expect(page.getByTestId('status-update-history')).toContainText('Blocked');
 
   await page.getByTestId('project-context-nav-decision-review').click();
   await page.getByTestId('formal-decision-outcome').selectOption('GO');
   await page.getByTestId('formal-decision-maker').fill('Terméktanács');
   await page.getByTestId('formal-decision-rationale').fill('A szükséges üzleti eredmény és a szállítási út tiszta.');
   await (await nativeButton(page, 'save-formal-decision')).click();
-  await expect(page.getByTestId('formal-decision-history')).toContainText('Mehet');
+  await expect(page.getByTestId('formal-decision-history')).toContainText('Go');
 
   await page.getByTestId('global-roadmap-link').click();
   await page.getByTestId('new-goal-name').fill(goalName);
   await (await nativeButton(page, 'create-goal')).click();
   await page.getByTestId('new-initiative-name').fill(initiativeName);
   await (await nativeButton(page, 'create-initiative')).click();
-  await page.getByTestId('project-initiative-assignment').selectOption({ label: initiativeName });
+  const assignment = page
+    .getByText(projectName, { exact: true })
+    .locator('..')
+    .getByTestId('project-initiative-assignment');
+  const initiativeId = await assignment
+    .getByRole('option', { name: initiativeName, exact: true })
+    .getAttribute('value');
+  expect(initiativeId).not.toBeNull();
+  await assignment.selectOption({ label: initiativeName });
   await expect(page.getByTestId('roadmap-goals')).toContainText(projectName);
+  await page.reload();
+  await expect(
+    page
+      .getByText(projectName, { exact: true })
+      .locator('..')
+      .getByTestId('project-initiative-assignment'),
+  ).toHaveValue(initiativeId!);
 
   await page.getByTestId('global-portfolio-link').click();
   await page.getByTestId('portfolio-health-filter').selectOption('BLOCKED');

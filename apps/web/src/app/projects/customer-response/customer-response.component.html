@@ -1,76 +1,76 @@
 <section id="customer-responses" class="customer-response" aria-labelledby="customer-response-title">
   <div class="section-heading">
     <div>
-      <span class="eyebrow">Célzott pontosítás</span>
-      <h2 id="customer-response-title">Ügyfél-válaszkérés</h2>
-      <p>Jelöld ki a szükséges kérdéseket, ellenőrizd a pontos levelet, majd egyszer erősítsd meg a küldést.</p>
+      <span class="eyebrow">Targeted clarification</span>
+      <h2 id="customer-response-title">Customer response request</h2>
+      <p>Select the required questions, review the exact email, then confirm sending once.</p>
     </div>
-    <button pButton type="button" class="p-button-text" [disabled]="loading()" (click)="load()">Frissítés</button>
+    <button pButton type="button" class="p-button-text" [disabled]="loading()" (click)="load()">Refresh</button>
   </div>
 
   @if (feedback()) { <p-message severity="success" role="status">{{ feedback() }}</p-message> }
   @if (error(); as message) { <p-message severity="error" role="alert">{{ message }}</p-message> }
   @if (loading()) {
-    <p aria-live="polite">A válaszkérések betöltése…</p>
+    <p aria-live="polite">Loading response requests…</p>
   } @else {
     @if (!archived()) {
       <fieldset class="prompt-list" [disabled]="busy()">
-        <legend>Kérdések</legend>
+        <legend>Questions</legend>
         @for (prompt of eligible(); track prompt.sourceKind + prompt.sourceId) {
           <label>
             <input type="checkbox" data-testid="eligible-response-prompt" [checked]="selected().has(prompt.sourceKind + ':' + prompt.sourceId)" (change)="toggle(prompt, $event)" />
             <span><strong>{{ prompt.topic }}</strong>{{ prompt.text }}</span>
           </label>
-        } @empty { <p>Jelenleg nincs kiküldhető nyitott pontosítás.</p> }
+        } @empty { <p>There are no open clarifications available to send.</p> }
       </fieldset>
-      <p-button label="Előnézet" [disabled]="selected().size === 0 || busy()" [loading]="busy() && !preview()" data-testid="preview-customer-response" (onClick)="createPreview()" />
+      <p-button label="Preview" [disabled]="selected().size === 0 || busy()" [loading]="busy() && !preview()" data-testid="preview-customer-response" (onClick)="createPreview()" />
     }
 
     @if (preview(); as currentPreview) {
       <section class="request-preview" data-testid="customer-response-preview" aria-labelledby="response-preview-title">
-        <h3 id="response-preview-title">Küldési előnézet</h3>
+        <h3 id="response-preview-title">Sending preview</h3>
         <dl>
-          <div><dt>Címzett</dt><dd>{{ currentPreview.recipientName }} &lt;{{ currentPreview.recipientEmail }}&gt;</dd></div>
-          <div><dt>Tárgy</dt><dd>{{ currentPreview.subject }}</dd></div>
+          <div><dt>Recipient</dt><dd>{{ currentPreview.recipientName }} &lt;{{ currentPreview.recipientEmail }}&gt;</dd></div>
+          <div><dt>Subject</dt><dd>{{ currentPreview.subject }}</dd></div>
         </dl>
         <pre>{{ currentPreview.textContent }}</pre>
         <div class="actions">
-          <button pButton type="button" class="p-button-outlined" [disabled]="busy()" (click)="preview.set(null)">Vissza</button>
-          <p-button label="Küldés megerősítése" [loading]="busy()" data-testid="confirm-customer-response" (onClick)="confirm()" />
+          <button pButton type="button" class="p-button-outlined" [disabled]="busy()" (click)="preview.set(null)">Back</button>
+          <p-button label="Confirm sending" [loading]="busy()" data-testid="confirm-customer-response" (onClick)="confirm()" />
         </div>
       </section>
     }
 
     <div class="request-history" data-testid="customer-response-requests">
-      <h3>Válaszkérések</h3>
+      <h3>Response requests</h3>
       @for (request of requests(); track request.id) {
         <article>
-          <header><strong>{{ requestState(request) }}</strong><time>{{ request.createdAt | date: 'yyyy. MM. dd. HH:mm' }}</time></header>
-          <p>{{ request.prompts.length }} kérdés · {{ request.recipientName }} &lt;{{ request.recipientEmail }}&gt;</p>
+          <header><strong>{{ requestState(request) }}</strong><time>{{ request.createdAt | date: 'dd MMM yyyy, HH:mm' }}</time></header>
+          <p>{{ request.prompts.length }} question(s) · {{ request.recipientName }} &lt;{{ request.recipientEmail }}&gt;</p>
           @if (request.submission; as submission) {
             <ol>
               @for (answer of submission.answers; track answer.id) {
                 <li>
                   <strong>{{ promptText(request, answer.promptId) }}</strong>
                   <p>{{ answer.answer }}</p>
-                  @if (answer.evidenceId) { <small>Bizonyítékforrásként megtartva</small> }
-                  @else if (!archived()) { <button type="button" [disabled]="busy()" (click)="keepAsEvidence(request, answer.id)">Megtartás bizonyítékforrásként</button> }
+                  @if (answer.evidenceId) { <small>Retained as evidence</small> }
+                  @else if (!archived()) { <button type="button" [disabled]="busy()" (click)="keepAsEvidence(request, answer.id)">Retain as evidence</button> }
                 </li>
               }
             </ol>
             @if (!submission.reviewedAt && !archived()) {
-              <p-button label="Átnéztem" [disabled]="busy()" data-testid="review-customer-response" (onClick)="review(request)" />
+              <p-button label="Mark as reviewed" [disabled]="busy()" data-testid="review-customer-response" (onClick)="review(request)" />
             }
           } @else if (request.state === 'OPEN' && !archived()) {
             <div class="actions">
               @if (request.deliveryState === 'FAILED' || request.deliveryState === 'UNKNOWN') {
-                <button pButton type="button" class="p-button-outlined" [disabled]="busy()" (click)="retry(request)">Küldés újrapróbálása</button>
+                <button pButton type="button" class="p-button-outlined" [disabled]="busy()" (click)="retry(request)">Retry sending</button>
               }
-              <button pButton type="button" class="p-button-text" [disabled]="busy()" (click)="revoke(request)">Visszavonás</button>
+              <button pButton type="button" class="p-button-text" [disabled]="busy()" (click)="revoke(request)">Revoke</button>
             </div>
           }
         </article>
-      } @empty { <p>Még nincs ügyfél-válaszkérés.</p> }
+      } @empty { <p>No Customer response requests yet.</p> }
     </div>
   }
 </section>

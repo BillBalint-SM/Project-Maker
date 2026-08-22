@@ -1,14 +1,14 @@
 <section aria-labelledby="new-project-title">
   <div class="page-heading">
-    <span class="eyebrow">Projektindítás</span>
-    <h1 id="new-project-title">Új projekt</h1>
-    <p>Add meg az alapadatokat, majd indítsd el a projektfelmérést.</p>
+    <span class="eyebrow">Project initiation</span>
+    <h1 id="new-project-title">New Project</h1>
+    <p>Enter the core project details, then start the Initial Intake.</p>
   </div>
 
   <p-card styleClass="create-card">
-    <ng-template #title>Projekt alapadatai</ng-template>
+    <ng-template #title>Project details</ng-template>
     <ng-template #subtitle>
-      A kapcsolattartó adatai szükségesek a projekt elindításához.
+      Customer contact details are required to initiate the project.
     </ng-template>
     <form
       class="create-form"
@@ -17,7 +17,7 @@
       data-testid="new-project-form"
     >
       <div class="field">
-        <label for="project-name">Projekt neve</label>
+        <label for="project-name">Project name</label>
         <input
           pInputText
           id="project-name"
@@ -28,12 +28,12 @@
           [attr.aria-invalid]="createForm.controls.name.invalid && createForm.controls.name.touched"
         />
         @if (createForm.controls.name.invalid && createForm.controls.name.touched) {
-          <small class="field-error">Adj meg legfeljebb 255 karakteres projektnevet.</small>
+          <small class="field-error">Enter a project name of up to 255 characters.</small>
         }
       </div>
 
       <div class="field">
-        <label for="project-playbook">Felmérési playbook</label>
+        <label for="project-playbook">Discovery playbook</label>
         <select
           id="project-playbook"
           class="full-width"
@@ -46,11 +46,11 @@
             </option>
           }
         </select>
-        <small>A projekt első felmérési köre után ez a verzió rögzül.</small>
+        <small>This version is retained once the first Initial Intake has started.</small>
       </div>
 
       <div class="field">
-        <label for="internal-owner-name">Belső projektgazda neve</label>
+        <label for="internal-owner-name">Internal project owner</label>
         <input
           pInputText
           id="internal-owner-name"
@@ -61,12 +61,12 @@
           [attr.aria-invalid]="createForm.controls.internalOwnerName.invalid && createForm.controls.internalOwnerName.touched"
         />
         @if (createForm.controls.internalOwnerName.invalid && createForm.controls.internalOwnerName.touched) {
-          <small class="field-error">Add meg a projekt belső projektgazdájának nevét.</small>
+          <small class="field-error">Enter the internal project owner's name.</small>
         }
       </div>
 
       <div class="field">
-        <label for="contact-name">Ügyfél kapcsolattartó neve</label>
+        <label for="contact-name">Customer contact</label>
         <input
           pInputText
           id="contact-name"
@@ -80,12 +80,12 @@
           createForm.controls.customerContactName.invalid &&
           createForm.controls.customerContactName.touched
         ) {
-          <small class="field-error">Add meg az ügyfél kapcsolattartójának nevét.</small>
+          <small class="field-error">Enter the Customer contact's name.</small>
         }
       </div>
 
       <div class="field">
-        <label for="contact-email">Ügyfél kapcsolattartó e-mail-címe</label>
+        <label for="contact-email">Customer contact email</label>
         <input
           pInputText
           id="contact-email"
@@ -100,7 +100,7 @@
           createForm.controls.customerContactEmail.invalid &&
           createForm.controls.customerContactEmail.touched
         ) {
-          <small class="field-error">Adj meg érvényes e-mail-címet.</small>
+          <small class="field-error">Enter a valid email address.</small>
         }
       </div>
 
@@ -113,7 +113,7 @@
       <div class="form-actions">
         <p-button
           type="button"
-          label="Piszkozat mentése és kilépés"
+          label="Save draft and exit"
           severity="secondary"
           [loading]="saving()"
           [disabled]="saving()"
@@ -122,12 +122,12 @@
         />
         <p-button
           type="submit"
-          label="Mentés és tovább a felméréshez"
+          label="Save and continue to Initial Intake"
           [loading]="saving()"
           [disabled]="saving()"
           data-testid="create-project-submit"
         />
-        <a pButton routerLink="/" class="p-button-secondary p-button-text">Mégse</a>
+        <a pButton routerLink="/" class="p-button-secondary p-button-text">Cancel</a>
       </div>
     </form>
   </p-card>

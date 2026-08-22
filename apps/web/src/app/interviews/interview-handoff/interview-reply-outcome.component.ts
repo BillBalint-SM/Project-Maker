@@ -14,7 +14,7 @@ import { InterviewHandoffApiService } from './interview-handoff-api.service';
       <button pButton type="button" class="p-button-outlined"
         [disabled]="busy() || projectArchived()"
         [attr.data-testid]="'start-handoff-revision-' + correspondence().id"
-        (click)="startRevision()">Új összefoglaló-verzió készítése</button>
+        (click)="startRevision()">Create revised handoff</button>
     }
     @if (error()) { <p role="alert">{{ error() }}</p> }
   `,
@@ -51,7 +51,7 @@ export class InterviewReplyOutcomeComponent {
         });
       },
       error: () => {
-        this.error.set('Az új összefoglaló-verzió nem indítható. Töltsd újra az adatokat, és ellenőrizd a projekt állapotát.');
+        this.error.set('Unable to create the revised handoff. Reload the data and check the project state.');
         this.busy.set(false);
       },
       });

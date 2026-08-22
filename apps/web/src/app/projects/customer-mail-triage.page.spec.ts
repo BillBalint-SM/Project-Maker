@@ -52,7 +52,7 @@ describe('CustomerMailTriagePage', () => {
     const fixture = TestBed.createComponent(CustomerMailTriagePage);
     await fixture.whenStable();
     expect(fixture.nativeElement.textContent).toContain('Ellenőrzendő automatikus levél.');
-    expect(fixture.nativeElement.textContent).toContain('Kézbesítési jelentés');
+    expect(fixture.nativeElement.textContent).toContain('Delivery report');
 
     const dismiss = fixture.nativeElement.querySelector(
       '[data-testid="dismiss-message-11111111-1111-4111-8111-111111111111"]',

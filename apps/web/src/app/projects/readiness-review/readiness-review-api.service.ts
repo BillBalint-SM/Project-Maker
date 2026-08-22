@@ -17,7 +17,7 @@ export class ReadinessReviewApiService {
           throwError(
             () =>
               new Error(
-                'A felkészültség értékelése nem tölthető be. Próbáld újra.',
+                'Unable to load the readiness assessment. Try again.',
               ),
           ),
         ),

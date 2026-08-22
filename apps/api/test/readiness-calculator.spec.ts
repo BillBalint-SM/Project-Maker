@@ -124,9 +124,9 @@ describe('calculateProjectReadiness', () => {
     const result = calculateProjectReadiness(inputWithHiddenBusinessContent);
 
     assert.equal(result.completionPercentage, 50);
-    assert.equal(result.completionLabel, policy.statuses.completion[1]);
+    assert.equal(result.completionLabel, 'In progress');
     assert.equal(result.readinessPercentage, 55);
-    assert.equal(result.readinessBand, 'Becslés előkészíthető');
+    assert.equal(result.readinessBand, 'Ready for estimation preparation');
     assert.deepEqual(
       result.factors.map((factor) => ({
         id: factor.id,
@@ -159,40 +159,40 @@ describe('calculateProjectReadiness', () => {
       [
         {
           id: 'checklist-general-004',
-          severity: policy.statuses.readinessGapSeverity[0],
-          category: 'Ellenőrzőlista',
+          severity: 'Critical',
+          category: 'Readiness checklist',
           target: 'checklist',
           snapshotId: 'snapshot-4',
           followUpId: null,
         },
         {
           id: 'follow-up-follow-up-blocked',
-          severity: policy.statuses.readinessGapSeverity[0],
-          category: 'Tisztázandó tétel',
+          severity: 'Critical',
+          category: 'Discovery follow-up',
           target: 'follow-ups',
           snapshotId: null,
           followUpId: 'follow-up-blocked',
         },
         {
           id: 'overview-ball-owner',
-          severity: policy.statuses.readinessGapSeverity[1],
-          category: 'Felelősség',
+          severity: 'Important',
+          category: 'Ownership',
           target: 'overview',
           snapshotId: null,
           followUpId: null,
         },
         {
           id: 'checklist-general-002',
-          severity: policy.statuses.readinessGapSeverity[1],
-          category: 'Ellenőrzőlista',
+          severity: 'Important',
+          category: 'Readiness checklist',
           target: 'checklist',
           snapshotId: 'snapshot-2',
           followUpId: null,
         },
         {
           id: 'follow-up-follow-up-open',
-          severity: policy.statuses.readinessGapSeverity[1],
-          category: 'Tisztázandó tétel',
+          severity: 'Important',
+          category: 'Discovery follow-up',
           target: 'follow-ups',
           snapshotId: null,
           followUpId: 'follow-up-open',
@@ -233,9 +233,9 @@ describe('calculateProjectReadiness', () => {
     );
 
     assert.equal(result.completionPercentage, 0);
-    assert.equal(result.completionLabel, policy.statuses.completion[2]);
+    assert.equal(result.completionLabel, 'Clarification required');
     assert.equal(result.readinessPercentage, 15);
-    assert.equal(result.readinessBand, 'Pontosítás szükséges');
+    assert.equal(result.readinessBand, 'Clarification required');
     assert.deepEqual(
       result.factors.map((factor) => ({ id: factor.id, percentage: factor.percentage })),
       [
@@ -360,23 +360,23 @@ describe('calculateProjectReadiness', () => {
         [complete.readinessPercentage, complete.readinessBand, complete.completionLabel],
       ],
       [
-        [0, 'Pontosítás szükséges', policy.statuses.completion[2]],
+        [0, 'Clarification required', 'Clarification required'],
         [
           policy.scoring.readiness.thresholds.estimatePreparationFrom,
-          'Becslés előkészíthető',
-          policy.statuses.completion[1],
+          'Ready for estimation preparation',
+          'In progress',
         ],
         [
           policy.scoring.readiness.thresholds.estimateReadyFrom,
-          'Becslésre kész',
-          policy.statuses.completion[1],
+          'Ready for estimation',
+          'In progress',
         ],
         [
           policy.scoring.readiness.thresholds.developmentReadyFrom,
-          'Fejlesztésre kész',
-          policy.statuses.completion[1],
+          'Ready for development',
+          'In progress',
         ],
-        [100, 'Fejlesztésre kész', policy.statuses.completion[0]],
+        [100, 'Ready for development', 'Complete'],
       ],
     );
   });

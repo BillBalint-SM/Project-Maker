@@ -30,53 +30,53 @@ export class AuthApiService {
   }
 
   signUp(credentials: Credentials): Observable<InternalUser> {
-    return this.authenticate('/api/auth/signup', credentials, 'létrehozni a fiókot');
+    return this.authenticate('/api/auth/signup', credentials, 'create the account');
   }
 
   login(credentials: Credentials): Observable<InternalUser> {
-    return this.authenticate('/api/auth/login', credentials, 'bejelentkezni');
+    return this.authenticate('/api/auth/login', credentials, 'sign in');
   }
 
   restore(credentials: Credentials): Observable<InternalUser> {
-    return this.authenticate('/api/auth/restore', credentials, 'visszaállítani a fiókot');
+    return this.authenticate('/api/auth/restore', credentials, 'restore the account');
   }
 
   changePassword(input: PasswordChange): Observable<InternalUser> {
     return this.http.post<InternalUser>('/api/auth/password', input).pipe(
       tap((user) => this.currentUser.set(user)),
-      catchError((error: unknown) => this.fail(error, 'megváltoztatni a jelszót')),
+      catchError((error: unknown) => this.fail(error, 'change the password')),
     );
   }
 
   deactivate(): Observable<void> {
     return this.http.post<void>('/api/auth/deactivate', {}).pipe(
       tap(() => this.currentUser.set(null)),
-      catchError((error: unknown) => this.fail(error, 'letiltani a fiókot')),
+      catchError((error: unknown) => this.fail(error, 'deactivate the account')),
     );
   }
 
   loadMcpConnection(): Observable<McpConnectionStatus> {
     return this.http.get<McpConnectionStatus>('/api/auth/mcp-connection').pipe(
-      catchError((error: unknown) => this.fail(error, 'betölteni a Claude Code-kapcsolatot')),
+      catchError((error: unknown) => this.fail(error, 'load the Claude Code connection')),
     );
   }
 
   createMcpConnection(): Observable<McpConnectionToken> {
     return this.http.post<McpConnectionToken>('/api/auth/mcp-connection', {}).pipe(
-      catchError((error: unknown) => this.fail(error, 'létrehozni a Claude Code-kapcsolatot')),
+      catchError((error: unknown) => this.fail(error, 'create the Claude Code connection')),
     );
   }
 
   revokeMcpConnection(): Observable<void> {
     return this.http.delete<void>('/api/auth/mcp-connection').pipe(
-      catchError((error: unknown) => this.fail(error, 'megszüntetni a Claude Code-kapcsolatot')),
+      catchError((error: unknown) => this.fail(error, 'revoke the Claude Code connection')),
     );
   }
 
   logout(): Observable<void> {
     return this.http.post<void>('/api/auth/logout', {}).pipe(
       tap(() => this.currentUser.set(null)),
-      catchError((error: unknown) => this.fail(error, 'kijelentkezni')),
+      catchError((error: unknown) => this.fail(error, 'sign out')),
     );
   }
 
@@ -103,7 +103,7 @@ export class AuthApiService {
       () =>
         new Error(
           serverMessage ??
-            `Nem sikerült ${action}. Ellenőrizd a kapcsolatot, majd próbáld újra.`,
+            `Unable to ${action}. Check your connection and try again.`,
         ),
     );
   }
