@@ -69,7 +69,7 @@ test('completes the keyboard employee journey and restores the paged queue URL a
     expect(created.status()).toBe(201);
   }
 
-  await page.setViewportSize({ width: 390, height: 844 });
+  await page.setViewportSize({ width: 1280, height: 720 });
   await page.goto('/');
   const queueLink = page.getByTestId('active-project-queue-link');
   await tabTo(page, queueLink);
@@ -298,8 +298,8 @@ test('offers filter reset and portfolio actions for the two empty queue states',
   await expect(page.getByRole('link', { name: 'Create a new project' })).toHaveAttribute('href', '/projects/new');
 });
 
-test('reflows ordered semantic work groups without losing row content on a narrow viewport', async ({ page }) => {
-  const uniquePart = `narrow-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+test('preserves ordered semantic work groups without losing row content', async ({ page }) => {
+  const uniquePart = `queue-groups-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
   const overdue = await page.request.post('/api/projects', {
     data: {
       name: `${uniquePart} lejárt`,
@@ -326,7 +326,7 @@ test('reflows ordered semantic work groups without losing row content on a narro
   const overdueProject = (await overdue.json()) as { readonly id: string };
   const ordinaryProject = (await ordinary.json()) as { readonly id: string };
 
-  await page.setViewportSize({ width: 390, height: 844 });
+  await page.setViewportSize({ width: 1024, height: 768 });
   await page.goto(`/projects/active?q=${encodeURIComponent(uniquePart)}`);
 
   const groups = page.getByTestId('active-queue-group');

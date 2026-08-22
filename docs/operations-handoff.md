@@ -1,8 +1,9 @@
 # Project Maker operations handoff
 
-This document describes the current web-platform foundation as it exists in
-the repository. It is an operator/developer handoff, not a claim that every
-product capability in `docs/product-domain.md` is complete.
+This document is the operational handoff for the current Project Maker
+deployment. It describes the supported runtime, recovery boundaries, and
+operational behaviour. For product terminology and user-facing behaviour, see
+[the product domain](product-domain.md).
 
 For an actual handover or go-live, use the
 [release cutover checklist](release-cutover.md) as the decision record and this
@@ -32,7 +33,7 @@ From the repository root:
 
 ```powershell
 Copy-Item .env.example .env
-# Edit .env: replace the placeholder in POSTGRES_PASSWORD and DATABASE_URL.
+# Populate the required values without placing real values in source control.
 pnpm compose:config
 pnpm compose:up
 ```
@@ -51,29 +52,15 @@ Removing it is destructive and must be an explicit operator action.
 
 ## Environment contract
 
-All runtime values are supplied through the selected Compose environment file;
-do not commit `.env` or real credentials.
+All runtime values are supplied through the selected Compose environment file.
+Use the [runtime configuration reference](configuration.md) as the single
+source of truth for variable names, defaults, validation rules, and mail
+fail-closed behaviour. Do not commit `.env` or real credentials.
 
-| Variable | Required | Current meaning |
-| --- | --- | --- |
-| `POSTGRES_DB` | yes | Database name used by the PostgreSQL container. |
-| `POSTGRES_USER` | yes | Application database user. |
-| `POSTGRES_PASSWORD` | yes | Database password. Keep it identical to the password in `DATABASE_URL`. |
-| `DATABASE_URL` | yes | API connection URL using the Compose service name `postgres`. |
-| `WEB_PORT` | yes | Host port mapped to Nginx port `8080`. |
-| `CORS_ORIGIN` | yes | One exact browser origin, for example `http://localhost:8080`; paths, wildcards, credentials, and origin lists are rejected. |
-| `FOLLOW_UP_POLL_INTERVAL_MS` | no | Automatic follow-up poll interval. Valid range is 5,000–86,400,000 ms; default is 60,000. |
-| `ATTACHMENT_MAX_MIB` | no | Maximum size of one Question Bank reference file or Project work attachment in MiB. Defaults to 50; an Operator may configure a lower positive value, never a higher one. |
-| `CORRESPONDENCE_MAILBOX_POLL_INTERVAL_MS` | no | Dedicated correspondence mailbox IMAP poll interval in milliseconds. The default is 60,000; non-integer values and values below 100 fall back to that default. |
-| `CORRESPONDENCE_MAILBOX_NAME` / `CORRESPONDENCE_MAILBOX_ADDRESS` | yes | Operator organization-controlled dedicated sender identity; reply correlation uses high-entropy plus-addresses at this mailbox. |
-| `MAIL_GATEWAY_SMTP_*` | yes | TLS SMTP endpoint and dedicated credential. Only `STARTTLS_REQUIRED` and `IMPLICIT_TLS` are accepted. |
-| `MAIL_GATEWAY_IMAP_*` | yes | TLS IMAP inbox endpoint, folder, and separately managed credential. |
-| `MAIL_GATEWAY_TLS_CA_CERTIFICATE_BASE64` | no | Optional base64 PEM private CA for both TLS channels. |
-
-Before upgrading an existing deployment, rename the former mailbox entries in
-its secret store or `.env` file to the matching
+Before upgrading an existing deployment, replace any former mailbox entries in
+the secret store or `.env` file with the current
 `CORRESPONDENCE_MAILBOX_*` names. The application deliberately does not read
-the legacy names: the correspondence mailbox is controlled by the Operator
+legacy names: the correspondence mailbox is controlled by the Operator
 organization, not by a Project Customer.
 
 Customer handoffs use the Operator-provided TLS SMTP gateway with no fallback. A known rejection
@@ -98,7 +85,7 @@ ordered TypeORM migrations registered in
 6. `0006-discovery-follow-ups.ts` — project-owned discovery follow-ups, a category enum, date-order index, update trigger, and retained-project foreign key.
 7. `0007-discovery-follow-up-resolution.ts` — nullable persisted discovery-follow-up answer/decision content.
 8. `0008-discovery-follow-up-edit-version.ts` — positive persisted discovery-follow-up version for conflict-safe open-item edits.
-9. `0009-round-question-assessment-overrides.ts` — effective `Részben megvan` and justified `Nem releváns` assessment overrides, completion/immutability guards, and their database invariants.
+9. `0009-round-question-assessment-overrides.ts` — the legacy stored assessment values `Részben megvan` (Partially complete) and justified `Nem releváns` (Not applicable), completion/immutability guards, and their database invariants.
 10. `0010-round-answer-validation-parity.ts` — database validation parity for `TEXT` and `LONG_TEXT` answers by rejecting values made only from space, tab, line feed, carriage return, form feed, or vertical tab, matching the API rule.
 11. `0011-discovery-follow-up-source-linkage.ts` — nullable discovery-follow-up source snapshot, restrictive foreign key, and source lookup index.
 12. `0012-decision-review-inputs.ts` — validated nullable Decision input ratings with guarded rollback when project input exists.
@@ -201,15 +188,15 @@ New-Item -ItemType Directory -Force .\backups | Out-Null
 $stamp = Get-Date -Format yyyyMMdd-HHmmss
 docker compose --env-file .env exec -T postgres sh -c 'PGPASSWORD="$POSTGRES_PASSWORD" pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" --format=custom' > ".\backups\project-maker-$stamp.dump"
 
-# A napi futás után csak a hét legújabb mentés maradjon meg.
+# After each daily run, retain only the seven most recent backups.
 Get-ChildItem -LiteralPath .\backups -Filter 'project-maker-*.dump' -File |
   Sort-Object LastWriteTime -Descending |
   Select-Object -Skip 7 |
   Remove-Item
 ```
 
-Ezt az Operator naponta egyszer futtatja a saját ütemezőjéből. Az alkalmazás
-nem tartalmaz külön backup schedulert vagy mentési felületet.
+The Operator runs this once daily through its own scheduler. The application
+does not include a backup scheduler or backup UI.
 
 ### Controlled restore
 
@@ -225,15 +212,14 @@ Get-Content .\backups\project-maker-YYYYMMDD-HHMMSS.dump -AsByteStream |
 Run the in-container migration status command above after a restore and
 perform the health/smoke gates before allowing normal users back in.
 
-Havonta egyszer a legújabb mentést egy külön, eldobható adatbázisba kell
-visszaállítani. A drill céladatbázisának neve tartalmazza a
-`project_maker_restore_drill` előtagot; éles adatbázis nem lehet célpont. A
-visszaállítás után az Operator ellenőrzi a `migrations`, `internal_users`,
-`audit_events`, `projects`, `customer_outbound_communications` és
-`customer_outbound_attempts` táblák olvashatóságát és reprezentatív
-rekordjait, majd kizárólag az eldobható drill-adatbázist törli. A drill
-eredményéből csak a dátum, a dump neve, az ellenőrzött táblák és a siker/hiba
-maradjon meg; Customer-tartalom és credential ne kerüljön bizonyítékba.
+Once per month, restore the latest backup into a separate disposable database.
+The drill database name must contain the `project_maker_restore_drill` prefix;
+it must never target production data. After restoring, the Operator verifies
+that the `migrations`, `internal_users`, `audit_events`, `projects`,
+`customer_outbound_communications`, and `customer_outbound_attempts` tables
+are readable and contain representative records, then deletes only the
+disposable drill database. Retain only the date, dump name, checked tables, and
+pass/fail result as evidence; do not retain Customer content or credentials.
 
 ## Functional handoff
 
@@ -393,10 +379,11 @@ administrative lifecycle-status update. Saving the project while it is already a
 does not create a duplicate; leaving and entering the milestone again creates
 the next version. The manual button remains available for any other snapshot.
 
-The employee UI does not expose the raw audit feed or payload. Project status
+The employee UI does not expose the raw audit feed or payload. Project Status
 selects the latest five allow-listed business events before limiting and maps
-them to specific Hungarian summaries. The bounded technical audit API and its
-redacted persistence remain available for protected operational evidence.
+them to specific professional-English summaries. The bounded technical audit
+API and its redacted persistence remain available for protected operational
+evidence.
 
 ### Customer mail gateway boundary and delivery semantics
 

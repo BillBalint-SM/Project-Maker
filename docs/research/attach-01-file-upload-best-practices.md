@@ -1,6 +1,6 @@
 # ATTACH-01 file upload and download: implementation evidence
 
-**Scope.** This note records the primary-source cross-check used to finalize the [ATTACH-01 implementation plan](../attach-01-governed-discovery-attachments.md). It does not broaden the product into a document library or choose an object-storage provider.
+**Historical scope.** This note records the primary-source cross-check considered while finalizing the [ATTACH-01 implementation plan](../attach-01-governed-discovery-attachments.md). It is design history, not a description of the current runtime and not a backlog of implicit requirements. The delivered design and ADR-0005 are authoritative where this research explored a broader option.
 
 ## Outcome
 
@@ -16,7 +16,7 @@ The changes below make the delivery operationally unambiguous: hard multipart li
 
 3. **Apply a strict allowlist after canonical filename processing.** Keep the existing extension + declared-type + magic-signature agreement. Decode/normalise before extension inspection; reject ambiguous/double extensions, path separators, controls, empty files, archives, encrypted/unscannable files, active content, and macro-enabled Office formats. Neither a client `Content-Type` nor a signature is individually trustworthy ([OWASP upload validation](https://cheatsheetseries.owasp.org/cheatsheets/File_Upload_Cheat_Sheet.html)). Exclude legacy `.doc`, `.xls`, and `.ppt` from the first allowlist: Microsoft documents that legacy `.doc`/`.xls` can contain VBA while modern macro-disabled `.xlsx` cannot store VBA or Excel 4.0 macro sheets ([Microsoft Office format reference](https://learn.microsoft.com/en-us/office/compatibility/office-file-format-reference)). The 50 MiB product cap remains bounded when ingress overhead is explicit, the API independently enforces the exact configured file cap, and the scanner accepts at least that cap.
 
-4. **Scan the exact spooled bytes before durable availability.** A local ClamAV Unix socket should receive an `INSTREAM` scan (or `FILDES` where supported), never a path exposed over TCP. `clamd`'s TCP protocol provides neither encryption nor authentication; `INSTREAM` has a separate `StreamMaxLength`, which must be at least ATTACH-01's application cap so every otherwise valid file can be scanned, while the application remains the authoritative smaller limit ([ClamAV protocol](https://docs.clamav.net/manual/Usage/ClamdProtocol.html)). Treat `FOUND`, malformed/unscannable, timeout, unavailable scanner, and an out-of-date/unhealthy scanner as a failure: do not create content or a relationship, reveal no signature/engine diagnostics, and show the existing actionable Hungarian generic error. A health/readiness check must verify `PING`, scanner configuration limits, and signature freshness before accepting uploads.
+4. **Scan the exact spooled bytes before durable availability.** A local ClamAV Unix socket should receive an `INSTREAM` scan (or `FILDES` where supported), never a path exposed over TCP. `clamd`'s TCP protocol provides neither encryption nor authentication; `INSTREAM` has a separate `StreamMaxLength`, which must be at least ATTACH-01's application cap so every otherwise valid file can be scanned, while the application remains the authoritative smaller limit ([ClamAV protocol](https://docs.clamav.net/manual/Usage/ClamdProtocol.html)). Treat `FOUND`, malformed/unscannable, timeout, unavailable scanner, and an out-of-date/unhealthy scanner as a failure: do not create content or a relationship, reveal no signature/engine diagnostics, and show a safe, actionable professional-English error. A health/readiness check must verify `PING`, scanner configuration limits, and signature freshness before accepting uploads.
 
 5. **Commit one short transaction only after scanning.** Re-check owner lifecycle/version and the applicable Project, Question Bank, and deployment aggregate byte quotas under a row lock or serializable transaction; there is no per-owner attachment-count or byte quota. Insert immutable content + typed relationship + audit outcome together, then delete the temp file. PostgreSQL serializable transactions can abort on a serialization failure, so retry the *database transaction* safely a small bounded number of times, not the scan or the client request ([PostgreSQL transaction isolation](https://www.postgresql.org/docs/current/transaction-iso.html)). A client disconnect before the final response must not make a partial body available.
 
@@ -58,7 +58,13 @@ Required test additions to the accepted list:
 - Download tests: UTF-8 and hostile names, exact headers/bytes, no inline rendering, parent re-authorisation, archived/resolved read-only access, and no range support.
 - Operational tests: startup sweep only deletes owned stale temp files; scanner readiness failure blocks upload; a real backup/restore drill verifies bytes and digests; load test demonstrates bounded memory and scanner/database concurrency.
 
-## Decisions incorporated into final ATTACH-01
+## Research recommendations considered for ATTACH-01
+
+The list below records the broader recommendations evaluated at design time. It
+does not claim that every item was delivered. The current boundary is defined by
+the [delivered ATTACH-01 design](../attach-01-governed-discovery-attachments.md),
+[ADR-0005](../adr/0005-store-bounded-attachments-in-postgresql.md), and the
+runtime source.
 
 1. A default 50 MiB per-file maximum configurable downward, no per-owner count or byte maximum, and default 2 GiB Project, 10 GiB retained Question Bank, and 20 GiB deployment byte ceilings.
 2. Explicit Nginx plus Multer route limits, one accepted multipart file field, disk storage only, request timeout, and bounded scanner/database concurrency.
@@ -68,7 +74,7 @@ Required test additions to the accepted list:
 6. Private temp-directory ownership, deletion retry/sweep, maximum age, startup reconciliation, and observability.
 7. Safe ASCII plus UTF-8 `filename*` download names, no storage redirects, no byte ranges in v1, and per-request parent authorization.
 8. Boundary, scanner, idempotency, load, cleanup, and timed recovery tests, with source bytes, filenames, scanner detail, Project Customer material, and secrets excluded from logs.
-9. A hard `SEC-01` production-activation gate for authenticated employee identity, authorization, CSRF protection, and rate limiting; the current VPN boundary is not a substitute for employee identity.
+9. An authenticated Internal-user identity, origin/session controls, and rate limits at the boundaries they protect. This capability is delivered; the VPN limits reachability while local identity binds the actor, without introducing roles or per-Project permissions.
 
 ## Sources consulted
 
