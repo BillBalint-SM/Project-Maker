@@ -19,6 +19,12 @@ const preparationStatus: ProjectPreparationStatus = {
   label: 'Kérdésséma szükséges',
   primaryAction: { target: 'INTERVIEW', label: 'Felmérés megnyitása' },
 };
+const postSchemaPreparationStatus: ProjectPreparationStatus = {
+  projectId,
+  state: 'INTAKE_IN_PROGRESS',
+  label: 'Kezdő felmérés folyamatban',
+  primaryAction: { target: 'INTERVIEW', label: 'Felmérés folytatása' },
+};
 const followUpState: CustomerFollowUpState = {
   projectId,
   messageDraft: 'Kérjük a visszajelzést.',
@@ -59,7 +65,7 @@ describe('ProjectSettingsPage', () => {
     const { fixture } = await createPage(project);
 
     const root = fixture.nativeElement as HTMLElement;
-    expect(root.textContent).toContain('Az archivált projekt beállításai olvashatók');
+    expect(root.textContent).toContain('A teljes mentett munkafolyamat és történet olvasható');
     expect(root.querySelector('[data-testid="restore-project-button"]')).not.toBeNull();
     expect(root.querySelector('[data-testid="archive-project-button"]')).toBeNull();
     expect(root.querySelector('[data-testid="delete-project-button"]')).toBeNull();
@@ -74,6 +80,43 @@ describe('ProjectSettingsPage', () => {
       (root.querySelector('[data-testid="follow-up-settings-fieldset"]') as HTMLFieldSetElement)
         .disabled,
     ).toBe(true);
+  });
+
+  it('keeps Project basics and the Customer contact editable after schema publication', async () => {
+    const project = projectFixture('DRAFT');
+    const { fixture } = await createPage(project, postSchemaPreparationStatus);
+
+    const root = fixture.nativeElement as HTMLElement;
+    expect(fixture.componentInstance.canEditBasics()).toBe(true);
+    expect(
+      (root.querySelector('[data-testid="project-basics-fieldset"]') as HTMLFieldSetElement)
+        .disabled,
+    ).toBe(false);
+    expect(root.querySelector('[data-testid="save-project-basics"]')).not.toBeNull();
+  });
+
+  it('continues the restored workflow in its retained administrative phase', async () => {
+    const project = projectFixture('ARCHIVED');
+    const { fixture, api } = await createPage(project);
+    api.restoreProject.mockReturnValue(of({
+      ...project,
+      status: 'WAITING_CUSTOMER',
+      updatedAt: '2026-08-22T12:00:00.000Z',
+    }));
+
+    fixture.componentInstance.restoreProject();
+    await fixture.whenStable();
+
+    expect(api.restoreProject).toHaveBeenCalledWith(projectId);
+    expect(fixture.componentInstance.view()?.project.status).toBe('WAITING_CUSTOMER');
+    expect(fixture.componentInstance.lifecycleForm.controls.status.value).toBe('WAITING_CUSTOMER');
+    expect(
+      (fixture.nativeElement as HTMLElement)
+        .querySelector('[data-testid="project-settings-action-success"]')
+        ?.textContent,
+    ).toContain(
+      'A projekt az archiválás előtti állapotban, az Ügyfél-visszajelzésre vár fázisban folytatható. Korábbi esemény vagy küldés nem ismétlődött meg.',
+    );
   });
 
   it('updates only the administrative project phase from Project settings', async () => {
@@ -211,10 +254,16 @@ describe('ProjectSettingsPage', () => {
   });
 });
 
-async function createPage(project: ProjectWorkspace) {
+async function createPage(
+  project: ProjectWorkspace,
+  currentPreparationStatus = preparationStatus,
+) {
   const api = {
     listPlaybooks: vi.fn().mockReturnValue(of([])),
-    loadProjectSettings: vi.fn().mockReturnValue(of({ project, preparationStatus })),
+    loadProjectSettings: vi.fn().mockReturnValue(of({
+      project,
+      preparationStatus: currentPreparationStatus,
+    })),
     updateProjectBasics: vi.fn(),
     updateWorkspace: vi.fn().mockImplementation(
       (_projectId: string, input: { readonly status?: ProjectWorkspace['status'] }) =>

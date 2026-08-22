@@ -196,6 +196,7 @@ export class CustomerFollowUpService implements OnModuleInit, OnModuleDestroy {
       state.intervalMinutes = intervalMinutes;
       state.expiresAt = expiresAt;
       state.nextPingAt = enabled ? addMinutes(now, intervalMinutes) : null;
+      state.pausedRemainingMilliseconds = null;
       if (!enabled) {
         state.nextPingAt = null;
       }
@@ -926,9 +927,6 @@ export class CustomerFollowUpService implements OnModuleInit, OnModuleDestroy {
       }
 
       if (project.status === 'ARCHIVED') {
-        state.enabled = false;
-        state.nextPingAt = null;
-        await manager.getRepository(CustomerFollowUpEntity).save(state);
         return null;
       }
       let rendered: RenderedCustomerFollowUpPing;
@@ -1441,6 +1439,7 @@ function createDefaultState(projectId: string): CustomerFollowUpEntity {
     expiresAt: null,
     lastPingAt: null,
     nextPingAt: null,
+    pausedRemainingMilliseconds: null,
     lastDeliveryStatus: neverDeliveryStatus,
     lastDeliveryError: null,
     createdAt: new Date(),
@@ -1471,8 +1470,7 @@ async function markDeliverySuccess(
   enabled: boolean,
 ): Promise<void> {
   state.lastPingAt = now;
-  state.nextPingAt = enabled ? addMinutes(now, state.intervalMinutes) : null;
-  await manager.getRepository(CustomerFollowUpEntity).save(state);
+  await saveNextDeliveryCadence(manager, state, now, enabled);
 }
 
 async function markDeliveryFailure(
@@ -1482,7 +1480,25 @@ async function markDeliveryFailure(
   enabled: boolean,
 ): Promise<void> {
   state.lastPingAt = now;
-  state.nextPingAt = enabled ? addMinutes(now, state.intervalMinutes) : null;
+  await saveNextDeliveryCadence(manager, state, now, enabled);
+}
+
+async function saveNextDeliveryCadence(
+  manager: EntityManager,
+  state: CustomerFollowUpEntity,
+  now: Date,
+  enabled: boolean,
+): Promise<void> {
+  const archived = enabled && await manager.getRepository(Project).existsBy({
+    id: state.projectId,
+    status: 'ARCHIVED',
+  });
+  state.nextPingAt = enabled && !archived
+    ? addMinutes(now, state.intervalMinutes)
+    : null;
+  state.pausedRemainingMilliseconds = archived
+    ? state.intervalMinutes * 60_000
+    : null;
   await manager.getRepository(CustomerFollowUpEntity).save(state);
 }
 

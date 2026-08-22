@@ -40,6 +40,8 @@ const expectedMigrationNames = [
   'DeliveryAndGit0030DeliveryAndGit1788422400000',
   'ClaudeCodeMcpConnection0031ClaudeCodeMcpConnection1788508800000',
   'CanonicalCustomerMailPersistence0032CanonicalCustomerMailPersistence1788595200000',
+  'ProjectArchiveResume0033ProjectArchiveResume1788681600000',
+  'ProjectDraftDeletion0034ProjectDraftDeletion1788768000000',
 ] as const;
 
 type MigrationConstructor = new () => { readonly name?: string };

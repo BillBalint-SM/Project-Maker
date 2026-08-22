@@ -16,11 +16,8 @@ import type {
 import { DataSource, EntityManager, QueryFailedError, Repository } from 'typeorm';
 
 import { AuditEvent, type AuditPayload } from '../audit/audit-event.entity';
-import { DiscoveryFollowUpEntity } from '../discovery-follow-ups/discovery-follow-up.entity';
 import { CustomerFollowUpEntity } from '../follow-ups/follow-up.entity';
 import { InterviewRoundEntity } from '../interviews/interview-round.entity';
-import { MarkdownRevisionEntity } from '../markdown/markdown-revision.entity';
-import { ProjectQuestionSchemaEntity } from '../question-bank/project-question-schema.entity';
 import { MarkdownService } from '../markdown/markdown.service';
 import { CreateProjectDto } from './dto/create-project.dto';
 import { UpdateProjectBasicsDto } from './dto/update-project-basics.dto';
@@ -31,8 +28,8 @@ import { Project } from './project.entity';
 const archivedStatus: ProjectStatus = 'ARCHIVED';
 const draftStatus: ProjectStatus = 'DRAFT';
 const projectDeletionConflictMessage =
-  'This project has persisted activity and cannot be deleted. Archive it instead.';
-const projectDeletionReferentialIntegrityCodes = new Set(['23001', '23503']);
+  'Only a DRAFT without Customer communication or Git handoff history can be deleted. Archive it instead.';
+const projectDeletionGuardCodes = new Set(['23001', '23503', '55000']);
 const readyForPlanningStatus: ProjectStatus = 'READY_FOR_PLANNING';
 const workspaceFields: readonly (keyof UpdateProjectWorkspaceDto)[] = [
   'internalOwnerName',
@@ -158,12 +155,9 @@ export class ProjectsService {
   ): Promise<ProjectWorkspace> {
     return this.dataSource.transaction(async (manager) => {
       const project = await findLockedProject(manager, projectId);
-      if (
-        project.status === archivedStatus ||
-        await manager.getRepository(ProjectQuestionSchemaEntity).existsBy({ projectId })
-      ) {
+      if (project.status === archivedStatus) {
         throw new ConflictException(
-          'Project basics can only be changed before the first question schema is accepted and while the project is active.',
+          'Archived projects must be restored before Project basics can be changed.',
         );
       }
 
@@ -226,6 +220,8 @@ export class ProjectsService {
       }
 
       const previousStatus = project.status;
+      await pauseCustomerFollowUpSchedule(manager, projectId, new Date());
+      project.archivedFromStatus = previousStatus;
       project.status = archivedStatus;
       const savedProject = await projectRepository.save(project);
       await auditEventRepository.save({
@@ -250,13 +246,16 @@ export class ProjectsService {
       }
 
       const previousStatus = project.status;
-      project.status = draftStatus;
+      const restoredStatus = project.archivedFromStatus ?? draftStatus;
+      await resumeCustomerFollowUpSchedule(manager, projectId, new Date());
+      project.status = restoredStatus;
+      project.archivedFromStatus = null;
       const savedProject = await projectRepository.save(project);
       await auditEventRepository.save({
         id: randomUUID(),
         projectId: savedProject.id,
         eventType: 'PROJECT_RESTORED',
-        payload: createStatusAuditPayload(previousStatus, draftStatus),
+        payload: createStatusAuditPayload(previousStatus, restoredStatus),
       });
 
       return toWorkspace(savedProject);
@@ -270,7 +269,7 @@ export class ProjectsService {
         if (project.status !== draftStatus) {
           throw new ConflictException(projectDeletionConflictMessage);
         }
-        if (await hasPersistedProjectActivity(manager, projectId)) {
+        if (await hasExternalProjectHistory(manager, projectId)) {
           throw new ConflictException(projectDeletionConflictMessage);
         }
         await manager.getRepository(Project).remove(project);
@@ -296,37 +295,36 @@ async function findLockedProject(manager: EntityManager, projectId: string): Pro
   return project;
 }
 
-async function hasPersistedProjectActivity(
+async function hasExternalProjectHistory(
   manager: EntityManager,
   projectId: string,
 ): Promise<boolean> {
-  const project = await manager.getRepository(Project).findOneByOrFail({ id: projectId });
-  if (
-    project.businessValueRating !== null ||
-    project.strategicAlignmentRating !== null ||
-    project.urgencyRating !== null ||
-    project.confidenceRating !== null ||
-    project.complexityRating !== null ||
-    project.riskRating !== null
-  ) {
-    return true;
-  }
-  if (await manager.getRepository(AuditEvent).existsBy({ projectId })) {
-    return true;
-  }
-  if (await manager.getRepository(ProjectQuestionSchemaEntity).existsBy({ projectId })) {
-    return true;
-  }
-  if (await manager.getRepository(InterviewRoundEntity).existsBy({ projectId })) {
-    return true;
-  }
-  if (await manager.getRepository(MarkdownRevisionEntity).existsBy({ projectId })) {
-    return true;
-  }
-  if (await manager.getRepository(DiscoveryFollowUpEntity).existsBy({ projectId })) {
-    return true;
-  }
-  return manager.getRepository(CustomerFollowUpEntity).existsBy({ projectId });
+  const rows = await manager.query<Array<{ hasHistory: boolean }>>(
+    `SELECT EXISTS (
+       SELECT 1 FROM "interview_customer_handoffs"
+       WHERE "project_id" = $1 AND "state" <> 'DRAFT'
+       UNION ALL
+       SELECT 1 FROM "customer_follow_up_delivery_attempts" WHERE "project_id" = $1
+       UNION ALL
+       SELECT 1 FROM "customer_outbound_communications" WHERE "project_id" = $1
+       UNION ALL
+       SELECT 1 FROM "customer_correspondences" WHERE "project_id" = $1
+       UNION ALL
+       SELECT 1 FROM "customer_inbound_messages" WHERE "project_id" = $1
+       UNION ALL
+       SELECT 1 FROM "customer_mail_triage" WHERE "project_id" = $1
+       UNION ALL
+       SELECT 1 FROM "customer_mail_system_events" WHERE "project_id" = $1
+       UNION ALL
+       SELECT 1 FROM "customer_mail_triage_actions" WHERE "project_id" = $1
+       UNION ALL
+       SELECT 1 FROM "customer_response_requests" WHERE "project_id" = $1
+       UNION ALL
+       SELECT 1 FROM "delivery_handoffs" WHERE "project_id" = $1
+     ) AS "hasHistory"`,
+    [projectId],
+  );
+  return rows[0]?.hasHistory === true;
 }
 
 function isProjectDeletionReferentialIntegrityViolation(error: unknown): boolean {
@@ -336,7 +334,7 @@ function isProjectDeletionReferentialIntegrityViolation(error: unknown): boolean
   const driverError = error.driverError as { readonly code?: unknown };
   return (
     typeof driverError.code === 'string' &&
-    projectDeletionReferentialIntegrityCodes.has(driverError.code)
+    projectDeletionGuardCodes.has(driverError.code)
   );
 }
 
@@ -413,6 +411,57 @@ function validateNextActionOwner(project: Project): void {
   if (project.nextActionOwnerRole === 'CUSTOMER_CONTACT' && !project.customerContactName.trim()) {
     throw new BadRequestException('The customer contact name is required when the next action belongs to the customer contact.');
   }
+}
+
+const minuteMilliseconds = 60_000;
+
+async function pauseCustomerFollowUpSchedule(
+  manager: EntityManager,
+  projectId: string,
+  archivedAt: Date,
+): Promise<void> {
+  const repository = manager.getRepository(CustomerFollowUpEntity);
+  const state = await repository.findOne({
+    where: { projectId },
+    lock: { mode: 'pessimistic_write' },
+  });
+  if (!state) return;
+
+  if (state.enabled && state.nextPingAt) {
+    const remainingMilliseconds = state.nextPingAt.getTime() - archivedAt.getTime();
+    state.pausedRemainingMilliseconds = remainingMilliseconds > 0
+      ? remainingMilliseconds
+      : state.intervalMinutes * minuteMilliseconds;
+    state.nextPingAt = null;
+  } else {
+    state.pausedRemainingMilliseconds = null;
+  }
+  await repository.save(state);
+}
+
+async function resumeCustomerFollowUpSchedule(
+  manager: EntityManager,
+  projectId: string,
+  restoredAt: Date,
+): Promise<void> {
+  const repository = manager.getRepository(CustomerFollowUpEntity);
+  const state = await repository.findOne({
+    where: { projectId },
+    lock: { mode: 'pessimistic_write' },
+  });
+  if (!state || state.pausedRemainingMilliseconds === null) return;
+
+  const nextPingAt = new Date(
+    restoredAt.getTime() + state.pausedRemainingMilliseconds,
+  );
+  state.pausedRemainingMilliseconds = null;
+  if (!state.enabled || (state.expiresAt && state.expiresAt <= nextPingAt)) {
+    state.enabled = false;
+    state.nextPingAt = null;
+  } else {
+    state.nextPingAt = nextPingAt;
+  }
+  await repository.save(state);
 }
 
 function synchronizeCompatibilityOwner(project: Project): void {

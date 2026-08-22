@@ -193,7 +193,7 @@ function toActionableError(error: unknown, action: string): ActionableError {
 function projectErrorNextStep(status: number, action: string): string {
   if (status === 409) {
     if (action === deleteProjectAction) {
-      return 'A projekt már tartalmaz megőrzendő munkát, ezért nem törölhető. Archiváld inkább.';
+      return 'Csak DRAFT projekt törölhető. Ügyfélkommunikációs vagy Git-átadási előzmény esetén archiváld a projektet.';
     }
     return 'Töltsd újra a projektet, ellenőrizd a legfrissebb állapotát, majd ismételd meg a műveletet.';
   }
