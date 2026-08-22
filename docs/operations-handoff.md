@@ -67,7 +67,6 @@ do not commit `.env` or real credentials.
 | `CORRESPONDENCE_MAILBOX_NAME` / `CORRESPONDENCE_MAILBOX_ADDRESS` | yes | Operator organization-controlled dedicated sender identity; reply correlation uses high-entropy plus-addresses at this mailbox. |
 | `MAIL_GATEWAY_SMTP_*` | yes | TLS SMTP endpoint and dedicated credential. Only `STARTTLS_REQUIRED` and `IMPLICIT_TLS` are accepted. |
 | `MAIL_GATEWAY_IMAP_*` | yes | TLS IMAP inbox endpoint, folder, and separately managed credential. |
-| `MAIL_GATEWAY_CHECKPOINT_SECRET` | yes | At least 32 random characters for encrypted mailbox/folder-bound checkpoints. |
 | `MAIL_GATEWAY_TLS_CA_CERTIFICATE_BASE64` | no | Optional base64 PEM private CA for both TLS channels. |
 
 Before upgrading an existing deployment, rename the former mailbox entries in
@@ -121,6 +120,7 @@ ordered TypeORM migrations registered in
 29. `0029-customer-response-evidence.ts` — immutable Customer response evidence linkage.
 30. `0030-delivery-and-git.ts` — editable Delivery packages, shared retained Git setups, and immutable preview-confirmed Git handoff snapshots.
 31. `0031-claude-code-mcp-connection.ts` — one replaceable MCP token digest and creation time per Internal user.
+32. `0032-canonical-customer-mail-persistence.ts` — canonical outbound, correspondence, and append-only attempt persistence for Interview handoff and Customer follow-up delivery; incomplete pre-canonical records remain readable as legacy history rather than being fabricated or removed.
 
 The deployed API image contains the compiled migration classes, but not the
 TypeScript migration source tree used by the development-only
@@ -171,62 +171,17 @@ docker compose --env-file .env exec -T api node -e $migrationStatusScript
 
 `pending: false` means that all migration classes in the running image are
 recorded in the database. The `applied` array is the database's migration
-history; the thirty-one expected names are listed above.
+history; the thirty-two expected names are listed above.
 
-There is no safe arbitrary migration selector in the runtime image. A
-controlled revert can undo only the latest applied migration through a
-one-off API container, and it must be preceded by a backup and a write
-maintenance window:
-
-```powershell
-docker compose --env-file .env stop web api
-docker compose --env-file .env run --rm --no-deps api node -e "const source=require('./dist/database/migration-data-source.js').default;(async()=>{await source.initialize();try{await source.undoLastMigration();}finally{await source.destroy();}})().catch((error)=>{console.error(error);process.exitCode=1;});"
-docker compose --env-file .env up --build --wait
-```
-
-Each `down` implementation drops the objects owned by that migration (and
-therefore its data); for example, reverting `0006` drops discovery follow-ups,
-reverting `0004` drops customer email follow-up state, and reverting `0003`
-drops all Markdown revisions. Starting the same API image
-again will automatically run the reverted migration forward, so this is a
-recovery/inspection operation, not a supported permanent application
-downgrade. A permanent downgrade requires a separately built, compatibility-
-reviewed image and a restore plan owned by the deployment team.
-
-Reverting `0005` removes only its partial unique index; it does not remove
-interview-round rows. Reverting `0007` drops the persisted discovery-follow-up
-answer/decision column and its content. Reverting `0008` drops its positive-version
-constraint and version column; it removes only edit-concurrency metadata, not a
-business follow-up field. `0009` is guarded: its rollback first takes an exclusive
-lock and refuses before DDL if any assessment-override row exists. Do not remove
-those rows to make a rollback pass without an approved data operation and backup.
-Reverting `0010` redefines only the round-answer validation function with its
-previous space-only `btrim` predicate. It leaves schema objects and stored answers
-in place, but database validation then permits control-whitespace-only text that
-the forward migration rejects.
-Reverting `0011` drops only its index, restrictive foreign key, and nullable
-source column, in that order; it removes the source relationship but not the
-discovery follow-up itself or any immutable snapshot.
-Migration `0012` is guarded: its rollback refuses before DDL if any Decision
-input rating is persisted. Do not clear ratings merely to make a rollback pass
-without an approved data operation and backup.
-Migration `0015` locks the affected tables and refuses rollback before DDL when
-a non-empty ping draft, Discovery reference, advanced draft version, preview,
-or delivery attempt is retained. Existing empty schedule rows can roll back
-without fabricating message content.
-Migrations `0017` and `0018` refuse rollback when retained handoff or ping
-correspondence would be lost. Migration `0019` refuses to remove an established
-mailbox delta baseline. Migration `0020` refuses to remove retained inbound
-messages, and `0021` separately protects retained correspondence processing and
-classification history. Migration `0022` refuses to restore the earlier active-
-handoff uniqueness rule after an `UNKNOWN` handoff has been superseded.
-Migration `0023` protects retained mail-system events and explicit unmatched-
-message triage actions. Migration `0024` refuses to restore the retired
-provider-domain restriction while non-provider sender history exists. These
-guards are recovery signals, not invitations to delete evidence until a
-rollback succeeds.
-Before any revert, inspect the migration and choose the rollback procedure
-appropriate to the affected objects.
+The supported migration policy is no-squash forward evolution from the oldest
+supported `0001` schema through `0032`. Do not use `undoLastMigration()` or an
+arbitrary runtime downgrade as a normal recovery procedure: a down migration
+can destroy retained business history and is not a deployment workflow. Take a
+backup, diagnose the affected state, and ship a reviewed forward correction.
+When a version must be abandoned, restore the verified backup into a controlled
+maintenance window and then apply the compatible forward image. The repository
+proves the retained forward chain in
+[`supported-migration-sequence.e2e-spec.ts`](../apps/api/test/supported-migration-sequence.e2e-spec.ts).
 
 ### PostgreSQL backup
 
@@ -578,59 +533,43 @@ inputs are recomputed against that source on the next read.
 
 ## Verification gates for this handoff
 
-The fast, repeatable gates used during this foundation slice are:
+Pre-main validation mirrors the repository's three GitHub CI jobs without
+turning unrelated browser journeys into release gates:
 
 ```powershell
-pnpm --filter @project-maker/contracts typecheck
-pnpm --filter @project-maker/api typecheck
-pnpm --filter @project-maker/web typecheck
-pnpm --filter @project-maker/web build
-pnpm compose:config
-pnpm compose:up
+pnpm install --frozen-lockfile
+pnpm --filter @project-maker/api migration:run
+pnpm verify
+pnpm test:mail-gateway
+node scripts/run-container-smoke.mjs
 ```
 
-The separate CI container-smoke gate builds the API image, proves the packaged
-contracts runtime import, starts PostgreSQL and the migration-gated API, and
-invokes the canonical discovery/readiness consumers. OUTPUT-01 closeout also
-proves in the built image that the published Default template can generate a
-canonical revision with immutable template provenance. The complete Playwright
-suite uses the controlled local mail-gateway fake to verify Project-start, handoff,
-ping, archive/restore, late-reply, UNKNOWN, classification, no-Markdown, and
-mailbox-recovery behavior without gateway credentials. This evidence does not
-prove production readiness. A separately authorized non-CI gateway run must
-follow the [Operator mail gateway runbook](mail-gateway.md), with its bounded
-result retained in the Operator organization's existing internal change ticket.
+The `checkpoint` job migrates a fresh PostgreSQL database and runs `pnpm
+verify`, which covers every workspace typecheck, unit/API test, and production
+build. Run those first two commands only against a dedicated non-production
+test database.
 
-The declared SCORE-01.1 browser evidence is:
+`pnpm test:mail-gateway` owns and removes a disposable PostgreSQL container. It
+proves the authenticated TLS SMTP/IMAP protocol boundary, the Customer-mail API
+paths, and one reviewed send/reply browser journey without external credentials.
 
-```powershell
-pnpm --dir apps/web exec playwright test readiness-review.spec.ts
-pnpm test:e2e
-```
+The `container-smoke` job builds the production API image, proves the packaged
+contracts runtime import and the absence of build tooling, migrates a fresh
+database through `0001 -> 0032`, then checks health and an authenticated
+canonical-policy consumer. The script owns and removes its temporary Compose
+project and volume.
 
-Both were run against fresh disposable loopback PostgreSQL fixtures: the
-focused readiness gate passed 3/3 tests and the full web E2E gate passed 22/22
-tests. The test bootstrap resets its database before migrations; use only a
-uniquely named disposable loopback test database, do not point it at a shared
-or production database, and remove the container and temporary helper after
-the run. Do not print a database URL, credentials, or synthetic fixture values
-in retained logs.
+Run a focused Playwright spec only when its route or user journey changed. Run
+the complete `pnpm test:e2e` suite only for broad cross-route UI changes; it is
+not an unconditional pre-main gate. Playwright resets its configured database
+before migrations, so `DATABASE_URL` must point to a uniquely named loopback
+database containing `test` or `e2e` in its name. Never point it at shared or
+production data.
 
-The SCORE-01.2 focused browser evidence is:
-
-```powershell
-pnpm --dir apps/web exec playwright test decision-review.spec.ts
-```
-
-It starts the real API against a fresh disposable loopback PostgreSQL database,
-migrates it, and proves the server-derived display/save/reload path plus error
-isolation and archive read-only behavior. Use the same disposable-database
-safeguards as the readiness gate.
-
-The repository-wide `pnpm verify` script also runs unit tests and production
-builds. Broader test execution is deliberately deferred until the foundation
-is feature-complete; a passing typecheck/build/Compose smoke is not a claim
-that the complete product is finished.
+These automated checks do not prove production mail-gateway readiness. A
+separately authorized real-gateway run must follow the [Operator mail gateway
+runbook](mail-gateway.md), with its bounded result retained in the Operator
+organization's existing internal change ticket.
 
 ## Known next slices
 

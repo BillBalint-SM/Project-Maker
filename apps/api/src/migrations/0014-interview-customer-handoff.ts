@@ -24,6 +24,9 @@ export class InterviewCustomerHandoff0014InterviewCustomerHandoff1787039999000
       'ALTER TABLE "interview_rounds" DROP CONSTRAINT "chk_interview_rounds_completion"',
     );
     await queryRunner.query('DROP INDEX "uq_interview_rounds_open_initial_intake"');
+    await queryRunner.query(
+      'ALTER TABLE "interview_rounds" DISABLE TRIGGER "trg_interview_rounds_protect_change"',
+    );
     await queryRunner.query('ALTER TABLE "interview_rounds" ALTER COLUMN "status" DROP DEFAULT');
     await queryRunner.query(
       'ALTER TABLE "interview_rounds" ALTER COLUMN "status" TYPE text USING "status"::text',
@@ -352,6 +355,9 @@ export class InterviewCustomerHandoff0014InterviewCustomerHandoff1787039999000
       END;
       $$
     `);
+    await queryRunner.query(
+      'ALTER TABLE "interview_rounds" ENABLE TRIGGER "trg_interview_rounds_protect_change"',
+    );
   }
 
   async down(queryRunner: QueryRunner): Promise<void> {

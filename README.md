@@ -41,7 +41,14 @@ pnpm install --frozen-lockfile
 pnpm verify
 ```
 
-`pnpm verify` performs workspace type checks, API and web unit tests, and production builds. Browser E2E tests are separate because Playwright requires a locally installed browser. The foundation handoff uses the narrower typecheck/build/Compose smoke gates first; see [`docs/operations-handoff.md`](docs/operations-handoff.md).
+These commands assume the pinned pnpm `11.20.0`. If the workstation exposes a
+different global version, use `npx --yes pnpm@11.20.0 <command>` instead of
+changing the repository requirement.
+
+`pnpm verify` performs workspace type checks, API and web tests, and production
+builds. It expects a dedicated non-production PostgreSQL test database. Browser
+E2E tests are separate because Playwright requires a locally installed browser;
+run the complete suite only when broad cross-route UI behavior changed.
 
 ```powershell
 pnpm test:e2e
@@ -54,6 +61,16 @@ database; see [`docs/mail-gateway.md`](docs/mail-gateway.md#local-synthetic-gate
 ```powershell
 pnpm test:mail-gateway
 ```
+
+The production API image and fresh `0001 -> 0032` migration path have one
+isolated local/CI smoke command:
+
+```powershell
+node scripts/run-container-smoke.mjs
+```
+
+The exact pre-main gate mapping and database safety notes are in
+[`docs/operations-handoff.md`](docs/operations-handoff.md#verification-gates-for-this-handoff).
 
 ## Run with Docker Compose
 
@@ -96,6 +113,10 @@ The API requires `CORS_ORIGIN`; `@nestjs/config` reads it from the root `.env` w
 
 `.env.example` documents every foundation variable. Never commit `.env` or real credentials. The example password is a placeholder and is not suitable for a deployed environment.
 
+The mailbox checkpoint is an internal, strict versioned state value rather than
+a credential; it needs no separately configured secret. Invalid or old values
+safely establish a new mailbox baseline.
+
 | Variable | Purpose |
 | --- | --- |
 | `POSTGRES_DB` | PostgreSQL database name |
@@ -109,7 +130,6 @@ The API requires `CORS_ORIGIN`; `@nestjs/config` reads it from the root `.env` w
 | `CORRESPONDENCE_MAILBOX_NAME` / `CORRESPONDENCE_MAILBOX_ADDRESS` | Operator organization-controlled dedicated sender identity; Reply-To correlation uses the configured address and generated plus-addresses |
 | `MAIL_GATEWAY_SMTP_*` | TLS SMTP host, port, security mode, and dedicated credential |
 | `MAIL_GATEWAY_IMAP_*` | TLS IMAP host, port, security mode, folder, and separate credential |
-| `MAIL_GATEWAY_CHECKPOINT_SECRET` | At least 32 random characters for encrypted IMAP checkpoints |
 | `MAIL_GATEWAY_TLS_CA_CERTIFICATE_BASE64` | Optional private-CA PEM, base64 encoded; leave empty for public trust roots |
 
 Existing environment files must rename their former ambiguous mailbox keys to

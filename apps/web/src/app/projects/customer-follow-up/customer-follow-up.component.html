@@ -170,8 +170,8 @@
       <p-button
         type="submit"
         label="Piszkozat mentése"
-        [loading]="saving()"
-        [disabled]="controlsDisabled() || draftForm.invalid"
+        [loading]="savingDraft()"
+        [disabled]="controlsDisabled() || savingDraft() || draftForm.invalid"
         data-testid="save-follow-up-draft-button"
       />
       <p-button
@@ -307,8 +307,8 @@
     <p-button
       type="submit"
       label="Emlékeztető beállításainak mentése"
-      [loading]="saving()"
-      [disabled]="controlsDisabled()"
+      [loading]="savingSettings()"
+      [disabled]="controlsDisabled() || savingSettings()"
       data-testid="save-follow-up-settings-button"
     />
   </form>

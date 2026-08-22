@@ -1,6 +1,10 @@
 import { Column, CreateDateColumn, Entity, PrimaryColumn } from 'typeorm';
 
-export type CustomerFollowUpAttemptState = 'SENDING' | 'SENT' | 'FAILED' | 'UNKNOWN';
+export type CustomerFollowUpAttemptState =
+  | 'SENDING'
+  | 'SENT'
+  | 'FAILED'
+  | 'UNKNOWN';
 
 @Entity({ name: 'customer_follow_up_delivery_attempts' })
 export class CustomerFollowUpDeliveryAttemptEntity {
@@ -16,23 +20,38 @@ export class CustomerFollowUpDeliveryAttemptEntity {
   @Column({ name: 'referenced_follow_up_id', type: 'uuid', nullable: true })
   referencedFollowUpId!: string | null;
 
-  @Column({ name: 'referenced_follow_up_version', type: 'integer', nullable: true })
+  @Column({
+    name: 'referenced_follow_up_version',
+    type: 'integer',
+    nullable: true,
+  })
   referencedFollowUpVersion!: number | null;
 
   @Column({ type: 'varchar', length: 20 })
+  // Workflow authority for this logical ping. Mail-system outcome, failure,
+  // message reference, and result timestamp live only in customer_outbound_attempts.
   state!: CustomerFollowUpAttemptState;
 
-  @Column({ name: 'recipient_email', type: 'varchar', length: 320 })
-  recipientEmail!: string;
-
-  @Column({ name: 'subject_length', type: 'integer' })
-  subjectLength!: number;
-
-  @Column({ name: 'text_length', type: 'integer' })
-  textLength!: number;
-
-  @Column({ name: 'failure_code', type: 'varchar', length: 100, nullable: true })
-  failureCode!: string | null;
+  // Nullable legacy fields preserve pre-gateway records which never had a
+  // canonical outbound snapshot. New writes leave them empty.
+  @Column({
+    name: 'recipient_email',
+    type: 'varchar',
+    length: 320,
+    nullable: true,
+  })
+  legacyRecipientEmail!: string | null;
+  @Column({ name: 'subject_length', type: 'integer', nullable: true })
+  legacySubjectLength!: number | null;
+  @Column({ name: 'text_length', type: 'integer', nullable: true })
+  legacyTextLength!: number | null;
+  @Column({
+    name: 'failure_code',
+    type: 'varchar',
+    length: 100,
+    nullable: true,
+  })
+  legacyFailureCode!: string | null;
 
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt!: Date;
@@ -41,17 +60,36 @@ export class CustomerFollowUpDeliveryAttemptEntity {
   attemptedAt!: Date;
 
   @Column({ name: 'sent_at', type: 'timestamptz', nullable: true })
-  sentAt!: Date | null;
+  legacySentAt!: Date | null;
 
-  @Column({ name: 'outbound_communication_id', type: 'uuid', nullable: true, unique: true })
+  @Column({
+    name: 'outbound_communication_id',
+    type: 'uuid',
+    nullable: true,
+    unique: true,
+  })
   outboundCommunicationId!: string | null;
 
-  @Column({ name: 'correspondence_id', type: 'uuid', nullable: true, unique: true })
+  @Column({
+    name: 'correspondence_id',
+    type: 'uuid',
+    nullable: true,
+    unique: true,
+  })
   correspondenceId!: string | null;
 
-  @Column({ name: 'mail_system_acceptance', type: 'varchar', length: 20, nullable: true })
-  mailSystemAcceptance!: 'ACCEPTED' | 'REJECTED' | null;
-
-  @Column({ name: 'message_reference', type: 'varchar', length: 500, nullable: true })
-  messageReference!: string | null;
+  @Column({
+    name: 'mail_system_acceptance',
+    type: 'varchar',
+    length: 20,
+    nullable: true,
+  })
+  legacyMailSystemAcceptance!: 'ACCEPTED' | 'REJECTED' | null;
+  @Column({
+    name: 'message_reference',
+    type: 'varchar',
+    length: 500,
+    nullable: true,
+  })
+  legacyMessageReference!: string | null;
 }

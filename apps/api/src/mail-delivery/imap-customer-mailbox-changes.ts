@@ -70,13 +70,7 @@ export class ImapCustomerMailboxChanges implements CustomerMailboxChanges {
     private readonly clientFactory: ImapMailboxClientFactory,
   ) {
     this.configuration = createMailGatewayConfiguration(config);
-    this.checkpointCodec = this.configuration
-      ? new MailGatewayCheckpointCodec({
-          secret: this.configuration.checkpointSecret,
-          mailboxAddress: this.configuration.mailbox.address,
-          folder: this.configuration.imap.folder,
-        })
-      : null;
+    this.checkpointCodec = this.configuration ? new MailGatewayCheckpointCodec() : null;
   }
 
   isConfigured(): boolean {

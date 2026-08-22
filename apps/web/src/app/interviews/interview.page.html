@@ -92,7 +92,8 @@
         } @else if (activeQuestions().length === 0) {
           <div class="state-panel compact" data-testid="interview-no-active-questions">
             <h2>Nincs aktív alapkérdés</h2>
-            <p>Kérj meg egy Beállítások-adminisztrátort, hogy legalább egy alapkérdést aktiváljon.</p>
+            <p>Aktiválj legalább egy alapkérdést a Kérdésbank beállításaiban.</p>
+            <a routerLink="/settings/questions">Kérdésbank megnyitása</a>
           </div>
         } @else {
           <fieldset class="question-selection" data-testid="interview-question-selection">

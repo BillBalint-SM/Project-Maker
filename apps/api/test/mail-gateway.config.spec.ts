@@ -20,7 +20,6 @@ describe('Operator-provided mail gateway configuration', () => {
       MAIL_GATEWAY_IMAP_USERNAME: 'imap-project-maker',
       MAIL_GATEWAY_IMAP_PASSWORD: 'imap-secret',
       MAIL_GATEWAY_IMAP_FOLDER: 'INBOX',
-      MAIL_GATEWAY_CHECKPOINT_SECRET: 'checkpoint-secret-with-at-least-32-bytes',
     }));
 
     assert.deepEqual(configuration, {
@@ -43,7 +42,6 @@ describe('Operator-provided mail gateway configuration', () => {
         password: 'imap-secret',
         folder: 'INBOX',
       },
-      checkpointSecret: 'checkpoint-secret-with-at-least-32-bytes',
       tlsCaCertificate: null,
       timeoutMs: 10_000,
     });
@@ -56,7 +54,6 @@ describe('Operator-provided mail gateway configuration', () => {
       { ...base, MAIL_GATEWAY_IMAP_HOST: '' },
       { ...base, MAIL_GATEWAY_SMTP_SECURITY: 'PLAINTEXT' },
       { ...base, MAIL_GATEWAY_IMAP_SECURITY: 'PLAINTEXT' },
-      { ...base, MAIL_GATEWAY_CHECKPOINT_SECRET: 'too-short' },
       { ...base, CORRESPONDENCE_MAILBOX_NAME: 'Project\r\nMaker' },
     ];
 
@@ -110,7 +107,6 @@ function completeConfiguration(): Record<string, string> {
     MAIL_GATEWAY_IMAP_SECURITY: 'IMPLICIT_TLS',
     MAIL_GATEWAY_IMAP_USERNAME: 'imap-user',
     MAIL_GATEWAY_IMAP_PASSWORD: 'imap-secret',
-    MAIL_GATEWAY_CHECKPOINT_SECRET: 'checkpoint-secret-with-at-least-32-bytes',
   };
 }
 
@@ -129,7 +125,6 @@ function isolatedConfig(values: Record<string, string>): ConfigService {
     'MAIL_GATEWAY_IMAP_USERNAME',
     'MAIL_GATEWAY_IMAP_PASSWORD',
     'MAIL_GATEWAY_IMAP_FOLDER',
-    'MAIL_GATEWAY_CHECKPOINT_SECRET',
     'MAIL_GATEWAY_TLS_CA_CERTIFICATE_BASE64',
   ];
   const isolatedValues = Object.fromEntries(gatewayKeys.map((key) => [key, '']));

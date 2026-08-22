@@ -241,7 +241,6 @@ if ($imapSecurity -notin @('STARTTLS_REQUIRED', 'IMPLICIT_TLS')) {
 Start-WizardStage -Name 'Capture secrets without displaying them'
 $smtpPassword = Read-SecretValue -Prompt 'SMTP password'
 $imapPassword = Read-SecretValue -Prompt 'IMAP password'
-$checkpointSecret = [Convert]::ToBase64String([Security.Cryptography.RandomNumberGenerator]::GetBytes(32))
 $customCaAnswer = Read-PublicValue -Prompt 'Does this gateway require a private CA certificate? (yes/no)'
 $tlsCaCertificateBase64 = if ($customCaAnswer -match '^(?i:y|yes)$') {
     Read-SecretValue -Prompt 'Base64-encoded PEM CA certificate'
@@ -265,7 +264,6 @@ $values = [ordered]@{
     MAIL_GATEWAY_IMAP_USERNAME = $imapUsername
     MAIL_GATEWAY_IMAP_PASSWORD = $imapPassword
     MAIL_GATEWAY_IMAP_FOLDER = $imapFolder
-    MAIL_GATEWAY_CHECKPOINT_SECRET = $checkpointSecret
     MAIL_GATEWAY_TLS_CA_CERTIFICATE_BASE64 = $tlsCaCertificateBase64
 }
 foreach ($entry in $values.GetEnumerator()) {
@@ -273,7 +271,6 @@ foreach ($entry in $values.GetEnumerator()) {
 }
 $smtpPassword = $null
 $imapPassword = $null
-$checkpointSecret = $null
 $tlsCaCertificateBase64 = $null
 Write-Step -Message 'The local configuration is ready for the documented SMTP/IMAP activation checks.'
 Pause-Step -Prompt 'Press Enter to finish'

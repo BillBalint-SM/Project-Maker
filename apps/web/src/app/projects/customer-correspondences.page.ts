@@ -16,7 +16,6 @@ import { ProgressSpinnerModule } from 'primeng/progressspinner';
 import { CustomerRepliesApiService } from './customer-replies-api.service';
 import { CustomerResponseComponent } from './customer-response/customer-response.component';
 import { NotificationsApiService } from '../notifications/notifications-api.service';
-import { provideProjectOperationPolicy } from './project-operation-policy';
 import { CustomerFollowUpComponent } from './customer-follow-up/customer-follow-up.component';
 import { InterviewReplyOutcomeComponent } from '../interviews/interview-handoff/interview-reply-outcome.component';
 import { DiscoveryReplyOutcomeComponent } from './discovery-follow-ups/discovery-reply-outcome.component';
@@ -33,7 +32,6 @@ import { DiscoveryReplyOutcomeComponent } from './discovery-follow-ups/discovery
     ProgressSpinnerModule,
     RouterLink,
   ],
-  providers: [provideProjectOperationPolicy()],
   template: `
     <section aria-labelledby="customer-replies-title">
       <span class="eyebrow">Ügyfélkapcsolat</span>

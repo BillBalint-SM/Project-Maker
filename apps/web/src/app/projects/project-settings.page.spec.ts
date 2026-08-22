@@ -5,7 +5,7 @@ import type {
   ProjectPreparationStatus,
   ProjectWorkspace,
 } from '@project-maker/contracts';
-import { of } from 'rxjs';
+import { of, Subject, throwError } from 'rxjs';
 import { describe, expect, it, vi } from 'vitest';
 
 import { CustomerFollowUpApiService } from './customer-follow-up/customer-follow-up-api.service';
@@ -92,6 +92,122 @@ describe('ProjectSettingsPage', () => {
         .querySelector('[data-testid="project-lifecycle-feedback"]')
         ?.textContent,
     ).toContain('Az adminisztratív projektfázis frissítve lett.');
+  });
+
+  it('keeps independent saves pending and combines out-of-order responses', async () => {
+    const project = projectFixture('DRAFT');
+    const basicsResult = new Subject<ProjectWorkspace>();
+    const statusResult = new Subject<ProjectWorkspace>();
+    const { fixture, api } = await createPage(project);
+    api.updateProjectBasics.mockReturnValue(basicsResult);
+    api.updateWorkspace.mockReturnValue(statusResult);
+
+    fixture.componentInstance.basicsForm.setValue({
+      name: 'Frissített projekt',
+      internalOwnerName: 'PO Petra',
+      customerContactName: 'Ügyfél Ágnes',
+      customerContactEmail: 'agnes@example.test',
+    });
+    fixture.componentInstance.lifecycleForm.setValue({ status: 'WAITING_CUSTOMER' });
+    fixture.componentInstance.saveProjectBasics();
+    fixture.componentInstance.saveProjectStatus();
+
+    expect(fixture.componentInstance.basicsSaving()).toBe(true);
+    expect(fixture.componentInstance.lifecycleSaving()).toBe(true);
+
+    statusResult.next({
+      ...project,
+      status: 'WAITING_CUSTOMER',
+      updatedAt: '2026-08-22T09:00:00.000Z',
+    });
+    statusResult.complete();
+
+    expect(fixture.componentInstance.lifecycleSaving()).toBe(false);
+    expect(fixture.componentInstance.basicsSaving()).toBe(true);
+    expect(fixture.componentInstance.view()?.project.status).toBe('WAITING_CUSTOMER');
+
+    basicsResult.next({
+      ...project,
+      name: 'Frissített projekt',
+      internalOwnerName: 'PO Petra',
+      customerContactName: 'Ügyfél Ágnes',
+      customerContactEmail: 'agnes@example.test',
+      updatedAt: '2026-08-22T10:00:00.000Z',
+    });
+    basicsResult.complete();
+
+    expect(fixture.componentInstance.basicsSaving()).toBe(false);
+    expect(fixture.componentInstance.view()?.project).toMatchObject({
+      name: 'Frissített projekt',
+      internalOwnerName: 'PO Petra',
+      customerContactName: 'Ügyfél Ágnes',
+      customerContactEmail: 'agnes@example.test',
+      status: 'WAITING_CUSTOMER',
+    });
+  });
+
+  it('keeps the newest successful lifecycle response when an older save finishes later', async () => {
+    const project = projectFixture('DRAFT');
+    const statusResult = new Subject<ProjectWorkspace>();
+    const archiveResult = new Subject<ProjectWorkspace>();
+    const { fixture, api } = await createPage(project);
+    api.updateWorkspace.mockReturnValue(statusResult);
+    api.archiveProject.mockReturnValue(archiveResult);
+
+    fixture.componentInstance.lifecycleForm.setValue({ status: 'WAITING_CUSTOMER' });
+    fixture.componentInstance.saveProjectStatus();
+    fixture.componentInstance.archiveProject();
+
+    expect(fixture.componentInstance.lifecycleSaving()).toBe(true);
+    expect(fixture.componentInstance.transitioning()).toBe(true);
+
+    archiveResult.next({
+      ...project,
+      status: 'ARCHIVED',
+      updatedAt: '2026-08-22T11:00:00.000Z',
+    });
+    archiveResult.complete();
+    expect(fixture.componentInstance.view()?.project.status).toBe('ARCHIVED');
+
+    statusResult.next({
+      ...project,
+      status: 'WAITING_CUSTOMER',
+      updatedAt: '2026-08-22T10:00:00.000Z',
+    });
+    statusResult.complete();
+
+    expect(fixture.componentInstance.lifecycleSaving()).toBe(false);
+    expect(fixture.componentInstance.transitioning()).toBe(false);
+    expect(fixture.componentInstance.view()?.project.status).toBe('ARCHIVED');
+    expect(fixture.componentInstance.lifecycleFeedback()).toBeNull();
+  });
+
+  it('releases a failed command so the same save can be retried', async () => {
+    const project = projectFixture('DRAFT');
+    const { fixture, api } = await createPage(project);
+    api.updateProjectBasics
+      .mockReturnValueOnce(throwError(() => new Error('Az alapadatok most nem menthetők.')))
+      .mockReturnValueOnce(of({ ...project, name: 'Újrapróbált projekt' }));
+    fixture.componentInstance.basicsForm.setValue({
+      name: 'Újrapróbált projekt',
+      internalOwnerName: project.internalOwnerName ?? '',
+      customerContactName: project.customerContactName,
+      customerContactEmail: project.customerContactEmail,
+    });
+
+    fixture.componentInstance.saveProjectBasics();
+
+    expect(fixture.componentInstance.basicsSaving()).toBe(false);
+    expect(fixture.componentInstance.basicsError()).toBe('Az alapadatok most nem menthetők.');
+
+    fixture.componentInstance.saveProjectBasics();
+
+    expect(api.updateProjectBasics).toHaveBeenCalledTimes(2);
+    expect(fixture.componentInstance.basicsError()).toBeNull();
+    expect(fixture.componentInstance.basicsFeedback()).toBe(
+      'A projekt alapadatai mentve lettek.',
+    );
+    expect(fixture.componentInstance.view()?.project.name).toBe('Újrapróbált projekt');
   });
 });
 

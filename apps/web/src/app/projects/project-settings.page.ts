@@ -17,12 +17,9 @@ import { InputTextModule } from 'primeng/inputtext';
 import { MessageModule } from 'primeng/message';
 import { ProgressSpinnerModule } from 'primeng/progressspinner';
 import { SelectModule } from 'primeng/select';
+import { finalize } from 'rxjs';
 
-import {
-  PROJECT_OPERATION_POLICY,
-  provideProjectOperationPolicy,
-  releaseProjectOperationOnFinalize,
-} from './project-operation-policy';
+import { ProjectCommandPending } from './project-command-pending';
 import { CustomerFollowUpComponent } from './customer-follow-up/customer-follow-up.component';
 import type { ProjectSettingsView } from './project-api.models';
 import { ProjectApiService } from './project-api.service';
@@ -44,7 +41,7 @@ type ActiveProjectStatus = Exclude<ProjectStatus, 'ARCHIVED'>;
     ReactiveFormsModule,
     SelectModule,
   ],
-  providers: [ConfirmationService, provideProjectOperationPolicy()],
+  providers: [ConfirmationService],
   templateUrl: './project-settings.page.html',
   styleUrl: './project-settings.page.scss',
 })
@@ -55,7 +52,9 @@ export class ProjectSettingsPage implements OnInit {
   private readonly confirmationService = inject(ConfirmationService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly projectContext = inject(ProjectContextState, { optional: true });
-  readonly operationPolicy = inject(PROJECT_OPERATION_POLICY);
+  private lifecycleIntent = 0;
+  private appliedLifecycleIntent = 0;
+  readonly pending = new ProjectCommandPending();
 
   readonly projectId = this.route.snapshot.paramMap.get('projectId') ?? '';
   readonly view = signal<ProjectSettingsView | null>(null);
@@ -69,19 +68,15 @@ export class ProjectSettingsPage implements OnInit {
   readonly lifecycleFeedback = signal<string | null>(null);
   readonly statusOptions = activeProjectStatusOptions;
   readonly playbooks = signal<readonly PackagedPlaybookSummary[]>([]);
-  readonly busy = this.operationPolicy.busy;
-  readonly basicsSaving = computed(
-    () => this.operationPolicy.activeOperation() === 'project-basics-save',
-  );
+  readonly basicsSaving = computed(() => this.pending.isPending('save-basics'));
   readonly transitioning = computed(() => {
-    const activeOperation = this.operationPolicy.activeOperation();
-    return activeOperation === 'project-archive' || activeOperation === 'project-restore';
+    return this.pending.isPending('archive') || this.pending.isPending('restore');
   });
   readonly deleting = computed(
-    () => this.operationPolicy.activeOperation() === 'project-delete',
+    () => this.pending.isPending('delete'),
   );
   readonly lifecycleSaving = computed(
-    () => this.operationPolicy.activeOperation() === 'project-status-save',
+    () => this.pending.isPending('save-status'),
   );
 
   readonly basicsForm = new FormGroup({
@@ -121,21 +116,23 @@ export class ProjectSettingsPage implements OnInit {
   }
 
   savePlaybook(): void {
-    if (this.busy() || this.isArchived()) return;
+    if (this.isArchived()) return;
     const [playbookId, versionText] = this.playbookForm.controls.playbook.value.split(':');
-    const lease = this.operationPolicy.tryAcquire('project-playbook-save');
-    if (!lease || !playbookId) return;
+    if (!playbookId || !this.pending.begin('save-playbook')) return;
     this.actionError.set(null);
     this.feedback.set(null);
     this.api.updateProjectPlaybook(this.projectId, {
       playbookId,
       playbookVersion: Number(versionText),
     }).pipe(
-      releaseProjectOperationOnFinalize(lease),
+      finalize(() => this.pending.end('save-playbook')),
       takeUntilDestroyed(this.destroyRef),
     ).subscribe({
       next: (project) => {
-        this.applyProject(project);
+        this.applyProjectPatch(project, { playbook: project.playbook });
+        this.playbookForm.reset({
+          playbook: `${project.playbook.id}:${project.playbook.version}`,
+        });
         this.feedback.set('A projekt playbookja mentve lett.');
       },
       error: (error: Error) => this.actionError.set(error.message),
@@ -176,11 +173,10 @@ export class ProjectSettingsPage implements OnInit {
 
   saveProjectBasics(): void {
     this.basicsForm.markAllAsTouched();
-    if (this.basicsForm.invalid || this.busy() || !this.canEditBasics()) return;
+    if (this.basicsForm.invalid || !this.canEditBasics()) return;
 
     const value = this.basicsForm.getRawValue();
-    const lease = this.operationPolicy.tryAcquire('project-basics-save');
-    if (!lease) return;
+    if (!this.pending.begin('save-basics')) return;
     this.basicsError.set(null);
     this.basicsFeedback.set(null);
     this.api.updateProjectBasics(this.projectId, {
@@ -189,11 +185,17 @@ export class ProjectSettingsPage implements OnInit {
       customerContactName: value.customerContactName.trim(),
       customerContactEmail: value.customerContactEmail.trim(),
     }).pipe(
-      releaseProjectOperationOnFinalize(lease),
+      finalize(() => this.pending.end('save-basics')),
       takeUntilDestroyed(this.destroyRef),
     ).subscribe({
       next: (project) => {
-        this.applyProject(project);
+        this.applyProjectPatch(project, {
+          name: project.name,
+          internalOwnerName: project.internalOwnerName,
+          customerContactName: project.customerContactName,
+          customerContactEmail: project.customerContactEmail,
+        });
+        this.resetBasicsForm(project);
         this.basicsFeedback.set('A projekt alapadatai mentve lettek.');
         this.projectContext?.reload();
       },
@@ -203,29 +205,33 @@ export class ProjectSettingsPage implements OnInit {
 
   saveProjectStatus(): void {
     this.lifecycleForm.markAllAsTouched();
-    if (this.lifecycleForm.invalid || this.busy() || this.isArchived()) return;
+    if (this.lifecycleForm.invalid || this.isArchived() || this.transitioning()) return;
 
-    const lease = this.operationPolicy.tryAcquire('project-status-save');
-    if (!lease) return;
+    if (!this.pending.begin('save-status')) return;
+    const intent = ++this.lifecycleIntent;
     this.lifecycleError.set(null);
     this.lifecycleFeedback.set(null);
     this.api.updateWorkspace(this.projectId, {
       status: this.lifecycleForm.controls.status.value,
     }).pipe(
-      releaseProjectOperationOnFinalize(lease),
+      finalize(() => this.pending.end('save-status')),
       takeUntilDestroyed(this.destroyRef),
     ).subscribe({
       next: (project) => {
-        this.applyProject(project);
+        if (!this.applyProjectStatus(project, intent)) return;
         this.lifecycleFeedback.set('Az adminisztratív projektfázis frissítve lett.');
         this.projectContext?.reload();
       },
-      error: (error: Error) => this.lifecycleError.set(error.message),
+      error: (error: Error) => {
+        if (intent >= this.appliedLifecycleIntent) {
+          this.lifecycleError.set(error.message);
+        }
+      },
     });
   }
 
   requestProjectArchive(): void {
-    if (this.busy() || this.isArchived()) return;
+    if (this.isArchived() || this.pending.isPending('archive')) return;
     this.confirmationService.confirm({
       key: 'project-archive',
       header: 'Projekt archiválása',
@@ -236,45 +242,51 @@ export class ProjectSettingsPage implements OnInit {
   }
 
   archiveProject(): void {
-    if (this.busy() || this.isArchived()) return;
-    const lease = this.operationPolicy.tryAcquire('project-archive');
-    if (!lease) return;
+    if (this.isArchived() || !this.pending.begin('archive')) return;
+    const intent = ++this.lifecycleIntent;
     this.actionError.set(null);
     this.feedback.set(null);
     this.api.archiveProject(this.projectId).pipe(
-      releaseProjectOperationOnFinalize(lease),
+      finalize(() => this.pending.end('archive')),
       takeUntilDestroyed(this.destroyRef),
     ).subscribe({
       next: (project) => {
-        this.applyProject(project);
+        if (!this.applyProjectStatus(project, intent)) return;
         this.feedback.set('A projekt archiválva lett.');
         this.projectContext?.reload();
       },
-      error: (error: Error) => this.actionError.set(error.message),
+      error: (error: Error) => {
+        if (intent >= this.appliedLifecycleIntent) {
+          this.actionError.set(error.message);
+        }
+      },
     });
   }
 
   restoreProject(): void {
-    if (this.busy() || !this.isArchived()) return;
-    const lease = this.operationPolicy.tryAcquire('project-restore');
-    if (!lease) return;
+    if (!this.isArchived() || !this.pending.begin('restore')) return;
+    const intent = ++this.lifecycleIntent;
     this.actionError.set(null);
     this.feedback.set(null);
     this.api.restoreProject(this.projectId).pipe(
-      releaseProjectOperationOnFinalize(lease),
+      finalize(() => this.pending.end('restore')),
       takeUntilDestroyed(this.destroyRef),
     ).subscribe({
       next: (project) => {
-        this.applyProject(project);
+        if (!this.applyProjectStatus(project, intent)) return;
         this.feedback.set('A projekt visszaállt az Előkészítés alatt adminisztratív projektfázisba.');
         this.projectContext?.reload();
       },
-      error: (error: Error) => this.actionError.set(error.message),
+      error: (error: Error) => {
+        if (intent >= this.appliedLifecycleIntent) {
+          this.actionError.set(error.message);
+        }
+      },
     });
   }
 
   requestProjectDeletion(): void {
-    if (this.busy() || !this.isDeletableDraft()) return;
+    if (!this.isDeletableDraft() || this.pending.isPending('delete')) return;
     this.confirmationService.confirm({
       key: 'project-delete',
       header: 'Projekt végleges törlése',
@@ -285,13 +297,11 @@ export class ProjectSettingsPage implements OnInit {
   }
 
   deleteProject(): void {
-    if (this.busy() || !this.isDeletableDraft()) return;
-    const lease = this.operationPolicy.tryAcquire('project-delete');
-    if (!lease) return;
+    if (!this.isDeletableDraft() || !this.pending.begin('delete')) return;
     this.actionError.set(null);
     this.feedback.set(null);
     this.api.deleteProject(this.projectId).pipe(
-      releaseProjectOperationOnFinalize(lease),
+      finalize(() => this.pending.end('delete')),
       takeUntilDestroyed(this.destroyRef),
     ).subscribe({
       next: () => void this.router.navigate(['/']),
@@ -307,22 +317,47 @@ export class ProjectSettingsPage implements OnInit {
     return this.view()?.project.status === 'DRAFT';
   }
 
-  private applyProject(project: ProjectWorkspace): void {
-    this.view.update((current) => current ? { ...current, project } : current);
-    this.resetForms(project);
+  private applyProjectPatch(
+    project: ProjectWorkspace,
+    patch: Partial<ProjectWorkspace>,
+  ): void {
+    this.view.update((current) => current ? {
+      ...current,
+      project: {
+        ...current.project,
+        ...patch,
+        updatedAt: project.updatedAt > current.project.updatedAt
+          ? project.updatedAt
+          : current.project.updatedAt,
+      },
+    } : current);
+  }
+
+  private applyProjectStatus(project: ProjectWorkspace, intent: number): boolean {
+    if (intent < this.appliedLifecycleIntent) return false;
+    this.appliedLifecycleIntent = intent;
+    this.applyProjectPatch(project, { status: project.status });
+    if (project.status !== 'ARCHIVED') {
+      this.lifecycleForm.reset({ status: project.status });
+    }
+    return true;
   }
 
   private resetForms(project: ProjectWorkspace): void {
+    this.resetBasicsForm(project);
+    if (project.status !== 'ARCHIVED') {
+      this.lifecycleForm.reset({ status: project.status });
+    }
+    this.playbookForm.reset({ playbook: `${project.playbook.id}:${project.playbook.version}` });
+  }
+
+  private resetBasicsForm(project: ProjectWorkspace): void {
     this.basicsForm.reset({
       name: project.name,
       internalOwnerName: project.internalOwnerName ?? '',
       customerContactName: project.customerContactName,
       customerContactEmail: project.customerContactEmail,
     });
-    if (project.status !== 'ARCHIVED') {
-      this.lifecycleForm.reset({ status: project.status });
-    }
-    this.playbookForm.reset({ playbook: `${project.playbook.id}:${project.playbook.version}` });
   }
 }
 

@@ -45,10 +45,7 @@ import {
 } from '@project-maker/contracts';
 import { finalize } from 'rxjs';
 
-import {
-  PROJECT_OPERATION_POLICY,
-  releaseProjectOperationOnFinalize,
-} from '../project-operation-policy';
+import { ProjectCommandPending } from '../project-command-pending';
 import {
   DiscoveryFollowUpsApiError,
   DiscoveryFollowUpsApiService,
@@ -93,7 +90,7 @@ export class DiscoveryFollowUpsComponent implements OnInit {
   readonly committedChange = output<void>();
 
   private readonly api = inject(DiscoveryFollowUpsApiService);
-  private readonly operationPolicy = inject(PROJECT_OPERATION_POLICY);
+  private readonly pending = new ProjectCommandPending();
   private readonly destroyRef = inject(DestroyRef);
   private readonly document = inject(DOCUMENT);
   private readonly injector = inject(Injector);
@@ -152,11 +149,10 @@ export class DiscoveryFollowUpsComponent implements OnInit {
   readonly mutationDisabled = computed(
     () =>
       this.projectStatus() === 'ARCHIVED' ||
-      this.operationPolicy.busy() ||
       this.pendingSourceRemoval() !== null,
   );
   readonly creating = computed(
-    () => this.operationPolicy.activeOperation() === 'discovery-create',
+    () => this.pending.isPending('create'),
   );
 
   readonly creationForm = new FormGroup({
@@ -352,17 +348,14 @@ export class DiscoveryFollowUpsComponent implements OnInit {
         ? {}
         : { sourceSnapshotId: value.sourceSnapshotId }),
     };
-    const lease = this.operationPolicy.tryAcquire('discovery-create');
-    if (!lease) {
-      return;
-    }
+    if (!this.pending.begin('create')) return;
 
     this.actionError.set(null);
     this.feedback.set(null);
     this.api
       .create(this.projectId(), input)
       .pipe(
-        releaseProjectOperationOnFinalize(lease),
+        finalize(() => this.pending.end('create')),
         takeUntilDestroyed(this.destroyRef),
       )
       .subscribe({
@@ -415,10 +408,7 @@ export class DiscoveryFollowUpsComponent implements OnInit {
       return;
     }
 
-    const lease = this.operationPolicy.tryAcquire('discovery-source-link');
-    if (!lease) {
-      return;
-    }
+    if (!this.pending.begin('source-link')) return;
 
     this.savingSourceLinkId.set(followUpId);
     this.actionError.set(null);
@@ -430,7 +420,7 @@ export class DiscoveryFollowUpsComponent implements OnInit {
       })
       .pipe(
         finalize(() => this.savingSourceLinkId.set(null)),
-        releaseProjectOperationOnFinalize(lease),
+        finalize(() => this.pending.end('source-link')),
         takeUntilDestroyed(this.destroyRef),
       )
       .subscribe({
@@ -515,7 +505,6 @@ export class DiscoveryFollowUpsComponent implements OnInit {
     );
     if (
       this.projectStatus() === 'ARCHIVED' ||
-      this.operationPolicy.busy() ||
       this.openedEditId() !== null ||
       this.openedResolutionId() !== null ||
       this.openedSourceLinkId() !== null ||
@@ -537,13 +526,7 @@ export class DiscoveryFollowUpsComponent implements OnInit {
       return;
     }
 
-    const lease = this.operationPolicy.tryAcquire('discovery-source-link');
-    if (!lease) {
-      this.actionError.set(
-        'A forrás nem távolítható el, amíg egy másik projektművelet folyamatban van. Várd meg a befejezését, majd próbáld meg ismét.',
-      );
-      return;
-    }
+    if (!this.pending.begin('source-link')) return;
 
     this.pendingSourceRemoval.set(null);
     this.clearSourceRemovalFocusTargets();
@@ -558,7 +541,7 @@ export class DiscoveryFollowUpsComponent implements OnInit {
       })
       .pipe(
         finalize(() => this.savingSourceLinkId.set(null)),
-        releaseProjectOperationOnFinalize(lease),
+        finalize(() => this.pending.end('source-link')),
         takeUntilDestroyed(this.destroyRef),
       )
       .subscribe({
@@ -669,10 +652,7 @@ export class DiscoveryFollowUpsComponent implements OnInit {
       nextStep: value.nextStep.trim(),
       expectedVersion: baseline.version,
     };
-    const lease = this.operationPolicy.tryAcquire('discovery-update');
-    if (!lease) {
-      return;
-    }
+    if (!this.pending.begin('update')) return;
 
     this.savingEditId.set(followUpId);
     this.actionError.set(null);
@@ -681,7 +661,7 @@ export class DiscoveryFollowUpsComponent implements OnInit {
       .update(this.projectId(), followUpId, input)
       .pipe(
         finalize(() => this.savingEditId.set(null)),
-        releaseProjectOperationOnFinalize(lease),
+        finalize(() => this.pending.end('update')),
         takeUntilDestroyed(this.destroyRef),
       )
       .subscribe({
@@ -855,10 +835,7 @@ export class DiscoveryFollowUpsComponent implements OnInit {
       status: value.status,
       decisionOrAnswer: value.decisionOrAnswer.trim(),
     };
-    const lease = this.operationPolicy.tryAcquire('discovery-resolve');
-    if (!lease) {
-      return;
-    }
+    if (!this.pending.begin('resolve')) return;
 
     this.savingResolutionId.set(followUpId);
     this.actionError.set(null);
@@ -867,7 +844,7 @@ export class DiscoveryFollowUpsComponent implements OnInit {
       .resolve(this.projectId(), followUpId, input)
       .pipe(
         finalize(() => this.savingResolutionId.set(null)),
-        releaseProjectOperationOnFinalize(lease),
+        finalize(() => this.pending.end('resolve')),
         takeUntilDestroyed(this.destroyRef),
       )
       .subscribe({
@@ -899,10 +876,7 @@ export class DiscoveryFollowUpsComponent implements OnInit {
   }
 
   isEditSaving(followUpId: string): boolean {
-    return (
-      this.operationPolicy.activeOperation() === 'discovery-update' &&
-      this.savingEditId() === followUpId
-    );
+    return this.pending.isPending('update') && this.savingEditId() === followUpId;
   }
 
   hasEditChanges(): boolean {
@@ -960,10 +934,7 @@ export class DiscoveryFollowUpsComponent implements OnInit {
   }
 
   isResolutionSaving(followUpId: string): boolean {
-    return (
-      this.operationPolicy.activeOperation() === 'discovery-resolve' &&
-      this.savingResolutionId() === followUpId
-    );
+    return this.pending.isPending('resolve') && this.savingResolutionId() === followUpId;
   }
 
   resolutionControlsDisabled(): boolean {

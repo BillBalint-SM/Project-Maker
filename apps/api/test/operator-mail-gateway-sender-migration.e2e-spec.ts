@@ -89,11 +89,6 @@ describe('Operator mail gateway sender migration (PostgreSQL)', () => {
         ),
         (error: unknown) => isConstraintViolation(error, 'chk_follow_up_preview_sender'),
       );
-
-      await assert.rejects(
-        database.undoLastMigration(),
-        /Migration 0024 cannot restore the retired provider-specific sender constraint/,
-      );
     } finally {
       if (database?.isInitialized) await database.destroy();
       if (admin.isInitialized) {

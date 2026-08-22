@@ -23,7 +23,6 @@ export interface MailGatewayConfiguration {
   };
   readonly smtp: MailGatewayChannelConfiguration;
   readonly imap: MailGatewayChannelConfiguration & { readonly folder: string };
-  readonly checkpointSecret: string;
   readonly tlsCaCertificate: string | null;
   readonly timeoutMs: number;
 }
@@ -39,7 +38,6 @@ export function createMailGatewayConfiguration(
 ): MailGatewayConfiguration | null {
   const mailboxName = normalized(config.get<string>('CORRESPONDENCE_MAILBOX_NAME'));
   const mailboxAddress = normalized(config.get<string>('CORRESPONDENCE_MAILBOX_ADDRESS'));
-  const checkpointSecret = config.get<string>('MAIL_GATEWAY_CHECKPOINT_SECRET') ?? '';
   const smtp = channel(config, 'SMTP');
   const imapChannel = channel(config, 'IMAP');
   const folder = normalized(config.get<string>('MAIL_GATEWAY_IMAP_FOLDER')) ?? 'INBOX';
@@ -53,7 +51,6 @@ export function createMailGatewayConfiguration(
     || !smtp
     || !imapChannel
     || !safeFolder(folder)
-    || Buffer.byteLength(checkpointSecret, 'utf8') < 32
     || tlsCaCertificate === undefined
   ) {
     return null;
@@ -63,7 +60,6 @@ export function createMailGatewayConfiguration(
     mailbox: Object.freeze({ name: mailboxName, address: mailboxAddress }),
     smtp,
     imap: Object.freeze({ ...imapChannel, folder }),
-    checkpointSecret,
     tlsCaCertificate,
     timeoutMs: 10_000,
   });

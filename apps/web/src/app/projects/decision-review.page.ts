@@ -14,7 +14,6 @@ import { MessageModule } from 'primeng/message';
 import { TextareaModule } from 'primeng/textarea';
 
 import { DecisionPortfolioApiService } from './decision-portfolio-api.service';
-import { provideProjectOperationPolicy } from './project-operation-policy';
 import { ProjectApiService } from './project-api.service';
 import { DecisionReviewComponent } from './decision-review/decision-review.component';
 
@@ -29,7 +28,6 @@ import { DecisionReviewComponent } from './decision-review/decision-review.compo
     ReactiveFormsModule,
     TextareaModule,
   ],
-  providers: [provideProjectOperationPolicy()],
   templateUrl: './decision-review.page.html',
   styleUrl: './decision-review.page.scss',
 })

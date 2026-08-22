@@ -18,7 +18,7 @@ dedicated correspondence identity; employees cannot select a personal or other
 sender. Reply-To remains the correlation address supplied by the
 application flow.
 
-The supplier does not receive gateway passwords, checkpoint secrets, private
+The supplier does not receive gateway passwords, private
 CA material, mailbox content, or a populated `.env`. Incomplete or unsafe
 gateway configuration keeps mail functions closed while unrelated Project Maker
 work remains available.
@@ -40,7 +40,6 @@ ticket or chat. The gateway supports only `STARTTLS_REQUIRED` and
 | `CORRESPONDENCE_MAILBOX_NAME` / `CORRESPONDENCE_MAILBOX_ADDRESS` | Operator organization-controlled display and dedicated sender identity. |
 | `MAIL_GATEWAY_SMTP_HOST`, `_PORT`, `_SECURITY`, `_USERNAME`, `_PASSWORD` | TLS SMTP submission endpoint and credential. |
 | `MAIL_GATEWAY_IMAP_HOST`, `_PORT`, `_SECURITY`, `_USERNAME`, `_PASSWORD`, `_FOLDER` | TLS IMAP inbox endpoint and separately managed credential. |
-| `MAIL_GATEWAY_CHECKPOINT_SECRET` | At least 32 random characters for encrypted, mailbox/folder-bound IMAP checkpoints. |
 | `MAIL_GATEWAY_TLS_CA_CERTIFICATE_BASE64` | Optional base64 PEM CA only when the Operator gateway uses a private CA. |
 
 SMTP and IMAP credentials stay separate even when the Operator supplies equal
@@ -62,7 +61,7 @@ The aggregate keeps one owning proof at each public seam:
 
 | Layer | Coverage | Focused command |
 | --- | --- | --- |
-| API and protocol | Configuration fail-closed rules, sender identity, encrypted checkpoints, SMTP outcomes, IMAP recovery, handoff, reminder, correlation, and retained delivery states | `pnpm --filter @project-maker/api test:mail-gateway` |
+| API and protocol | Configuration fail-closed rules, sender identity, strict versioned checkpoints, SMTP outcomes, IMAP recovery, handoff, reminder, correlation, and retained delivery states | `pnpm --filter @project-maker/api test:mail-gateway` |
 | TLS socket protocol | Authenticated SMTP submission and IMAP reads against controlled TLS servers | `pnpm --filter @project-maker/api test:mail-gateway:protocol` |
 | Browser | One reviewed reminder is submitted through the controlled TLS gateway and its token-correlated reply becomes visible in the application | `pnpm --filter @project-maker/web exec playwright test e2e/customer-follow-up-ping.spec.ts` |
 
@@ -100,10 +99,13 @@ gateway-activation evidence.
 ## Polling and recovery
 
 Manual refresh and scheduled polling share one durable IMAP path. The first
-connection creates a baseline without importing historical mail. The encrypted
-checkpoint binds UIDVALIDITY, mailbox, and folder; a changed UIDVALIDITY is an
-invalid cursor, not permission to silently replay history. Retained messages,
-correspondence, and checkpoint state are never deleted to force recovery.
+connection creates a baseline without importing historical mail. The checkpoint
+is a plain, versioned base64url value with strict canonical validation. It
+stores UIDVALIDITY and bounded UID progress; the persistence row belongs to the
+configured mailbox, and the current folder validates UIDVALIDITY before reuse.
+It contains no credential and needs no separate secret. An invalid, old, or changed-UIDVALIDITY checkpoint safely
+starts a new baseline instead of replaying history. Retained messages and
+correspondence are never deleted to force recovery.
 
 SMTP rejection produces a known failed attempt. A disconnect after submission
 can produce an unknown outcome and requires explicit duplicate-risk acceptance

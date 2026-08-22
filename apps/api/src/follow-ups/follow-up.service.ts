@@ -39,6 +39,10 @@ import { hasCustomerReceiptEvidence } from '../customer-replies/customer-receipt
 import { CustomerCorrespondenceEntity } from '../interview-customer-handoffs/customer-correspondence.entity';
 import { CustomerOutboundAttemptEntity } from '../interview-customer-handoffs/customer-outbound-attempt.entity';
 import { CustomerOutboundCommunicationEntity } from '../interview-customer-handoffs/customer-outbound-communication.entity';
+import {
+  appendCanonicalOutboundAttempt,
+  createCanonicalOutbound,
+} from '../interview-customer-handoffs/customer-outbound-persistence';
 import { DiscoveryFollowUpEntity } from '../discovery-follow-ups/discovery-follow-up.entity';
 import {
   CustomerMailBoundaryError,
@@ -58,7 +62,10 @@ import {
   renderCustomerFollowUpPing,
   type RenderedCustomerFollowUpPing,
 } from './customer-follow-up-ping.renderer';
-import { minimumFollowUpIntervalMinutes, maximumFollowUpIntervalMinutes } from './dto/update-follow-up.dto';
+import {
+  minimumFollowUpIntervalMinutes,
+  maximumFollowUpIntervalMinutes,
+} from './dto/update-follow-up.dto';
 import {
   SendFollowUpPingDto,
   RetryFollowUpPingDto,
@@ -104,7 +111,8 @@ export class CustomerFollowUpService implements OnModuleInit, OnModuleDestroy {
     private readonly mailer: CustomerOutboundMail,
     private readonly configService: ConfigService,
   ) {
-    this.pollIntervalMs = createFollowUpConfiguration(configService).pollIntervalMs;
+    this.pollIntervalMs =
+      createFollowUpConfiguration(configService).pollIntervalMs;
   }
 
   onModuleInit(): void {
@@ -135,20 +143,34 @@ export class CustomerFollowUpService implements OnModuleInit, OnModuleDestroy {
   async get(projectId: string): Promise<CustomerFollowUpState> {
     return this.dataSource.transaction(async (manager) => {
       await this.findProject(manager, projectId, false);
-      const existing = await manager.getRepository(CustomerFollowUpEntity).findOneBy({ projectId });
+      const existing = await manager
+        .getRepository(CustomerFollowUpEntity)
+        .findOneBy({ projectId });
       await this.reconcileExpiredManualAttempts(manager, projectId, new Date());
-      const latestManualAttempt = await findLatestManualAttempt(manager, projectId);
-      return toState(
+      const latestManualAttempt = await findLatestManualAttempt(
+        manager,
+        projectId,
+      );
+      return await toState(
+        manager,
         existing ?? createDefaultState(projectId),
         latestManualAttempt,
-        await hasCustomerReceiptEvidence(manager, latestManualAttempt?.correspondenceId ?? null),
+        await hasCustomerReceiptEvidence(
+          manager,
+          latestManualAttempt?.correspondenceId ?? null,
+        ),
       );
     });
   }
 
-  async update(projectId: string, input: UpdateFollowUpDto): Promise<CustomerFollowUpState> {
+  async update(
+    projectId: string,
+    input: UpdateFollowUpDto,
+  ): Promise<CustomerFollowUpState> {
     if (Object.keys(input).length === 0) {
-      throw new BadRequestException('Follow-up update must include at least one field.');
+      throw new BadRequestException(
+        'Follow-up update must include at least one field.',
+      );
     }
     validateInterval(input.intervalMinutes);
     const now = new Date();
@@ -159,7 +181,12 @@ export class CustomerFollowUpService implements OnModuleInit, OnModuleDestroy {
       const state = await findOrCreateLockedState(manager, projectId);
       const intervalMinutes = input.intervalMinutes ?? state.intervalMinutes;
       const enabled = input.enabled ?? state.enabled;
-      const expiresAt = parseExpiresAt(input.expiresAt, state.expiresAt, now, enabled);
+      const expiresAt = parseExpiresAt(
+        input.expiresAt,
+        state.expiresAt,
+        now,
+        enabled,
+      );
       if (enabled) {
         this.requireMailer();
         await renderCurrentPing(manager, project, state);
@@ -172,14 +199,24 @@ export class CustomerFollowUpService implements OnModuleInit, OnModuleDestroy {
       if (!enabled) {
         state.nextPingAt = null;
       }
-      const saved = await manager.getRepository(CustomerFollowUpEntity).save(state);
+      const saved = await manager
+        .getRepository(CustomerFollowUpEntity)
+        .save(state);
       await saveAuditEvent(manager, projectId, 'FOLLOW_UP_SETTINGS_UPDATED', {
         enabled: String(saved.enabled),
         intervalMinutes: String(saved.intervalMinutes),
         expiresAt: saved.expiresAt ? saved.expiresAt.toISOString() : 'NONE',
       });
       const latestAttempt = await findLatestManualAttempt(manager, projectId);
-      return toState(saved, latestAttempt, await hasCustomerReceiptEvidence(manager, latestAttempt?.correspondenceId ?? null));
+      return await toState(
+        manager,
+        saved,
+        latestAttempt,
+        await hasCustomerReceiptEvidence(
+          manager,
+          latestAttempt?.correspondenceId ?? null,
+        ),
+      );
     });
   }
 
@@ -188,10 +225,12 @@ export class CustomerFollowUpService implements OnModuleInit, OnModuleDestroy {
   ): Promise<readonly CustomerFollowUpReferenceOption[]> {
     await this.findProject(this.dataSource.manager, projectId, false);
     const openStatus = await initialDiscoveryFollowUpStatus();
-    const followUps = await this.dataSource.manager.getRepository(DiscoveryFollowUpEntity).find({
-      where: { projectId, status: openStatus },
-      order: { createdAt: 'ASC', id: 'ASC' },
-    });
+    const followUps = await this.dataSource.manager
+      .getRepository(DiscoveryFollowUpEntity)
+      .find({
+        where: { projectId, status: openStatus },
+        order: { createdAt: 'ASC', id: 'ASC' },
+      });
     return followUps.map(toReferenceOption);
   }
 
@@ -201,7 +240,9 @@ export class CustomerFollowUpService implements OnModuleInit, OnModuleDestroy {
   ): Promise<CustomerFollowUpState> {
     const messageDraft = input.messageDraft.trim();
     if (!messageDraft) {
-      throw new BadRequestException('A Customer follow-up ping üzenete nem lehet üres.');
+      throw new BadRequestException(
+        'A Customer follow-up ping üzenete nem lehet üres.',
+      );
     }
 
     const now = new Date();
@@ -212,11 +253,16 @@ export class CustomerFollowUpService implements OnModuleInit, OnModuleDestroy {
       if (state.draftVersion !== input.expectedVersion) {
         throw new ConflictException({
           code: 'FOLLOW_UP_DRAFT_STALE',
-          message: 'A Customer follow-up ping piszkozata időközben megváltozott. Töltsd újra az aktuális változatot, vagy tartsd meg a saját szövegedet.',
+          message:
+            'A Customer follow-up ping piszkozata időközben megváltozott. Töltsd újra az aktuális változatot, vagy tartsd meg a saját szövegedet.',
         });
       }
       const referencedFollowUp = input.referencedFollowUpId
-        ? await requireOpenReference(manager, projectId, input.referencedFollowUpId)
+        ? await requireOpenReference(
+            manager,
+            projectId,
+            input.referencedFollowUpId,
+          )
         : null;
 
       state.messageDraft = messageDraft;
@@ -225,20 +271,35 @@ export class CustomerFollowUpService implements OnModuleInit, OnModuleDestroy {
       clearPreview(state);
       const latestAttempt = await findLatestManualAttempt(manager, projectId);
       if (
-        state.enabled
-        && state.nextPingAt === null
-        && latestAttempt?.state !== 'SENDING'
-        && latestAttempt?.state !== 'UNKNOWN'
+        state.enabled &&
+        state.nextPingAt === null &&
+        latestAttempt?.state !== 'SENDING' &&
+        latestAttempt?.state !== 'UNKNOWN'
       ) {
         state.nextPingAt = addMinutes(now, state.intervalMinutes);
       }
-      const saved = await manager.getRepository(CustomerFollowUpEntity).save(state);
-      await saveAuditEvent(manager, projectId, 'CUSTOMER_FOLLOW_UP_DRAFT_UPDATED', {
-        draftVersion: String(saved.draftVersion),
-        hasReference: String(referencedFollowUp !== null),
-        messageLength: String(messageDraft.length),
-      });
-      return toState(saved, latestAttempt, await hasCustomerReceiptEvidence(manager, latestAttempt?.correspondenceId ?? null));
+      const saved = await manager
+        .getRepository(CustomerFollowUpEntity)
+        .save(state);
+      await saveAuditEvent(
+        manager,
+        projectId,
+        'CUSTOMER_FOLLOW_UP_DRAFT_UPDATED',
+        {
+          draftVersion: String(saved.draftVersion),
+          hasReference: String(referencedFollowUp !== null),
+          messageLength: String(messageDraft.length),
+        },
+      );
+      return await toState(
+        manager,
+        saved,
+        latestAttempt,
+        await hasCustomerReceiptEvidence(
+          manager,
+          latestAttempt?.correspondenceId ?? null,
+        ),
+      );
     });
   }
 
@@ -252,14 +313,23 @@ export class CustomerFollowUpService implements OnModuleInit, OnModuleDestroy {
       rejectArchivedProject(project);
       const state = await findOrCreateLockedState(manager, projectId);
       requireCurrentDraftVersion(state, input.expectedVersion);
-      const { reference, rendered } = await renderCurrentPing(manager, project, state);
+      const { reference, rendered } = await renderCurrentPing(
+        manager,
+        project,
+        state,
+      );
       const sender = dedicatedCustomerSender(this.configService);
       const previewToken = randomBytes(32).toString('base64url');
       const expiresAt = new Date(now.getTime() + previewLifetimeMs);
       state.previewTokenDigest = digest(previewToken);
       state.previewSenderName = sender.name;
       state.previewSenderAddress = sender.address;
-      state.previewFingerprint = pingFingerprint(state, rendered, reference, sender);
+      state.previewFingerprint = pingFingerprint(
+        state,
+        rendered,
+        reference,
+        sender,
+      );
       state.previewExpiresAt = expiresAt;
       await manager.getRepository(CustomerFollowUpEntity).save(state);
       return {
@@ -279,100 +349,126 @@ export class CustomerFollowUpService implements OnModuleInit, OnModuleDestroy {
   ): Promise<CustomerFollowUpPingDelivery> {
     this.requireMailer();
     const attemptedAt = new Date();
-    const claim = await this.dataSource.transaction(async (
-      manager,
-    ): Promise<ClaimedCustomerFollowUpPing | DuplicateRiskAcknowledgementRequired> => {
-      const project = await this.findProject(manager, projectId, true);
-      rejectArchivedProject(project);
-      const state = await findOrCreateLockedState(manager, projectId);
-      if (
-        !state.previewTokenDigest ||
-        !state.previewFingerprint ||
-        !state.previewExpiresAt ||
-        state.previewExpiresAt <= attemptedAt ||
-        digest(input.previewToken) !== state.previewTokenDigest
-      ) {
-        throw new ConflictException({
-          code: 'FOLLOW_UP_PREVIEW_STALE',
-          message: 'Az előnézet lejárt vagy már fel lett használva. Készíts új előnézetet a küldés előtt.',
+    const claim = await this.dataSource.transaction(
+      async (
+        manager,
+      ): Promise<
+        ClaimedCustomerFollowUpPing | DuplicateRiskAcknowledgementRequired
+      > => {
+        const project = await this.findProject(manager, projectId, true);
+        rejectArchivedProject(project);
+        const state = await findOrCreateLockedState(manager, projectId);
+        if (
+          !state.previewTokenDigest ||
+          !state.previewFingerprint ||
+          !state.previewExpiresAt ||
+          state.previewExpiresAt <= attemptedAt ||
+          digest(input.previewToken) !== state.previewTokenDigest
+        ) {
+          throw new ConflictException({
+            code: 'FOLLOW_UP_PREVIEW_STALE',
+            message:
+              'Az előnézet lejárt vagy már fel lett használva. Készíts új előnézetet a küldés előtt.',
+          });
+        }
+        const { reference, rendered } = await renderCurrentPing(
+          manager,
+          project,
+          state,
+        );
+        if (!state.previewSenderName || !state.previewSenderAddress) {
+          throw new ConflictException({
+            code: 'FOLLOW_UP_PREVIEW_STALE',
+            message: 'A feladó nincs rögzítve az előnézetben.',
+          });
+        }
+        const sender = {
+          name: state.previewSenderName,
+          address: state.previewSenderAddress,
+        };
+        if (
+          pingFingerprint(state, rendered, reference, sender) !==
+          state.previewFingerprint
+        ) {
+          clearPreview(state);
+          await manager.getRepository(CustomerFollowUpEntity).save(state);
+          throw new ConflictException({
+            code: 'FOLLOW_UP_PREVIEW_STALE',
+            message:
+              'A címzett, a piszkozat vagy a hivatkozott kérdés megváltozott. Ellenőrizd az új előnézetet.',
+          });
+        }
+        const attemptRepository = manager.getRepository(
+          CustomerFollowUpDeliveryAttemptEntity,
+        );
+        const activeAttempts = await this.reconcileExpiredManualAttempts(
+          manager,
+          projectId,
+          attemptedAt,
+        );
+        if (activeAttempts.some((attempt) => attempt.state === 'SENDING')) {
+          throw new ConflictException({
+            code: 'FOLLOW_UP_DELIVERY_IN_PROGRESS',
+            message:
+              'Az ügyfél-ping küldése már folyamatban van. Várj a kézbesítési eredményre.',
+          });
+        }
+        const latestAttempt =
+          activeAttempts[0] ??
+          (await attemptRepository.findOne({
+            where: {
+              projectId,
+            },
+            order: { attemptedAt: 'DESC', createdAt: 'DESC', id: 'ASC' },
+          }));
+        if (
+          latestAttempt?.state === 'UNKNOWN' &&
+          input.acknowledgeDuplicateRiskForAttemptId !== latestAttempt.id
+        ) {
+          return { requiresDuplicateRiskAcknowledgement: true };
+        }
+        const claimedAt = nextAttemptTimestamp(attemptedAt, latestAttempt);
+        const attemptId = randomUUID();
+        const attempt = await attemptRepository.save({
+          id: attemptId,
+          projectId,
+          draftVersion: state.draftVersion,
+          referencedFollowUpId: reference?.id ?? null,
+          referencedFollowUpVersion: reference?.version ?? null,
+          state: 'SENDING',
+          createdAt: claimedAt,
+          attemptedAt: claimedAt,
+          outboundCommunicationId: null,
+          correspondenceId: null,
         });
-      }
-      const { reference, rendered } = await renderCurrentPing(manager, project, state);
-      if (!state.previewSenderName || !state.previewSenderAddress) {
-        throw new ConflictException({ code: 'FOLLOW_UP_PREVIEW_STALE', message: 'A feladó nincs rögzítve az előnézetben.' });
-      }
-      const sender = { name: state.previewSenderName, address: state.previewSenderAddress };
-      if (pingFingerprint(state, rendered, reference, sender) !== state.previewFingerprint) {
+        const outbound = await createPingCorrespondence(
+          manager,
+          this.configService,
+          project,
+          attempt,
+          rendered,
+          sender,
+          reference,
+        );
         clearPreview(state);
         await manager.getRepository(CustomerFollowUpEntity).save(state);
-        throw new ConflictException({
-          code: 'FOLLOW_UP_PREVIEW_STALE',
-          message: 'A címzett, a piszkozat vagy a hivatkozott kérdés megváltozott. Ellenőrizd az új előnézetet.',
-        });
-      }
-      const attemptRepository = manager.getRepository(CustomerFollowUpDeliveryAttemptEntity);
-      const activeAttempts = await this.reconcileExpiredManualAttempts(
-        manager,
-        projectId,
-        attemptedAt,
-      );
-      if (activeAttempts.some((attempt) => attempt.state === 'SENDING')) {
-        throw new ConflictException({
-          code: 'FOLLOW_UP_DELIVERY_IN_PROGRESS',
-          message: 'Az ügyfél-ping küldése már folyamatban van. Várj a kézbesítési eredményre.',
-        });
-      }
-      const latestAttempt = activeAttempts[0] ?? await attemptRepository.findOne({
-        where: {
-          projectId,
-        },
-        order: { attemptedAt: 'DESC', createdAt: 'DESC', id: 'ASC' },
-      });
-      if (
-        latestAttempt?.state === 'UNKNOWN' &&
-        input.acknowledgeDuplicateRiskForAttemptId !== latestAttempt.id
-      ) {
-        return { requiresDuplicateRiskAcknowledgement: true };
-      }
-      const claimedAt = nextAttemptTimestamp(attemptedAt, latestAttempt);
-      const attemptId = randomUUID();
-      const attempt = await attemptRepository.save({
-        id: attemptId,
-        projectId,
-        draftVersion: state.draftVersion,
-        referencedFollowUpId: reference?.id ?? null,
-        referencedFollowUpVersion: reference?.version ?? null,
-        state: 'SENDING',
-        recipientEmail: rendered.recipientEmail,
-        subjectLength: rendered.subject.length,
-        textLength: rendered.text.length,
-        failureCode: null,
-        createdAt: claimedAt,
-        attemptedAt: claimedAt,
-        sentAt: null,
-        outboundCommunicationId: null,
-        correspondenceId: null,
-        mailSystemAcceptance: null,
-        messageReference: null,
-      });
-      const outbound = await createPingCorrespondence(manager, this.configService, project, attempt, rendered, sender, reference);
-      clearPreview(state);
-      await manager.getRepository(CustomerFollowUpEntity).save(state);
-      return {
-        attemptId,
-        state,
-        rendered,
-        referencedFollowUpId: reference?.id ?? null,
-        referencedFollowUpVersion: reference?.version ?? null,
-        attemptedAt: claimedAt,
-        outbound,
-      };
-    });
+        return {
+          attemptId,
+          state,
+          rendered,
+          referencedFollowUpId: reference?.id ?? null,
+          referencedFollowUpVersion: reference?.version ?? null,
+          attemptedAt: claimedAt,
+          outbound,
+        };
+      },
+    );
 
     if ('requiresDuplicateRiskAcknowledgement' in claim) {
       throw new ConflictException({
         code: 'FOLLOW_UP_DELIVERY_UNKNOWN',
-        message: 'A korábbi küldés eredménye nem bizonyítható. Ellenőrizd a postafiókot, majd csak a duplikáció kockázatának elfogadásával küldd újra.',
+        message:
+          'A korábbi küldés eredménye nem bizonyítható. Ellenőrizd a postafiókot, majd csak a duplikáció kockázatának elfogadásával küldd újra.',
       });
     }
     return this.deliverClaimedManualPing(claim);
@@ -384,95 +480,119 @@ export class CustomerFollowUpService implements OnModuleInit, OnModuleDestroy {
   ): Promise<CustomerFollowUpPingDelivery> {
     this.requireMailer();
     const attemptedAt = new Date();
-    const claimed = await this.dataSource.transaction(async (manager): Promise<ClaimedCustomerFollowUpPing> => {
-      const project = await this.findProject(manager, projectId, true);
-      rejectArchivedProject(project);
-      const state = await findOrCreateLockedState(manager, projectId);
-      const attemptRepository = manager.getRepository(CustomerFollowUpDeliveryAttemptEntity);
-      const latestAttempt = await attemptRepository.findOne({
-        where: { projectId },
-        order: { attemptedAt: 'DESC', createdAt: 'DESC', id: 'ASC' },
-        lock: { mode: 'pessimistic_write' },
-      });
-      if (!latestAttempt || latestAttempt.id !== input.attemptId) {
-        throw new ConflictException({
-          code: 'FOLLOW_UP_RETRY_STALE',
-          message: 'A kézbesítési állapot időközben megváltozott. Töltsd újra az aktuális állapotot.',
+    const claimed = await this.dataSource.transaction(
+      async (manager): Promise<ClaimedCustomerFollowUpPing> => {
+        const project = await this.findProject(manager, projectId, true);
+        rejectArchivedProject(project);
+        const state = await findOrCreateLockedState(manager, projectId);
+        const attemptRepository = manager.getRepository(
+          CustomerFollowUpDeliveryAttemptEntity,
+        );
+        const latestAttempt = await attemptRepository.findOne({
+          where: { projectId },
+          order: { attemptedAt: 'DESC', createdAt: 'DESC', id: 'ASC' },
+          lock: { mode: 'pessimistic_write' },
         });
-      }
-      if (await hasCustomerReceiptEvidence(manager, latestAttempt.correspondenceId)) {
-        throw new ConflictException({
-          code: 'FOLLOW_UP_RECEIPT_EVIDENCE',
-          message: 'A Customer válasza igazolja az átvételt; ezt a logikai kézbesítést nem szabad újraküldeni.',
-        });
-      }
-      if (latestAttempt.state === 'UNKNOWN' && !input.acknowledgeDuplicateRisk) {
-        throw new ConflictException({
-          code: 'FOLLOW_UP_DUPLICATE_RISK_ACKNOWLEDGEMENT_REQUIRED',
-          message: 'A korábbi küldés eredménye bizonytalan. Az újraküldéshez külön el kell fogadni a duplikáció kockázatát.',
-        });
-      }
-      if (latestAttempt.state !== 'FAILED' && latestAttempt.state !== 'UNKNOWN') {
-        throw new ConflictException({
-          code: 'FOLLOW_UP_RETRY_NOT_AVAILABLE',
-          message: 'Ez a kézbesítési kísérlet nem próbálható újra.',
-        });
-      }
-      const { reference, rendered } = await renderCurrentPing(manager, project, state);
-      const currentReferenceId = reference?.id ?? null;
-      const currentReferenceVersion = reference?.version ?? null;
-      if (
-        state.draftVersion !== latestAttempt.draftVersion ||
-        currentReferenceId !== latestAttempt.referencedFollowUpId ||
-        currentReferenceVersion !== latestAttempt.referencedFollowUpVersion ||
-        rendered.recipientEmail !== latestAttempt.recipientEmail
-      ) {
-        throw new ConflictException({
-          code: 'FOLLOW_UP_RETRY_STALE',
-          message: 'A címzett, a piszkozat vagy a hivatkozott kérdés megváltozott. Készíts új előnézetet.',
-        });
-      }
-      const claimedAt = nextAttemptTimestamp(attemptedAt, latestAttempt);
-      if (
-        (latestAttempt.outboundCommunicationId === null)
-        !== (latestAttempt.correspondenceId === null)
-      ) {
-        throw new ConflictException({
-          code: 'FOLLOW_UP_RETRY_STALE',
-          message: 'A korábbi kézbesítés tartós levelezési azonossága hiányos.',
-        });
-      }
-      const outbound = latestAttempt.outboundCommunicationId
-        ? await manager.getRepository(CustomerOutboundCommunicationEntity).findOneBy({
-            id: latestAttempt.outboundCommunicationId,
-          })
-        : await createPingCorrespondence(
+        if (!latestAttempt || latestAttempt.id !== input.attemptId) {
+          throw new ConflictException({
+            code: 'FOLLOW_UP_RETRY_STALE',
+            message:
+              'A kézbesítési állapot időközben megváltozott. Töltsd újra az aktuális állapotot.',
+          });
+        }
+        if (
+          await hasCustomerReceiptEvidence(
             manager,
-            this.configService,
-            project,
-            latestAttempt,
-            rendered,
-            dedicatedCustomerSender(this.configService),
-            reference,
+            latestAttempt.correspondenceId,
+          )
+        ) {
+          throw new ConflictException({
+            code: 'FOLLOW_UP_RECEIPT_EVIDENCE',
+            message:
+              'A Customer válasza igazolja az átvételt; ezt a logikai kézbesítést nem szabad újraküldeni.',
+          });
+        }
+        if (
+          latestAttempt.state === 'UNKNOWN' &&
+          !input.acknowledgeDuplicateRisk
+        ) {
+          throw new ConflictException({
+            code: 'FOLLOW_UP_DUPLICATE_RISK_ACKNOWLEDGEMENT_REQUIRED',
+            message:
+              'A korábbi küldés eredménye bizonytalan. Az újraküldéshez külön el kell fogadni a duplikáció kockázatát.',
+          });
+        }
+        if (
+          latestAttempt.state !== 'FAILED' &&
+          latestAttempt.state !== 'UNKNOWN'
+        ) {
+          throw new ConflictException({
+            code: 'FOLLOW_UP_RETRY_NOT_AVAILABLE',
+            message: 'Ez a kézbesítési kísérlet nem próbálható újra.',
+          });
+        }
+        const { reference, rendered } = await renderCurrentPing(
+          manager,
+          project,
+          state,
+        );
+        const currentReferenceId = reference?.id ?? null;
+        const currentReferenceVersion = reference?.version ?? null;
+        if (
+          state.draftVersion !== latestAttempt.draftVersion ||
+          currentReferenceId !== latestAttempt.referencedFollowUpId ||
+          currentReferenceVersion !== latestAttempt.referencedFollowUpVersion
+        ) {
+          throw new ConflictException({
+            code: 'FOLLOW_UP_RETRY_STALE',
+            message:
+              'A címzett, a piszkozat vagy a hivatkozott kérdés megváltozott. Készíts új előnézetet.',
+          });
+        }
+        const claimedAt = nextAttemptTimestamp(attemptedAt, latestAttempt);
+        if (
+          (latestAttempt.outboundCommunicationId === null) !==
+          (latestAttempt.correspondenceId === null)
+        ) {
+          throw new ConflictException({
+            code: 'FOLLOW_UP_RETRY_STALE',
+            message:
+              'A korábbi kézbesítés tartós levelezési azonossága hiányos.',
+          });
+        }
+        const outbound = latestAttempt.outboundCommunicationId
+          ? await manager
+              .getRepository(CustomerOutboundCommunicationEntity)
+              .findOneBy({
+                id: latestAttempt.outboundCommunicationId,
+              })
+          : await createPingCorrespondence(
+              manager,
+              this.configService,
+              project,
+              latestAttempt,
+              rendered,
+              dedicatedCustomerSender(this.configService),
+              reference,
+            );
+        if (!outbound)
+          throw new InternalServerErrorException(
+            'A tartós kimenő kommunikáció hiányzik.',
           );
-      if (!outbound) throw new InternalServerErrorException('A tartós kimenő kommunikáció hiányzik.');
-      latestAttempt.state = 'SENDING';
-      latestAttempt.attemptedAt = claimedAt;
-      latestAttempt.sentAt = null;
-      latestAttempt.failureCode = null;
-      latestAttempt.mailSystemAcceptance = null;
-      latestAttempt.messageReference = null;
-      await attemptRepository.save(latestAttempt);
-      return {
-        attemptId: latestAttempt.id,
-        state,
-        rendered,
-        referencedFollowUpId: currentReferenceId,
-        referencedFollowUpVersion: currentReferenceVersion,
-        attemptedAt: claimedAt,
-        outbound,
-      };
-    });
+        latestAttempt.state = 'SENDING';
+        latestAttempt.attemptedAt = claimedAt;
+        await attemptRepository.save(latestAttempt);
+        return {
+          attemptId: latestAttempt.id,
+          state,
+          rendered,
+          referencedFollowUpId: currentReferenceId,
+          referencedFollowUpVersion: currentReferenceVersion,
+          attemptedAt: claimedAt,
+          outbound,
+        };
+      },
+    );
 
     return this.deliverClaimedManualPing(claimed);
   }
@@ -490,13 +610,23 @@ export class CustomerFollowUpService implements OnModuleInit, OnModuleDestroy {
     });
     const processedStates: CustomerFollowUpState[] = [];
     for (const candidate of candidates) {
-      const claimed = await this.claimDueState(candidate.id, candidate.projectId, now);
+      const claimed = await this.claimDueState(
+        candidate.id,
+        candidate.projectId,
+        now,
+      );
       if (!claimed) continue;
       const state = await this.deliverClaimedScheduledPing(claimed, now);
-      processedStates.push(toState(
-        state,
-        await findLatestManualAttempt(this.dataSource.manager, state.projectId),
-      ));
+      processedStates.push(
+        await toState(
+          this.dataSource.manager,
+          state,
+          await findLatestManualAttempt(
+            this.dataSource.manager,
+            state.projectId,
+          ),
+        ),
+      );
     }
     return processedStates;
   }
@@ -507,40 +637,57 @@ export class CustomerFollowUpService implements OnModuleInit, OnModuleDestroy {
   ): Promise<CustomerFollowUpPingDelivery> {
     const sentAt = new Date();
     return this.dataSource.transaction(async (manager) => {
-      const state = await manager.getRepository(CustomerFollowUpEntity).findOne({
-        where: { id: claimed.state.id },
-        lock: { mode: 'pessimistic_write' },
-      });
+      const state = await manager
+        .getRepository(CustomerFollowUpEntity)
+        .findOne({
+          where: { id: claimed.state.id },
+          lock: { mode: 'pessimistic_write' },
+        });
       if (!state) {
         throw new NotFoundException('Customer follow-up state not found.');
       }
-      const attempt = await manager.getRepository(CustomerFollowUpDeliveryAttemptEntity).findOne({
-        where: { id: claimed.attemptId },
-        lock: { mode: 'pessimistic_write' },
-      });
+      const attempt = await manager
+        .getRepository(CustomerFollowUpDeliveryAttemptEntity)
+        .findOne({
+          where: { id: claimed.attemptId },
+          lock: { mode: 'pessimistic_write' },
+        });
       if (!attempt || attempt.state !== 'SENDING') {
-        throw new ConflictException('A Customer follow-up ping kézbesítési állapota megváltozott.');
+        throw new ConflictException(
+          'A Customer follow-up ping kézbesítési állapota megváltozott.',
+        );
       }
       attempt.state = 'SENT';
-      attempt.sentAt = sentAt;
-      attempt.mailSystemAcceptance = 'ACCEPTED';
-      attempt.messageReference = result.messageReference;
-      await manager.getRepository(CustomerFollowUpDeliveryAttemptEntity).save(attempt);
-      await recordOutboundAttempt(manager, attempt, 'ACCEPTED', null, result.messageReference);
+      await manager
+        .getRepository(CustomerFollowUpDeliveryAttemptEntity)
+        .save(attempt);
+      await recordOutboundAttempt(
+        manager,
+        attempt,
+        'ACCEPTED',
+        null,
+        result.messageReference,
+      );
       await markDeliverySuccess(manager, state, sentAt, state.enabled);
-      await saveAuditEvent(manager, state.projectId, 'CUSTOMER_FOLLOW_UP_PING_SENT', {
-        attemptId: attempt.id,
-        draftVersion: String(attempt.draftVersion),
-        referencedFollowUpId: attempt.referencedFollowUpId ?? 'NONE',
-        referencedFollowUpVersion: attempt.referencedFollowUpVersion === null
-          ? 'NONE'
-          : String(attempt.referencedFollowUpVersion),
-        deliveryStatus: sentDeliveryStatus,
-        subjectLength: String(attempt.subjectLength),
-        textLength: String(attempt.textLength),
-        attemptedAt: attempt.attemptedAt.toISOString(),
-        sentAt: sentAt.toISOString(),
-      });
+      await saveAuditEvent(
+        manager,
+        state.projectId,
+        'CUSTOMER_FOLLOW_UP_PING_SENT',
+        {
+          attemptId: attempt.id,
+          draftVersion: String(attempt.draftVersion),
+          referencedFollowUpId: attempt.referencedFollowUpId ?? 'NONE',
+          referencedFollowUpVersion:
+            attempt.referencedFollowUpVersion === null
+              ? 'NONE'
+              : String(attempt.referencedFollowUpVersion),
+          deliveryStatus: sentDeliveryStatus,
+          subjectLength: String(claimed.rendered.subject.length),
+          textLength: String(claimed.rendered.text.length),
+          attemptedAt: attempt.attemptedAt.toISOString(),
+          sentAt: sentAt.toISOString(),
+        },
+      );
       return {
         attemptId: attempt.id,
         state: 'SENT',
@@ -557,35 +704,52 @@ export class CustomerFollowUpService implements OnModuleInit, OnModuleDestroy {
 
   private async finalizeManualFailure(
     claimed: ClaimedCustomerFollowUpPing,
-    result?: { readonly acceptance: 'ACCEPTED' | 'REJECTED'; readonly messageReference: string | null },
+    result?: {
+      readonly acceptance: 'ACCEPTED' | 'REJECTED';
+      readonly messageReference: string | null;
+    },
   ): Promise<void> {
     const failedAt = new Date();
     await this.dataSource.transaction(async (manager) => {
-      const state = await manager.getRepository(CustomerFollowUpEntity).findOne({
-        where: { id: claimed.state.id },
-        lock: { mode: 'pessimistic_write' },
-      });
-      const attempt = await manager.getRepository(CustomerFollowUpDeliveryAttemptEntity).findOne({
-        where: { id: claimed.attemptId },
-        lock: { mode: 'pessimistic_write' },
-      });
+      const state = await manager
+        .getRepository(CustomerFollowUpEntity)
+        .findOne({
+          where: { id: claimed.state.id },
+          lock: { mode: 'pessimistic_write' },
+        });
+      const attempt = await manager
+        .getRepository(CustomerFollowUpDeliveryAttemptEntity)
+        .findOne({
+          where: { id: claimed.attemptId },
+          lock: { mode: 'pessimistic_write' },
+        });
       if (!attempt || !state || attempt.state !== 'SENDING') {
         return;
       }
       attempt.state = 'FAILED';
-      attempt.failureCode = smtpFailureCode;
-      attempt.mailSystemAcceptance = result?.acceptance ?? null;
-      attempt.messageReference = result?.messageReference ?? null;
-      await manager.getRepository(CustomerFollowUpDeliveryAttemptEntity).save(attempt);
-      await recordOutboundAttempt(manager, attempt, 'REJECTED', smtpFailureCode, attempt.messageReference);
+      await manager
+        .getRepository(CustomerFollowUpDeliveryAttemptEntity)
+        .save(attempt);
+      await recordOutboundAttempt(
+        manager,
+        attempt,
+        'REJECTED',
+        smtpFailureCode,
+        result?.messageReference ?? null,
+      );
       await markDeliveryFailure(manager, state, failedAt, state.enabled);
-      await saveAuditEvent(manager, state.projectId, 'CUSTOMER_FOLLOW_UP_PING_FAILED', {
-        attemptId: attempt.id,
-        draftVersion: String(attempt.draftVersion),
-        deliveryStatus: failedDeliveryStatus,
-        errorCode: smtpFailureCode,
-        attemptedAt: attempt.attemptedAt.toISOString(),
-      });
+      await saveAuditEvent(
+        manager,
+        state.projectId,
+        'CUSTOMER_FOLLOW_UP_PING_FAILED',
+        {
+          attemptId: attempt.id,
+          draftVersion: String(attempt.draftVersion),
+          deliveryStatus: failedDeliveryStatus,
+          errorCode: smtpFailureCode,
+          attemptedAt: attempt.attemptedAt.toISOString(),
+        },
+      );
     });
   }
 
@@ -598,7 +762,8 @@ export class CustomerFollowUpService implements OnModuleInit, OnModuleDestroy {
         await this.finalizeManualFailure(claimed, result);
         throw new ServiceUnavailableException({
           code: 'FOLLOW_UP_DELIVERY_FAILED',
-          message: 'Az ügyfél-ping küldése ismert kézbesítési hiba miatt sikertelen.',
+          message:
+            'Az ügyfél-ping küldése ismert kézbesítési hiba miatt sikertelen.',
         });
       }
       return this.finalizeManualSuccess(claimed, result);
@@ -613,62 +778,94 @@ export class CustomerFollowUpService implements OnModuleInit, OnModuleDestroy {
     projectId: string,
     now: Date,
   ): Promise<readonly CustomerFollowUpDeliveryAttemptEntity[]> {
-    const attemptRepository = manager.getRepository(CustomerFollowUpDeliveryAttemptEntity);
+    const attemptRepository = manager.getRepository(
+      CustomerFollowUpDeliveryAttemptEntity,
+    );
     const activeAttempts = await attemptRepository.find({
       where: { projectId, state: 'SENDING' },
       order: { attemptedAt: 'DESC', createdAt: 'DESC', id: 'ASC' },
       lock: { mode: 'pessimistic_write' },
     });
     for (const activeAttempt of activeAttempts) {
-      const leaseExpiresAt = new Date(activeAttempt.attemptedAt.getTime() + manualDeliveryLeaseMs);
+      const leaseExpiresAt = new Date(
+        activeAttempt.attemptedAt.getTime() + manualDeliveryLeaseMs,
+      );
       if (leaseExpiresAt > now) continue;
       activeAttempt.state = 'UNKNOWN';
-      activeAttempt.failureCode = unknownDeliveryCode;
       await attemptRepository.save(activeAttempt);
-      await recordOutboundAttempt(manager, activeAttempt, 'UNKNOWN', unknownDeliveryCode, null);
-      await saveAuditEvent(manager, projectId, 'CUSTOMER_FOLLOW_UP_PING_UNKNOWN', {
-        attemptId: activeAttempt.id,
-        draftVersion: String(activeAttempt.draftVersion),
-        deliveryStatus: 'UNKNOWN',
-        errorCode: unknownDeliveryCode,
-        attemptedAt: activeAttempt.attemptedAt.toISOString(),
-        reconciledAt: now.toISOString(),
-      });
+      await recordOutboundAttempt(
+        manager,
+        activeAttempt,
+        'UNKNOWN',
+        unknownDeliveryCode,
+        null,
+      );
+      await saveAuditEvent(
+        manager,
+        projectId,
+        'CUSTOMER_FOLLOW_UP_PING_UNKNOWN',
+        {
+          attemptId: activeAttempt.id,
+          draftVersion: String(activeAttempt.draftVersion),
+          deliveryStatus: 'UNKNOWN',
+          errorCode: unknownDeliveryCode,
+          attemptedAt: activeAttempt.attemptedAt.toISOString(),
+          reconciledAt: now.toISOString(),
+        },
+      );
     }
     return activeAttempts;
   }
 
-  private async finalizeManualUnknown(claimed: ClaimedCustomerFollowUpPing): Promise<void> {
+  private async finalizeManualUnknown(
+    claimed: ClaimedCustomerFollowUpPing,
+  ): Promise<void> {
     const reconciledAt = new Date();
     await this.dataSource.transaction(async (manager) => {
-      const state = await manager.getRepository(CustomerFollowUpEntity).findOne({
-        where: { id: claimed.state.id },
-        lock: { mode: 'pessimistic_write' },
-      });
+      const state = await manager
+        .getRepository(CustomerFollowUpEntity)
+        .findOne({
+          where: { id: claimed.state.id },
+          lock: { mode: 'pessimistic_write' },
+        });
       if (!state) {
         return;
       }
-      const attempt = await manager.getRepository(CustomerFollowUpDeliveryAttemptEntity).findOne({
-        where: { id: claimed.attemptId },
-        lock: { mode: 'pessimistic_write' },
-      });
+      const attempt = await manager
+        .getRepository(CustomerFollowUpDeliveryAttemptEntity)
+        .findOne({
+          where: { id: claimed.attemptId },
+          lock: { mode: 'pessimistic_write' },
+        });
       if (!attempt || attempt.state !== 'SENDING') {
         return;
       }
       attempt.state = 'UNKNOWN';
-      attempt.failureCode = unknownDeliveryCode;
-      await manager.getRepository(CustomerFollowUpDeliveryAttemptEntity).save(attempt);
-      await recordOutboundAttempt(manager, attempt, 'UNKNOWN', unknownDeliveryCode, null);
+      await manager
+        .getRepository(CustomerFollowUpDeliveryAttemptEntity)
+        .save(attempt);
+      await recordOutboundAttempt(
+        manager,
+        attempt,
+        'UNKNOWN',
+        unknownDeliveryCode,
+        null,
+      );
       state.nextPingAt = null;
       await manager.getRepository(CustomerFollowUpEntity).save(state);
-      await saveAuditEvent(manager, attempt.projectId, 'CUSTOMER_FOLLOW_UP_PING_UNKNOWN', {
-        attemptId: attempt.id,
-        draftVersion: String(attempt.draftVersion),
-        deliveryStatus: 'UNKNOWN',
-        errorCode: unknownDeliveryCode,
-        attemptedAt: attempt.attemptedAt.toISOString(),
-        reconciledAt: reconciledAt.toISOString(),
-      });
+      await saveAuditEvent(
+        manager,
+        attempt.projectId,
+        'CUSTOMER_FOLLOW_UP_PING_UNKNOWN',
+        {
+          attemptId: attempt.id,
+          draftVersion: String(attempt.draftVersion),
+          deliveryStatus: 'UNKNOWN',
+          errorCode: unknownDeliveryCode,
+          attemptedAt: attempt.attemptedAt.toISOString(),
+          reconciledAt: reconciledAt.toISOString(),
+        },
+      );
     });
   }
 
@@ -676,17 +873,22 @@ export class CustomerFollowUpService implements OnModuleInit, OnModuleDestroy {
     claimed: ClaimedCustomerFollowUpPing,
     error: unknown,
   ): Promise<never> {
-    if (error instanceof CustomerMailBoundaryError && error.code !== 'OUTCOME_UNKNOWN') {
+    if (
+      error instanceof CustomerMailBoundaryError &&
+      error.code !== 'OUTCOME_UNKNOWN'
+    ) {
       await this.finalizeManualFailure(claimed);
       throw new ServiceUnavailableException({
         code: 'FOLLOW_UP_DELIVERY_FAILED',
-        message: 'Az ügyfél-ping küldése ismert kézbesítési hiba miatt sikertelen.',
+        message:
+          'Az ügyfél-ping küldése ismert kézbesítési hiba miatt sikertelen.',
       });
     }
     await this.finalizeManualUnknown(claimed);
     throw new ServiceUnavailableException({
       code: 'FOLLOW_UP_DELIVERY_UNKNOWN',
-      message: 'Az ügyfél-ping kézbesítési eredménye bizonytalan. Ellenőrizd a postafiókot az újraküldés előtt.',
+      message:
+        'Az ügyfél-ping kézbesítési eredménye bizonytalan. Ellenőrizd a postafiókot az újraküldés előtt.',
     });
   }
 
@@ -697,11 +899,18 @@ export class CustomerFollowUpService implements OnModuleInit, OnModuleDestroy {
   ): Promise<ClaimedCustomerFollowUpPing | null> {
     return this.dataSource.transaction(async (manager) => {
       const project = await this.findProject(manager, projectId, true);
-      const state = await manager.getRepository(CustomerFollowUpEntity).findOne({
-        where: { id, projectId },
-        lock: { mode: 'pessimistic_write' },
-      });
-      if (!state || !state.enabled || !state.nextPingAt || state.nextPingAt > now) {
+      const state = await manager
+        .getRepository(CustomerFollowUpEntity)
+        .findOne({
+          where: { id, projectId },
+          lock: { mode: 'pessimistic_write' },
+        });
+      if (
+        !state ||
+        !state.enabled ||
+        !state.nextPingAt ||
+        state.nextPingAt > now
+      ) {
         return null;
       }
       if (state.expiresAt && state.expiresAt <= now) {
@@ -720,7 +929,12 @@ export class CustomerFollowUpService implements OnModuleInit, OnModuleDestroy {
       let rendered: RenderedCustomerFollowUpPing;
       let reference: DiscoveryFollowUpEntity | null;
       try {
-        ({ reference, rendered } = await renderCurrentPing(manager, project, state, true));
+        ({ reference, rendered } = await renderCurrentPing(
+          manager,
+          project,
+          state,
+          true,
+        ));
       } catch (error) {
         if (!(error instanceof ConflictException)) {
           throw error;
@@ -730,7 +944,9 @@ export class CustomerFollowUpService implements OnModuleInit, OnModuleDestroy {
         return null;
       }
 
-      const attemptRepository = manager.getRepository(CustomerFollowUpDeliveryAttemptEntity);
+      const attemptRepository = manager.getRepository(
+        CustomerFollowUpDeliveryAttemptEntity,
+      );
       const activeAttempt = await attemptRepository.findOne({
         where: { projectId: state.projectId, state: 'SENDING' },
         lock: { mode: 'pessimistic_write' },
@@ -738,7 +954,10 @@ export class CustomerFollowUpService implements OnModuleInit, OnModuleDestroy {
       if (activeAttempt) {
         return null;
       }
-      const latestAttempt = await findLatestManualAttempt(manager, state.projectId);
+      const latestAttempt = await findLatestManualAttempt(
+        manager,
+        state.projectId,
+      );
       if (latestAttempt?.state === 'UNKNOWN') {
         state.nextPingAt = null;
         await manager.getRepository(CustomerFollowUpEntity).save(state);
@@ -755,17 +974,10 @@ export class CustomerFollowUpService implements OnModuleInit, OnModuleDestroy {
         referencedFollowUpId: reference?.id ?? null,
         referencedFollowUpVersion: reference?.version ?? null,
         state: 'SENDING',
-        recipientEmail: rendered.recipientEmail,
-        subjectLength: rendered.subject.length,
-        textLength: rendered.text.length,
-        failureCode: null,
         createdAt: claimedAt,
         attemptedAt: claimedAt,
-        sentAt: null,
         outboundCommunicationId: null,
         correspondenceId: null,
-        mailSystemAcceptance: null,
-        messageReference: null,
       });
       const sender = dedicatedCustomerSender(this.configService);
       const outbound = await createPingCorrespondence(
@@ -809,7 +1021,9 @@ export class CustomerFollowUpService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
-  async senderIdentity(projectId: string): Promise<CorrespondenceMailboxIdentity> {
+  async senderIdentity(
+    projectId: string,
+  ): Promise<CorrespondenceMailboxIdentity> {
     return this.dataSource.transaction(async (manager) => {
       await this.findProject(manager, projectId, false);
       const dedicated = dedicatedCustomerSender(this.configService);
@@ -826,28 +1040,42 @@ export class CustomerFollowUpService implements OnModuleInit, OnModuleDestroy {
     result: MailSubmissionResult,
   ): Promise<CustomerFollowUpEntity> {
     return this.dataSource.transaction(async (manager) => {
-      const { attempt, state } = await requireClaimedScheduledState(manager, claimed);
+      const { attempt, state } = await requireClaimedScheduledState(
+        manager,
+        claimed,
+      );
       attempt.state = 'SENT';
-      attempt.sentAt = sentAt;
-      attempt.mailSystemAcceptance = 'ACCEPTED';
-      attempt.messageReference = result.messageReference;
-      await manager.getRepository(CustomerFollowUpDeliveryAttemptEntity).save(attempt);
-      await recordOutboundAttempt(manager, attempt, 'ACCEPTED', null, result.messageReference);
+      await manager
+        .getRepository(CustomerFollowUpDeliveryAttemptEntity)
+        .save(attempt);
+      await recordOutboundAttempt(
+        manager,
+        attempt,
+        'ACCEPTED',
+        null,
+        result.messageReference,
+      );
       await markDeliverySuccess(manager, state, sentAt, state.enabled);
-      await saveAuditEvent(manager, state.projectId, 'CUSTOMER_FOLLOW_UP_PING_SENT', {
-        attemptId: attempt.id,
-        deliveryKind: 'SCHEDULED',
-        draftVersion: String(attempt.draftVersion),
-        referencedFollowUpId: attempt.referencedFollowUpId ?? 'NONE',
-        referencedFollowUpVersion: attempt.referencedFollowUpVersion === null
-          ? 'NONE'
-          : String(attempt.referencedFollowUpVersion),
-        deliveryStatus: sentDeliveryStatus,
-        subjectLength: String(attempt.subjectLength),
-        textLength: String(attempt.textLength),
-        attemptedAt: attempt.attemptedAt.toISOString(),
-        sentAt: sentAt.toISOString(),
-      });
+      await saveAuditEvent(
+        manager,
+        state.projectId,
+        'CUSTOMER_FOLLOW_UP_PING_SENT',
+        {
+          attemptId: attempt.id,
+          deliveryKind: 'SCHEDULED',
+          draftVersion: String(attempt.draftVersion),
+          referencedFollowUpId: attempt.referencedFollowUpId ?? 'NONE',
+          referencedFollowUpVersion:
+            attempt.referencedFollowUpVersion === null
+              ? 'NONE'
+              : String(attempt.referencedFollowUpVersion),
+          deliveryStatus: sentDeliveryStatus,
+          subjectLength: String(claimed.rendered.subject.length),
+          textLength: String(claimed.rendered.text.length),
+          attemptedAt: attempt.attemptedAt.toISOString(),
+          sentAt: sentAt.toISOString(),
+        },
+      );
       return state;
     });
   }
@@ -856,23 +1084,29 @@ export class CustomerFollowUpService implements OnModuleInit, OnModuleDestroy {
     claimed: ClaimedCustomerFollowUpPing,
     failedAt: Date,
     error: unknown,
-    result?: { readonly acceptance: 'ACCEPTED' | 'REJECTED'; readonly messageReference: string | null },
+    result?: {
+      readonly acceptance: 'ACCEPTED' | 'REJECTED';
+      readonly messageReference: string | null;
+    },
   ): Promise<CustomerFollowUpEntity> {
-    const unknown = !(error instanceof CustomerMailBoundaryError)
-      || error.code === 'OUTCOME_UNKNOWN';
+    const unknown =
+      !(error instanceof CustomerMailBoundaryError) ||
+      error.code === 'OUTCOME_UNKNOWN';
     return this.dataSource.transaction(async (manager) => {
-      const { attempt, state } = await requireClaimedScheduledState(manager, claimed);
+      const { attempt, state } = await requireClaimedScheduledState(
+        manager,
+        claimed,
+      );
       attempt.state = unknown ? 'UNKNOWN' : 'FAILED';
-      attempt.failureCode = unknown ? unknownDeliveryCode : smtpFailureCode;
-      attempt.mailSystemAcceptance = result?.acceptance ?? null;
-      attempt.messageReference = result?.messageReference ?? null;
-      await manager.getRepository(CustomerFollowUpDeliveryAttemptEntity).save(attempt);
+      await manager
+        .getRepository(CustomerFollowUpDeliveryAttemptEntity)
+        .save(attempt);
       await recordOutboundAttempt(
         manager,
         attempt,
         unknown ? 'UNKNOWN' : 'REJECTED',
-        attempt.failureCode,
-        attempt.messageReference,
+        unknown ? unknownDeliveryCode : smtpFailureCode,
+        result?.messageReference ?? null,
       );
       state.lastPingAt = failedAt;
       if (unknown) {
@@ -884,13 +1118,15 @@ export class CustomerFollowUpService implements OnModuleInit, OnModuleDestroy {
       await saveAuditEvent(
         manager,
         state.projectId,
-        unknown ? 'CUSTOMER_FOLLOW_UP_PING_UNKNOWN' : 'CUSTOMER_FOLLOW_UP_PING_FAILED',
+        unknown
+          ? 'CUSTOMER_FOLLOW_UP_PING_UNKNOWN'
+          : 'CUSTOMER_FOLLOW_UP_PING_FAILED',
         {
           attemptId: attempt.id,
           deliveryKind: 'SCHEDULED',
           draftVersion: String(attempt.draftVersion),
           deliveryStatus: unknown ? 'UNKNOWN' : failedDeliveryStatus,
-          errorCode: attempt.failureCode,
+          errorCode: unknown ? unknownDeliveryCode : smtpFailureCode,
           attemptedAt: attempt.attemptedAt.toISOString(),
         },
       );
@@ -906,16 +1142,20 @@ export class CustomerFollowUpService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
-  private submitPing(outbound: CustomerOutboundCommunicationEntity): Promise<MailSubmissionResult> {
-    return this.mailer.submit(immutableOutboundCustomerMessage({
-      senderName: outbound.senderName,
-      senderAddress: outbound.senderAddress,
-      recipientAddress: outbound.recipientAddress,
-      replyToAddress: outbound.replyToAddress,
-      subject: outbound.subject,
-      textContent: outbound.textContent,
-      ...(outbound.htmlContent ? { htmlContent: outbound.htmlContent } : {}),
-    }));
+  private submitPing(
+    outbound: CustomerOutboundCommunicationEntity,
+  ): Promise<MailSubmissionResult> {
+    return this.mailer.submit(
+      immutableOutboundCustomerMessage({
+        senderName: outbound.senderName,
+        senderAddress: outbound.senderAddress,
+        recipientAddress: outbound.recipientAddress,
+        replyToAddress: outbound.replyToAddress,
+        subject: outbound.subject,
+        textContent: outbound.textContent,
+        ...(outbound.htmlContent ? { htmlContent: outbound.htmlContent } : {}),
+      }),
+    );
   }
 
   private async findProject(
@@ -944,20 +1184,24 @@ async function createPingCorrespondence(
   reference: DiscoveryFollowUpEntity | null,
 ): Promise<CustomerOutboundCommunicationEntity> {
   const token = randomBytes(24).toString('hex');
-  const replyToAddress = customerReplyToAddress(dedicatedCustomerSender(config).address, token);
-  const previewDigest = customerMailDigest(JSON.stringify({
-    draftVersion: attempt.draftVersion,
-    referencedFollowUpId: reference?.id ?? null,
-    referencedFollowUpVersion: reference?.version ?? null,
-    senderName: sender.name,
-    senderAddress: sender.address.toLowerCase(),
-    recipientName: rendered.recipientName,
-    recipientEmail: rendered.recipientEmail.toLowerCase(),
-    subject: rendered.subject,
-    text: rendered.text,
-  }));
-  const outbound = await manager.getRepository(CustomerOutboundCommunicationEntity).save({
-    id: randomUUID(),
+  const replyToAddress = customerReplyToAddress(
+    dedicatedCustomerSender(config).address,
+    token,
+  );
+  const previewDigest = customerMailDigest(
+    JSON.stringify({
+      draftVersion: attempt.draftVersion,
+      referencedFollowUpId: reference?.id ?? null,
+      referencedFollowUpVersion: reference?.version ?? null,
+      senderName: sender.name,
+      senderAddress: sender.address.toLowerCase(),
+      recipientName: rendered.recipientName,
+      recipientEmail: rendered.recipientEmail.toLowerCase(),
+      subject: rendered.subject,
+      text: rendered.text,
+    }),
+  );
+  const { outbound, correspondence } = await createCanonicalOutbound(manager, {
     projectId: project.id,
     sourceType: 'CUSTOMER_FOLLOW_UP_PING',
     sourceId: attempt.id,
@@ -972,20 +1216,36 @@ async function createPingCorrespondence(
     previewDigest,
     replyToAddress,
     replyTokenHash: customerMailDigest(token),
-  });
-  const correspondence = await manager.getRepository(CustomerCorrespondenceEntity).save({
-    id: randomUUID(),
-    projectId: project.id,
-    outboundCommunicationId: outbound.id,
-    predecessorId: null,
     sourceFollowUpId: reference?.id ?? null,
     sourceFollowUpVersion: reference?.version ?? null,
-    status: 'Válaszra vár',
-    unreadMessageCount: 0,
   });
   attempt.outboundCommunicationId = outbound.id;
   attempt.correspondenceId = correspondence.id;
-  await manager.getRepository(CustomerFollowUpDeliveryAttemptEntity).save(attempt);
+  await manager
+    .getRepository(CustomerFollowUpDeliveryAttemptEntity)
+    .save(attempt);
+  return outbound;
+}
+
+async function requireOutbound(
+  manager: EntityManager,
+  outboundCommunicationId: string | null,
+): Promise<CustomerOutboundCommunicationEntity> {
+  if (!outboundCommunicationId) {
+    throw new ConflictException(
+      'A korábbi kézbesítés tartós levelezési azonossága hiányzik.',
+    );
+  }
+  const outbound = await manager
+    .getRepository(CustomerOutboundCommunicationEntity)
+    .findOneBy({
+      id: outboundCommunicationId,
+    });
+  if (!outbound) {
+    throw new ConflictException(
+      'A korábbi kézbesítés tartós kimenő kommunikációja hiányzik.',
+    );
+  }
   return outbound;
 }
 
@@ -997,13 +1257,13 @@ async function recordOutboundAttempt(
   messageReference: string | null,
 ): Promise<void> {
   if (!attempt.outboundCommunicationId) return;
-  await manager.getRepository(CustomerOutboundAttemptEntity).save({
-    id: randomUUID(),
-    outboundCommunicationId: attempt.outboundCommunicationId,
+  await appendCanonicalOutboundAttempt(
+    manager,
+    attempt.outboundCommunicationId,
     result,
     failureCode,
     messageReference,
-  });
+  );
 }
 
 async function requireClaimedScheduledState(
@@ -1013,16 +1273,20 @@ async function requireClaimedScheduledState(
   readonly attempt: CustomerFollowUpDeliveryAttemptEntity;
   readonly state: CustomerFollowUpEntity;
 }> {
-  const attempt = await manager.getRepository(CustomerFollowUpDeliveryAttemptEntity).findOne({
-    where: { id: claimed.attemptId },
-    lock: { mode: 'pessimistic_write' },
-  });
+  const attempt = await manager
+    .getRepository(CustomerFollowUpDeliveryAttemptEntity)
+    .findOne({
+      where: { id: claimed.attemptId },
+      lock: { mode: 'pessimistic_write' },
+    });
   const state = await manager.getRepository(CustomerFollowUpEntity).findOne({
     where: { id: claimed.state.id },
     lock: { mode: 'pessimistic_write' },
   });
   if (!attempt || !state || attempt.state !== 'SENDING') {
-    throw new ConflictException('A Customer follow-up ping kézbesítési állapota megváltozott.');
+    throw new ConflictException(
+      'A Customer follow-up ping kézbesítési állapota megváltozott.',
+    );
   }
   return { attempt, state };
 }
@@ -1031,7 +1295,9 @@ async function initialDiscoveryFollowUpStatus(): Promise<string> {
   const playbook = await loadGeneralPlaybookV1();
   const status = playbook.statuses.followUp[0];
   if (!status) {
-    throw new InternalServerErrorException('Canonical Discovery follow-up status is unavailable.');
+    throw new InternalServerErrorException(
+      'Canonical Discovery follow-up status is unavailable.',
+    );
   }
   return status;
 }
@@ -1042,14 +1308,20 @@ async function requireOpenReference(
   followUpId: string,
   lock = false,
 ): Promise<DiscoveryFollowUpEntity> {
-  const followUp = await manager.getRepository(DiscoveryFollowUpEntity).findOne({
-    where: { id: followUpId, projectId },
-    lock: lock ? { mode: 'pessimistic_write' } : undefined,
-  });
-  if (!followUp || followUp.status !== (await initialDiscoveryFollowUpStatus())) {
+  const followUp = await manager
+    .getRepository(DiscoveryFollowUpEntity)
+    .findOne({
+      where: { id: followUpId, projectId },
+      lock: lock ? { mode: 'pessimistic_write' } : undefined,
+    });
+  if (
+    !followUp ||
+    followUp.status !== (await initialDiscoveryFollowUpStatus())
+  ) {
     throw new ConflictException({
       code: 'FOLLOW_UP_REFERENCE_INVALID',
-      message: 'A hivatkozott Discovery follow-up már nem nyitott vagy nem ehhez a projekthez tartozik. Válassz egy aktuális nyitott kérdést.',
+      message:
+        'A hivatkozott Discovery follow-up már nem nyitott vagy nem ehhez a projekthez tartozik. Válassz egy aktuális nyitott kérdést.',
     });
   }
   return followUp;
@@ -1080,15 +1352,23 @@ async function renderCurrentPing(
     : null;
   return {
     reference,
-    rendered: renderCustomerFollowUpPing(project, state.messageDraft, reference),
+    rendered: renderCustomerFollowUpPing(
+      project,
+      state.messageDraft,
+      reference,
+    ),
   };
 }
 
-function requireCurrentDraftVersion(state: CustomerFollowUpEntity, expectedVersion: number): void {
+function requireCurrentDraftVersion(
+  state: CustomerFollowUpEntity,
+  expectedVersion: number,
+): void {
   if (state.draftVersion !== expectedVersion) {
     throw new ConflictException({
       code: 'FOLLOW_UP_DRAFT_STALE',
-      message: 'A Customer follow-up ping piszkozata időközben megváltozott. Töltsd újra az aktuális változatot.',
+      message:
+        'A Customer follow-up ping piszkozata időközben megváltozott. Töltsd újra az aktuális változatot.',
     });
   }
 }
@@ -1111,21 +1391,25 @@ function pingFingerprint(
   reference: DiscoveryFollowUpEntity | null,
   sender: ResolvedCustomerSender,
 ): string {
-  return digest(JSON.stringify({
-    draftVersion: state.draftVersion,
-    messageDraft: state.messageDraft,
-    referencedFollowUpId: reference?.id ?? null,
-    referencedFollowUpVersion: reference?.version ?? null,
-    recipientName: rendered.recipientName,
-    recipientEmail: rendered.recipientEmail,
-    subject: rendered.subject,
-    text: rendered.text,
-    senderName: sender.name,
-    senderAddress: sender.address.toLowerCase(),
-  }));
+  return digest(
+    JSON.stringify({
+      draftVersion: state.draftVersion,
+      messageDraft: state.messageDraft,
+      referencedFollowUpId: reference?.id ?? null,
+      referencedFollowUpVersion: reference?.version ?? null,
+      recipientName: rendered.recipientName,
+      recipientEmail: rendered.recipientEmail,
+      subject: rendered.subject,
+      text: rendered.text,
+      senderName: sender.name,
+      senderAddress: sender.address.toLowerCase(),
+    }),
+  );
 }
 
-function toReferenceOption(value: DiscoveryFollowUpEntity): CustomerFollowUpReferenceOption {
+function toReferenceOption(
+  value: DiscoveryFollowUpEntity,
+): CustomerFollowUpReferenceOption {
   return {
     id: value.id,
     question: value.question,
@@ -1182,8 +1466,6 @@ async function markDeliverySuccess(
   enabled: boolean,
 ): Promise<void> {
   state.lastPingAt = now;
-  state.lastDeliveryStatus = sentDeliveryStatus;
-  state.lastDeliveryError = null;
   state.nextPingAt = enabled ? addMinutes(now, state.intervalMinutes) : null;
   await manager.getRepository(CustomerFollowUpEntity).save(state);
 }
@@ -1195,8 +1477,6 @@ async function markDeliveryFailure(
   enabled: boolean,
 ): Promise<void> {
   state.lastPingAt = now;
-  state.lastDeliveryStatus = failedDeliveryStatus;
-  state.lastDeliveryError = smtpFailureCode;
   state.nextPingAt = enabled ? addMinutes(now, state.intervalMinutes) : null;
   await manager.getRepository(CustomerFollowUpEntity).save(state);
 }
@@ -1224,7 +1504,9 @@ function validateInterval(value: number | undefined): void {
     value < minimumFollowUpIntervalMinutes ||
     value > maximumFollowUpIntervalMinutes
   ) {
-    throw new BadRequestException('intervalMinutes must be an integer from 1 to 525600.');
+    throw new BadRequestException(
+      'intervalMinutes must be an integer from 1 to 525600.',
+    );
   }
 }
 
@@ -1261,13 +1543,16 @@ function nextAttemptTimestamp(
   requestedAt: Date,
   latestAttempt: CustomerFollowUpDeliveryAttemptEntity | null,
 ): Date {
-  if (!latestAttempt || latestAttempt.attemptedAt < requestedAt) return requestedAt;
+  if (!latestAttempt || latestAttempt.attemptedAt < requestedAt)
+    return requestedAt;
   return new Date(latestAttempt.attemptedAt.getTime() + 1);
 }
 
 function rejectArchivedProject(project: Project): void {
   if (project.status === 'ARCHIVED') {
-    throw new ConflictException('Archived projects cannot send customer emails.');
+    throw new ConflictException(
+      'Archived projects cannot send customer emails.',
+    );
   }
 }
 
@@ -1281,11 +1566,26 @@ function findLatestManualAttempt(
   });
 }
 
-function toState(
+async function toState(
+  manager: EntityManager,
   value: CustomerFollowUpEntity,
   latestManualAttempt: CustomerFollowUpDeliveryAttemptEntity | null = null,
   receiptEvidence = false,
-): CustomerFollowUpState {
+): Promise<CustomerFollowUpState> {
+  const latestOutcome = latestManualAttempt?.outboundCommunicationId
+    ? await manager.getRepository(CustomerOutboundAttemptEntity).findOne({
+        where: {
+          outboundCommunicationId: latestManualAttempt.outboundCommunicationId,
+        },
+        order: { attemptedAt: 'DESC', id: 'DESC' },
+      })
+    : null;
+  const lastDeliveryStatus =
+    latestOutcome?.result === 'ACCEPTED'
+      ? sentDeliveryStatus
+      : latestOutcome?.result === 'REJECTED'
+        ? failedDeliveryStatus
+        : value.lastDeliveryStatus;
   return {
     projectId: value.projectId,
     messageDraft: value.messageDraft,
@@ -1296,31 +1596,52 @@ function toState(
     expiresAt: toIsoOrNull(value.expiresAt, 'follow-up expiresAt'),
     lastPingAt: toIsoOrNull(value.lastPingAt, 'follow-up lastPingAt'),
     nextPingAt: toIsoOrNull(value.nextPingAt, 'follow-up nextPingAt'),
-    lastDeliveryStatus: value.lastDeliveryStatus,
-    lastDeliveryError: toSafeDeliveryError(value.lastDeliveryError),
-    latestManualAttempt: latestManualAttempt ? toManualAttempt(latestManualAttempt, receiptEvidence) : null,
+    lastDeliveryStatus,
+    lastDeliveryError:
+      latestOutcome?.result === 'REJECTED'
+        ? toSafeDeliveryError(latestOutcome.failureCode)
+        : latestOutcome
+          ? null
+          : toSafeDeliveryError(value.lastDeliveryError),
+    latestManualAttempt: latestManualAttempt
+      ? toManualAttempt(latestManualAttempt, latestOutcome, receiptEvidence)
+      : null,
   };
 }
 
 function toManualAttempt(
   value: CustomerFollowUpDeliveryAttemptEntity,
+  outcome: CustomerOutboundAttemptEntity | null,
   receiptEvidence: boolean,
 ): CustomerFollowUpManualAttempt {
+  const failureCode = outcome
+    ? outcome.failureCode
+    : value.legacyFailureCode;
+  const sentAt = outcome
+    ? outcome.result === 'ACCEPTED'
+      ? outcome.attemptedAt
+      : null
+    : value.legacySentAt;
   return {
     attemptId: value.id,
     state: value.state,
     draftVersion: value.draftVersion,
     referencedFollowUpId: value.referencedFollowUpId,
     referencedFollowUpVersion: value.referencedFollowUpVersion,
-    failureCode: toSafeManualFailureCode(value.failureCode),
+    failureCode: toSafeManualFailureCode(failureCode),
     attemptedAt: value.attemptedAt.toISOString(),
-    sentAt: value.sentAt?.toISOString() ?? null,
+    sentAt: sentAt?.toISOString() ?? null,
     receiptEvidence,
   };
 }
 
 function toSafeManualFailureCode(value: string | null): string | null {
-  if (value === null || value === smtpFailureCode || value === unknownDeliveryCode) return value;
+  if (
+    value === null ||
+    value === smtpFailureCode ||
+    value === unknownDeliveryCode
+  )
+    return value;
   return 'DELIVERY_FAILED';
 }
 

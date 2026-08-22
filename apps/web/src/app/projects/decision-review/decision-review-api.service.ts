@@ -6,6 +6,8 @@ import type {
 } from '@project-maker/contracts';
 import { catchError, type Observable, throwError } from 'rxjs';
 
+import { genericHttpErrorMessage } from '../../shared/http-error-message';
+
 @Injectable()
 export class DecisionReviewApiService {
   private readonly http = inject(HttpClient);
@@ -14,9 +16,13 @@ export class DecisionReviewApiService {
     return this.http
       .get<ProjectDecisionReview>(this.endpoint(projectId))
       .pipe(
-        catchError(() =>
+        catchError((error: unknown) =>
           throwError(
-            () => new Error('A döntési értékelés nem tölthető be. Próbáld újra.'),
+            () => new Error(genericHttpErrorMessage(
+              error,
+              'betölteni a döntési értékelést',
+              'A döntési értékelés nem tölthető be. Próbáld újra.',
+            )),
           ),
         ),
       );
@@ -29,9 +35,13 @@ export class DecisionReviewApiService {
     return this.http
       .put<ProjectDecisionReview>(this.endpoint(projectId), input)
       .pipe(
-        catchError(() =>
+        catchError((error: unknown) =>
           throwError(
-            () => new Error('A döntési értékelés nem menthető. Ellenőrizd a projekt állapotát, majd próbáld újra.'),
+            () => new Error(genericHttpErrorMessage(
+              error,
+              'menteni a döntési értékelést',
+              'A döntési értékelés nem menthető. Ellenőrizd a projekt állapotát, majd próbáld újra.',
+            )),
           ),
         ),
       );

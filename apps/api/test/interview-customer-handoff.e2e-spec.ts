@@ -144,6 +144,7 @@ describe('Interview customer handoff HTTP boundary', () => {
     assert.equal(acceptedRetry.body.correspondenceId, failed.body.correspondenceId);
     const retainedAttempts = await app.get(DataSource).query(`SELECT attempt."result" FROM "customer_outbound_attempts" attempt JOIN "customer_outbound_communications" outbound ON outbound."id" = attempt."outbound_communication_id" WHERE outbound."source_id" = $1 ORDER BY attempt."attempted_at"`, [handoffId]) as Array<{ result: string }>;
     assert.deepEqual(retainedAttempts.map(({ result }) => result), ['REJECTED', 'ACCEPTED']);
+    const oneHandoffReadCount = await countHandoffListReads(app, projectId, roundId);
     await request(app.getHttpServer()).delete(`/projects/${projectId}`).expect(409);
     const retainedProject = await app.get(DataSource).query('SELECT "id" FROM "projects" WHERE "id" = $1', [projectId]) as Array<{ id: string }>;
     assert.deepEqual(retainedProject, [{ id: projectId }]);
@@ -184,12 +185,37 @@ describe('Interview customer handoff HTTP boundary', () => {
     mailGateway.releaseHeldDelivery();
     mailGateway.releaseHeldDelivery = null;
     assert.equal((await firstAttempt).status, 201);
+    assert.equal(
+      await countHandoffListReads(app, projectId, roundId),
+      oneHandoffReadCount,
+    );
     mailGateway.mode = 'SUCCESS';
   });
 });
 
 function sendInput(preview: { sourceContentVersion: number; previewDigest: string }) {
   return { sourceContentVersion: preview.sourceContentVersion, previewDigest: preview.previewDigest };
+}
+
+async function countHandoffListReads(
+  app: INestApplication,
+  projectId: string,
+  roundId: string,
+): Promise<number> {
+  const dataSource = app.get(DataSource);
+  const originalLogQuery = dataSource.logger.logQuery;
+  let reads = 0;
+  dataSource.logger.logQuery = (query: string) => {
+    if (/^\s*(SELECT|WITH)\b/i.test(query)) reads += 1;
+  };
+  try {
+    await request(app.getHttpServer())
+      .get(`/projects/${projectId}/rounds/${roundId}/customer-handoffs`)
+      .expect(200);
+    return reads;
+  } finally {
+    dataSource.logger.logQuery = originalLogQuery;
+  }
 }
 
 async function createEndedInterview(app: INestApplication, label: string): Promise<{ projectId: string; roundId: string }> {
