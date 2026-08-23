@@ -7,10 +7,10 @@
 }
 
 .queue-filters {
-  background: color-mix(in oklch, var(--pm-surface-1) 92%, transparent);
+  background: var(--pm-surface-1);
   border: 1px solid var(--pm-border);
   border-radius: var(--pm-radius-lg);
-  box-shadow: var(--pm-shadow-sm), inset 0 1px 0 color-mix(in oklch, var(--pm-text) 5%, transparent);
+  box-shadow: var(--pm-shadow-sm);
   display: grid;
   gap: 1rem;
   grid-template-columns: minmax(14rem, 1fr) minmax(14rem, 1fr) minmax(16rem, 2fr);
@@ -107,7 +107,7 @@
 }
 
 .group-heading {
-  background: linear-gradient(100deg, color-mix(in oklch, var(--pm-blue) 13%, var(--pm-surface-2)), color-mix(in oklch, var(--pm-magenta) 8%, var(--pm-surface-1)));
+  background: var(--pm-surface-2);
   border-bottom: 1px solid var(--pm-border);
   padding: 1rem 1.25rem;
 }

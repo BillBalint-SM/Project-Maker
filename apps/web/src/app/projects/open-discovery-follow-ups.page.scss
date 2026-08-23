@@ -20,10 +20,10 @@
 
 .follow-up-row {
   align-items: center;
-  background: linear-gradient(145deg, color-mix(in oklch, var(--pm-surface-2) 82%, transparent), color-mix(in oklch, var(--pm-surface-1) 96%, transparent));
+  background: var(--pm-surface-1);
   border: 1px solid var(--pm-border);
   border-radius: var(--pm-radius-md);
-  box-shadow: var(--pm-shadow-sm), inset 0 1px 0 color-mix(in oklch, var(--pm-text) 5%, transparent);
+  box-shadow: var(--pm-shadow-sm);
   display: grid;
   gap: 1.25rem;
   grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) auto;

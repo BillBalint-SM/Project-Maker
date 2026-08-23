@@ -2,8 +2,8 @@
 
 @if (currentUser(); as user) {
   <header class="app-header">
-    <div class="header-signal" aria-hidden="true"></div>
-    <div class="header-inner">
+    <div class="header-signal" aria-hidden="true"><i></i><i></i><i></i></div>
+    <div class="header-inner" (focusout)="handleHeaderFocusOut($event)">
       <a
         class="brand"
         routerLink="/"
@@ -13,171 +13,235 @@
         <img src="/project-maker-mark.svg" alt="" width="48" height="48" />
         <span class="brand-copy">
           <strong>Project Maker</strong>
-          <small>Project intelligence workspace</small>
+          <small>Preparation workspace</small>
         </span>
       </a>
 
-      <button
-        class="navigation-toggle"
-        type="button"
-        data-testid="navigation-toggle"
-        aria-controls="global-navigation-panel"
-        [attr.aria-expanded]="navigationOpen()"
-        (click)="toggleNavigation()"
-      >
-        <span class="navigation-toggle-icon" aria-hidden="true">
-          <i></i><i></i><i></i>
-        </span>
-        <span>Navigation</span>
-      </button>
+      <div class="journey-rail" aria-hidden="true">
+        <span>Discover</span><i>01</i><span>Decide</span><i>02</i><span>Deliver</span>
+      </div>
+
+      <div class="header-tools">
+        <app-theme-toggle />
+        <button
+          #navigationToggle
+          class="navigation-toggle"
+          type="button"
+          data-testid="navigation-toggle"
+          aria-controls="global-navigation-panel"
+          [attr.aria-expanded]="navigationOpen()"
+          (click)="toggleNavigation()"
+        >
+          <span class="navigation-toggle-icon" aria-hidden="true">
+            <i></i><i></i><i></i>
+          </span>
+          <span>Workspace map</span>
+        </button>
+      </div>
 
       <div
         id="global-navigation-panel"
         class="header-controls"
         data-testid="navigation-panel"
         [class.open]="navigationOpen()"
+        [attr.aria-hidden]="!navigationOpen()"
       >
+        <section class="workspace-intro" aria-labelledby="workspace-map-title">
+          <span class="map-index">PM / MAP 01</span>
+          <h2 id="workspace-map-title">Follow the work, not the menu.</h2>
+          <p>Orient in the portfolio, move preparation forward, then configure the tools behind it.</p>
+          <div class="map-path" aria-hidden="true">
+            <span>Context</span><i></i><span>Action</span><i></i><span>System</span>
+          </div>
+        </section>
+
         <nav class="app-nav" aria-label="Main navigation">
-          <ul>
-            <li>
-              <a
-                data-nav-label
-                data-testid="global-portfolio-link"
-                routerLink="/"
-                routerLinkActive="active"
-                ariaCurrentWhenActive="page"
-                [routerLinkActiveOptions]="{ exact: true }"
-                (click)="closeNavigation()"
-              >Portfolio</a>
-            </li>
-            <li>
-              <a
-                data-nav-label
-                data-testid="global-roadmap-link"
-                routerLink="/roadmap"
-                routerLinkActive="active"
-                ariaCurrentWhenActive="page"
-                (click)="closeNavigation()"
-              >Roadmap</a>
-            </li>
-            <li class="queue-nav-item">
-              <a
-                data-nav-label
-                data-testid="global-notifications-link"
-                routerLink="/notifications"
-                routerLinkActive="active"
-                ariaCurrentWhenActive="page"
-                (click)="closeNavigation()"
-              >Notifications</a>
-              @if (notificationCount() > 0) {
-                <a
-                  class="reply-count"
-                  routerLink="/notifications"
-                  [attr.aria-label]="notificationCount() + ' active notifications'"
-                  (click)="closeNavigation()"
-                >{{ notificationCount() }}</a>
-              }
-              @if (notificationLoadError(); as error) {
-                <div class="shell-load-error" role="alert" data-testid="notification-load-error">
-                  <span>{{ error }}</span>
-                  <button type="button" (click)="retryNotifications()" data-testid="retry-notifications">Retry Notifications</button>
-                </div>
-              }
-            </li>
-            <li>
-              <a
-                data-nav-label
-                routerLink="/projects/new"
-                routerLinkActive="active"
-                ariaCurrentWhenActive="page"
-                (click)="closeNavigation()"
-              >New project</a>
-            </li>
-            <li class="queue-nav-item">
-              <a
-                data-nav-label
-                routerLink="/projects/active"
-                routerLinkActive="active"
-                ariaCurrentWhenActive="page"
-                (click)="closeNavigation()"
-              >Active project queue</a>
-              @if (newReplyCount() > 0) {
-                <a
-                  class="reply-count"
-                  routerLink="/projects/active"
-                  [queryParams]="{ urgency: 'CUSTOMER_REPLY' }"
-                  data-testid="global-customer-reply-count"
-                  [attr.aria-label]="'Open ' + newReplyCount() + ' new Customer replies'"
-                  (click)="closeNavigation()"
-                >{{ newReplyCount() }}</a>
-              }
-              @if (customerReplyLoadError(); as error) {
-                <div class="shell-load-error" role="alert" data-testid="customer-reply-load-error">
-                  <span>{{ error }}</span>
-                  <button type="button" (click)="retryCustomerReplySummary()" data-testid="retry-customer-reply-summary">Retry Customer-reply summary</button>
-                </div>
-              }
-            </li>
-            <li>
-              <a
-                data-nav-label
-                routerLink="/follow-ups"
-                routerLinkActive="active"
-                ariaCurrentWhenActive="page"
-                (click)="closeNavigation()"
-              >Discovery follow-ups</a>
-            </li>
-            <li>
-              <a
-                data-nav-label
-                routerLink="/settings/markdown-templates"
-                routerLinkActive="active"
-                ariaCurrentWhenActive="page"
-                (click)="closeNavigation()"
-              >Specification templates</a>
-            </li>
-            <li>
-              <a
-                data-nav-label
-                routerLink="/settings/git-setups"
-                routerLinkActive="active"
-                ariaCurrentWhenActive="page"
-                (click)="closeNavigation()"
-              >Git connections</a>
-            </li>
-            <li>
-              <a
-                data-nav-label
-                routerLink="/settings/questions"
-                routerLinkActive="active"
-                ariaCurrentWhenActive="page"
-                (click)="closeNavigation()"
-              >Question Bank</a>
-            </li>
-          </ul>
+          <div class="nav-groups">
+            <section class="nav-group" aria-labelledby="nav-orient-title">
+              <h3 id="nav-orient-title">Orient</h3>
+              <ul>
+                <li>
+                  <a
+                    aria-label="Portfolio"
+                    data-testid="global-portfolio-link"
+                    routerLink="/"
+                    routerLinkActive="active"
+                    ariaCurrentWhenActive="page"
+                    [routerLinkActiveOptions]="{ exact: true }"
+                    (click)="closeNavigation()"
+                  >
+                    <span data-nav-label>Portfolio</span>
+                    <small>Projects and preparation state</small>
+                  </a>
+                </li>
+                <li>
+                  <a
+                    aria-label="Roadmap"
+                    data-testid="global-roadmap-link"
+                    routerLink="/roadmap"
+                    routerLinkActive="active"
+                    ariaCurrentWhenActive="page"
+                    (click)="closeNavigation()"
+                  >
+                    <span data-nav-label>Roadmap</span>
+                    <small>Planned work across projects</small>
+                  </a>
+                </li>
+                <li class="queue-nav-item">
+                  <a
+                    aria-label="Notifications"
+                    data-testid="global-notifications-link"
+                    routerLink="/notifications"
+                    routerLinkActive="active"
+                    ariaCurrentWhenActive="page"
+                    (click)="closeNavigation()"
+                  >
+                    <span data-nav-label>Notifications</span>
+                    <small>Signals that need attention</small>
+                  </a>
+                  @if (notificationCount() > 0) {
+                    <a
+                      class="reply-count"
+                      routerLink="/notifications"
+                      [attr.aria-label]="notificationCount() + ' active notifications'"
+                      (click)="closeNavigation()"
+                    >{{ notificationCount() }}</a>
+                  }
+                  @if (notificationLoadError(); as error) {
+                    <div class="shell-load-error" role="alert" data-testid="notification-load-error">
+                      <span>{{ error }}</span>
+                      <button type="button" (click)="retryNotifications()" data-testid="retry-notifications">Retry Notifications</button>
+                    </div>
+                  }
+                </li>
+              </ul>
+            </section>
+
+            <section class="nav-group" aria-labelledby="nav-move-title">
+              <h3 id="nav-move-title">Move</h3>
+              <ul>
+                <li>
+                  <a
+                    aria-label="New project"
+                    routerLink="/projects/new"
+                    routerLinkActive="active"
+                    ariaCurrentWhenActive="page"
+                    (click)="closeNavigation()"
+                  >
+                    <span data-nav-label>New project</span>
+                    <small>Start preparation context</small>
+                  </a>
+                </li>
+                <li class="queue-nav-item">
+                  <a
+                    aria-label="Active project queue"
+                    routerLink="/projects/active"
+                    routerLinkActive="active"
+                    ariaCurrentWhenActive="page"
+                    (click)="closeNavigation()"
+                  >
+                    <span data-nav-label>Active project queue</span>
+                    <small>Return to the next task</small>
+                  </a>
+                  @if (newReplyCount() > 0) {
+                    <a
+                      class="reply-count"
+                      routerLink="/projects/active"
+                      [queryParams]="{ urgency: 'CUSTOMER_REPLY' }"
+                      data-testid="global-customer-reply-count"
+                      [attr.aria-label]="'Open ' + newReplyCount() + ' new Customer replies'"
+                      (click)="closeNavigation()"
+                    >{{ newReplyCount() }}</a>
+                  }
+                  @if (customerReplyLoadError(); as error) {
+                    <div class="shell-load-error" role="alert" data-testid="customer-reply-load-error">
+                      <span>{{ error }}</span>
+                      <button type="button" (click)="retryCustomerReplySummary()" data-testid="retry-customer-reply-summary">Retry Customer-reply summary</button>
+                    </div>
+                  }
+                </li>
+                <li>
+                  <a
+                    aria-label="Discovery follow-ups"
+                    routerLink="/follow-ups"
+                    routerLinkActive="active"
+                    ariaCurrentWhenActive="page"
+                    (click)="closeNavigation()"
+                  >
+                    <span data-nav-label>Discovery follow-ups</span>
+                    <small>Close unanswered questions</small>
+                  </a>
+                </li>
+              </ul>
+            </section>
+
+            <section class="nav-group" aria-labelledby="nav-system-title">
+              <h3 id="nav-system-title">Configure</h3>
+              <ul>
+                <li>
+                  <a
+                    aria-label="Specification templates"
+                    routerLink="/settings/markdown-templates"
+                    routerLinkActive="active"
+                    ariaCurrentWhenActive="page"
+                    (click)="closeNavigation()"
+                  >
+                    <span data-nav-label>Specification templates</span>
+                    <small>Shape generated specifications</small>
+                  </a>
+                </li>
+                <li>
+                  <a
+                    aria-label="Git connections"
+                    routerLink="/settings/git-setups"
+                    routerLinkActive="active"
+                    ariaCurrentWhenActive="page"
+                    (click)="closeNavigation()"
+                  >
+                    <span data-nav-label>Git connections</span>
+                    <small>Connect delivery repositories</small>
+                  </a>
+                </li>
+                <li>
+                  <a
+                    aria-label="Question Bank"
+                    routerLink="/settings/questions"
+                    routerLinkActive="active"
+                    ariaCurrentWhenActive="page"
+                    (click)="closeNavigation()"
+                  >
+                    <span data-nav-label>Question Bank</span>
+                    <small>Maintain discovery prompts</small>
+                  </a>
+                </li>
+              </ul>
+            </section>
+          </div>
         </nav>
 
         <div class="user-actions">
           <span class="user-signal" aria-hidden="true"></span>
-          <a
-            routerLink="/account"
-            routerLinkActive="active"
-            ariaCurrentWhenActive="page"
-            [title]="user.email"
-            (click)="closeNavigation()"
-          >{{ user.email }}</a>
+          <div class="user-account">
+            <a
+              routerLink="/account"
+              routerLinkActive="active"
+              ariaCurrentWhenActive="page"
+              (click)="closeNavigation()"
+            >Account</a>
+            <span class="user-email">{{ user.email }}</span>
+          </div>
           <button type="button" [disabled]="loggingOut()" (click)="logout()">
             {{ loggingOut() ? 'Signing out…' : (logoutError() ? 'Retry sign out' : 'Sign out') }}
           </button>
           @if (logoutError(); as error) {
-            <div class="logout-error" role="alert" data-testid="logout-error">
-              {{ error }}
-            </div>
+            <div class="logout-error" role="alert" data-testid="logout-error">{{ error }}</div>
           }
         </div>
       </div>
     </div>
   </header>
+} @else {
+  <app-theme-toggle [floating]="true" />
 }
 
 <main id="main-content" class="app-main" tabindex="-1">

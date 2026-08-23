@@ -1,0 +1,157 @@
+/* Hallmark · genre: atmospheric · macrostructure: Workbench · theme: custom · design-system: design.md · designed-as-app */
+/* Hallmark · pre-emit critique: P5 H5 E4 S5 R4 V5 */
+:root,
+.pm-dark {
+  color-scheme: dark;
+
+  --color-paper: oklch(12% 0.022 265);
+  --color-paper-deep: oklch(8% 0.02 265);
+  --color-paper-2: oklch(16% 0.026 265);
+  --color-paper-3: oklch(21% 0.03 265);
+  --color-rule: oklch(34% 0.034 260);
+  --color-rule-2: oklch(27% 0.03 262);
+  --color-control-border: oklch(52% 0.032 258);
+  --color-muted: oklch(70% 0.03 255);
+  --color-neutral: oklch(50% 0.032 258);
+  --color-ink-2: oklch(80% 0.022 255);
+  --color-ink: oklch(95% 0.012 250);
+  --color-accent: oklch(72% 0.17 245);
+  --color-accent-ink: oklch(13% 0.025 265);
+  --color-discovery: oklch(72% 0.2 328);
+  --color-decision: oklch(88% 0.17 96);
+  --color-decision-text: oklch(88% 0.17 96);
+  --color-decision-ink: oklch(13% 0.025 265);
+  --color-focus: oklch(88% 0.19 96);
+  --color-success: oklch(74% 0.15 150);
+  --color-warning: oklch(82% 0.15 82);
+  --color-danger: oklch(70% 0.19 28);
+
+  --shadow-card: 0 0.8rem 2rem oklch(3% 0.02 275 / 0.28);
+  --shadow-raised: 0 1.25rem 3.5rem oklch(3% 0.02 275 / 0.44);
+  --shadow-overlay: 0 2rem 5rem oklch(3% 0.02 275 / 0.58);
+}
+
+.pm-light {
+  color-scheme: light;
+
+  --color-paper: oklch(97% 0.009 255);
+  --color-paper-deep: oklch(93% 0.014 255);
+  --color-paper-2: oklch(94.5% 0.012 255);
+  --color-paper-3: oklch(91% 0.016 255);
+  --color-rule: oklch(74% 0.028 255);
+  --color-rule-2: oklch(84% 0.022 255);
+  --color-control-border: oklch(56% 0.03 258);
+  --color-muted: oklch(43% 0.032 260);
+  --color-neutral: oklch(56% 0.03 258);
+  --color-ink-2: oklch(31% 0.028 260);
+  --color-ink: oklch(18% 0.025 265);
+  --color-accent: oklch(51% 0.19 252);
+  --color-accent-ink: oklch(97% 0.009 255);
+  --color-discovery: oklch(50% 0.22 328);
+  --color-decision: oklch(60% 0.15 90);
+  --color-decision-text: oklch(51% 0.15 90);
+  --color-decision-ink: oklch(18% 0.025 265);
+  --color-focus: oklch(54% 0.18 90);
+  --color-success: oklch(46% 0.14 150);
+  --color-warning: oklch(52% 0.14 78);
+  --color-danger: oklch(50% 0.19 28);
+
+  --shadow-card: 0 0.55rem 1.6rem oklch(24% 0.035 270 / 0.1);
+  --shadow-raised: 0 1rem 2.8rem oklch(24% 0.035 270 / 0.15);
+  --shadow-overlay: 0 1.8rem 4.5rem oklch(24% 0.035 270 / 0.2);
+}
+
+:root {
+  --font-display: "Bricolage Grotesque Variable", "Arial Narrow", ui-sans-serif, system-ui, sans-serif;
+  --font-body: "IBM Plex Sans Variable", "Segoe UI", ui-sans-serif, system-ui, sans-serif;
+  --font-outlier: var(--font-body);
+  --display-weight: 650;
+  --tracking-display: -0.035em;
+  --tracking-label: 0.045em;
+
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
+  --text-base: 1rem;
+  --text-md: 1.25rem;
+  --text-lg: 1.5625rem;
+  --text-xl: 1.9531rem;
+  --text-2xl: 2.4414rem;
+  --text-display: clamp(2.5rem, 4vw + 1rem, 4.5rem);
+
+  --space-3xs: 0.25rem;
+  --space-2xs: 0.5rem;
+  --space-xs: 0.75rem;
+  --space-sm: 1rem;
+  --space-md: 1.5rem;
+  --space-lg: 2rem;
+  --space-xl: 3rem;
+  --space-2xl: 4.5rem;
+  --space-3xl: 7rem;
+  --space-4xl: 11rem;
+  --space-5xl: 16rem;
+
+  --rule-hair: 1px;
+  --rule-fine: 2px;
+  --radius-card: 0.25rem;
+  --radius-pill: 999px;
+  --radius-control: 0.25rem;
+  --radius-input: var(--radius-control);
+
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in: cubic-bezier(0.7, 0, 0.84, 0);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --dur-micro: 120ms;
+  --dur-short: 220ms;
+  --dur-long: 320ms;
+  --duration-micro: var(--dur-micro);
+  --duration-short: var(--dur-short);
+  --duration-long: var(--dur-long);
+
+  --z-base: 0;
+  --z-sticky: 40;
+  --z-overlay: 60;
+  --z-toast: 80;
+  --z-skip: 100;
+
+  /* Project Maker compatibility aliases. */
+  --pm-canvas: var(--color-paper);
+  --pm-canvas-deep: var(--color-paper-deep);
+  --pm-surface-1: var(--color-paper-2);
+  --pm-surface-2: var(--color-paper-3);
+  --pm-surface-3: color-mix(in oklch, var(--color-paper-3) 78%, var(--color-rule));
+  --pm-text: var(--color-ink);
+  --pm-text-muted: var(--color-muted);
+  --pm-blue: var(--color-accent);
+  --pm-cyan: color-mix(in oklch, var(--color-accent) 72%, var(--color-ink));
+  --pm-magenta: var(--color-discovery);
+  --pm-yellow: var(--color-decision);
+  --pm-yellow-text: var(--color-decision-text);
+  --pm-decision-ink: var(--color-decision-ink);
+  --pm-success: var(--color-success);
+  --pm-warning: var(--color-warning);
+  --pm-danger: var(--color-danger);
+  --pm-border: var(--color-rule-2);
+  --pm-border-strong: var(--color-rule);
+  --pm-control-border: var(--color-control-border);
+  --pm-electric-blue: var(--color-accent);
+  --pm-deep-navy: var(--color-paper-deep);
+  --pm-steel-gray: var(--color-muted);
+
+  --pm-space-1: var(--space-3xs);
+  --pm-space-2: var(--space-2xs);
+  --pm-space-3: var(--space-xs);
+  --pm-space-4: var(--space-sm);
+  --pm-space-6: var(--space-md);
+  --pm-space-8: var(--space-lg);
+  --pm-space-12: var(--space-xl);
+  --pm-radius-sm: var(--radius-input);
+  --pm-radius-md: var(--radius-control);
+  --pm-radius-lg: var(--radius-card);
+  --pm-shadow-sm: var(--shadow-card);
+  --pm-shadow-md: var(--shadow-raised);
+  --pm-shadow-lg: var(--shadow-overlay);
+  --pm-motion-fast: var(--dur-micro);
+  --pm-motion-base: var(--dur-short);
+  --pm-motion-route: 300ms;
+  --pm-ease-out: var(--ease-out);
+}

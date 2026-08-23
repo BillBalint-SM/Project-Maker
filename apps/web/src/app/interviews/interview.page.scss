@@ -47,9 +47,9 @@
 }
 
 .selection-row:has(input:checked) {
-  background: linear-gradient(125deg, color-mix(in oklch, var(--pm-blue) 13%, var(--pm-surface-2)), color-mix(in oklch, var(--pm-magenta) 7%, var(--pm-surface-1)));
+  background: var(--pm-surface-2);
   border-color: var(--pm-blue);
-  box-shadow: inset 3px 0 0 var(--pm-magenta), var(--pm-glow-blue);
+  box-shadow: inset var(--rule-fine) 0 0 var(--pm-blue);
 }
 
 .selection-copy {

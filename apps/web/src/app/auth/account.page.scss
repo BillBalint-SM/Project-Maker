@@ -32,7 +32,10 @@
   border: 1px solid var(--pm-border);
   border-radius: var(--pm-radius-sm);
   color: var(--pm-text);
-  font: 0.82rem/1.5 ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-family: var(--font-body);
+  font-size: 0.82rem;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.5;
   padding: 0.85rem;
   resize: vertical;
   width: 100%;

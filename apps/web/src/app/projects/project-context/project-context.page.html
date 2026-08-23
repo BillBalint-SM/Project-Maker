@@ -7,7 +7,7 @@
     <span aria-hidden="true">←</span> {{ returnLabel() }}
   </a>
 
-  <header class="context-header" aria-label="Selected project">
+  <header class="context-header" aria-label="Selected project" data-tour="selected-project-context">
     <div class="project-identity">
       <span class="eyebrow">Project</span>
       @if (context.workState(); as workState) {
@@ -30,7 +30,7 @@
     </div>
 
     @if (context.workState(); as workState) {
-      <div class="primary-task">
+      <div class="primary-task" data-tour="next-project-task">
         <span class="eyebrow">Next task</span>
         <strong>{{ workState.urgencyLabel }}</strong>
         <a
@@ -43,7 +43,7 @@
       </div>
     }
 
-    <nav class="context-navigation" aria-label="Project navigation">
+    <nav class="context-navigation" aria-label="Project navigation" data-tour="project-journey">
       @for (link of contextLinks; track link.key) {
         <a
           [routerLink]="contextRoute(link.path)"
@@ -52,7 +52,10 @@
           ariaCurrentWhenActive="page"
           [routerLinkActiveOptions]="linkMatchOptions"
           [attr.data-testid]="'project-context-nav-' + link.key"
-        >{{ link.label }}</a>
+        >
+          <span class="journey-index" aria-hidden="true">{{ $index + 1 < 10 ? '0' + ($index + 1) : $index + 1 }}</span>
+          <span>{{ link.label }}</span>
+        </a>
       }
     </nav>
   </header>

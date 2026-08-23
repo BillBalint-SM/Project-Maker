@@ -27,8 +27,11 @@ test('an Internal user creates an account, enters the application, and signs out
   await page.keyboard.press('Enter');
 
   await expect(page).toHaveURL('/');
+  const navigationToggle = page.getByTestId('navigation-toggle');
+  await tabTo(page, navigationToggle);
+  await page.keyboard.press('Enter');
   await expect(page.getByRole('navigation', { name: 'Main navigation' })).toBeVisible();
-  await expect(page.getByRole('link', { name: email })).toBeVisible();
+  await expect(page.getByText(email, { exact: true })).toBeVisible();
 
   const projectResponse = await page.request.post('/api/projects', {
     headers: { Origin: 'http://127.0.0.1:4200' },
@@ -52,7 +55,8 @@ test('an Internal user creates an account, enters the application, and signs out
   expect(mainBox?.y ?? 844).toBeLessThan(430);
 
   await page.reload();
-  await expect(page.getByRole('link', { name: email })).toBeVisible();
+  await page.getByTestId('navigation-toggle').click();
+  await expect(page.getByText(email, { exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Sign out' }).click();
   await expect(page).toHaveURL('/login');
 });

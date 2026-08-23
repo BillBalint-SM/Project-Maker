@@ -1,19 +1,37 @@
 <section class="auth-page" aria-labelledby="auth-title">
-  <div class="auth-brand">
-    <img src="/project-maker-mark.svg" alt="" width="112" height="112" />
-    <span class="eyebrow">Project intelligence</span>
-    <strong>Turn uncertainty into an executable project.</strong>
-    <p>Structure discovery, decisions, specifications, and delivery handoffs in one focused workspace.</p>
-    <small>DISCOVERY <i></i> DECISIONS <i></i> DELIVERY</small>
-  </div>
+  <aside class="auth-brief" data-tour="preparation-journey">
+    <div class="auth-lockup">
+      <img src="/project-maker-mark.svg" alt="" width="80" height="80" />
+      <span><strong>Project Maker</strong><small>Preparation workspace</small></span>
+    </div>
+
+    <span class="auth-kicker">Project preparation journey / 01—03</span>
+    <p class="auth-display">From first question to delivery handoff.</p>
+    <p class="auth-summary">Structure discovery, decisions, specifications, and delivery handoffs in one focused workspace.</p>
+
+    <ol class="auth-journey" aria-label="Project preparation journey">
+      <li>
+        <span aria-hidden="true">01</span>
+        <div><strong>Discover</strong><small>Capture evidence, answers, and gaps.</small></div>
+      </li>
+      <li>
+        <span aria-hidden="true">02</span>
+        <div><strong>Decide</strong><small>Turn confirmed context into the next task.</small></div>
+      </li>
+      <li>
+        <span aria-hidden="true">03</span>
+        <div><strong>Deliver</strong><small>Prepare the specification and repository handoff.</small></div>
+      </li>
+    </ol>
+  </aside>
   <p-card styleClass="auth-card">
     <ng-template #title>
-      <span class="eyebrow">Project Maker</span>
+      <span class="eyebrow">Workspace access</span>
       <h1 id="auth-title">{{ heading() }}</h1>
     </ng-template>
     <ng-template #subtitle>{{ description() }}</ng-template>
 
-    <div class="mode-switch" aria-label="Account action">
+    <div class="mode-switch" role="group" aria-label="Account action">
       <button
         type="button"
         [class.active]="mode() === 'login'"
@@ -58,12 +76,12 @@
           [attr.autocomplete]="mode() === 'signup' ? 'new-password' : 'current-password'"
           required
           [attr.aria-invalid]="authForm.controls.password.invalid && authForm.controls.password.touched"
-          [attr.aria-describedby]="authForm.controls.password.invalid && authForm.controls.password.touched ? 'auth-password-error' : 'auth-password-help'"
+          aria-describedby="auth-password-message"
         />
-        <small id="auth-password-help">At least 12 characters.</small>
-        @if (authForm.controls.password.invalid && authForm.controls.password.touched) {
-          <small id="auth-password-error" class="field-error">Password must be 12–128 characters.</small>
-        }
+        <small
+          id="auth-password-message"
+          [class.field-error]="authForm.controls.password.invalid && authForm.controls.password.touched"
+        >{{ authForm.controls.password.invalid && authForm.controls.password.touched ? 'Password must be 12–128 characters.' : 'At least 12 characters.' }}</small>
       </div>
 
       @if (actionError()) {

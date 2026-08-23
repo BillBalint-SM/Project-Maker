@@ -428,8 +428,10 @@ describe('AppComponent', () => {
 
     document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
     fixture.detectChanges();
+    await fixture.whenStable();
 
     expect(navigationToggle?.getAttribute('aria-expanded')).toBe('false');
     expect(navigationPanel?.classList.contains('open')).toBe(false);
+    expect(document.activeElement).toBe(navigationToggle);
   });
 });

@@ -11,6 +11,7 @@ coverage
 docs
 node_modules
 packages/*/dist
+packages/*/node_modules
 playwright-report
 test-results
 *.log

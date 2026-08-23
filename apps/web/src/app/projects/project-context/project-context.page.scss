@@ -9,69 +9,65 @@
 
 .return-link {
   align-items: center;
-  color: var(--p-primary-color);
+  color: var(--pm-blue);
   display: inline-flex;
-  font-weight: 700;
-  gap: 0.4rem;
-  margin-bottom: 1rem;
+  font-weight: 680;
+  gap: var(--space-2xs);
+  margin-bottom: var(--space-sm);
+  min-height: 2.75rem;
   text-decoration: none;
-  transition: color var(--pm-motion-fast) ease, transform var(--pm-motion-fast) ease;
-}
-
-.return-link:hover {
-  color: var(--pm-yellow);
-  transform: translateX(-0.18rem);
+  transition: color var(--dur-micro) var(--ease-out), transform var(--dur-micro) var(--ease-out);
 }
 
 .context-header {
-  background:
-    linear-gradient(135deg, color-mix(in oklch, var(--pm-surface-2) 90%, transparent), color-mix(in oklch, var(--pm-surface-1) 96%, transparent));
-  border: 1px solid var(--pm-border);
-  border-radius: var(--pm-radius-lg);
-  box-shadow: var(--pm-shadow-sm), inset 0 1px 0 color-mix(in oklch, var(--pm-text) 6%, transparent);
+  background: var(--pm-surface-1);
+  border: var(--rule-hair) solid var(--pm-border);
+  border-radius: var(--radius-card);
+  box-shadow: var(--pm-shadow-sm), inset var(--rule-fine) 0 0 var(--pm-blue);
   display: grid;
-  gap: 1rem 1.5rem;
-  grid-template-columns: minmax(12rem, 1fr) minmax(14rem, auto);
-  margin-bottom: 1.5rem;
+  gap: var(--space-sm);
+  margin-bottom: var(--space-md);
   min-width: 0;
   overflow: hidden;
-  padding: 1rem 1.25rem;
-  position: relative;
-}
-
-.context-header::before {
-  background: linear-gradient(90deg, var(--pm-blue), var(--pm-magenta) 66%, var(--pm-yellow));
-  content: "";
-  height: 2px;
-  inset: 0 10% auto;
-  position: absolute;
+  padding: var(--space-sm);
 }
 
 .project-identity,
 .primary-task {
   align-content: start;
   display: grid;
-  gap: 0.45rem;
+  gap: var(--space-2xs);
   min-width: 0;
 }
 
 .project-name {
-  font-size: clamp(1.15rem, 3vw, 1.45rem);
-  line-height: 1.25;
+  font-family: var(--font-display);
+  font-size: clamp(1.35rem, 3vw, 1.8rem);
+  letter-spacing: -0.025em;
+  line-height: 1.1;
+  min-width: 0;
   overflow-wrap: anywhere;
 }
 
 .primary-task {
-  border-left: 1px solid var(--pm-border);
+  background: var(--pm-canvas-deep);
+  border-top: var(--rule-hair) solid var(--pm-border);
   justify-items: start;
-  padding-left: 1.25rem;
+  margin-inline: calc(var(--space-sm) * -1);
+  padding: var(--space-sm);
+}
+
+.primary-task > strong {
+  color: var(--pm-text);
+  font-size: var(--text-md);
+  line-height: 1.25;
 }
 
 .context-loading {
   align-items: center;
-  color: var(--p-text-muted-color);
+  color: var(--p-text-muted-color, var(--pm-text-muted));
   display: flex;
-  gap: 0.5rem;
+  gap: var(--space-2xs);
 }
 
 .context-loading p-progress-spinner {
@@ -80,89 +76,83 @@
 }
 
 .context-error {
-  color: var(--p-red-700);
+  color: var(--pm-danger);
   overflow-wrap: anywhere;
 }
 
 .context-navigation {
-  border-top: 1px solid var(--pm-border);
+  align-items: center;
+  border-top: var(--rule-hair) solid var(--pm-border);
   display: flex;
-  flex-wrap: nowrap;
-  gap: 0.35rem;
-  grid-column: 1 / -1;
+  gap: var(--space-3xs);
+  margin-inline: calc(var(--space-sm) * -1);
   overflow-x: auto;
-  padding-bottom: 0.25rem;
-  padding-top: 0.85rem;
-  scrollbar-color: var(--pm-surface-3) transparent;
+  padding: var(--space-xs) var(--space-sm) var(--space-2xs);
+  scrollbar-color: var(--pm-border-strong) transparent;
+  scroll-snap-type: x proximity;
 }
 
 .context-navigation a {
-  border: 1px solid transparent;
-  border-radius: var(--pm-radius-sm);
-  color: var(--p-text-muted-color);
+  align-content: center;
+  border: var(--rule-hair) solid transparent;
+  color: var(--p-text-muted-color, var(--pm-text-muted));
+  display: grid;
   flex: 0 0 auto;
-  font-weight: 700;
-  padding: 0.55rem 0.7rem;
+  gap: var(--space-3xs);
+  min-height: 3.75rem;
+  min-width: 8rem;
+  padding: var(--space-2xs) var(--space-xs);
+  scroll-snap-align: start;
   text-decoration: none;
-  transition: background var(--pm-motion-fast) ease, border-color var(--pm-motion-fast) ease, box-shadow var(--pm-motion-fast) ease, color var(--pm-motion-fast) ease;
+  transition: background var(--dur-micro) var(--ease-out), border-color var(--dur-micro) var(--ease-out), color var(--dur-micro) var(--ease-out), transform var(--dur-micro) var(--ease-out);
+  white-space: nowrap;
 }
 
-.context-navigation a:hover,
+.journey-index {
+  color: var(--pm-blue);
+  font-family: var(--font-outlier);
+  font-size: 0.66rem;
+  line-height: 1;
+  white-space: nowrap;
+}
+
 .context-navigation a.active {
-  background: linear-gradient(145deg, color-mix(in oklch, var(--pm-blue) 14%, var(--pm-surface-2)), color-mix(in oklch, var(--pm-magenta) 8%, var(--pm-surface-1)));
-  border-color: color-mix(in oklch, var(--pm-blue) 38%, var(--pm-surface-3));
-  box-shadow: inset 0 -2px 0 var(--pm-blue), var(--pm-glow-blue);
+  background: color-mix(in oklch, var(--pm-blue) 10%, var(--pm-surface-2));
+  border-color: var(--pm-border-strong);
+  box-shadow: inset 0 -2px 0 var(--pm-blue);
   color: var(--pm-text);
 }
 
-.context-navigation a:focus-visible,
-.return-link:focus-visible {
-  outline: 0.2rem solid var(--p-primary-color);
-  outline-offset: 0.15rem;
+.context-navigation a.active .journey-index {
+  color: var(--pm-text);
 }
 
 .project-context-panel {
   min-width: 0;
 }
 
-@media (max-width: 75rem) {
-  .context-header {
-    grid-template-columns: minmax(0, 1fr) minmax(16rem, 0.72fr);
-  }
-
-  .context-navigation {
-    display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    overflow-x: visible;
-  }
-
-  .context-navigation a {
-    align-items: center;
-    display: flex;
-    justify-content: flex-start;
-    min-width: 0;
-    overflow-wrap: anywhere;
-  }
+@media (hover: hover) {
+  .return-link:hover { transform: translateX(-0.25rem); }
+  .context-navigation a:hover { border-color: var(--pm-border-strong); }
 }
 
-@media (max-width: 42rem) {
+@media (min-width: 56rem) {
   .context-header {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .context-navigation {
-    grid-column: auto;
-  }
-
-  .context-navigation a {
-    flex: 0 0 auto;
-    overflow-wrap: anywhere;
+    gap: var(--space-md);
+    grid-template-columns: minmax(12rem, 1fr) minmax(18rem, 0.75fr);
+    padding: var(--space-md);
   }
 
   .primary-task {
-    border-left: 0;
-    border-top: 1px solid var(--pm-border);
-    padding-left: 0;
-    padding-top: 1rem;
+    border-left: var(--rule-hair) solid var(--pm-border);
+    border-top: 0;
+    margin: calc(var(--space-md) * -1) calc(var(--space-md) * -1) calc(var(--space-md) * -1) 0;
+    padding: var(--space-md);
+  }
+
+  .context-navigation {
+    grid-column: 1 / -1;
+    margin-inline: calc(var(--space-md) * -1);
+    padding-inline: var(--space-md);
   }
 }
