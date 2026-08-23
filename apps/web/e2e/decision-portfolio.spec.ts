@@ -28,6 +28,7 @@ test('connects project status, formal decision, roadmap, and filtered portfolio'
   await (await nativeButton(page, 'save-formal-decision')).click();
   await expect(page.getByTestId('formal-decision-history')).toContainText('Go');
 
+  await openNavigation(page);
   await page.getByTestId('global-roadmap-link').click();
   await page.getByTestId('new-goal-name').fill(goalName);
   await (await nativeButton(page, 'create-goal')).click();
@@ -51,6 +52,7 @@ test('connects project status, formal decision, roadmap, and filtered portfolio'
       .getByTestId('project-initiative-assignment'),
   ).toHaveValue(initiativeId!);
 
+  await openNavigation(page);
   await page.getByTestId('global-portfolio-link').click();
   await page.getByTestId('portfolio-health-filter').selectOption('BLOCKED');
   await page.getByTestId('portfolio-decision-filter').selectOption('GO');
@@ -63,4 +65,9 @@ async function nativeButton(page: Page, testId: string): Promise<Locator> {
   const host = page.getByTestId(testId);
   const nested = host.locator('button');
   return (await nested.count()) === 1 ? nested : host;
+}
+
+async function openNavigation(page: Page): Promise<void> {
+  const toggle = page.getByTestId('navigation-toggle');
+  if (await toggle.getAttribute('aria-expanded') !== 'true') await toggle.click();
 }

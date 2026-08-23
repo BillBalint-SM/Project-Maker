@@ -5,7 +5,7 @@
 }
 
 .public-response {
-  background: color-mix(in oklch, var(--pm-surface-1) 96%, transparent);
+  background: var(--pm-surface-1);
   border: 1px solid var(--pm-border);
   border-radius: var(--pm-radius-lg);
   box-shadow: var(--pm-shadow-lg);
@@ -14,7 +14,7 @@
 
 header {
   align-items: center;
-  background: linear-gradient(120deg, var(--pm-canvas-deep), color-mix(in oklch, var(--pm-surface-2) 88%, var(--pm-blue)));
+  background: var(--pm-canvas-deep);
   color: var(--pm-text);
   display: flex;
   gap: 0.75rem;
@@ -24,7 +24,7 @@ header {
 header strong,
 header small { display: block; }
 header small { opacity: 0.8; }
-header img { filter: drop-shadow(0 0 .65rem color-mix(in oklch, var(--pm-blue) 32%, transparent)); height: 2.6rem; width: 2.6rem; }
+header img { height: 2.6rem; width: 2.6rem; }
 main, .state-panel { padding: 1.5rem; }
 .state-panel { display: grid; justify-items: start; }
 .state-panel.success { border-left: 0.3rem solid var(--p-green-500); }

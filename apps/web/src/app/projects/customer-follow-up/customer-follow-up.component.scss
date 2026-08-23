@@ -91,7 +91,7 @@
   background: color-mix(in oklch, var(--pm-blue) 7%, var(--pm-surface-2));
   border: 1px solid var(--pm-blue);
   border-radius: var(--pm-radius-sm);
-  box-shadow: var(--pm-glow-blue);
+  box-shadow: inset var(--rule-fine) 0 0 var(--pm-blue);
   margin-top: 1.25rem;
   padding: 1rem;
 }

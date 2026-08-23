@@ -1,10 +1,12 @@
 import {
   Component,
   DestroyRef,
+  ElementRef,
   effect,
   inject,
   OnInit,
   signal,
+  viewChild,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
@@ -13,14 +15,15 @@ import { Subscription } from 'rxjs';
 import { AuthApiService } from './auth/auth-api.service';
 import { NotificationsApiService } from './notifications/notifications-api.service';
 import { CustomerRepliesApiService } from './projects/customer-replies-api.service';
+import { ThemeToggleComponent } from './theme/theme-toggle.component';
 
 @Component({
   selector: 'app-root',
-  imports: [RouterLink, RouterLinkActive, RouterOutlet],
+  imports: [RouterLink, RouterLinkActive, RouterOutlet, ThemeToggleComponent],
   templateUrl: './app.component.html',
   styleUrl: './app.component.scss',
   host: {
-    '(document:keydown.escape)': 'closeNavigation()',
+    '(document:keydown.escape)': 'handleNavigationEscape()',
   },
 })
 export class AppComponent implements OnInit {
@@ -45,6 +48,7 @@ export class AppComponent implements OnInit {
   readonly notificationLoadError = signal<string | null>(null);
   readonly logoutError = signal<string | null>(null);
   readonly navigationOpen = signal(false);
+  private readonly navigationToggleElement = viewChild<ElementRef<HTMLButtonElement>>('navigationToggle');
   private readonly loadReplySummary = effect(() => {
     const user = this.currentUser();
     const nextUserId = user?.id ?? null;
@@ -183,6 +187,25 @@ export class AppComponent implements OnInit {
 
   closeNavigation(): void {
     this.navigationOpen.set(false);
+  }
+
+  handleNavigationEscape(): void {
+    if (!this.navigationOpen()) {
+      return;
+    }
+    this.closeNavigation();
+    queueMicrotask(() => this.navigationToggleElement()?.nativeElement.focus());
+  }
+
+  handleHeaderFocusOut(event: FocusEvent): void {
+    if (!this.navigationOpen()) {
+      return;
+    }
+    const header = event.currentTarget as HTMLElement | null;
+    const nextTarget = event.relatedTarget as Node | null;
+    if (header && (!nextTarget || !header.contains(nextTarget))) {
+      this.closeNavigation();
+    }
   }
 
   logout(): void {

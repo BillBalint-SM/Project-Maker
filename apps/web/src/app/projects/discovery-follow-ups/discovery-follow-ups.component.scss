@@ -36,16 +36,16 @@
 }
 
 .discovery-follow-up-item {
-  background: color-mix(in oklch, var(--pm-surface-2) 62%, transparent);
+  background: var(--pm-surface-2);
   border: 1px solid var(--pm-border);
   border-radius: var(--pm-radius-md);
-  box-shadow: inset 0 1px 0 color-mix(in oklch, var(--pm-text) 4%, transparent);
+  box-shadow: var(--pm-shadow-sm);
   padding: 1rem;
 }
 
 .discovery-follow-up-item--review {
   border-color: var(--pm-blue);
-  box-shadow: inset 3px 0 0 var(--pm-magenta), var(--pm-glow-blue);
+  box-shadow: inset var(--rule-fine) 0 0 var(--pm-blue);
 }
 
 .reply-review-context {

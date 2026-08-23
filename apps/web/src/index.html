@@ -2,9 +2,28 @@
 <html lang="en" class="pm-dark">
   <head>
     <meta charset="utf-8" />
+    <meta name="theme-color" content="#050611" />
+    <script>
+      (() => {
+        const storageKey = 'project-maker:theme';
+        let theme = 'dark';
+        try {
+          theme = window.localStorage.getItem(storageKey) === 'light' ? 'light' : 'dark';
+        } catch {
+          // Dark remains the deterministic default when browser storage is unavailable.
+        }
+        const root = document.documentElement;
+        root.classList.toggle('pm-dark', theme === 'dark');
+        root.classList.toggle('pm-light', theme === 'light');
+        root.style.colorScheme = theme;
+        document
+          .querySelector('meta[name="theme-color"]')
+          ?.setAttribute('content', theme === 'dark' ? '#050611' : '#f4f6fb');
+      })();
+    </script>
     <title>Project Maker</title>
     <base href="/" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <link rel="icon" type="image/svg+xml" href="favicon.svg" />
   </head>
   <body>

@@ -1,0 +1,100 @@
+{
+  "schema_version": 1,
+  "scanned_at": "2026-08-23",
+  "project": {
+    "name": "Project Maker",
+    "surface": "multi-page web application",
+    "framework": "Angular 22.1 standalone application with PrimeNG 22",
+    "rendering": "client-side rendering in the current application configuration",
+    "primary_viewport": "desktop >= 1024px",
+    "compact_safety_range": "320px–768px for shell and authentication"
+  },
+  "hallmark_selection": {
+    "verb": "redesign",
+    "scope": "app",
+    "genre": "atmospheric",
+    "macrostructure": "Workbench",
+    "navigation": "N11 mega-menu",
+    "theme": "custom",
+    "theme_axes": "dark-default + light / geometric-sans / cool",
+    "vibe": "nocturnal control room, sharp convergence",
+    "enrichment": "none"
+  },
+  "detected_signals": {
+    "design_system": [
+      "design-system/project-maker/MASTER.md existed as the previous UI UX Pro Max specification",
+      "apps/web/src/styles.scss contained the previous global OKLCH token layer",
+      "apps/web/src/app/app.theme.ts contained the PrimeNG preset bridge",
+      "apps/web/src/index.html selected pm-dark at the document root"
+    ],
+    "typography": [
+      "The previous stylesheet used Inter/Bahnschrift-family stacks",
+      "@fontsource-variable/bricolage-grotesque 5.3.0 is available for display and wordmark use",
+      "@fontsource-variable/ibm-plex-sans 5.3.0 is available for body and UI use"
+    ],
+    "spacing": "The existing application uses a four-pixel-derived spacing scale",
+    "motion": [
+      "Angular native View Transitions are available",
+      "No GSAP, Framer Motion, Lottie, or comparable runtime motion dependency was detected",
+      "Existing CSS included motion that must be reduced to the three authorized families"
+    ],
+    "theme": [
+      "Dark was the only complete visual theme before this redesign",
+      "A persistent explicit light-theme choice was not part of the previous locked system"
+    ],
+    "assets": [
+      "The previous Project Maker mark lacked a locked construction and small-size identity rule",
+      "No external decorative asset set is required for the selected direction"
+    ]
+  },
+  "preserve": [
+    "Project Maker domain terminology and established route labels",
+    "Operator organization boundary",
+    "Project Idea and Project preparation journey concepts",
+    "Angular standalone and PrimeNG application architecture",
+    "The four-pixel-derived spacing rhythm",
+    "Semantic status meaning and accessible interaction behavior"
+  ],
+  "replace_or_resolve": [
+    "Replace the previous Inter/Bahnschrift visual stack with Bricolage Grotesque Variable and IBM Plex Sans Variable",
+    "Replace dark-only assumptions with dark-default and a complete user-selectable light theme",
+    "Replace ambient aurora, glow, glass, and looping decorative motion with tonal hierarchy and direct feedback",
+    "Replace the previous undifferentiated mark with the sharp convergence identity",
+    "Adapt the desktop shell to an opaque N11 mega-menu and provide a compact drawer/accordion equivalent",
+    "Align every shared and feature component to the semantic roles in design.md"
+  ],
+  "conflicts": [
+    {
+      "signal": "The previous MASTER specification allowed atmospheric glow, glass, and ambient motion.",
+      "resolution": "The new custom Hallmark theme explicitly prohibits those effects; design.md and MASTER.md supersede the old guidance."
+    },
+    {
+      "signal": "Atmospheric genre examples may include bloom or translucent layering.",
+      "resolution": "Genre is expressed through depth, scale, and spatial tension only; the project-specific no-glow/no-glass constraint wins."
+    },
+    {
+      "signal": "The brief names blue, magenta, and yellow as desired colors while Hallmark favors a controlled accent footprint.",
+      "resolution": "Blue is the structural primary accent; magenta is restricted to Discovery and yellow to Decision/focus semantics."
+    },
+    {
+      "signal": "The product is desktop-first but authentication and shell routes can be reached on narrow screens.",
+      "resolution": "Full Workbench composition targets >=1024px; shell and authentication are required to remain usable from 320px through 768px."
+    }
+  ],
+  "source_files": [
+    "CONTEXT.md",
+    "docs/agents/domain.md",
+    "apps/web/package.json",
+    "apps/web/angular.json",
+    "apps/web/src/index.html",
+    "apps/web/src/styles.scss",
+    "apps/web/src/app/app.theme.ts",
+    "design-system/project-maker/MASTER.md"
+  ],
+  "governance_outputs": [
+    "design.md",
+    "design-system/project-maker/MASTER.md",
+    ".hallmark/preflight.json",
+    ".hallmark/log.json"
+  ]
+}
