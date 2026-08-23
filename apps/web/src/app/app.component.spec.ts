@@ -398,6 +398,9 @@ describe('AppComponent', () => {
       'Git connections',
       'Question Bank',
     ]);
+    expect(
+      fixture.nativeElement.querySelector('.workspace-map-link')?.getAttribute('href'),
+    ).toBe('/workspace-map');
 
     const replyEntry = fixture.nativeElement.querySelector(
       '[data-testid="global-customer-reply-count"]',

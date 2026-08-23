@@ -128,3 +128,68 @@ test('keeps the authenticated workspace map single-column and scrollable on comp
     await expect(signOut).toHaveCSS('white-space', 'nowrap');
   }
 });
+
+test('loads one selected interactive Workspace Map and follows the application theme', async ({ page }) => {
+  await page.route('**/api/auth/session', async (route) => {
+    await route.fulfill({
+      contentType: 'application/json',
+      body: JSON.stringify({
+        id: '11111111-1111-4111-8111-111111111111',
+        email: 'po@example.test',
+      }),
+    });
+  });
+  await page.route('**/api/customer-correspondences/summary', async (route) => {
+    await route.fulfill({
+      contentType: 'application/json',
+      body: JSON.stringify({ newReplyCount: 0, projectCount: 0, projects: [] }),
+    });
+  });
+  await page.route('**/api/notifications', async (route) => {
+    await route.fulfill({
+      contentType: 'application/json',
+      body: JSON.stringify({ items: [], totalCount: 0, limit: 25 }),
+    });
+  });
+
+  await page.setViewportSize({ width: 375, height: 900 });
+  await page.goto('/workspace-map?view=user-workflow');
+
+  await expect(page.getByRole('heading', { name: 'Project Maker Workspace Map' })).toBeVisible();
+  await expect(page.locator('.map-selector a')).toHaveCount(5);
+  await expect(page.getByTestId('workspace-map-option-user-workflow')).toHaveAttribute(
+    'aria-current',
+    'page',
+  );
+  const frame = page.getByTestId('workspace-map-frame');
+  await expect(frame).toHaveAttribute(
+    'src',
+    /project-maker-user-workflow\.html\?embed=1&theme=dark$/,
+  );
+  await expect(
+    page.frameLocator('[data-testid="workspace-map-frame"]').locator('svg[role="img"]'),
+  ).toBeVisible();
+
+  await page.getByRole('button', { name: 'Switch to light theme' }).click();
+  await expect(frame).toHaveAttribute(
+    'src',
+    /project-maker-user-workflow\.html\?embed=1&theme=light$/,
+  );
+
+  await page.getByTestId('workspace-map-option-customer-communication').click();
+  await expect(page).toHaveURL(/\/workspace-map\?view=customer-communication$/);
+  await expect(
+    page.getByRole('heading', { name: 'Customer Correspondence Send and Reply Flow' }),
+  ).toBeVisible();
+  await expect(frame).toHaveAttribute(
+    'src',
+    /project-maker-customer-communication\.html\?embed=1&theme=light$/,
+  );
+  await expect
+    .poll(() =>
+      page.evaluate(
+        () => document.documentElement.scrollWidth <= document.documentElement.clientWidth,
+      ),
+    )
+    .toBe(true);
+});

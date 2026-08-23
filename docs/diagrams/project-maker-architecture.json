@@ -1,0 +1,181 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Project Maker — Runtime Architecture",
+    "output": "project-maker-architecture.html",
+    "viewBox": [886, 430],
+    "quality_profile": "showcase",
+    "repository": {
+      "url": "https://github.com/BillBalint-SM/Project-Maker.git",
+      "revision": "cc0db808ffa2c7f47068a36c6f7e2ac7a80b15b3"
+    },
+    "legend": {
+      "mode": "auto",
+      "entries": {
+        "frontend": { "label": "Web application" },
+        "backend": { "label": "API service" },
+        "database": { "label": "PostgreSQL data store" },
+        "security": { "label": "Authenticated API boundary" },
+        "external": { "label": "External actor or system" }
+      }
+    }
+  },
+  "layout": {
+    "mode": "grid",
+    "origin": [36, 50],
+    "cols": 4,
+    "gapX": 72,
+    "gapY": 16,
+    "cellW": 150,
+    "cellH": 70
+  },
+  "components": [
+    {
+      "id": "internalUser",
+      "type": "external",
+      "label": "Internal user",
+      "sublabel": "PM / PO / BA browser",
+      "row": 1,
+      "col": 0,
+      "sources": [
+        { "path": "CONTEXT.md", "label": "Domain glossary" },
+        { "path": "docs/user-guide.md", "label": "End-user guide" }
+      ]
+    },
+    {
+      "id": "customerContact",
+      "type": "external",
+      "label": "Customer contact",
+      "sublabel": "Project Customer email",
+      "tag": "/respond capability",
+      "row": 0,
+      "col": 3,
+      "sources": [
+        { "path": "CONTEXT.md", "label": "Domain glossary" },
+        { "path": "apps/web/src/app/app.routes.ts", "label": "Public route" }
+      ]
+    },
+    {
+      "id": "claudeCode",
+      "type": "external",
+      "label": "Claude Code",
+      "sublabel": "workspace connection",
+      "tag": "own subscription",
+      "row": 2,
+      "col": 0,
+      "sources": [
+        { "path": "docs/adr/0006-connect-claude-code-through-project-maker-mcp.md", "label": "Accepted MCP decision" }
+      ]
+    },
+    {
+      "id": "nginxSpa",
+      "type": "frontend",
+      "label": "Nginx + Angular SPA",
+      "sublabel": "sole published host port",
+      "tag": "/ · /api · /mcp · /respond",
+      "row": 1,
+      "col": 1,
+      "sources": [
+        { "path": "infra/nginx/default.conf", "label": "Nginx proxy and SPA fallback" },
+        { "path": "apps/web/src/app/app.routes.ts", "label": "Angular routes" },
+        { "path": "compose.yaml", "label": "project-maker-edge network" }
+      ]
+    },
+    {
+      "id": "nestApi",
+      "type": "security",
+      "label": "NestJS API",
+      "sublabel": "Project Maker MCP",
+      "tag": "REST · auth · pollers",
+      "row": 1,
+      "col": 2,
+      "sources": [
+        { "path": "apps/api/src/main.ts", "label": "NestJS entry point" },
+        { "path": "apps/api/src/app.module.ts", "label": "Root module composition" },
+        { "path": "apps/api/src/mcp/project-maker-mcp.server.ts", "label": "MCP tool registrations" }
+      ]
+    },
+    {
+      "id": "postgres",
+      "type": "database",
+      "label": "PostgreSQL 18.4",
+      "sublabel": "state · bytea · snapshots",
+      "tag": "0001 → 0036 migrations",
+      "row": 1,
+      "col": 3,
+      "sources": [
+        { "path": "apps/api/src/database/database.module.ts", "label": "TypeORM DataSource" },
+        { "path": "apps/api/src/database/migration-sequence.ts", "label": "Migration sequence" },
+        { "path": "compose.yaml", "label": "Named PostgreSQL volume" }
+      ]
+    },
+    {
+      "id": "mailGateway",
+      "type": "external",
+      "label": "Mail gateway",
+      "sublabel": "Correspondence mailbox",
+      "tag": "TLS 1.2+",
+      "row": 0,
+      "col": 2,
+      "sources": [
+        { "path": "docs/adr/0003-use-operator-provided-mail-gateway.md", "label": "Accepted mail-gateway decision" },
+        { "path": "docs/mail-gateway.md", "label": "Mail-gateway operations" }
+      ]
+    },
+    {
+      "id": "gitRepository",
+      "type": "external",
+      "label": "Git repository",
+      "sublabel": "HTTPS token / SSH key",
+      "tag": "Delivery handoff target",
+      "row": 2,
+      "col": 3,
+      "sources": [
+        { "path": "apps/api/src/delivery/delivery-handoff.service.ts", "label": "Delivery handoff preview and confirmation" },
+        { "path": "apps/api/src/delivery/git-client.ts", "label": "Git process boundary" }
+      ]
+    }
+  ],
+  "boundaries": [
+    {
+      "kind": "region",
+      "label": "Project Maker deployment",
+      "wraps": ["nginxSpa", "nestApi", "postgres"],
+      "pad": 24
+    },
+    {
+      "kind": "security-group",
+      "label": "Internal only",
+      "wraps": ["nestApi", "postgres"],
+      "pad": 16
+    }
+  ],
+  "connections": [
+    { "id": "employeeWeb", "from": "internalUser", "to": "nginxSpa", "label": "HTTPS · VPN boundary", "variant": "emphasis", "labelAt": [145, 210] },
+    { "id": "customerCapability", "from": "customerContact", "to": "nginxSpa", "label": "Scoped /respond capability link", "variant": "security", "fromSide": "top", "toSide": "top" },
+    { "id": "claudeMcp", "from": "claudeCode", "to": "nginxSpa", "label": "/mcp · MCP connection token", "variant": "security", "labelAt": [276, 210] },
+    { "id": "apiProxy", "from": "nginxSpa", "to": "nestApi", "label": "/api/* proxy · /mcp", "variant": "emphasis" },
+    { "id": "domainPersistence", "from": "nestApi", "to": "postgres", "label": "TypeORM + SQL", "variant": "emphasis" },
+    { "id": "gatewayProtocols", "from": "nestApi", "to": "mailGateway", "label": "TLS SMTP / IMAP", "variant": "security", "labelAt": [430, 82] },
+    { "id": "customerMail", "from": "mailGateway", "to": "customerContact", "label": "Customer correspondence", "variant": "dashed", "labelAt": [651, 124] },
+    { "id": "gitPush", "from": "nestApi", "to": "gitRepository", "label": "Preview-confirmed Delivery handoff", "variant": "emphasis", "fromSide": "bottom", "toSide": "top", "labelAt": [651, 210] }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "One canonical domain",
+      "items": ["REST and the 13 MCP tools call the same domain services and persist canonical state in PostgreSQL."]
+    },
+    {
+      "dot": "rose",
+      "title": "Three actor-identification boundaries",
+      "items": ["An Internal user session, a personal MCP connection token, and a narrowly scoped Customer response capability distinguish callers."]
+    },
+    {
+      "dot": "amber",
+      "title": "Outbound integration reachability",
+      "items": ["The API runtime requires Operator-provided network reachability to the TLS SMTP/IMAP gateway and external Git repository."]
+    }
+  ]
+}

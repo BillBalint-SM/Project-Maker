@@ -8,7 +8,7 @@ import { AuthApiService } from './auth-api.service';
 import { LoginPage } from './login.page';
 
 describe('LoginPage', () => {
-  it('starts with the Hungarian login form and enters the protected app after authentication', async () => {
+  it('starts with the English login form and enters the protected app after authentication', async () => {
     const user = { id: '11111111-1111-4111-8111-111111111111', email: 'po@example.test' };
     const auth = {
       currentUser: signal(undefined),
@@ -27,6 +27,9 @@ describe('LoginPage', () => {
     await fixture.whenStable();
 
     expect(fixture.nativeElement.querySelector('h1')?.textContent).toContain('Sign in');
+    expect(
+      fixture.nativeElement.querySelector('.auth-map-preview')?.getAttribute('href'),
+    ).toBe('/diagrams/project-maker-user-workflow.html?theme=dark');
     const email = fixture.nativeElement.querySelector('#auth-email') as HTMLInputElement;
     const password = fixture.nativeElement.querySelector('#auth-password') as HTMLInputElement;
     email.value = user.email;

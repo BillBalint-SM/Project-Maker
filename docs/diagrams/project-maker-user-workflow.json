@@ -1,0 +1,117 @@
+{
+  "schema_version": 1,
+  "diagram_type": "workflow",
+  "meta": {
+    "title": "Project Maker — Project Preparation Journey",
+    "output": "project-maker-user-workflow.html",
+    "quality_profile": "showcase",
+    "legend": {
+      "mode": "auto",
+      "entries": {
+        "frontend": { "label": "Employee UI" },
+        "backend": { "label": "Server-derived" },
+        "database": { "label": "Retained version" },
+        "security": { "label": "Human confirmation" },
+        "external": { "label": "External" }
+      }
+    }
+  },
+  "lanes": [
+    { "id": "journey", "label": "Internal user — Project preparation journey" },
+    { "id": "collaboration", "label": "Customer correspondence and Delivery handoff" }
+  ],
+  "phases": [
+    { "id": "orient", "label": "Portfolio Overview · New project", "fromCol": 0, "toCol": 1 },
+    { "id": "understand", "label": "Initial Intake · Decision Review", "fromCol": 2, "toCol": 3, "variant": "emphasis" },
+    { "id": "deliver", "label": "Project Specification · Git handoff", "fromCol": 4, "toCol": 5, "variant": "dashed" }
+  ],
+  "mainPath": [
+    "portfolio",
+    "projectStart",
+    "initialIntake",
+    "decisionSupport",
+    "projectOutputs"
+  ],
+  "nodes": [
+    {
+      "id": "portfolio",
+      "lane": "journey",
+      "col": 0,
+      "width": 84,
+      "type": "frontend",
+      "label": "Portfolio",
+      "sublabel": "Overview",
+      "tag": "ACTIVE PROJECT QUEUE"
+    },
+    {
+      "id": "projectStart",
+      "lane": "journey",
+      "col": 1,
+      "width": 52,
+      "type": "security",
+      "label": "New",
+      "sublabel": "project",
+      "tag": "SCHEMA"
+    },
+    {
+      "id": "initialIntake",
+      "lane": "journey",
+      "col": 2,
+      "width": 52,
+      "type": "frontend",
+      "label": "Initial",
+      "sublabel": "Intake",
+      "tag": "OPEN"
+    },
+    {
+      "id": "decisionSupport",
+      "lane": "journey",
+      "col": 3,
+      "width": 76,
+      "type": "backend",
+      "label": "Estimation",
+      "sublabel": "Readiness",
+      "tag": "DECISION SCORE"
+    },
+    {
+      "id": "projectOutputs",
+      "lane": "journey",
+      "col": 5,
+      "width": 110,
+      "type": "database",
+      "label": "Project",
+      "sublabel": "Specification",
+      "tag": "DELIVERY PACKAGE"
+    },
+    {
+      "id": "customerLoop",
+      "lane": "collaboration",
+      "col": 2,
+      "width": 106,
+      "type": "external",
+      "label": "Customer",
+      "sublabel": "correspondence",
+      "tag": "INTERVIEW SUMMARY + REPLY"
+    },
+    {
+      "id": "gitHandoff",
+      "lane": "collaboration",
+      "col": 5,
+      "width": 104,
+      "type": "external",
+      "label": "Git handoff",
+      "sublabel": "exact preview + confirm",
+      "tag": "ONE-WAY"
+    }
+  ],
+  "edges": [
+    { "id": "orientProject", "from": "portfolio", "to": "projectStart", "role": "main", "variant": "emphasis" },
+    { "id": "startRound", "from": "projectStart", "to": "initialIntake", "role": "main", "variant": "emphasis" },
+    { "id": "reviewEvidence", "from": "initialIntake", "to": "decisionSupport", "role": "main", "variant": "emphasis" },
+    { "id": "buildOutputs", "from": "decisionSupport", "to": "projectOutputs", "role": "main", "variant": "emphasis" },
+    { "id": "prepareSummary", "from": "initialIntake", "to": "customerLoop", "role": "branch", "variant": "dashed", "route": "drop", "fromSide": "bottom", "toSide": "top" },
+    { "id": "customerEvidence", "from": "customerLoop", "to": "decisionSupport", "role": "return", "variant": "dashed" },
+    { "id": "confirmGit", "from": "projectOutputs", "to": "gitHandoff", "role": "branch", "variant": "security", "route": "drop", "fromSide": "bottom", "toSide": "top" }
+  ],
+  "cards": []
+}

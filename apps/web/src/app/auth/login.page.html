@@ -23,6 +23,27 @@
         <div><strong>Deliver</strong><small>Prepare the specification and repository handoff.</small></div>
       </li>
     </ol>
+
+    <a
+      class="auth-map-preview"
+      [href]="journeyMapUrl()"
+      target="_blank"
+      rel="noopener"
+      aria-label="Open the complete interactive Project Preparation Journey in a new tab"
+    >
+      <img
+        [src]="journeyPreviewUrl()"
+        alt=""
+        width="1440"
+        height="900"
+        loading="lazy"
+        decoding="async"
+      />
+      <span>
+        <strong>Explore the complete journey</strong>
+        <small>Open the interactive workflow map <span aria-hidden="true">↗</span></small>
+      </span>
+    </a>
   </aside>
   <p-card styleClass="auth-card">
     <ng-template #title>

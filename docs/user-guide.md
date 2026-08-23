@@ -38,6 +38,7 @@ The global navigation provides the cross-Project work areas:
 | Area | Purpose |
 | --- | --- |
 | **Portfolio** | `Portfolio Overview`: Projects, filters, saved browser views, correspondence summary, and creation entry point. |
+| **Workspace Map** | Interactive views of the user workflow, preparation lifecycle, Customer communication, feature/data flow, and runtime architecture. |
 | **Roadmap** | Business goals, Initiatives, and their Project context. |
 | **Notifications** | Your in-app notification list. |
 | **New project** | Create a resumable Project-start draft. |
@@ -52,6 +53,8 @@ Inside a selected Project, the context navigation is **Project Status**, **Initi
 
 The employee-facing preparation state explains the next stage of work. It is distinct from the manually maintained **Administrative project phase**.
 
+Use the [Preparation lifecycle map](visual-maps.md#preparation-lifecycle) when you need to see how the source records and independent state dimensions relate.
+
 | Preparation state | Meaning |
 | --- | --- |
 | `Question schema required` | The Project exists, but its first Question Bank selection has not been accepted. |
@@ -64,6 +67,8 @@ The employee-facing preparation state explains the next stage of work. It is dis
 Administrative project phases are **In preparation**, **Discovery in progress**, **Awaiting internal alignment**, **Awaiting Customer feedback**, and **Handed over for planning**. Update them manually to reflect the operational situation.
 
 ## A complete preparation workflow
+
+The [Project Preparation Journey map](visual-maps.md#user-workflow) provides an interactive end-to-end view of the steps below and their Customer and delivery branches.
 
 1. Create a Project with its core name, Internal project owner, and Customer contact.
 2. Set the next action, next-action owner, due date, and administrative phase on **Project Status** or **Project Settings**.
@@ -144,6 +149,8 @@ Create a **Discovery follow-up** when an uncertainty needs explicit ownership. S
 **Decision Review** has six rated criteria and an explicit weighting model. Rate all required criteria to make the score and recommendation available. Treat its result as decision support: the team records a formal `Go`, `Conditional Go`, or `No-Go` decision separately when needed. The application does not issue that decision itself.
 
 ## Customer communication
+
+The [Customer communication map](visual-maps.md#customer-communication) shows the exact preview, confirmation, delivery, reply-correlation, and processing sequence.
 
 ### Customer interview summary
 

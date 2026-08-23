@@ -11,6 +11,39 @@
     </div>
   </div>
 
+  <aside class="journey-preview-panel" aria-labelledby="journey-preview-title" data-testid="journey-preview">
+    <div class="journey-preview-copy">
+      <span class="eyebrow">Project preparation journey</span>
+      <h2 id="journey-preview-title">See how work moves from first question to delivery handoff.</h2>
+      <p>
+        Orient in the Portfolio, build confirmed context, close discovery gaps, prepare the
+        Specification, and hand off only after reviewing the exact output.
+      </p>
+      <a
+        pButton
+        routerLink="/workspace-map"
+        [queryParams]="workspaceMapQueryParams"
+        severity="secondary"
+        data-testid="portfolio-workspace-map-link"
+      >Explore the Workspace Map</a>
+    </div>
+    <a
+      class="journey-preview-visual"
+      routerLink="/workspace-map"
+      [queryParams]="workspaceMapQueryParams"
+      aria-label="Open the interactive Project Preparation Journey"
+    >
+      <img
+        [src]="journeyPreviewUrl()"
+        alt="Preview of the Project Preparation Journey from Portfolio Overview to Project Specification and Git handoff."
+        width="1440"
+        height="900"
+        loading="lazy"
+        decoding="async"
+      />
+    </a>
+  </aside>
+
   <form class="portfolio-filters" [formGroup]="filterForm" (ngSubmit)="applyFilters()" aria-label="Portfolio filters">
     <label>
       <span>Search</span>

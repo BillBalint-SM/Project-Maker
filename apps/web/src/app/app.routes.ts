@@ -158,6 +158,14 @@ const protectedRoutes: Routes = [
     title: 'Business roadmap | Project Maker',
   },
   {
+    path: 'workspace-map',
+    loadComponent: () =>
+      import('./workspace-map/workspace-map.page').then(
+        (module) => module.WorkspaceMapPage,
+      ),
+    title: 'Workspace Map | Project Maker',
+  },
+  {
     path: 'notifications',
     loadComponent: () =>
       import('./notifications/notifications.page').then((module) => module.NotificationsPage),

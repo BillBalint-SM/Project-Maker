@@ -6,6 +6,8 @@ This document is the platform-neutral source of truth for the Project Maker prod
 
 Project Maker is an intake and requirements-clarification tool for PM, PO, and BA users. It is not a general project-management system. Its core outcome is a development-ready requirement package and an explicit list of unresolved questions, while coaching the user toward stronger discovery practice.
 
+The [Feature and Dataflow visual map](visual-maps.md#feature-and-data-flow) is a companion view of how these product concepts connect to retained records and controlled outputs; this document remains the platform-neutral source of truth.
+
 The canonical workflow is:
 
 1. Create a draft project or open an existing one.

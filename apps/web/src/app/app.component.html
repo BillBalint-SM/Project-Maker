@@ -46,10 +46,17 @@
         [class.open]="navigationOpen()"
         [attr.aria-hidden]="!navigationOpen()"
       >
-        <section class="workspace-intro" aria-labelledby="workspace-map-title">
+        <section class="workspace-intro" aria-labelledby="workspace-map-intro-title">
           <span class="map-index">PM / MAP 01</span>
-          <h2 id="workspace-map-title">Follow the work, not the menu.</h2>
+          <h2 id="workspace-map-intro-title">Follow the work, not the menu.</h2>
           <p>Orient in the portfolio, move preparation forward, then configure the tools behind it.</p>
+          <a
+            class="workspace-map-link"
+            routerLink="/workspace-map"
+            (click)="closeNavigation()"
+          >
+            Open visual Workspace Map <span aria-hidden="true">→</span>
+          </a>
           <div class="map-path" aria-hidden="true">
             <span>Context</span><i></i><span>Action</span><i></i><span>System</span>
           </div>

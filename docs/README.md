@@ -5,6 +5,7 @@ All maintained product, engineering, user, and operational documentation is writ
 ## Start here
 
 - [End-user guide](user-guide.md) — current daily workflows, states, side effects, recovery paths, and limitations.
+- [Visual maps](visual-maps.md) — interactive workflow, lifecycle, communication, dataflow, and runtime architecture views.
 - [Current roadmap](roadmap.md) — delivered capability, planned work, opportunities, and improvements.
 - [Product domain](product-domain.md) — platform-neutral intent and vocabulary; not a delivery-status record.
 - [Configuration reference](configuration.md) — authoritative environment-variable definitions, defaults, constraints, and failure behavior.
@@ -14,6 +15,8 @@ All maintained product, engineering, user, and operational documentation is writ
 
 ## Architecture and decisions
 
+- [Runtime Architecture visual map](visual-maps.md#runtime-architecture)
+- [Feature and Dataflow visual map](visual-maps.md#feature-and-data-flow)
 - [ADR-0001: domain-aligned Project cockpit](adr/0001-domain-aligned-project-cockpit.md)
 - [ADR-0002: pre-delivery Decision Score policy correction](adr/0002-pre-delivery-decision-score-policy-correction.md)
 - [ADR-0003: Operator organization-provided mail gateway](adr/0003-use-operator-provided-mail-gateway.md)

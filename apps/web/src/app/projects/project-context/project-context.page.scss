@@ -49,6 +49,18 @@
   overflow-wrap: anywhere;
 }
 
+.context-map-link {
+  align-items: center;
+  color: var(--pm-blue);
+  display: inline-flex;
+  font-size: var(--text-xs);
+  font-weight: 680;
+  gap: var(--space-3xs);
+  justify-self: start;
+  min-height: 2.75rem;
+  text-decoration: none;
+}
+
 .primary-task {
   background: var(--pm-canvas-deep);
   border-top: var(--rule-hair) solid var(--pm-border);
@@ -133,6 +145,7 @@
 
 @media (hover: hover) {
   .return-link:hover { transform: translateX(-0.25rem); }
+  .context-map-link:hover { color: var(--pm-magenta); }
   .context-navigation a:hover { border-color: var(--pm-border-strong); }
 }
 

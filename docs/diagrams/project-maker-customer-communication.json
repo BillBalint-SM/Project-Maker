@@ -1,0 +1,66 @@
+{
+  "schema_version": 1,
+  "diagram_type": "sequence",
+  "meta": {
+    "title": "Project Maker — Customer Correspondence Send and Reply Flow",
+    "output": "project-maker-customer-communication.html",
+    "viewBox": [1080, 580],
+    "column_fit": "spread",
+    "quality_profile": "showcase",
+    "legend": {
+      "mode": "auto",
+      "entries": {
+        "emphasis": { "label": "Canonical workflow" },
+        "return": { "label": "Returned data" },
+        "security": { "label": "Explicit human confirmation" },
+        "dashed": { "label": "Asynchronous mail operation" }
+      }
+    }
+  },
+  "participants": [
+    { "id": "employee", "type": "external", "label": "Internal user", "sublabel": "summary review + processing" },
+    { "id": "api", "type": "backend", "label": "NestJS API", "sublabel": "domain rules" },
+    { "id": "database", "type": "database", "label": "PostgreSQL", "sublabel": "retained canonical state" },
+    { "id": "mailRuntime", "type": "backend", "label": "Mail delivery", "sublabel": "SMTP + IMAP mailbox sync" },
+    { "id": "mailGateway", "type": "cloud", "label": "Mail gateway", "sublabel": "Correspondence mailbox" },
+    { "id": "customer", "type": "external", "label": "Customer contact", "sublabel": "Project Customer recipient" }
+  ],
+  "segments": [
+    { "from": 153, "to": 235, "label": "Customer interview summary preview" },
+    { "from": 245, "to": 385, "label": "Send and mail-system acceptance" },
+    { "from": 395, "to": 510, "label": "Customer reply and Correspondence mailbox sync" }
+  ],
+  "messages": [
+    { "id": "requestPreview", "from": "employee", "to": "api", "y": 175, "label": "Preview Customer interview summary", "variant": "security" },
+    { "id": "loadPreviewFacts", "from": "api", "to": "database", "y": 203, "label": "sourceContentVersion + previewDigest", "variant": "emphasis" },
+    { "id": "returnPreview", "from": "database", "to": "employee", "y": 231, "label": "exact preview bound to previewDigest", "variant": "return" },
+
+    { "id": "humanConfirm", "from": "employee", "to": "api", "y": 267, "label": "explicit Send to Customer confirmation", "variant": "security" },
+    { "id": "claimSend", "from": "api", "to": "database", "y": 295, "label": "outbound communication + Reply-To + Customer correspondence + SENDING", "variant": "emphasis" },
+    { "id": "submitOutbound", "from": "api", "to": "mailRuntime", "y": 323, "label": "immutable outbound Customer communication", "variant": "dashed" },
+    { "id": "smtpSubmission", "from": "mailRuntime", "to": "mailGateway", "y": 351, "label": "TLS SMTP submission", "variant": "security" },
+    { "id": "finalizeSend", "from": "mailRuntime", "to": "database", "y": 379, "label": "SMTP outcome → SENT / FAILED / UNKNOWN", "variant": "emphasis" },
+
+    { "id": "deliverMail", "from": "mailGateway", "to": "customer", "y": 409, "label": "Customer interview summary", "variant": "dashed" },
+    { "id": "customerReply", "from": "customer", "to": "mailGateway", "y": 437, "label": "Customer reply to the plus-address", "variant": "dashed" },
+    { "id": "imapPoll", "from": "mailRuntime", "to": "mailGateway", "y": 465, "label": "read-only IMAP poll", "variant": "dashed" },
+    { "id": "ingestReply", "from": "mailRuntime", "to": "database", "y": 493, "label": "checkpoint + correlate to Customer correspondence or triage", "variant": "emphasis" }
+  ],
+  "cards": [
+    {
+      "dot": "emerald",
+      "title": "Exact Customer interview summary preview",
+      "items": ["The previewDigest binds Send to Customer confirmation to the exact sourceContentVersion; every successful send retains a new immutable Customer interview summary."]
+    },
+    {
+      "dot": "rose",
+      "title": "Mail-system acceptance and retry",
+      "items": ["SENT means Mail-system acceptance, not delivery or reading. FAILED can retry unchanged; UNKNOWN requires Sent mailbox verification and explicit duplicate-risk acceptance."]
+    },
+    {
+      "dot": "amber",
+      "title": "Customer correspondence processing",
+      "items": ["The plus-address correlates the Customer reply to Customer correspondence. An Unmatched Customer message goes to triage; the Customer correspondence status then moves through New response → Processing → Closed."]
+    }
+  ]
+}

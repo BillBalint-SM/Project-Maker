@@ -1,0 +1,210 @@
+:host {
+  display: block;
+  min-width: 0;
+}
+
+.workspace-map-page {
+  min-width: 0;
+}
+
+.back-link,
+.full-map-link {
+  align-items: center;
+  color: var(--pm-blue);
+  display: inline-flex;
+  font-weight: 680;
+  gap: var(--space-2xs);
+  min-height: 2.75rem;
+  text-decoration: none;
+}
+
+.back-link {
+  margin-bottom: var(--space-sm);
+}
+
+.map-heading {
+  max-width: 64rem;
+}
+
+.map-heading h1 {
+  font-size: clamp(2.25rem, 5vw, 4.25rem);
+  line-height: 0.96;
+  margin: var(--space-xs) 0 var(--space-sm);
+  max-width: 20ch;
+  text-wrap: balance;
+}
+
+.map-heading p,
+.active-map-heading p,
+.map-guidance {
+  color: var(--pm-text-muted);
+  line-height: 1.6;
+}
+
+.map-heading p {
+  font-size: var(--text-md);
+  margin: 0;
+  max-width: 68ch;
+}
+
+.map-selector {
+  display: grid;
+  gap: var(--space-xs);
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 12rem), 1fr));
+  margin-block: var(--space-xl) var(--space-md);
+}
+
+.map-selector a {
+  background: var(--pm-surface-1);
+  border: var(--rule-hair) solid var(--pm-border);
+  color: var(--pm-text-muted);
+  display: grid;
+  gap: var(--space-3xs);
+  min-height: 7.5rem;
+  padding: var(--space-sm);
+  text-decoration: none;
+  transition:
+    background var(--dur-micro) var(--ease-out),
+    border-color var(--dur-micro) var(--ease-out),
+    color var(--dur-micro) var(--ease-out),
+    transform var(--dur-micro) var(--ease-out);
+}
+
+.map-selector a.active {
+  background: color-mix(in oklch, var(--pm-blue) 10%, var(--pm-surface-2));
+  border-color: var(--pm-blue);
+  box-shadow: inset 0 -2px 0 var(--pm-blue);
+  color: var(--pm-text);
+}
+
+.map-selector strong {
+  align-self: end;
+  color: inherit;
+  font-size: var(--text-sm);
+}
+
+.map-selector small {
+  font-size: var(--text-xs);
+  line-height: 1.35;
+}
+
+.map-index,
+.map-perspective {
+  color: var(--pm-yellow-text);
+  font-family: var(--font-outlier);
+  font-size: var(--text-xs);
+  letter-spacing: 0.055em;
+}
+
+.map-workbench {
+  background: var(--pm-surface-1);
+  border: var(--rule-hair) solid var(--pm-border);
+  border-radius: var(--radius-card);
+  min-width: 0;
+  overflow: hidden;
+}
+
+.active-map-heading {
+  align-items: end;
+  display: flex;
+  gap: var(--space-lg);
+  justify-content: space-between;
+  padding: clamp(var(--space-sm), 3vw, var(--space-lg));
+}
+
+.active-map-heading > div {
+  min-width: 0;
+}
+
+.active-map-heading h2 {
+  font-size: clamp(1.5rem, 3vw, 2.4rem);
+  line-height: 1.05;
+  margin: var(--space-2xs) 0;
+  overflow-wrap: anywhere;
+}
+
+.active-map-heading p {
+  margin: 0;
+  max-width: 72ch;
+}
+
+.full-map-link {
+  border: var(--rule-hair) solid var(--pm-border-strong);
+  flex: 0 0 auto;
+  padding-inline: var(--space-sm);
+}
+
+.map-stage {
+  background: var(--pm-canvas-deep);
+  border-block: var(--rule-hair) solid var(--pm-border);
+  min-width: 0;
+}
+
+.map-stage:focus-within {
+  outline: 3px solid var(--pm-focus);
+  outline-offset: -3px;
+}
+
+.map-stage iframe {
+  border: 0;
+  display: block;
+  height: clamp(34rem, 72vh, 56rem);
+  width: 100%;
+}
+
+.map-guidance {
+  font-size: var(--text-sm);
+  margin: 0;
+  max-width: 76ch;
+  padding: var(--space-sm) clamp(var(--space-sm), 3vw, var(--space-lg));
+}
+
+@media (hover: hover) {
+  .back-link:hover,
+  .full-map-link:hover {
+    color: var(--pm-magenta);
+  }
+
+  .map-selector a:hover {
+    border-color: var(--pm-border-strong);
+    transform: translateY(-1px);
+  }
+}
+
+@media (max-width: 48rem) {
+  .map-selector {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .map-selector a {
+    min-height: 6rem;
+    padding: var(--space-xs);
+  }
+
+  .active-map-heading {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .full-map-link {
+    align-self: stretch;
+    justify-content: center;
+  }
+
+  .map-stage iframe {
+    height: min(70dvh, 42rem);
+    min-height: 30rem;
+  }
+}
+
+@media (max-width: 22rem) {
+  .map-selector {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .map-selector a {
+    transition: none;
+  }
+}

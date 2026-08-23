@@ -1,0 +1,60 @@
+<section class="workspace-map-page" aria-labelledby="workspace-map-title">
+  <a class="back-link" [routerLink]="returnLink()" data-testid="workspace-map-back-link">
+    <span aria-hidden="true">←</span> {{ returnLabel() }}
+  </a>
+
+  <header class="map-heading">
+    <span class="eyebrow">Workspace map</span>
+    <h1 id="workspace-map-title">Project Maker Workspace Map</h1>
+    <p>
+      Choose the perspective that matches the question in front of you. Each map is interactive,
+      supports dark and light themes, and can be opened separately for presentation or export.
+    </p>
+  </header>
+
+  <nav class="map-selector" aria-label="Workspace map perspectives">
+    @for (entry of maps; track entry.id) {
+      <a
+        [routerLink]="['/workspace-map']"
+        [queryParams]="mapQueryParams(entry.id)"
+        [class.active]="activeMap().id === entry.id"
+        [attr.aria-current]="activeMap().id === entry.id ? 'page' : null"
+        [attr.data-testid]="'workspace-map-option-' + entry.id"
+      >
+        <span class="map-index" aria-hidden="true">{{ entry.index }}</span>
+        <strong>{{ entry.label }}</strong>
+        <small>{{ entry.perspective }}</small>
+      </a>
+    }
+  </nav>
+
+  <article class="map-workbench" [attr.aria-labelledby]="'active-map-' + activeMap().id">
+    <header class="active-map-heading">
+      <div>
+        <span class="map-perspective">{{ activeMap().perspective }}</span>
+        <h2 [id]="'active-map-' + activeMap().id">{{ activeMap().title }}</h2>
+        <p>{{ activeMap().description }}</p>
+      </div>
+      <a class="full-map-link" [href]="fullMapUrl()" target="_blank" rel="noopener">
+        Open full interactive map <span aria-hidden="true">↗</span>
+      </a>
+    </header>
+
+    <div class="map-stage" data-testid="workspace-map-stage">
+      <iframe
+        [src]="embeddedMapUrl()"
+        [title]="activeMap().title + ' interactive diagram'"
+        loading="lazy"
+        sandbox="allow-downloads allow-scripts"
+        allow="fullscreen"
+        referrerpolicy="no-referrer"
+        data-testid="workspace-map-frame"
+      ></iframe>
+    </div>
+
+    <p class="map-guidance">
+      The summary above preserves the essential meaning outside the visual. Use the full interactive
+      map when you need presentation mode, source inspection, or file export.
+    </p>
+  </article>
+</section>

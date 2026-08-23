@@ -7,6 +7,7 @@ import { CardModule } from 'primeng/card';
 import { InputTextModule } from 'primeng/inputtext';
 import { Observable } from 'rxjs';
 
+import { AppThemeState } from '../theme/app-theme.state';
 import {
   AuthApiService,
   type Credentials,
@@ -23,6 +24,7 @@ type AuthMode = 'login' | 'signup' | 'restore';
 })
 export class LoginPage implements OnInit {
   private readonly auth = inject(AuthApiService);
+  private readonly appTheme = inject(AppThemeState);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
@@ -33,6 +35,14 @@ export class LoginPage implements OnInit {
   readonly heading = computed(() => authModeText[this.mode()].heading);
   readonly description = computed(() => authModeText[this.mode()].description);
   readonly submitLabel = computed(() => authModeText[this.mode()].submitLabel);
+  readonly journeyPreviewUrl = computed(
+    () =>
+      `/diagrams/previews/project-maker-user-workflow.preview.${this.appTheme.theme()}.png`,
+  );
+  readonly journeyMapUrl = computed(
+    () =>
+      `/diagrams/project-maker-user-workflow.html?theme=${this.appTheme.theme()}`,
+  );
   readonly authForm = new FormGroup({
     email: new FormControl('', {
       nonNullable: true,

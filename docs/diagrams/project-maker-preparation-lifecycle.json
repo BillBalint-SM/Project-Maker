@@ -1,0 +1,118 @@
+{
+  "schema_version": 1,
+  "diagram_type": "lifecycle",
+  "meta": {
+    "title": "Project Maker — Project Preparation State Decision Logic",
+    "output": "project-maker-preparation-lifecycle.html",
+    "viewBox": [1050, 566],
+    "quality_profile": "showcase",
+    "legend": {
+      "mode": "auto",
+      "entries": {
+        "start": { "label": "Entry check" },
+        "active": { "label": "Initial Intake or positive recommendation" },
+        "waiting": { "label": "Clarification required" },
+        "decision": { "label": "Decision Review required" },
+        "success": { "label": "Ready for estimation" }
+      }
+    }
+  },
+  "lanes": [
+    { "id": "main", "label": "Precedence order — the first matching branch determines the Project preparation state" },
+    { "id": "clarification", "label": "Remediation and recalculation" }
+  ],
+  "states": [
+    {
+      "id": "schemaRequired",
+      "type": "start",
+      "label": "Question schema",
+      "sublabel": "required",
+      "tag": "SCHEMA_REQUIRED",
+      "lane": "main",
+      "col": 0,
+      "step": "01"
+    },
+    {
+      "id": "intakeInProgress",
+      "type": "active",
+      "label": "Initial Intake",
+      "sublabel": "in progress",
+      "tag": "INTAKE_IN_PROGRESS",
+      "lane": "main",
+      "col": 1,
+      "step": "02"
+    },
+    {
+      "id": "decisionReviewRequired",
+      "type": "decision",
+      "label": "Decision Review",
+      "sublabel": "required",
+      "tag": "DECISION_REVIEW_REQUIRED",
+      "lane": "main",
+      "col": 2,
+      "step": "03"
+    },
+    {
+      "id": "estimatePreparable",
+      "type": "active",
+      "label": "Ready for estimation",
+      "sublabel": "preparation",
+      "tag": "ESTIMATE_PREPARABLE",
+      "lane": "main",
+      "col": 3,
+      "step": "04"
+    },
+    {
+      "id": "estimateReady",
+      "type": "success",
+      "label": "Ready for estimation",
+      "sublabel": "Decision recommendation",
+      "tag": "ESTIMATE_READY",
+      "lane": "main",
+      "col": 4,
+      "step": "05"
+    },
+    {
+      "id": "clarificationRequired",
+      "type": "waiting",
+      "label": "Clarification",
+      "sublabel": "required",
+      "tag": "CLARIFICATION_REQUIRED",
+      "lane": "clarification",
+      "col": 0
+    }
+  ],
+  "transitions": [
+    {
+      "id": "unsupportedSource",
+      "from": "intakeInProgress",
+      "to": "clarificationRequired",
+      "variant": "security"
+    },
+    {
+      "id": "clarificationRecommendation",
+      "from": "decisionReviewRequired",
+      "to": "clarificationRequired",
+      "variant": "security",
+      "route": "straight",
+      "fromSide": "bottom",
+      "toSide": "top"
+    },
+    {
+      "id": "remediationResolved",
+      "from": "clarificationRequired",
+      "to": "estimatePreparable",
+      "variant": "dashed"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "Project preparation state is derived, not approved",
+      "items": [
+        "Project question schema → current Initial Intake → six Decision input ratings → Decision recommendation; changes to source facts can move the Project preparation state backward, while Administrative project phase, urgency, and Project archive remain separate axes.",
+        "The Decision recommendation maps to Clarification required, Ready for estimation preparation, or Ready for estimation."
+      ]
+    }
+  ]
+}

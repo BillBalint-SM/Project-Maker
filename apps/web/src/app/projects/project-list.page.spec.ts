@@ -55,6 +55,14 @@ describe('ProjectListPage correspondence mailbox synchronization', () => {
     expect(
       fixture.nativeElement.querySelector('[data-testid="active-project-queue-link"]')?.getAttribute('href'),
     ).toBe('/projects/active');
+    expect(
+      fixture.nativeElement.querySelector('[data-testid="portfolio-workspace-map-link"]')
+        ?.getAttribute('href'),
+    ).toBe('/workspace-map?view=user-workflow');
+    expect(
+      fixture.nativeElement.querySelector('[data-testid="journey-preview"] img')
+        ?.getAttribute('src'),
+    ).toBe('/diagrams/previews/project-maker-user-workflow.preview.dark.png');
 
     const refreshHost = fixture.nativeElement.querySelector(
       '[data-testid="refresh-customer-mailbox"]',

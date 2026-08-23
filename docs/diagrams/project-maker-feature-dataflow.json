@@ -1,0 +1,138 @@
+{
+  "schema_version": 1,
+  "diagram_type": "dataflow",
+  "meta": {
+    "title": "Project Maker — Feature and Dataflow Map",
+    "output": "project-maker-feature-dataflow.html",
+    "viewBox": [940, 500],
+    "quality_profile": "showcase",
+    "legend": {
+      "mode": "auto",
+      "entries": {
+        "default": { "label": "Canonical relationship" },
+        "emphasis": { "label": "Primary derivation" },
+        "security": { "label": "Restricted external boundary" },
+        "dashed": { "label": "Projection / asynchronous" },
+        "database": { "label": "Persistent data" }
+      }
+    }
+  },
+  "stages": [
+    { "label": "Published sources" },
+    { "label": "Project-owned records" },
+    { "label": "Decision support + outputs" },
+    { "label": "Contexts + side effects" }
+  ],
+  "nodes": [
+    {
+      "id": "versionedSources",
+      "type": "backend",
+      "label": "Question Bank",
+      "sublabel": "playbook",
+      "stage": 0,
+      "row": 2,
+      "tag": "Markdown template"
+    },
+    {
+      "id": "customerState",
+      "type": "database",
+      "label": "Customer",
+      "sublabel": "correspondence",
+      "stage": 1,
+      "row": 0,
+      "tag": "Project-owned"
+    },
+    {
+      "id": "discoveryKnowledge",
+      "type": "database",
+      "label": "Discovery",
+      "sublabel": "Evidence · Insights",
+      "stage": 1,
+      "row": 1,
+      "tag": "Discovery follow-ups"
+    },
+    {
+      "id": "projectIntake",
+      "type": "database",
+      "label": "Initial Intake",
+      "sublabel": "Project basics · rounds",
+      "stage": 1,
+      "row": 2,
+      "tag": "Project question schema"
+    },
+    {
+      "id": "readinessDecision",
+      "type": "backend",
+      "label": "Decision Review",
+      "sublabel": "Estimation Readiness",
+      "stage": 2,
+      "row": 1,
+      "tag": "Decision Score · derived"
+    },
+    {
+      "id": "outputChain",
+      "type": "database",
+      "label": "Specification",
+      "sublabel": "version",
+      "stage": 2,
+      "row": 2,
+      "tag": "Delivery package"
+    },
+    {
+      "id": "customerChannels",
+      "type": "external",
+      "label": "Customer",
+      "sublabel": "communication",
+      "stage": 3,
+      "row": 0,
+      "tag": "Customer response form"
+    },
+    {
+      "id": "workSurfaces",
+      "type": "frontend",
+      "label": "Portfolio Overview",
+      "sublabel": "Active Project Queue",
+      "width": 120,
+      "stage": 3,
+      "row": 1,
+      "tag": "Internal notifications"
+    },
+    {
+      "id": "gitProjection",
+      "type": "external",
+      "label": "Delivery handoff",
+      "sublabel": "preview-confirmed Git push",
+      "stage": 3,
+      "row": 2,
+      "tag": "One-way projection"
+    }
+  ],
+  "flows": [
+    { "id": "policySnapshot", "from": "versionedSources", "to": "projectIntake", "label": "Project question schema + playbook policy", "variant": "emphasis", "labelAt": [208, 428] },
+    { "id": "projectFacts", "from": "projectIntake", "to": "readinessDecision", "label": "Decision inputs", "variant": "emphasis" },
+    { "id": "followUpState", "from": "discoveryKnowledge", "to": "readinessDecision", "label": "Discovery follow-up state", "variant": "emphasis", "route": "straight", "labelAt": [510, 338] },
+    { "id": "customerEvidence", "from": "customerState", "to": "discoveryKnowledge", "label": "Customer response → Evidence", "variant": "dashed" },
+    { "id": "outputSource", "from": "projectIntake", "to": "outputChain", "label": "immutable source snapshot", "variant": "emphasis", "route": "straight", "labelAt": [422.5, 430] },
+    { "id": "workProjection", "from": "readinessDecision", "to": "workSurfaces", "label": "Project preparation state + primary action", "variant": "dashed", "labelAt": [638, 314] },
+    { "id": "customerBoundary", "from": "customerState", "to": "customerChannels", "label": "SMTP/IMAP + capability link", "variant": "security" },
+    { "id": "customerSignal", "from": "customerChannels", "to": "workSurfaces", "label": "Customer reply / delivery failure", "variant": "dashed" },
+    { "id": "gitArtifact", "from": "outputChain", "to": "gitProjection", "label": "confirmed Delivery handoff snapshot", "variant": "security", "labelAt": [638, 428] }
+  ],
+  "cards": [
+    {
+      "dot": "emerald",
+      "title": "Canonical records vs. derived views",
+      "items": ["Project, Initial Intake, Discovery, and Customer correspondence are persisted; Estimation Readiness, Decision Score, Active Project Queue, and Internal notifications are derived at read time."]
+    },
+    {
+      "dot": "violet",
+      "title": "Immutable provenance",
+      "items": ["Published Question Bank version / Published playbook version → Project question schema → Initial Intake snapshot → Specification version → editable Delivery package → confirmed Delivery handoff snapshot."]
+    },
+    {
+      "dot": "rose",
+      "title": "Shared domain boundaries",
+      "items": ["Angular and MCP call the same domain services; Customer communication and Delivery handoff remain explicit, bounded side effects."]
+    }
+  ]
+}

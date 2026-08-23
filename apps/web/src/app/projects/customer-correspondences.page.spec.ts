@@ -53,7 +53,17 @@ describe('CustomerCorrespondencesPage', () => {
       imports: [CustomerCorrespondencesPage],
       providers: [
         provideRouter([]),
-        { provide: ActivatedRoute, useValue: { snapshot: { paramMap: { get: () => 'project-1' } } } },
+        {
+          provide: ActivatedRoute,
+          useValue: {
+            snapshot: {
+              paramMap: { get: () => 'project-1' },
+              queryParamMap: {
+                get: (key: string) => (key === 'returnTo' ? '/follow-ups' : null),
+              },
+            },
+          },
+        },
         {
           provide: CustomerRepliesApiService,
           useValue: { command, summary, forProject: () => of(work) },
@@ -91,6 +101,12 @@ describe('CustomerCorrespondencesPage', () => {
     expect(fixture.nativeElement.querySelector('.message-text img')).toBeNull();
     expect((fixture.nativeElement.querySelector('details') as HTMLDetailsElement).open).toBe(false);
     expect(fixture.nativeElement.textContent).toContain('Reply sender is not listed among Project contacts');
+    expect(
+      fixture.nativeElement.querySelector('[data-testid="customer-communication-map-link"]')
+        ?.getAttribute('href'),
+    ).toBe(
+      '/workspace-map?view=customer-communication&returnTo=%2Fprojects%2Fproject-1%2Fcustomer-correspondences%3FreturnTo%3D%252Ffollow-ups',
+    );
     const close = Array.from(fixture.nativeElement.querySelectorAll('button'))
       .find((button) => (button as HTMLButtonElement).textContent?.trim() === 'Close correspondence') as HTMLButtonElement;
     close.click();

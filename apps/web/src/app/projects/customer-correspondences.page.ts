@@ -1,7 +1,7 @@
 import { DatePipe } from '@angular/common';
 import { Component, DestroyRef, inject, OnInit, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { ActivatedRoute, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import type {
   CustomerCorrespondenceCommand,
   CustomerCorrespondenceStatus,
@@ -19,6 +19,7 @@ import { NotificationsApiService } from '../notifications/notifications-api.serv
 import { CustomerFollowUpComponent } from './customer-follow-up/customer-follow-up.component';
 import { InterviewReplyOutcomeComponent } from '../interviews/interview-handoff/interview-reply-outcome.component';
 import { DiscoveryReplyOutcomeComponent } from './discovery-follow-ups/discovery-reply-outcome.component';
+import { validatedProjectReturnTarget } from './project-context/project-return-target';
 
 @Component({
   selector: 'app-customer-correspondences-page',
@@ -34,9 +35,20 @@ import { DiscoveryReplyOutcomeComponent } from './discovery-follow-ups/discovery
   ],
   template: `
     <section aria-labelledby="customer-replies-title">
-      <span class="eyebrow">Customer communication</span>
-      <h1 id="customer-replies-title">Customer correspondence</h1>
-      <p class="page-lead">Process Customer responses and prepare follow-ups in one place.</p>
+      <div class="page-heading-row">
+        <div>
+          <span class="eyebrow">Customer communication</span>
+          <h1 id="customer-replies-title">Customer correspondence</h1>
+          <p class="page-lead">Process Customer responses and prepare follow-ups in one place.</p>
+        </div>
+        <a
+          pButton
+          routerLink="/workspace-map"
+          [queryParams]="communicationMapQueryParams"
+          severity="secondary"
+          data-testid="customer-communication-map-link"
+        >View communication flow</a>
+      </div>
       @if (loading()) {
         <div class="state-panel" aria-live="polite">
           <p-progress-spinner ariaLabel="Loading Customer correspondence" />
@@ -137,6 +149,8 @@ import { DiscoveryReplyOutcomeComponent } from './discovery-follow-ups/discovery
     </section>
   `,
   styles: `
+    .page-heading-row { align-items: flex-start; display: flex; flex-wrap: wrap; gap: 1rem; justify-content: space-between; }
+    .page-heading-row > div { min-width: 0; }
     .page-lead { max-width: 48rem; color: var(--p-text-muted-color); }
     .state-panel { display: grid; justify-items: start; gap: .75rem; padding: 1.25rem; border: 1px solid var(--pm-border); border-radius: var(--pm-radius-md); }
     .state-panel :is(h2, p) { margin: 0; }
@@ -157,9 +171,24 @@ import { DiscoveryReplyOutcomeComponent } from './discovery-follow-ups/discovery
 export class CustomerCorrespondencesPage implements OnInit {
   private readonly api = inject(CustomerRepliesApiService);
   private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
   private readonly notifications = inject(NotificationsApiService);
   readonly projectId = this.route.snapshot.paramMap.get('projectId') ?? '';
+  private readonly projectReturnTarget = validatedProjectReturnTarget(
+    this.route.snapshot.queryParamMap.get('returnTo'),
+  );
+  readonly communicationMapQueryParams = {
+    view: 'customer-communication',
+    returnTo: this.router.serializeUrl(
+      this.router.createUrlTree(['/projects', this.projectId, 'customer-correspondences'], {
+        queryParams:
+          this.projectReturnTarget === '/'
+            ? undefined
+            : { returnTo: this.projectReturnTarget },
+      }),
+    ),
+  };
   readonly correspondenceWork = signal<ProjectCustomerCorrespondenceWork | null>(null);
   readonly loading = signal(true);
   readonly loadError = signal<string | null>(null);

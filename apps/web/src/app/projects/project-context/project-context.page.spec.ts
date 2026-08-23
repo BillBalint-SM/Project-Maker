@@ -82,6 +82,9 @@ describe('ProjectContextPage', () => {
     const interviewLink = root.querySelector(
       '[data-testid="project-context-nav-interview"]',
     ) as HTMLAnchorElement | null;
+    const mapLink = root.querySelector('.context-map-link') as HTMLAnchorElement | null;
+    const selectedProjectUrl =
+      `/projects/${projectId}/status?returnTo=${encodeURIComponent(queueUrl)}`;
 
     expect(api.loadWorkState).toHaveBeenCalledWith(projectId);
     expect(root.textContent).toContain('Alfa átállás');
@@ -92,6 +95,9 @@ describe('ProjectContextPage', () => {
     expect(interviewLink?.getAttribute('aria-current')).toBeNull();
     expect(projectReturnTarget(primaryAction)).toBe(queueUrl);
     expect(projectReturnTarget(interviewLink)).toBe(queueUrl);
+    expect(mapLink?.getAttribute('href')).toBe(
+      `/workspace-map?view=preparation-lifecycle&returnTo=${encodeURIComponent(selectedProjectUrl)}`,
+    );
     expect(root.querySelector('[data-testid="project-panel"]')).not.toBeNull();
   });
 
@@ -133,6 +139,11 @@ describe('ProjectContextPage', () => {
     expect(backLink?.getAttribute('href')).toBe('/');
     expect(backLink?.textContent).toContain('Back to Portfolio Overview');
     expect(projectReturnTarget(interviewLink)).toBe('/');
+    expect(
+      root.querySelector('.context-map-link')?.getAttribute('href'),
+    ).toBe(
+      `/workspace-map?view=preparation-lifecycle&returnTo=${encodeURIComponent(`/projects/${projectId}/status`)}`,
+    );
   });
 
   it('refreshes the canonical header after switching Project task contexts', async () => {

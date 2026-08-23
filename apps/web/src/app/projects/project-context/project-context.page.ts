@@ -61,6 +61,7 @@ export class ProjectContextPage implements OnInit {
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
   private previousLocation: ProjectContextLocation | null = null;
+  private readonly currentLocation = signal<ProjectContextLocation | null>(null);
 
   readonly context = inject(ProjectContextState);
   readonly projectId = signal('');
@@ -79,6 +80,10 @@ export class ProjectContextPage implements OnInit {
     return 'Back to Portfolio Overview';
   });
   readonly contextQueryParams = computed(() => ({ returnTo: this.returnTarget() }));
+  readonly preparationMapQueryParams = computed(() => ({
+    view: 'preparation-lifecycle',
+    returnTo: this.selectedProjectReturnTarget(),
+  }));
   readonly primaryActionRoute = computed(() => {
     const workState = this.context.workState();
     return workState
@@ -100,12 +105,14 @@ export class ProjectContextPage implements OnInit {
       .subscribe((projectId) => {
         this.projectId.set(projectId);
         if (this.previousLocation?.projectId !== projectId) {
-          this.previousLocation = {
+          const location = {
             projectId,
             page: this.route.firstChild?.snapshot.url
               .map((segment) => segment.path)
               .join('/') ?? '',
           };
+          this.previousLocation = location;
+          this.currentLocation.set(location);
         }
         this.context.load(projectId);
       });
@@ -132,6 +139,7 @@ export class ProjectContextPage implements OnInit {
       .subscribe((location) => {
         const previous = this.previousLocation;
         this.previousLocation = location;
+        this.currentLocation.set(location);
         if (previous?.projectId === location.projectId && previous.page !== location.page) {
           this.context.reload();
         }
@@ -140,6 +148,20 @@ export class ProjectContextPage implements OnInit {
 
   contextRoute(path: string): readonly string[] {
     return ['/projects', this.projectId(), path];
+  }
+
+  private selectedProjectReturnTarget(): string {
+    const location = this.currentLocation();
+    if (!location?.projectId || !location.page) {
+      return '/';
+    }
+    const queryParams =
+      this.returnTarget() === '/' ? undefined : { returnTo: this.returnTarget() };
+    return this.router.serializeUrl(
+      this.router.createUrlTree(['/projects', location.projectId, location.page], {
+        queryParams,
+      }),
+    );
   }
 }
 

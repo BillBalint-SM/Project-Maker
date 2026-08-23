@@ -13,6 +13,13 @@
       @if (context.workState(); as workState) {
         <strong class="project-name" data-testid="project-context-name">{{ workState.projectName }}</strong>
         <p-tag [value]="workState.preparationStatus.label" data-testid="project-context-preparation" />
+        <a
+          class="context-map-link"
+          routerLink="/workspace-map"
+          [queryParams]="preparationMapQueryParams()"
+        >
+          Understand the preparation state <span aria-hidden="true">→</span>
+        </a>
       } @else {
         <strong class="project-name">Project</strong>
         @if (context.loading()) {

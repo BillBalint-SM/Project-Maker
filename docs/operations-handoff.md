@@ -11,6 +11,8 @@ document as its detailed runtime and recovery reference.
 
 ## Runtime boundary
 
+The [Runtime Architecture visual map](visual-maps.md#runtime-architecture) provides an explorable companion to this deployment boundary and its external integrations.
+
 The runtime is a Docker Compose stack:
 
 | Service | Role | Network exposure |

@@ -16,6 +16,7 @@ Review framework and component compatibility before a major Angular or PrimeNG u
 ## Documentation
 
 - [End-user guide](docs/user-guide.md): current business workflows, states, recovery paths, and limitations.
+- [Visual maps](docs/visual-maps.md): explorable workflow, lifecycle, communication, dataflow, and runtime architecture views.
 - [Documentation index](docs/README.md): all maintained product, engineering, and operational references.
 - [Roadmap](docs/roadmap.md): current delivery-status catalogue and remaining work.
 - [Product domain](docs/product-domain.md): platform-neutral vocabulary and behavior.
