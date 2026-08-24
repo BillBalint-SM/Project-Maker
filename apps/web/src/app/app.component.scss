@@ -1,4 +1,6 @@
 :host {
+  --shell-max-width: clamp(100rem, 70vw, 144rem);
+  --navigation-max-width: clamp(96rem, 68vw, 140rem);
   display: block;
   min-height: 100dvh;
 }
@@ -45,7 +47,7 @@
   display: flex;
   gap: var(--space-sm);
   margin: 0 auto;
-  max-width: 100rem;
+  max-width: var(--shell-max-width);
   min-height: 4.75rem;
   padding: var(--space-2xs) var(--space-sm);
 }
@@ -137,7 +139,7 @@
   left: calc(var(--space-sm) + env(safe-area-inset-left));
   margin-inline: auto;
   max-height: calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 5.75rem);
-  max-width: 96rem;
+  max-width: var(--navigation-max-width);
   overflow: auto;
   position: fixed;
   right: calc(var(--space-sm) + env(safe-area-inset-right));
@@ -373,7 +375,7 @@
 
 .app-main {
   margin: 0 auto;
-  max-width: 100rem;
+  max-width: var(--shell-max-width);
   min-width: 0;
   padding: clamp(var(--space-md), 3vw, var(--space-xl)) var(--space-sm) calc(var(--space-xl) + var(--space-lg));
 }

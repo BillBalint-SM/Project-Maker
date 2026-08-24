@@ -101,7 +101,7 @@
       "type": "database",
       "label": "PostgreSQL 18.4",
       "sublabel": "state · bytea · snapshots",
-      "tag": "0001 → 0036 migrations",
+      "tag": "0001 → 0039 migrations",
       "row": 1,
       "col": 3,
       "sources": [

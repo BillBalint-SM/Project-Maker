@@ -129,10 +129,14 @@ export class MarkdownService {
     const selected = await this.templates.findPublished(
       input.templateId ?? project.markdownTemplateId,
     );
-    const [readiness, decisionReview] = await Promise.all([
-      this.readiness.getReadinessWithManager(manager, project.id),
-      this.decisionReview.getReviewWithManager(manager, project.id),
-    ]);
+    const readiness = await this.readiness.getReadinessWithManager(
+      manager,
+      project.id,
+    );
+    const decisionReview = await this.decisionReview.getReviewWithManager(
+      manager,
+      project.id,
+    );
     const sourceSnapshot = await buildSourceSnapshot(
       manager,
       project,
@@ -291,11 +295,9 @@ async function buildSourceSnapshot(
   readiness: ProjectReadiness,
   review: ProjectDecisionReview,
 ): Promise<MarkdownRevisionSourceSnapshotV2> {
-  const [projectSchema, interviewRounds, formalDecision] = await Promise.all([
-    loadLatestProjectSchema(manager, project.id),
-    loadInterviewRounds(manager, project.id),
-    loadLatestFormalDecision(manager, project.id),
-  ]);
+  const projectSchema = await loadLatestProjectSchema(manager, project.id);
+  const interviewRounds = await loadInterviewRounds(manager, project.id);
+  const formalDecision = await loadLatestFormalDecision(manager, project.id);
   const discovery = await loadDiscoverySnapshot(manager, project.id, interviewRounds);
   if (
     formalDecision &&
@@ -327,16 +329,14 @@ async function loadDiscoverySnapshot(
   projectId: string,
   interviewRounds: readonly InterviewRound[],
 ): Promise<MarkdownRevisionSourceSnapshotV2['discovery']> {
-  const [insights, followUps] = await Promise.all([
-    manager.getRepository(InsightEntity).find({
-      where: { projectId },
-      order: { createdAt: 'ASC', id: 'ASC' },
-    }),
-    manager.getRepository(DiscoveryFollowUpEntity).find({
-      where: { projectId },
-      order: { createdAt: 'ASC', id: 'ASC' },
-    }),
-  ]);
+  const insights = await manager.getRepository(InsightEntity).find({
+    where: { projectId },
+    order: { createdAt: 'ASC', id: 'ASC' },
+  });
+  const followUps = await manager.getRepository(DiscoveryFollowUpEntity).find({
+    where: { projectId },
+    order: { createdAt: 'ASC', id: 'ASC' },
+  });
   const links = insights.length === 0
     ? []
     : await manager.getRepository(InsightEvidenceEntity).find({

@@ -51,7 +51,7 @@ The isolated synthetic SMTP/IMAP suite provisions and removes its own test datab
 pnpm test:mail-gateway
 ```
 
-The production API image and fresh `0001 -> 0036` migration path share one local/CI smoke command:
+The production API image and fresh `0001 -> 0039` migration path share one local/CI smoke command:
 
 ```powershell
 node scripts/run-container-smoke.mjs

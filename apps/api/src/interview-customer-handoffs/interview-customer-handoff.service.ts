@@ -117,9 +117,10 @@ export class InterviewCustomerHandoffService {
             correspondenceId ? [correspondenceId] : [],
           ),
         );
-      return Promise.all(
-        handoffs.map((handoff) =>
-          toSummary(
+      const summaries: InterviewCustomerHandoffSummary[] = [];
+      for (const handoff of handoffs) {
+        summaries.push(
+          await toSummary(
             manager,
             handoff,
             projections.get(handoff.id),
@@ -127,8 +128,9 @@ export class InterviewCustomerHandoffService {
               ? receiptEvidence.has(handoff.correspondenceId)
               : false,
           ),
-        ),
-      );
+        );
+      }
+      return summaries;
     });
   }
   async get(

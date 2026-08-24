@@ -70,7 +70,7 @@ A populated `.env`, passwords, private CA material, mailbox contents, and Projec
    ```
 
 4. Verify the internal HTTPS application URL and the proxied `/api/health` endpoint.
-5. Inspect migration status using the [documented running-container command](operations-handoff.md#database-migrations-and-recovery). `pending: false` and all 36 migrations through `0036` are required.
+5. Inspect migration status using the [documented running-container command](operations-handoff.md#database-migrations-and-recovery). `pending: false` and all 39 migrations through `0039` are required.
 6. With synthetic data, complete this business smoke: create a Project and exit it; return to Portfolio; accept a question schema; save an assessment answer; close the assessment; open Estimation Readiness; create a clarification item; open Project Status; and return precisely to the originating list.
 7. At a supported desktop width of at least 1024 pixels, verify keyboard navigation, global and Project navigation, the primary task, and retry after an error.
 

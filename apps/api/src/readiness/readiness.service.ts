@@ -73,25 +73,25 @@ export class ReadinessService {
 
     const roundIds = projectsWithRounds.map(({ sourceRound }) => sourceRound.id);
     const projectIds = projectsWithRounds.map(({ project }) => project.id);
-    const [snapshots, answers, overrides, followUps, assessmentPolicy] = await Promise.all([
-      manager.getRepository(RoundQuestionSnapshotEntity).find({
-        where: { roundId: In(roundIds) },
-        order: { roundId: 'ASC', order: 'ASC', id: 'ASC' },
-      }),
-      manager.getRepository(RoundAnswerEntity).find({
+    const snapshots = await manager.getRepository(RoundQuestionSnapshotEntity).find({
+      where: { roundId: In(roundIds) },
+      order: { roundId: 'ASC', order: 'ASC', id: 'ASC' },
+    });
+    const answers = await manager.getRepository(RoundAnswerEntity).find({
+      where: { roundId: In(roundIds) },
+      order: { roundId: 'ASC', snapshotId: 'ASC', id: 'ASC' },
+    });
+    const overrides = await manager
+      .getRepository(RoundQuestionAssessmentOverrideEntity)
+      .find({
         where: { roundId: In(roundIds) },
         order: { roundId: 'ASC', snapshotId: 'ASC', id: 'ASC' },
-      }),
-      manager.getRepository(RoundQuestionAssessmentOverrideEntity).find({
-        where: { roundId: In(roundIds) },
-        order: { roundId: 'ASC', snapshotId: 'ASC', id: 'ASC' },
-      }),
-      manager.getRepository(DiscoveryFollowUpEntity).find({
-        where: { projectId: In(projectIds) },
-        order: { projectId: 'ASC', dueDate: 'ASC', createdAt: 'ASC', id: 'ASC' },
-      }),
-      loadRoundQuestionAssessmentPolicy(),
-    ]);
+      });
+    const followUps = await manager.getRepository(DiscoveryFollowUpEntity).find({
+      where: { projectId: In(projectIds) },
+      order: { projectId: 'ASC', dueDate: 'ASC', createdAt: 'ASC', id: 'ASC' },
+    });
+    const assessmentPolicy = await loadRoundQuestionAssessmentPolicy();
 
     const result = new Map(unavailable);
     for (const { project, sourceRound } of projectsWithRounds) {

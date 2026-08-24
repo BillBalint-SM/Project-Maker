@@ -67,7 +67,11 @@ export class InterviewsService {
         where: { projectId },
         order: { createdAt: 'DESC', id: 'ASC' },
       });
-      return Promise.all(rounds.map((round) => loadInterviewRound(manager, round)));
+      const loadedRounds: InterviewRound[] = [];
+      for (const round of rounds) {
+        loadedRounds.push(await loadInterviewRound(manager, round));
+      }
+      return loadedRounds;
     });
   }
 

@@ -27,7 +27,7 @@
     "@project-maker/contracts": "workspace:*",
     "class-transformer": "0.5.1",
     "class-validator": "0.14.2",
-    "hono": "4.11.4",
+    "hono": "4.12.34",
     "imapflow": "1.7.1",
     "nodemailer": "9.0.5",
     "pg": "8.22.0",
