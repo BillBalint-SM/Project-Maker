@@ -1,8 +1,12 @@
 <section aria-labelledby="interview-title">
   <div class="page-heading interview-heading">
     <span class="eyebrow">Project discovery</span>
-    <h1 id="interview-title">Initial Intake</h1>
-    <p>Select active questions, accept the project question schema, then continue the Initial Intake round.</p>
+    <h1 id="interview-title">{{ requestedRoundId && round() ? roundTypeLabel() : 'Initial Intake' }}</h1>
+    @if (requestedRoundId && round()) {
+      <p>Review the retained question snapshot, then continue this {{ roundTypeLabel().toLowerCase() }}.</p>
+    } @else {
+      <p>Select active questions, accept the project question schema, then continue the Initial Intake round.</p>
+    }
   </div>
 
   @if (actionError()) {
@@ -141,7 +145,7 @@
 
       @if (round()) {
       <p-card>
-        <ng-template #title>Initial Intake round</ng-template>
+        <ng-template #title>{{ roundTypeLabel() }}</ng-template>
         <ng-template #subtitle>
           This interview round retains an immutable snapshot of the selected question schema.
         </ng-template>
@@ -149,7 +153,7 @@
         @if (round(); as currentRound) {
             @if (currentRound.status === 'OPEN') {
               <div class="resume-state" data-testid="active-round-resume-state">
-                <strong>Continue Initial Intake in progress</strong>
+                <strong>Continue {{ roundTypeLabel().toLowerCase() }} in progress</strong>
                 <p>The last saved state was restored, so you can continue the same round here.</p>
               </div>
             }

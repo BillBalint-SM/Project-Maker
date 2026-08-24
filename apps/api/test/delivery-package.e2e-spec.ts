@@ -77,6 +77,11 @@ describe('Delivery package and exports (e2e)', () => {
     const revision = await request(app.getHttpServer())
       .post(`/projects/${projectId}/markdown-revisions`).send({ reason: 'MANUAL' }).expect(201);
     const exactExcerpt = (revision.body.content as string).slice(0, 48);
+    const escapedProjectLine = (revision.body.content as string)
+      .split('\n')
+      .find((line) => line.startsWith('- Project:'))!;
+    const renderedProjectLine = escapedProjectLine.replace(/\\([\\`*_{}\[\]()#+\-.!|<>])/g, '$1');
+    assert.notEqual(renderedProjectLine, escapedProjectLine);
 
     await request(app.getHttpServer()).put(`/projects/${projectId}/delivery-package`).send({
       specificationRevisionId: revision.body.id,
@@ -94,7 +99,7 @@ describe('Delivery package and exports (e2e)', () => {
         title: 'Magyar átadás <biztonságosan>',
         userStory: 'PO-ként szeretném egyben átadni a pontos csomagot.',
         acceptanceCriteria: ['=1+1 nem képlet', 'Kész; "igen"'],
-        sourceExcerpts: [exactExcerpt],
+        sourceExcerpts: [exactExcerpt, renderedProjectLine],
       }],
     }).expect(200);
     assert.equal(saved.body.specification.version, revision.body.version);

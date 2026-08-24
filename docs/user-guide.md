@@ -176,7 +176,7 @@ Use **Version history** to select a version, examine the source version and temp
 
 ### Delivery Package
 
-Select an exact Specification version as the source, then edit the shared package items. Each item has a title, user story, one or more acceptance criteria, and optional exact source excerpts. Select **Save Delivery Package** to persist the working draft. There is no additional internal approval gate.
+Select an exact Specification version as the source, then edit the shared package items. Each item has a title, user story, one or more acceptance criteria, and optional source excerpts. An excerpt must occur in that Specification version; text copied from the rendered Markdown is accepted when it differs from the stored source only by Markdown punctuation escaping. Select **Save Delivery Package** to persist the working draft. There is no additional internal approval gate.
 
 The **Outputs** panel provides Markdown, CSV, and **Print / PDF** outputs from the saved package. A package can be exported while the team continues to refine it; the confirmed Git handoff retains the historical external handoff record.
 

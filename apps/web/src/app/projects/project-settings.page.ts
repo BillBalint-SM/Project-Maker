@@ -78,6 +78,9 @@ export class ProjectSettingsPage implements OnInit {
   readonly lifecycleSaving = computed(
     () => this.pending.isPending('save-status'),
   );
+  readonly playbookFrozen = computed(
+    () => this.view()?.preparationStatus.state !== 'SCHEMA_REQUIRED',
+  );
 
   readonly basicsForm = new FormGroup({
     name: new FormControl('', {
@@ -116,7 +119,7 @@ export class ProjectSettingsPage implements OnInit {
   }
 
   savePlaybook(): void {
-    if (this.isArchived()) return;
+    if (this.isArchived() || this.playbookFrozen()) return;
     const [playbookId, versionText] = this.playbookForm.controls.playbook.value.split(':');
     if (!playbookId || !this.pending.begin('save-playbook')) return;
     this.actionError.set(null);

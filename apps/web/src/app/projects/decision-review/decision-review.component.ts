@@ -37,6 +37,12 @@ const recommendationLabels: Readonly<Record<string, string>> = {
   ESTIMATE_READY: 'Ready for estimation',
 };
 
+const ratingAnchors: Readonly<Record<number, string>> = {
+  1: 'Low',
+  3: 'Medium',
+  5: 'High',
+};
+
 @Component({
   selector: 'app-decision-review',
   standalone: true,
@@ -50,6 +56,10 @@ export class DecisionReviewComponent {
   readonly refreshKey = input.required<number>();
   readonly ratingLabels = ratingLabels;
   readonly recommendationLabels = recommendationLabels;
+  readonly ratingOptionLabel = (rating: number): string => {
+    const anchor = ratingAnchors[rating];
+    return anchor ? `${rating} — ${anchor}` : String(rating);
+  };
 
   private readonly api = inject(DecisionReviewApiService);
   private readonly destroyRef = inject(DestroyRef);

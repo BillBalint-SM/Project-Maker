@@ -63,6 +63,10 @@ describe('ProjectListPage correspondence mailbox synchronization', () => {
       fixture.nativeElement.querySelector('[data-testid="journey-preview"] img')
         ?.getAttribute('src'),
     ).toBe('/diagrams/previews/project-maker-user-workflow.preview.dark.png');
+    expect(fixture.nativeElement.querySelector('[data-testid="projects-empty"]')?.textContent)
+      .toContain('Create your first project');
+    expect(fixture.nativeElement.querySelectorAll('[data-testid="first-project-checklist"] li'))
+      .toHaveLength(3);
 
     const refreshHost = fixture.nativeElement.querySelector(
       '[data-testid="refresh-customer-mailbox"]',

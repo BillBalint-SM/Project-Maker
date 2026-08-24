@@ -79,13 +79,18 @@
         <ng-template #title>Discovery Playbook</ng-template>
         <ng-template #subtitle>The playbook can be changed until the first Initial Intake; the exact version is then retained as a source.</ng-template>
         <form class="settings-form" [formGroup]="playbookForm" (ngSubmit)="savePlaybook()">
-          <label for="project-playbook-settings-select">Playbook</label>
-          <select id="project-playbook-settings-select" formControlName="playbook" [disabled]="pending.isPending('save-playbook') || isArchived()">
-            @for (playbook of playbooks(); track playbook.id + ':' + playbook.version) {
-              <option [value]="playbook.id + ':' + playbook.version">{{ playbook.name }} · v{{ playbook.version }}</option>
-            }
-          </select>
-          <p-button type="submit" label="Save playbook" [disabled]="pending.isPending('save-playbook') || isArchived()" />
+          <fieldset data-testid="project-playbook-fieldset" [disabled]="pending.isPending('save-playbook') || isArchived() || playbookFrozen()">
+            <label for="project-playbook-settings-select">Playbook</label>
+            <select id="project-playbook-settings-select" formControlName="playbook">
+              @for (playbook of playbooks(); track playbook.id + ':' + playbook.version) {
+                <option [value]="playbook.id + ':' + playbook.version">{{ playbook.name }} · v{{ playbook.version }}</option>
+              }
+            </select>
+            <p-button type="submit" label="Save playbook" />
+          </fieldset>
+          @if (playbookFrozen()) {
+            <p data-testid="project-playbook-frozen-note">This playbook is frozen because the first interview round has started.</p>
+          }
         </form>
       </p-card>
 

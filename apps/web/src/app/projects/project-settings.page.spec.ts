@@ -95,6 +95,21 @@ describe('ProjectSettingsPage', () => {
     expect(root.querySelector('[data-testid="save-project-basics"]')).not.toBeNull();
   });
 
+  it('presents the playbook as frozen after the first interview round starts', async () => {
+    const { fixture, api } = await createPage(projectFixture('DRAFT'), postSchemaPreparationStatus);
+    const root = fixture.nativeElement as HTMLElement;
+
+    expect(
+      (root.querySelector('[data-testid="project-playbook-fieldset"]') as HTMLFieldSetElement)
+        .disabled,
+    ).toBe(true);
+    expect(root.querySelector('[data-testid="project-playbook-frozen-note"]')?.textContent)
+      .toContain('first interview round has started');
+
+    fixture.componentInstance.savePlaybook();
+    expect(api.updateProjectPlaybook).not.toHaveBeenCalled();
+  });
+
   it('continues the restored workflow in its retained administrative phase', async () => {
     const project = projectFixture('ARCHIVED');
     const { fixture, api } = await createPage(project);
@@ -265,6 +280,7 @@ async function createPage(
       preparationStatus: currentPreparationStatus,
     })),
     updateProjectBasics: vi.fn(),
+    updateProjectPlaybook: vi.fn(),
     updateWorkspace: vi.fn().mockImplementation(
       (_projectId: string, input: { readonly status?: ProjectWorkspace['status'] }) =>
         of({ ...project, status: input.status ?? project.status }),

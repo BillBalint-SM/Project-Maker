@@ -134,10 +134,21 @@
   } @else if (portfolio(); as currentPortfolio) {
     @if (currentPortfolio.items.length === 0) {
       <div class="state-panel" data-testid="projects-empty">
-        <h2>No results</h2>
-        <p>No projects match the current filters.</p>
-        <button pButton type="button" class="p-button-outlined" (click)="clearFilters()">Clear filters</button>
-        <a pButton routerLink="/projects/new" data-testid="empty-create-project-button">Create a new project</a>
+        @if (hasActiveFilters()) {
+          <h2>No results</h2>
+          <p>No projects match the current filters.</p>
+          <button pButton type="button" class="p-button-outlined" (click)="clearFilters()">Clear filters</button>
+          <a pButton routerLink="/projects/new" data-testid="empty-create-project-button">Create a new project</a>
+        } @else {
+          <h2>Create your first project</h2>
+          <p>Start with the minimum context needed to begin discovery.</p>
+          <ol data-testid="first-project-checklist">
+            <li>Name the project.</li>
+            <li>Add the internal owner and Customer contact.</li>
+            <li>Choose the playbook that fits the work.</li>
+          </ol>
+          <a pButton routerLink="/projects/new" data-testid="empty-create-project-button">Create first project</a>
+        }
       </div>
     } @else {
       <p class="result-count">{{ currentPortfolio.totalCount }} projects · page {{ currentPortfolio.page }} of {{ currentPortfolio.pageCount }}</p>

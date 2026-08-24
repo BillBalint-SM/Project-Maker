@@ -78,8 +78,8 @@ test.describe.serial('SCORE-01.2 Decision Review employee workflow', () => {
 
     await page.reload();
     await expect(page.getByTestId('decision-review-score')).toContainText('68');
-    await expect(page.getByTestId('decision-rating-businessValue').locator('option:checked')).toHaveText('5');
-    await expect(page.getByTestId('decision-rating-risk').locator('option:checked')).toHaveText('5');
+    await expect(page.getByTestId('decision-rating-businessValue').locator('option:checked')).toHaveText('5 — High');
+    await expect(page.getByTestId('decision-rating-risk').locator('option:checked')).toHaveText('5 — High');
   });
 
   test('keeps a Decision Review save failure isolated and makes persisted inputs read-only after archive', async ({
@@ -186,7 +186,13 @@ async function createProject(
 }
 
 async function setRating(page: Page, dimension: string, value: string): Promise<void> {
-  await page.getByTestId(`decision-rating-${dimension}`).selectOption(value);
+  const anchors: Readonly<Record<string, string>> = {
+    '1': 'Low',
+    '3': 'Medium',
+    '5': 'High',
+  };
+  const label = anchors[value] ? `${value} — ${anchors[value]}` : value;
+  await page.getByTestId(`decision-rating-${dimension}`).selectOption({ label });
 }
 
 function validAnswer(question: RoundQuestion): AnswerValue {

@@ -149,6 +149,7 @@ async function requireProject(manager: EntityManager, id: string, lock: boolean)
 
 function normalizeItems(items: readonly DeliveryPackageItemInput[], specification: string): DeliveryPackageItem[] {
   const ids = new Set<string>();
+  const comparableSpecification = normalizeMarkdownComparison(specification);
   return items.map((item) => {
     const id = item.id ?? randomUUID();
     if (ids.has(id)) throw new BadRequestException('Each Delivery package item may appear only once.');
@@ -158,11 +159,18 @@ function normalizeItems(items: readonly DeliveryPackageItemInput[], specificatio
     const acceptanceCriteria = item.acceptanceCriteria.map((criterion) => requiredText(criterion, 4_000, 'Acceptance criterion'));
     const sourceExcerpts = (item.sourceExcerpts ?? []).map((excerpt) => {
       const exact = requiredText(excerpt, 2_000, 'Source excerpt');
-      if (!specification.includes(exact)) throw new BadRequestException('The source excerpt is not an exact match within the selected specification version.');
+      if (!comparableSpecification.includes(normalizeMarkdownComparison(exact))) throw new BadRequestException('The source excerpt is not an exact match within the selected specification version.');
       return exact;
     });
     return { id, title, userStory, acceptanceCriteria, sourceExcerpts };
   });
+}
+
+function normalizeMarkdownComparison(value: string): string {
+  return value
+    .normalize('NFC')
+    .replace(/\r\n?/g, '\n')
+    .replace(/\\([\\`*_{}\[\]()#+\-.!|<>])/g, '$1');
 }
 
 function requiredText(value: string, max: number, label: string): string {

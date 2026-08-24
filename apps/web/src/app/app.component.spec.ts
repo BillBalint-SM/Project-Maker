@@ -96,6 +96,28 @@ describe('AppComponent', () => {
     expect(fixture.nativeElement.querySelector('[data-testid="navigation-panel"]')?.classList.contains('open')).toBe(true);
   });
 
+  it('gives the navigation menu toggle an explicit state-aware accessible name', async () => {
+    await TestBed.configureTestingModule({
+      imports: [AppComponent],
+      providers: [
+        provideRouter([]),
+        { provide: AuthApiService, useValue: { currentUser: signal({ id: firstUserId, email: 'po@example.test' }), logout: () => of(undefined) } },
+        { provide: CustomerRepliesApiService, useValue: { summaryChanges: of(replyUpdate(0)), summary: () => of({ newReplyCount: 0, projectCount: 0, projects: [] }) } },
+        { provide: NotificationsApiService, useValue: { current: signal(null), load: () => of({ items: [], totalCount: 0 }) } },
+      ],
+    }).compileComponents();
+
+    const fixture = TestBed.createComponent(AppComponent);
+    await fixture.whenStable();
+    const toggle = fixture.nativeElement.querySelector('[data-testid="navigation-toggle"]') as HTMLButtonElement;
+    expect(toggle.getAttribute('aria-label')).toBe('Open navigation menu');
+    expect(toggle.textContent).toContain('Menu');
+
+    toggle.click();
+    fixture.detectChanges();
+    expect(toggle.getAttribute('aria-label')).toBe('Close navigation menu');
+  });
+
   it('shows a retry for a failed Customer-reply summary without reloading Notifications', async () => {
     const summaryChanges = new Subject<ReturnType<typeof replyUpdate>>();
     const summary = vi

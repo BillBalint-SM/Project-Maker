@@ -32,7 +32,7 @@
               >
                 <option [ngValue]="null">Not rated</option>
                 @for (rating of ratingOptions(); track rating) {
-                  <option [ngValue]="rating">{{ rating }}</option>
+                  <option [ngValue]="rating">{{ ratingOptionLabel(rating) }}</option>
                 }
               </select>
             </label>

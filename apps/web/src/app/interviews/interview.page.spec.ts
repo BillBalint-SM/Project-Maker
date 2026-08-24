@@ -777,6 +777,28 @@ describe('InterviewPage', () => {
       .toBe('Stakeholder round');
   });
 
+  it('uses clarification copy for an explicitly requested clarification round', async () => {
+    const questionBankApi = createQuestionBankApi(null, null);
+    const interviewApi = createInterviewApi(null, null);
+    interviewApi.getRound.mockReturnValue(of({
+      ...buildOpenRound(buildTextQuestion({})),
+      id: 'round-clarification',
+      type: 'CLARIFICATION',
+    }));
+
+    const page = await renderInterviewPage(
+      'project-789',
+      questionBankApi,
+      interviewApi,
+      'round-clarification',
+    );
+
+    expect(page.nativeElement.querySelector('#interview-title')?.textContent?.trim())
+      .toBe('Clarification round');
+    expect(page.nativeElement.querySelector('.resume-state')?.textContent)
+      .toContain('Continue clarification round in progress');
+  });
+
   it('preserves the specific service error during initial load', async () => {
     const userMessage =
       'Could not load the active Initial Intake round. Check that the project, interview round, or question still exists.';

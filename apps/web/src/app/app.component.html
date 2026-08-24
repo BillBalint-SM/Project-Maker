@@ -30,12 +30,13 @@
           data-testid="navigation-toggle"
           aria-controls="global-navigation-panel"
           [attr.aria-expanded]="navigationOpen()"
+          [attr.aria-label]="navigationOpen() ? 'Close navigation menu' : 'Open navigation menu'"
           (click)="toggleNavigation()"
         >
           <span class="navigation-toggle-icon" aria-hidden="true">
             <i></i><i></i><i></i>
           </span>
-          <span>Workspace map</span>
+          <span>Menu</span>
         </button>
       </div>
 

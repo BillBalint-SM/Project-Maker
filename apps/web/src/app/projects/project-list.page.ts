@@ -147,6 +147,16 @@ export class ProjectListPage implements OnInit {
     void this.navigate(this.queryFromForm(), 1);
   }
 
+  hasActiveFilters(): boolean {
+    const value = this.filterForm.getRawValue();
+    return Boolean(
+      value.search.trim() ||
+      value.health ||
+      value.decision ||
+      value.archiveScope !== 'ACTIVE',
+    );
+  }
+
   goToPage(page: number): void {
     if (page < 1 || page > (this.portfolio()?.pageCount ?? 1)) return;
     void this.navigate(this.queryFromForm(), page);
