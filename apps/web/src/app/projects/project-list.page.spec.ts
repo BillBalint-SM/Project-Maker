@@ -55,6 +55,9 @@ describe('ProjectListPage', () => {
     expect(
       fixture.nativeElement.querySelector('[data-testid="active-project-queue-link"]')?.getAttribute('href'),
     ).toBe('/projects/active');
+    expect(
+      fixture.nativeElement.querySelector('[data-testid="portfolio-view-switch"]'),
+    ).not.toBeNull();
     expect(fixture.nativeElement.querySelector('[data-testid="journey-field"]')).not.toBeNull();
     expect(fixture.nativeElement.querySelector('[data-testid="journey-field"]')?.textContent)
       .toContain('No preparation positions yet');
@@ -73,6 +76,48 @@ describe('ProjectListPage', () => {
     expect(
       fixture.nativeElement.querySelector('[data-testid="mailbox-sync-status"]')?.textContent,
     ).toContain('Correspondence mailbox is current');
+  });
+
+  it('keeps the shared search context when switching from Journey to Queue', async () => {
+    const portfolioApi = { portfolio: vi.fn().mockReturnValue(of(emptyPortfolio())) };
+    await TestBed.configureTestingModule({
+      imports: [ProjectListPage],
+      providers: [
+        provideRouter([]),
+        { provide: DecisionPortfolioApiService, useValue: portfolioApi },
+        { provide: AuthApiService, useValue: { currentUser: signal({ id: 'user-1', email: 'po@example.test' }) } },
+        {
+          provide: CustomerMailboxSyncApiService,
+          useValue: {
+            status: vi.fn().mockReturnValue(of({
+              mailboxAddress: null,
+              state: 'NOT_CONFIGURED',
+              baselineEstablished: false,
+              lastSuccessfulSyncAt: null,
+              refreshInProgress: false,
+            } satisfies CustomerMailboxSyncStatus)),
+            refresh: vi.fn(),
+          },
+        },
+        {
+          provide: CustomerRepliesApiService,
+          useValue: {
+            summary: vi.fn().mockReturnValue(of({ newReplyCount: 0, projectCount: 0, projects: [] })),
+          },
+        },
+      ],
+    }).compileComponents();
+
+    const fixture = TestBed.createComponent(ProjectListPage);
+    await fixture.whenStable();
+    fixture.componentInstance.filterForm.controls.search.setValue('Alfa project');
+    fixture.componentInstance.applyFilters();
+    await fixture.whenStable();
+
+    const queueLink = fixture.nativeElement.querySelector(
+      '[data-testid="active-project-queue-link"]',
+    ) as HTMLAnchorElement | null;
+    expect(queueLink?.getAttribute('href')).toBe('/projects/active?q=Alfa%20project');
   });
 
   it('renders the canonical primary task and factual progress without per-Project status calls', async () => {

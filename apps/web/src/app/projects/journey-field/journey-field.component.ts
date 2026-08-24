@@ -43,6 +43,7 @@ export class JourneyFieldComponent {
   readonly page = input.required<number>();
   readonly pageCount = input.required<number>();
   readonly totalCount = input.required<number>();
+  readonly search = input('');
 
   readonly selectedProjectId = signal<string | null>(null);
   readonly locatedEntries = computed(() => this.entries().filter(hasWorkState));
@@ -76,8 +77,11 @@ export class JourneyFieldComponent {
     return projectActionFragment(entry.workState.primaryAction.target);
   }
 
-  queueQueryParams(state: ProjectPreparationState): { readonly preparation: ProjectPreparationState } {
-    return { preparation: state };
+  queueQueryParams(state: ProjectPreparationState): {
+    readonly q: string | null;
+    readonly preparation: ProjectPreparationState;
+  } {
+    return { q: this.search().trim() || null, preparation: state };
   }
 }
 

@@ -57,6 +57,11 @@ export class ProjectListPage implements OnInit {
   private readonly destroyRef = inject(DestroyRef);
 
   readonly portfolio = signal<PortfolioPage | null>(null);
+  readonly activeQuery = signal<PortfolioQuery>({
+    archiveScope: 'ACTIVE',
+    sort: 'RECENTLY_UPDATED',
+    page: 1,
+  });
   readonly loading = signal(true);
   readonly loadError = signal<string | null>(null);
   readonly statusLabel = projectStatusLabel;
@@ -99,6 +104,7 @@ export class ProjectListPage implements OnInit {
     this.loadSavedViews();
     this.route.queryParamMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((params) => {
       const query = queryFromParams(params);
+      this.activeQuery.set(query);
       this.filterForm.reset({
         search: query.search ?? '',
         health: query.health ?? '',
@@ -155,6 +161,14 @@ export class ProjectListPage implements OnInit {
   goToPage(page: number): void {
     if (page < 1 || page > (this.portfolio()?.pageCount ?? 1)) return;
     void this.navigate(this.queryFromForm(), page);
+  }
+
+  portfolioViewQueryParams() {
+    return portfolioQueryParams(this.activeQuery(), this.activeQuery().page ?? 1);
+  }
+
+  queueViewQueryParams(): { readonly q: string | null } {
+    return { q: this.activeQuery().search || null };
   }
 
   saveCurrentView(): void {
@@ -258,14 +272,7 @@ export class ProjectListPage implements OnInit {
   private navigate(query: PortfolioQuery, page: number): Promise<boolean> {
     return this.router.navigate([], {
       relativeTo: this.route,
-      queryParams: {
-        q: query.search || null,
-        health: query.health || null,
-        decision: query.decision || null,
-        archiveScope: query.archiveScope === 'ACTIVE' ? null : query.archiveScope,
-        sort: query.sort === 'RECENTLY_UPDATED' ? null : query.sort,
-        page: page > 1 ? page : null,
-      },
+      queryParams: portfolioQueryParams(query, page),
     });
   }
 
@@ -298,6 +305,17 @@ export class ProjectListPage implements OnInit {
     const userId = this.auth.currentUser()?.id;
     return userId ? `project-maker:portfolio-views:${userId}` : null;
   }
+}
+
+function portfolioQueryParams(query: PortfolioQuery, page: number) {
+  return {
+    q: query.search || null,
+    health: query.health || null,
+    decision: query.decision || null,
+    archiveScope: query.archiveScope === 'ACTIVE' ? null : query.archiveScope,
+    sort: query.sort === 'RECENTLY_UPDATED' ? null : query.sort,
+    page: page > 1 ? page : null,
+  };
 }
 
 function queryFromParams(params: import('@angular/router').ParamMap): PortfolioQuery {

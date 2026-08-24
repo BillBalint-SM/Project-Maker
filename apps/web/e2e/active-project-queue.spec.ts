@@ -28,9 +28,9 @@ test('searches and filters the Active project queue with reload-safe replace-his
   expect(ordinary.status()).toBe(201);
   const ordinaryProject = (await ordinary.json()) as { readonly id: string };
 
-  await page.goto('/');
+  await page.goto(`/?q=${encodeURIComponent(uniquePart)}`);
   await page.getByTestId('active-project-queue-link').click();
-  await expect(page).toHaveURL('/projects/active');
+  await expect(page).toHaveURL(new RegExp(`/projects/active\\?q=${uniquePart}`));
   await expect(page.getByRole('heading', { name: 'Queue', exact: true })).toBeVisible();
   await page.getByTestId('queue-search').fill(`  ARVIZTURO MUNKASOR ${uniquePart.toUpperCase()}  `);
 
@@ -48,8 +48,8 @@ test('searches and filters the Active project queue with reload-safe replace-his
   await expect(page.getByLabel('Overdue', { exact: true })).toBeChecked();
   await expect(projectLink).toBeVisible();
 
-  await page.goBack();
-  await expect(page).toHaveURL('/');
+  await page.getByTestId('journey-view-link').click();
+  await expect(page).toHaveURL(/\/\?q=ARVIZTURO(?:%20|\+)MUNKASOR/);
 });
 
 test('completes the keyboard employee journey and restores the paged queue URL after browser return', async ({ page }) => {

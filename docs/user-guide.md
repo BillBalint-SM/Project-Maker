@@ -47,6 +47,7 @@ The global navigation provides the cross-Project work areas:
 | **Specification templates** | Shared, versioned Markdown templates. |
 | **Git connections** | Shared Git destination connections. |
 | **Question Bank** | Shared, versioned discovery questions and reference files. |
+| **Question Templates** | Reusable, versioned selections of Question Bank questions for future Projects. |
 | **Your email address** | `My account`, including self-service account status and Claude Code MCP connection information. |
 
 Inside a selected Project, the context navigation is **Project Status**, **Initial Intake**, **Discovery**, **Estimation Readiness**, **Decision Review**, **Project Specification**, **Delivery Package**, and **Project Settings**. The return link preserves the relevant Portfolio or follow-up context when available.
@@ -84,7 +85,9 @@ The [Project Preparation Journey map](visual-maps.md#user-workflow) provides an 
 
 ### Portfolio Overview
 
-Use **Portfolio Overview** as the starting point. Search by Project or owner, filter by health, decision, and Project scope, then select **Apply filters**. You can name the current filter set and save it in the browser; saved views are local to that browser, not shared server-side configuration.
+Use **Portfolio Overview** as the starting point. Its **Journey** mode positions Projects by canonical preparation stage; **Queue** presents active work at higher operational density. Switch between them with the Portfolio view control. The shared Project search is retained when switching modes, while filters that exist only in one mode remain local to that mode.
+
+In Journey, search by Project or owner, filter by health, decision, and Project scope, then select **Apply filters**. You can name the current filter set and save it in the browser; saved views are local to that browser, not shared server-side configuration.
 
 Project cards show the current preparation state, canonical Project Coordination next action and owner, and the primary action. A status update's next step remains part of that historical snapshot and does not replace current coordination. Use the card action to open the relevant Project context instead of manually constructing a URL. The **Correspondence mailbox** panel links to unmatched Customer messages and can refresh mailbox-derived information.
 

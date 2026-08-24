@@ -55,6 +55,7 @@ export class AppComponent implements OnInit {
   readonly navigationOpen = signal(false);
   private readonly navigationToggleElement = viewChild<ElementRef<HTMLButtonElement>>('navigationToggle');
   private readonly navigationFirstLinkElement = viewChild<ElementRef<HTMLAnchorElement>>('navigationFirstLink');
+  private readonly logoutButtonElement = viewChild<ElementRef<HTMLButtonElement>>('logoutButton');
   private readonly mainContentElement = viewChild<ElementRef<HTMLElement>>('mainContent');
   private readonly loadReplySummary = effect(() => {
     const user = this.currentUser();
@@ -264,6 +265,11 @@ export class AppComponent implements OnInit {
         error: () => {
           this.loggingOut.set(false);
           this.logoutError.set(logoutFailureMessage);
+          this.navigationOpen.set(true);
+          afterNextRender(
+            () => this.logoutButtonElement()?.nativeElement.focus(),
+            { injector: this.injector },
+          );
         },
       });
   }

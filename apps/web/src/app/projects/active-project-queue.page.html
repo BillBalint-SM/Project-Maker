@@ -6,8 +6,17 @@
       <p>Scan real next actions at operational density, prioritized by urgency.</p>
     </div>
     <nav class="view-switch" aria-label="Portfolio view">
-      <a routerLink="/">Journey</a>
-      <a routerLink="/projects/active" aria-current="page">Queue</a>
+      <a
+        routerLink="/"
+        [queryParams]="journeyViewQueryParams()"
+        data-testid="journey-view-link"
+      >Journey</a>
+      <a
+        routerLink="/projects/active"
+        [queryParams]="activeViewQueryParams()"
+        aria-current="page"
+        data-testid="queue-view-link"
+      >Queue</a>
     </nav>
   </header>
 

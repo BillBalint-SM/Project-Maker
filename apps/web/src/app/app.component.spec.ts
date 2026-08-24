@@ -88,12 +88,16 @@ describe('AppComponent', () => {
     const navigationToggle = fixture.nativeElement.querySelector('[data-testid="navigation-toggle"]') as HTMLButtonElement;
     navigationToggle.click();
     fixture.detectChanges();
-    (fixture.nativeElement.querySelector('.user-actions button') as HTMLButtonElement).click();
+    const logoutButton = fixture.nativeElement.querySelector('.user-actions button') as HTMLButtonElement;
+    logoutButton.focus();
+    logoutButton.click();
+    fixture.componentInstance.handleHeaderFocusOut(new FocusEvent('focusout'));
     pendingLogout.error(new Error('Unable to sign out. Check your connection and try again.'));
     await fixture.whenStable();
 
     expect(navigationToggle.getAttribute('aria-expanded')).toBe('true');
     expect(fixture.nativeElement.querySelector('[data-testid="navigation-panel"]')?.classList.contains('open')).toBe(true);
+    expect(document.activeElement).toBe(logoutButton);
   });
 
   it('gives the navigation menu toggle an explicit state-aware accessible name', async () => {

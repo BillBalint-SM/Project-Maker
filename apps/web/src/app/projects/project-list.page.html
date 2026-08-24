@@ -6,7 +6,19 @@
       <p>Orient by preparation stage, select the work that matters, and continue from its canonical next action.</p>
     </div>
     <div class="heading-actions">
-      <a pButton routerLink="/projects/active" data-testid="active-project-queue-link">Queue · Power view</a>
+      <nav class="view-switch" aria-label="Portfolio view" data-testid="portfolio-view-switch">
+        <a
+          routerLink="/"
+          [queryParams]="portfolioViewQueryParams()"
+          aria-current="page"
+          data-testid="journey-view-link"
+        >Journey</a>
+        <a
+          routerLink="/projects/active"
+          [queryParams]="queueViewQueryParams()"
+          data-testid="active-project-queue-link"
+        >Queue</a>
+      </nav>
       <a pButton routerLink="/projects/new" severity="secondary" data-testid="new-project-button">New Project</a>
     </div>
   </div>
@@ -18,6 +30,7 @@
         [page]="journeyPortfolio.page"
         [pageCount]="journeyPortfolio.pageCount"
         [totalCount]="journeyPortfolio.totalCount"
+        [search]="activeQuery().search ?? ''"
       />
     }
   }

@@ -273,6 +273,15 @@ export class ActiveProjectQueuePageComponent implements OnInit {
     return projectActionRoute(item.projectId, item.primaryAction.target);
   }
 
+  journeyViewQueryParams(): { readonly q: string | null } {
+    return { q: this.activeQuery().search || null };
+  }
+
+  activeViewQueryParams() {
+    const query = this.activeQuery();
+    return queueQueryParams(query, query.cursor ?? null);
+  }
+
   projectContextQueryParams(): { readonly returnTo: string } {
     return { returnTo: this.router.url };
   }

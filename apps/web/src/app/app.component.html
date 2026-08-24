@@ -248,7 +248,7 @@
             >Account</a>
             <span class="user-email">{{ user.email }}</span>
           </div>
-          <button type="button" [disabled]="loggingOut()" (click)="logout()">
+          <button #logoutButton type="button" [disabled]="loggingOut()" (click)="logout()">
             {{ loggingOut() ? 'Signing out…' : (logoutError() ? 'Retry sign out' : 'Sign out') }}
           </button>
           @if (logoutError(); as error) {

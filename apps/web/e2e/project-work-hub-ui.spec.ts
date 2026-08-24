@@ -15,6 +15,7 @@ const globalNavigationLabels = [
   'Specification templates',
   'Git connections',
   'Question Bank',
+  'Question Templates',
 ] as const;
 
 test('exposes the exact global navigation and sends the reply count to the filtered work list', async ({

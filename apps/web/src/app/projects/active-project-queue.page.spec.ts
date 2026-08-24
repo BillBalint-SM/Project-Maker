@@ -84,6 +84,14 @@ describe('ActiveProjectQueuePageComponent', () => {
     ) as HTMLAnchorElement | null;
     expect(returnTarget(projectLink)).toBe(sourceUrl);
     expect(returnTarget(actionLink)).toBe(sourceUrl);
+    expect(
+      (root.querySelector('[data-testid="journey-view-link"]') as HTMLAnchorElement | null)
+        ?.getAttribute('href'),
+    ).toBe('/?q=Alfa');
+    expect(
+      (root.querySelector('[data-testid="queue-view-link"]') as HTMLAnchorElement | null)
+        ?.getAttribute('href'),
+    ).toBe(sourceUrl);
   });
 
   it('renders semantic urgency groups and routes each public action correctly', async () => {

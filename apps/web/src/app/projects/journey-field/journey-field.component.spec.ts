@@ -17,6 +17,7 @@ describe('JourneyFieldComponent', () => {
     fixture.componentRef.setInput('page', 1);
     fixture.componentRef.setInput('pageCount', 2);
     fixture.componentRef.setInput('totalCount', 21);
+    fixture.componentRef.setInput('search', 'Alpha owner');
     await fixture.whenStable();
 
     const element = fixture.nativeElement as HTMLElement;
@@ -29,6 +30,11 @@ describe('JourneyFieldComponent', () => {
     expect(action?.getAttribute('href')).toBe(
       '/projects/11111111-1111-4111-8111-111111111111/interview?returnTo=%2F',
     );
+    expect(
+      (element.querySelector(
+        '[aria-label="Open Initial Intake in progress projects in Queue"]',
+      ) as HTMLAnchorElement | null)?.getAttribute('href'),
+    ).toBe('/projects/active?q=Alpha%20owner&preparation=INTAKE_IN_PROGRESS');
   });
 });
 
