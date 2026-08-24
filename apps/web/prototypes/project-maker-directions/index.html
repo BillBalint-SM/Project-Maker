@@ -1,0 +1,682 @@
+<!-- Hallmark · pre-emit critique: P5 H5 E4 S5 R4 V5 -->
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta
+      name="description"
+      content="Öt izolált, read-only Project Maker designprototípus egyetlen URL-en."
+    />
+    <title>Project Maker · Five design directions</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wdth,wght@12..96,75..100,400..800&amp;family=IBM+Plex+Sans:wght@400;500;600&amp;family=JetBrains+Mono:wght@400;500;600&amp;family=Newsreader:opsz,wght@6..72,400..700&amp;family=Plus+Jakarta+Sans:wght@400;500;600;700&amp;family=Tomorrow:wght@400;600;700&amp;display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="./tokens.css" />
+    <link rel="stylesheet" href="./prototype.css" />
+    <script src="./prototype.js" defer></script>
+  </head>
+  <body data-active-prototype="ledger">
+    <a class="skip-link" id="skip-link" href="#ledger-title">Skip to active prototype</a>
+
+    <svg class="icon-sprite" aria-hidden="true">
+      <symbol id="icon-arrow-left" viewBox="0 0 24 24">
+        <path d="M15 18 9 12l6-6" />
+      </symbol>
+      <symbol id="icon-arrow-right" viewBox="0 0 24 24">
+        <path d="m9 18 6-6-6-6" />
+      </symbol>
+      <symbol id="icon-search" viewBox="0 0 24 24">
+        <circle cx="11" cy="11" r="6" />
+        <path d="m16 16 4 4" />
+      </symbol>
+      <symbol id="icon-command" viewBox="0 0 24 24">
+        <path d="M9 7V5a3 3 0 1 0-3 3h12a3 3 0 1 0-3-3v14a3 3 0 1 0 3-3H6a3 3 0 1 0 3 3V7Z" />
+      </symbol>
+      <symbol id="icon-plus" viewBox="0 0 24 24">
+        <path d="M12 5v14M5 12h14" />
+      </symbol>
+      <symbol id="icon-close" viewBox="0 0 24 24">
+        <path d="m6 6 12 12M18 6 6 18" />
+      </symbol>
+      <symbol id="icon-check" viewBox="0 0 24 24">
+        <path d="m5 12 4 4L19 6" />
+      </symbol>
+      <symbol id="icon-warning" viewBox="0 0 24 24">
+        <path d="M12 4 3 20h18L12 4Z" />
+        <path d="M12 9v5M12 17h.01" />
+      </symbol>
+      <symbol id="icon-node" viewBox="0 0 24 24">
+        <circle cx="6" cy="12" r="2" />
+        <circle cx="18" cy="6" r="2" />
+        <circle cx="18" cy="18" r="2" />
+        <path d="m8 11 8-4M8 13l8 4" />
+      </symbol>
+    </svg>
+
+    <p
+      id="prototype-announcer"
+      class="visually-hidden"
+      role="status"
+      aria-live="polite"
+      aria-atomic="true"
+    ></p>
+
+    <section
+      class="prototype ledger"
+      data-prototype="ledger"
+      aria-labelledby="ledger-title"
+    >
+      <header class="ledger-mast">
+        <p class="ledger-mast__issue">Sample data · Monday, 24 August 2026 · Internal workspace</p>
+        <p class="ledger-mast__name">Project Maker</p>
+        <nav class="ledger-mast__nav" aria-label="Primary">
+          <button type="button" aria-current="page" data-demo-message="Portfolio Overview is already open.">Portfolio</button>
+          <button type="button" data-demo-message="Active Project Queue selected.">Queue</button>
+          <button type="button" data-demo-message="Discovery Follow-ups selected.">Follow-ups</button>
+          <button type="button" data-demo-message="Settings selected.">Settings</button>
+        </nav>
+        <span class="ledger-mast__rule" aria-hidden="true"></span>
+      </header>
+
+      <main class="ledger-main">
+        <article class="ledger-copy">
+          <h1 id="ledger-title">Portfolio Overview</h1>
+          <p class="ledger-copy__lede">
+            Four sample Projects, written as a working record. Read the preparation state,
+            understand the constraint, then open the next action without entering a dashboard.
+          </p>
+          <button
+            class="text-action ledger-lead-action"
+            type="button"
+            data-demo-message="Opening Customer reply classification."
+          >
+            Open current next action <span aria-hidden="true">→</span>
+          </button>
+
+          <section class="ledger-entry" aria-labelledby="ledger-portal">
+            <p class="ledger-entry__date">Updated today · Customer input waiting</p>
+            <h2 id="ledger-portal">Customer Portal Renewal</h2>
+            <p>
+              <strong>Clarification required.</strong> Two new Customer replies need classification
+              before the team can close the current Discovery follow-up.
+            </p>
+            <dl class="ledger-facts">
+              <div><dt>Next-action owner</dt><dd>Internal project owner – Kata Fodor</dd></div>
+              <div><dt>Due</dt><dd>26 August</dd></div>
+              <div><dt>Decision</dt><dd>Not recorded</dd></div>
+            </dl>
+            <button class="text-action" type="button" data-demo-message="Opening Customer reply classification.">
+              Classify Customer replies <span aria-hidden="true">→</span>
+            </button>
+          </section>
+
+          <section class="ledger-entry" aria-labelledby="ledger-field">
+            <p class="ledger-entry__date">Updated yesterday · Internal alignment</p>
+            <h2 id="ledger-field">Field Service Mobile</h2>
+            <p>
+              <strong>Decision Review required.</strong> The six decision inputs are ready for a
+              human review; Project Maker has not recorded a final decision.
+            </p>
+            <dl class="ledger-facts">
+              <div><dt>Next-action owner</dt><dd>Internal project owner – Márton Varga</dd></div>
+              <div><dt>Due</dt><dd>27 August</dd></div>
+              <div><dt>Decision Score</dt><dd>— unavailable until review</dd></div>
+            </dl>
+            <button class="text-action" type="button" data-demo-message="Opening Decision Review.">
+              Complete Decision Review <span aria-hidden="true">→</span>
+            </button>
+          </section>
+
+          <section class="ledger-entry" aria-labelledby="ledger-erp">
+            <p class="ledger-entry__date">Updated 21 August · Preparation advancing</p>
+            <h2 id="ledger-erp">ERP Reporting Refresh</h2>
+            <p>
+              <strong>Ready for estimation preparation.</strong> One estimate-blocking gap remains
+              visible and accountable; no automatic approval is implied.
+            </p>
+            <dl class="ledger-facts">
+              <div><dt>Next-action owner</dt><dd>Customer contact – Éva Horváth</dd></div>
+              <div><dt>Due</dt><dd>29 August</dd></div>
+              <div><dt>Customer correspondence</dt><dd>Awaiting response</dd></div>
+            </dl>
+            <button class="text-action" type="button" data-demo-message="Opening Estimation Readiness.">
+              Resolve the remaining gap <span aria-hidden="true">→</span>
+            </button>
+          </section>
+
+          <section class="ledger-entry" aria-labelledby="ledger-supplier">
+            <p class="ledger-entry__date">Created 20 August · Initial Intake active</p>
+            <h2 id="ledger-supplier">Supplier Onboarding</h2>
+            <p>
+              <strong>Initial Intake in progress.</strong> The accepted Project question schema is
+              frozen for this round and the interview can continue from its saved position.
+            </p>
+            <dl class="ledger-facts">
+              <div><dt>Next-action owner</dt><dd>Internal project owner – Dániel Szabó</dd></div>
+              <div><dt>Due</dt><dd>2 September</dd></div>
+              <div><dt>Customer correspondence</dt><dd>No open correspondence</dd></div>
+            </dl>
+            <button class="text-action" type="button" data-demo-message="Opening Initial Intake.">
+              Continue Initial Intake <span aria-hidden="true">→</span>
+            </button>
+          </section>
+        </article>
+      </main>
+
+      <footer class="ledger-footer">
+        <p>
+          PROJECT MAKER · DECISION LEDGER CONCEPT · SAMPLE DATA ONLY · READ-ONLY PROTOTYPE ·
+          OPERATOR ORGANIZATION WORKSPACE · 24 AUGUST 2026
+        </p>
+      </footer>
+    </section>
+
+    <section
+      class="prototype journey"
+      data-prototype="journey"
+      aria-labelledby="journey-title"
+      hidden
+    >
+      <header class="journey-header">
+        <a class="journey-brand" href="?variant=journey" aria-label="Project Maker Journey Field">
+          <svg class="journey-brand__mark" viewBox="0 0 48 48" aria-hidden="true">
+            <path d="M7 35 20 22l9 7L41 10" />
+            <circle cx="7" cy="35" r="3" />
+            <circle cx="20" cy="22" r="3" />
+            <circle cx="29" cy="29" r="3" />
+            <circle cx="41" cy="10" r="3" />
+          </svg>
+          <span>Project Maker</span>
+        </a>
+        <button class="journey-command" type="button" data-open-dialog="journey-palette">
+          <svg class="icon" aria-hidden="true"><use href="#icon-command"></use></svg>
+          <span>Navigate</span>
+          <kbd>⌘ K</kbd>
+        </button>
+      </header>
+
+      <main class="journey-main">
+        <header class="journey-intro">
+          <div>
+            <p>Portfolio Overview · Sample data</p>
+            <h1 id="journey-title">See the route. Move the work.</h1>
+          </div>
+          <p>
+            Projects occupy their real preparation position. Select a node to expose its single
+            next action; the map remains the navigation.
+          </p>
+        </header>
+
+        <div class="journey-map" role="group" aria-label="Project preparation map">
+          <ol class="journey-stages" aria-label="Preparation stages">
+            <li><span>Schema</span></li>
+            <li><span>Initial Intake</span></li>
+            <li><span>Discovery</span></li>
+            <li><span>Decision Review</span></li>
+            <li><span>Estimation</span></li>
+          </ol>
+
+          <div class="journey-track" aria-hidden="true"></div>
+
+          <button
+            class="journey-node journey-node--supplier"
+            type="button"
+            data-select-node="Supplier Onboarding · Continue Initial Intake"
+            aria-pressed="false"
+          >
+            <span class="journey-node__signal" aria-hidden="true"></span>
+            <strong>Supplier Onboarding</strong>
+            <span>Initial Intake in progress</span>
+          </button>
+
+          <button
+            class="journey-node journey-node--portal"
+            type="button"
+            data-select-node="Customer Portal Renewal · Classify Customer replies"
+            aria-pressed="true"
+          >
+            <span class="journey-node__signal" aria-hidden="true"></span>
+            <strong>Customer Portal Renewal</strong>
+            <span>Clarification required</span>
+          </button>
+
+          <button
+            class="journey-node journey-node--field"
+            type="button"
+            data-select-node="Field Service Mobile · Complete Decision Review"
+            aria-pressed="false"
+          >
+            <span class="journey-node__signal" aria-hidden="true"></span>
+            <strong>Field Service Mobile</strong>
+            <span>Decision Review required</span>
+          </button>
+
+          <button
+            class="journey-node journey-node--erp"
+            type="button"
+            data-select-node="ERP Reporting Refresh · Resolve the remaining gap"
+            aria-pressed="false"
+          >
+            <span class="journey-node__signal" aria-hidden="true"></span>
+            <strong>ERP Reporting Refresh</strong>
+            <span>Ready for estimation preparation</span>
+          </button>
+
+          <aside class="journey-selection">
+            <p>Current node</p>
+            <h2 id="journey-selection-title">Customer Portal Renewal</h2>
+            <span id="journey-selection-state">Clarification required</span>
+            <button
+              class="journey-primary"
+              type="button"
+              id="journey-selection-action"
+              data-demo-message="Opening Customer reply classification."
+            >
+              Classify Customer replies
+              <svg class="icon" aria-hidden="true"><use href="#icon-arrow-right"></use></svg>
+            </button>
+          </aside>
+        </div>
+
+        <div class="journey-legend" aria-label="Map legend">
+          <span><i class="legend-shape legend-shape--current" aria-hidden="true"></i> Current focus</span>
+          <span><i class="legend-shape legend-shape--discovery" aria-hidden="true"></i> Discovery</span>
+          <span><i class="legend-shape legend-shape--decision" aria-hidden="true"></i> Decision</span>
+        </div>
+      </main>
+
+      <footer class="journey-footer">
+        <p>Every Project has a visible route and one honest next action.</p>
+        <div><span>Project Maker</span><span>Journey Field · read-only prototype</span></div>
+      </footer>
+
+      <dialog class="journey-palette" id="journey-palette" aria-labelledby="journey-palette-title">
+        <form method="dialog" class="dialog-close-row">
+          <button type="submit" aria-label="Close navigation">
+            <svg class="icon" aria-hidden="true"><use href="#icon-close"></use></svg>
+          </button>
+        </form>
+        <h2 id="journey-palette-title">Go to a working context</h2>
+        <label for="journey-search">Find a Project or context</label>
+        <div class="journey-search-wrap">
+          <svg class="icon" aria-hidden="true"><use href="#icon-search"></use></svg>
+          <input id="journey-search" type="search" placeholder="Project, context, or next action" />
+        </div>
+        <div class="journey-palette__links">
+          <button type="button" data-demo-message="Portfolio Overview selected.">Portfolio Overview</button>
+          <button type="button" data-demo-message="Active Project Queue selected.">Active Project Queue</button>
+          <button type="button" data-demo-message="Discovery Follow-ups selected.">Discovery Follow-ups</button>
+          <button type="button" data-demo-message="Decision Review selected.">Decision Review</button>
+        </div>
+      </dialog>
+    </section>
+
+    <section
+      class="prototype quiet"
+      data-prototype="quiet"
+      aria-labelledby="quiet-title"
+      hidden
+    >
+      <header class="quiet-nav">
+        <a href="?variant=quiet" class="quiet-wordmark">Project Maker</a>
+        <button type="button" class="quiet-new" data-demo-message="Starting a new Project draft.">
+          <svg class="icon" aria-hidden="true"><use href="#icon-plus"></use></svg>
+          New Project
+        </button>
+      </header>
+
+      <main class="quiet-main">
+        <header class="quiet-heading">
+          <p>Portfolio Overview · Sample data</p>
+          <h1 id="quiet-title">One calm place to continue.</h1>
+        </header>
+
+        <div class="quiet-split">
+          <aside class="quiet-focus">
+            <p class="quiet-focus__date">Monday, 24 August</p>
+            <h2>Customer Portal Renewal</h2>
+            <p class="quiet-focus__state">Clarification required</p>
+            <p>
+              Two Customer replies arrived. Classify them before returning to the open Discovery
+              follow-up.
+            </p>
+            <dl>
+              <div><dt>Owner</dt><dd>Kata Fodor</dd></div>
+              <div><dt>Due</dt><dd>26 August</dd></div>
+            </dl>
+            <button type="button" class="quiet-primary" data-demo-message="Opening Customer reply classification.">
+              Continue this Project
+              <svg class="icon" aria-hidden="true"><use href="#icon-arrow-right"></use></svg>
+            </button>
+          </aside>
+
+          <div class="quiet-work">
+            <section aria-labelledby="quiet-next">
+              <header>
+                <h2 id="quiet-next">Next after this</h2>
+                <p>Three Projects have clear actions waiting.</p>
+              </header>
+
+              <button class="quiet-row" type="button" data-demo-message="Opening Decision Review.">
+                <span class="quiet-row__order">01</span>
+                <span>
+                  <strong>Field Service Mobile</strong>
+                  <small>Complete Decision Review</small>
+                </span>
+                <span class="quiet-row__due">27 Aug</span>
+                <svg class="icon" aria-hidden="true"><use href="#icon-arrow-right"></use></svg>
+              </button>
+
+              <button class="quiet-row" type="button" data-demo-message="Opening Estimation Readiness.">
+                <span class="quiet-row__order">02</span>
+                <span>
+                  <strong>ERP Reporting Refresh</strong>
+                  <small>Resolve the remaining estimate-blocking gap</small>
+                </span>
+                <span class="quiet-row__due">29 Aug</span>
+                <svg class="icon" aria-hidden="true"><use href="#icon-arrow-right"></use></svg>
+              </button>
+
+              <button class="quiet-row" type="button" data-demo-message="Opening Initial Intake.">
+                <span class="quiet-row__order">03</span>
+                <span>
+                  <strong>Supplier Onboarding</strong>
+                  <small>Continue Initial Intake</small>
+                </span>
+                <span class="quiet-row__due">02 Sep</span>
+                <svg class="icon" aria-hidden="true"><use href="#icon-arrow-right"></use></svg>
+              </button>
+            </section>
+
+            <section class="quiet-note" aria-labelledby="quiet-note-title">
+              <h2 id="quiet-note-title">A quieter navigation model</h2>
+              <p>
+                Global navigation stays out of the way. The selected Project, its owner, and its
+                next action remain visible while supporting work moves through the right pane.
+              </p>
+            </section>
+          </div>
+        </div>
+      </main>
+
+      <footer class="quiet-footer">
+        <p>Ready when the work is.</p>
+        <span>Project Maker · Quiet Workshop concept · sample data only</span>
+      </footer>
+    </section>
+
+    <section
+      class="prototype ops"
+      data-prototype="ops"
+      aria-labelledby="ops-title"
+      hidden
+    >
+      <nav class="ops-rail" aria-label="Primary">
+        <a href="?variant=ops" class="ops-rail__mark">PM://</a>
+        <button type="button" aria-label="Portfolio Overview" aria-current="page">01</button>
+        <button type="button" aria-label="Active Project Queue" data-demo-message="Active Project Queue selected.">02</button>
+        <button type="button" aria-label="Discovery Follow-ups" data-demo-message="Discovery Follow-ups selected.">03</button>
+        <button type="button" aria-label="Settings" data-demo-message="Settings selected.">04</button>
+      </nav>
+
+      <header class="ops-mobile-header">
+        <span>PM://</span>
+        <button type="button" data-demo-message="Compact navigation selected.">MENU</button>
+      </header>
+
+      <main class="ops-main">
+        <header class="ops-heading">
+          <div>
+            <p>24_AUG_2026 / SAMPLE_DATA / READ_ONLY</p>
+            <h1 id="ops-title">PORTFOLIO_OVERVIEW</h1>
+          </div>
+          <label class="ops-search">
+            <span>FILTER_PROJECTS</span>
+            <span class="ops-search__field">
+              <svg class="icon" aria-hidden="true"><use href="#icon-search"></use></svg>
+              <input type="search" placeholder="name / state / owner" />
+            </span>
+          </label>
+        </header>
+
+        <section class="ops-stats" aria-label="Sample portfolio summary">
+          <div><strong>04</strong><span>sample Projects</span></div>
+          <div><strong>02</strong><span>new replies</span></div>
+          <div><strong>01</strong><span>Decision Review</span></div>
+          <div><strong>—</strong><span>score unavailable</span></div>
+        </section>
+
+        <div class="ops-grid">
+          <section class="ops-cell ops-cell--projects" aria-labelledby="ops-projects-title">
+            <header class="ops-cell__head">
+              <h2 id="ops-projects-title">ACTIVE_PROJECTS</h2>
+              <button type="button" data-demo-message="All sample projects selected.">VIEW_ALL ↗</button>
+            </header>
+            <div class="ops-table" aria-label="Active sample Projects">
+              <div class="ops-table__head" aria-hidden="true">
+                <span>PROJECT</span>
+                <span>PREPARATION_STATE</span>
+                <span>OWNER</span>
+                <span>DUE</span>
+                <span>ACTION</span>
+              </div>
+              <button class="ops-table__row" type="button" aria-label="Customer Portal Renewal — Clarification required — classify Customer replies" data-demo-message="Opening Customer reply classification.">
+                <span data-label="Project"><strong>Customer Portal Renewal</strong></span>
+                <span data-label="State"><i class="ops-state ops-state--warning" aria-hidden="true"></i>Clarification required</span>
+                <span data-label="Owner">K. Fodor</span>
+                <span data-label="Due">26 AUG</span>
+                <span data-label="Action">CLASSIFY ↗</span>
+              </button>
+              <button class="ops-table__row" type="button" aria-label="Field Service Mobile — Decision Review required — complete Decision Review" data-demo-message="Opening Decision Review.">
+                <span data-label="Project"><strong>Field Service Mobile</strong></span>
+                <span data-label="State"><i class="ops-state ops-state--decision" aria-hidden="true"></i>Decision Review required</span>
+                <span data-label="Owner">M. Varga</span>
+                <span data-label="Due">27 AUG</span>
+                <span data-label="Action">REVIEW ↗</span>
+              </button>
+              <button class="ops-table__row" type="button" aria-label="ERP Reporting Refresh — ready for estimation preparation — resolve remaining gap" data-demo-message="Opening Estimation Readiness.">
+                <span data-label="Project"><strong>ERP Reporting Refresh</strong></span>
+                <span data-label="State"><i class="ops-state ops-state--ready" aria-hidden="true"></i>Estimation preparation</span>
+                <span data-label="Owner">É. Horváth</span>
+                <span data-label="Due">29 AUG</span>
+                <span data-label="Action">RESOLVE ↗</span>
+              </button>
+              <button class="ops-table__row" type="button" aria-label="Supplier Onboarding — Initial Intake in progress — continue Initial Intake" data-demo-message="Opening Initial Intake.">
+                <span data-label="Project"><strong>Supplier Onboarding</strong></span>
+                <span data-label="State"><i class="ops-state" aria-hidden="true"></i>Initial Intake in progress</span>
+                <span data-label="Owner">D. Szabó</span>
+                <span data-label="Due">02 SEP</span>
+                <span data-label="Action">CONTINUE ↗</span>
+              </button>
+            </div>
+          </section>
+
+          <section class="ops-cell ops-cell--queue" aria-labelledby="ops-queue-title">
+            <header class="ops-cell__head"><h2 id="ops-queue-title">NEXT_COMMANDS</h2></header>
+            <ol class="ops-command-list">
+              <li><button type="button" data-demo-message="Opening Customer reply classification."><span>01</span> classify_replies</button></li>
+              <li><button type="button" data-demo-message="Opening Decision Review."><span>02</span> review_decision</button></li>
+              <li><button type="button" data-demo-message="Opening Estimation Readiness."><span>03</span> resolve_gap</button></li>
+            </ol>
+          </section>
+
+          <section class="ops-cell ops-cell--mail" aria-labelledby="ops-mail-title">
+            <header class="ops-cell__head"><h2 id="ops-mail-title">CORRESPONDENCE</h2></header>
+            <strong>NEW_RESPONSE</strong>
+            <p>2 Customer replies · Customer Portal Renewal</p>
+            <button type="button" data-demo-message="Opening Customer correspondence.">OPEN_THREAD ↗</button>
+          </section>
+
+          <section class="ops-cell ops-cell--decision" aria-labelledby="ops-decision-title">
+            <header class="ops-cell__head"><h2 id="ops-decision-title">DECISION_INPUT</h2></header>
+            <p>Field Service Mobile</p>
+            <strong>HUMAN_REVIEW_REQUIRED</strong>
+            <span>Decision Score remains unavailable until all six inputs are valid.</span>
+          </section>
+
+          <section class="ops-cell ops-cell--activity" aria-labelledby="ops-activity-title">
+            <header class="ops-cell__head"><h2 id="ops-activity-title">SAMPLE_EVENT_STREAM</h2></header>
+            <ul>
+              <li><time>09:42</time><span>Customer reply retained for employee review</span></li>
+              <li><time>09:18</time><span>Project status update recorded</span></li>
+              <li><time>08:55</time><span>Initial Intake working record resumed</span></li>
+            </ul>
+          </section>
+        </div>
+      </main>
+
+      <footer class="ops-footer">PROJECT_MAKER / OPS_GRID_CONCEPT / SAMPLE_DATA_ONLY / NO_MUTATIONS</footer>
+    </section>
+
+    <section
+      class="prototype play"
+      data-prototype="play"
+      aria-labelledby="play-title"
+      hidden
+    >
+      <header class="play-nav">
+        <a href="?variant=play" class="play-nav__mark">PROJECT MAKER</a>
+        <nav aria-label="Primary">
+          <button type="button" aria-current="page">PORTFOLIO</button>
+          <button type="button" data-demo-message="Active Project Queue selected.">QUEUE</button>
+          <button type="button" data-demo-message="Discovery Follow-ups selected.">FOLLOW-UPS</button>
+        </nav>
+        <button class="play-nav__new" type="button" data-star data-demo-message="Starting a new Project draft.">NEW PROJECT</button>
+      </header>
+
+      <main class="play-main">
+        <section class="play-hero">
+          <div class="play-hero__copy">
+            <p>Portfolio Overview · sample data</p>
+            <h1 id="play-title">Make the next step obvious.</h1>
+            <p>
+              Projects become places you can re-enter, not rows you have to decode. Colour names
+              the kind of work; shape and copy carry the same meaning without colour.
+            </p>
+            <button class="play-push" type="button" data-star data-demo-message="Opening Customer reply classification.">
+              Open next action
+              <svg class="icon" aria-hidden="true"><use href="#icon-arrow-right"></use></svg>
+            </button>
+          </div>
+          <div class="play-hero__aside">
+            <div class="play-character" role="img" aria-label="A geometric Project Maker route character">
+              <span class="play-character__eye play-character__eye--one"></span>
+              <span class="play-character__eye play-character__eye--two"></span>
+              <span class="play-character__route"></span>
+            </div>
+            <div class="play-count">
+              <strong data-count-to="4">4</strong>
+              <span>sample Projects</span>
+            </div>
+          </div>
+        </section>
+
+        <section class="play-band play-band--pear" aria-labelledby="play-continue-title">
+          <div class="play-shell">
+            <header class="play-section-head">
+              <h2 id="play-continue-title">Continue here</h2>
+              <p>One action is already shaped for you.</p>
+            </header>
+            <button class="play-focus-card" type="button" data-demo-message="Opening Customer reply classification.">
+              <span class="play-focus-card__shape" aria-hidden="true"></span>
+              <span>
+                <small>Customer Portal Renewal</small>
+                <strong>Classify two Customer replies</strong>
+                <em>Clarification required · Kata Fodor · due 26 August</em>
+              </span>
+              <svg class="icon" aria-hidden="true"><use href="#icon-arrow-right"></use></svg>
+            </button>
+          </div>
+        </section>
+
+        <section class="play-shell play-needs" aria-labelledby="play-needs-title">
+          <header class="play-section-head">
+            <h2 id="play-needs-title">Needs attention</h2>
+            <p>Different work gets a different visual verb.</p>
+          </header>
+          <div class="play-mosaic">
+            <button class="play-card play-card--wide play-card--cyan" type="button" data-demo-message="Opening Decision Review.">
+              <span class="play-card__shape play-card__shape--decision" aria-hidden="true"></span>
+              <small>Field Service Mobile</small>
+              <strong>Make the human decision</strong>
+              <span>Decision Review required · due 27 August</span>
+            </button>
+            <button class="play-card play-card--tall play-card--coral" type="button" data-demo-message="Opening Estimation Readiness.">
+              <span class="play-card__shape play-card__shape--gap" aria-hidden="true"></span>
+              <small>ERP Reporting Refresh</small>
+              <strong>Close one blocking gap</strong>
+              <span>Ready for estimation preparation</span>
+            </button>
+            <button class="play-card play-card--small play-card--mint" type="button" data-demo-message="Opening Initial Intake.">
+              <span class="play-card__shape play-card__shape--intake" aria-hidden="true"></span>
+              <small>Supplier Onboarding</small>
+              <strong>Continue Initial Intake</strong>
+            </button>
+          </div>
+        </section>
+
+        <section class="play-band play-band--cyan" aria-labelledby="play-browse-title">
+          <div class="play-shell">
+            <header class="play-section-head play-section-head--bottom">
+              <p>Browse by work, not by menu depth.</p>
+              <h2 id="play-browse-title">Choose a preparation context</h2>
+            </header>
+            <div class="play-contexts">
+              <button type="button" data-demo-message="Initial Intake selected."><span aria-hidden="true">01</span>Initial Intake</button>
+              <button type="button" data-demo-message="Discovery selected."><span aria-hidden="true">02</span>Discovery</button>
+              <button type="button" data-demo-message="Decision Review selected."><span aria-hidden="true">03</span>Decision Review</button>
+              <button type="button" data-demo-message="Estimation Readiness selected."><span aria-hidden="true">04</span>Estimation Readiness</button>
+            </div>
+          </div>
+        </section>
+      </main>
+
+      <footer
+        class="play-footer"
+        tabindex="0"
+        aria-label="Project Maker statement. Focus or hover to pause the moving text."
+      >
+        <div class="play-footer__track" aria-hidden="true">
+          <span>PROJECT MAKER · THE NEXT STEP HAS A SHAPE · SAMPLE DATA · </span>
+          <span>PROJECT MAKER · THE NEXT STEP HAS A SHAPE · SAMPLE DATA · </span>
+        </div>
+        <p class="visually-hidden">Project Maker · Project Playground concept · sample data only</p>
+      </footer>
+    </section>
+
+    <nav class="lab-switcher" aria-label="Design prototype variants">
+      <button id="variant-previous" type="button" aria-label="Previous design direction">
+        <svg class="icon" aria-hidden="true"><use href="#icon-arrow-left"></use></svg>
+      </button>
+      <div class="lab-switcher__label">
+        <span id="variant-position">A / 5</span>
+        <strong id="variant-name">Decision Ledger</strong>
+      </div>
+      <button id="variant-info" type="button" lang="hu">Leírás</button>
+      <button id="variant-next" type="button" aria-label="Next design direction">
+        <svg class="icon" aria-hidden="true"><use href="#icon-arrow-right"></use></svg>
+      </button>
+    </nav>
+
+    <dialog class="lab-dialog" id="concept-dialog" lang="hu" aria-labelledby="concept-dialog-title">
+      <form method="dialog" class="dialog-close-row">
+        <button type="submit" aria-label="Koncepcióleírás bezárása">
+          <svg class="icon" aria-hidden="true"><use href="#icon-close"></use></svg>
+        </button>
+      </form>
+      <p id="concept-dialog-position">A / 5</p>
+      <h2 id="concept-dialog-title">Decision Ledger</h2>
+      <dl class="concept-details">
+        <div><dt>Koncepció</dt><dd id="concept-dialog-concept"></dd></div>
+        <div><dt>Irány</dt><dd id="concept-dialog-direction"></dd></div>
+        <div><dt>Motiváció</dt><dd id="concept-dialog-motivation"></dd></div>
+        <div><dt>Lehetőség</dt><dd id="concept-dialog-opportunity"></dd></div>
+        <div><dt>Trade-off</dt><dd id="concept-dialog-tradeoff"></dd></div>
+      </dl>
+    </dialog>
+  </body>
+</html>
