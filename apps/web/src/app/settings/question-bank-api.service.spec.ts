@@ -7,6 +7,22 @@ import { describe, expect, it } from 'vitest';
 import { QuestionBankApiService } from './question-bank-api.service';
 
 describe('QuestionBankApiService', () => {
+  it('loads published playbook summaries for Question Bank grouping', async () => {
+    TestBed.configureTestingModule({ providers: [QuestionBankApiService, provideHttpClient(), provideHttpClientTesting()] });
+    const api = TestBed.inject(QuestionBankApiService);
+    const http = TestBed.inject(HttpTestingController);
+    const request = firstValueFrom(api.loadPlaybooks());
+
+    http.expectOne('/api/playbooks').flush([
+      { id: 'general', version: 1, name: 'General project' },
+    ]);
+
+    await expect(request).resolves.toEqual([
+      { id: 'general', version: 1, name: 'General project' },
+    ]);
+    http.verify();
+  });
+
   it('returns the nullable Project question-schema response and preserves a 404 as an error', async () => {
     TestBed.configureTestingModule({ providers: [QuestionBankApiService, provideHttpClient(), provideHttpClientTesting()] });
     const api = TestBed.inject(QuestionBankApiService); const http = TestBed.inject(HttpTestingController);

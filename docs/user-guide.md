@@ -112,6 +112,8 @@ Use **Project Settings** for editable basic Project data, Customer contact detai
 
 For each question, maintain the prompt, category, answer type, readiness implications, and any reference files. A **Question Bank reference file** belongs to a question revision and is retained by the selected Project schema. It is not a general Project attachment.
 
+The Question Bank browser groups questions by their published playbook and topic. Search across keys, question content, guidance, response options, and reference-file names; narrow the list to one playbook or to Active or Inactive questions. Cards keep secondary details and reference files collapsed until needed, and **Edit** opens the form in the selected card. Inactive is a published availability state, not an unpublished draft.
+
 On a new Project's **Initial Intake** page, select the active questions required for that Project and choose **Accept question schema and start Initial Intake**. This one deliberate action stores the immutable Project question schema and opens the Initial Intake round. If the schema was saved but starting the round failed, use **Retry starting Initial Intake**; do not create the schema again.
 
 ## Initial Intake and Discovery

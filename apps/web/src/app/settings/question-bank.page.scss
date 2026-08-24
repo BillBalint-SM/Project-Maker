@@ -5,7 +5,6 @@
 .heading-row,
 .question-item-heading,
 .form-actions,
-.item-actions,
 .bank-meta,
 .question-tags {
   align-items: center;
@@ -82,8 +81,7 @@
   gap: 0.45rem;
 }
 
-.form-actions,
-.item-actions {
+.form-actions {
   gap: 0.7rem;
 }
 
@@ -93,9 +91,52 @@
   margin-bottom: 1rem;
 }
 
+.question-browser-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.8rem;
+  margin-bottom: 1.25rem;
+}
+
+.question-search,
+.playbook-filter,
+.status-filter {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.question-search {
+  flex: 2 1 22rem;
+}
+
+.playbook-filter {
+  flex: 1 1 14rem;
+}
+
+.question-browser-toolbar input,
+.question-browser-toolbar select,
+.status-filter button {
+  font: inherit;
+  padding: 0.6rem 0.75rem;
+}
+
+.status-filter > div {
+  display: flex;
+  gap: 0.35rem;
+}
+
+.status-filter button.active {
+  outline: 2px solid var(--p-primary-color);
+}
+
 .question-list {
   display: grid;
-  gap: 1rem;
+  gap: 1.4rem;
+}
+
+.topic-group {
+  display: grid;
+  gap: 0.65rem;
 }
 
 .question-item {
@@ -104,23 +145,13 @@
   border-radius: var(--pm-radius-md);
   box-shadow: var(--pm-shadow-sm);
   overflow: hidden;
-  padding: 1.25rem;
-  position: relative;
-}
-
-.question-item::before {
-  background: var(--pm-blue);
-  content: "";
-  height: 1px;
-  inset: 0 12% auto;
-  position: absolute;
+  padding: 0.9rem 1rem;
 }
 
 .question-item-heading {
   align-items: flex-start;
   gap: 1rem;
   justify-content: space-between;
-  min-width: 0;
 }
 
 .question-item-heading > div:first-child {
@@ -128,10 +159,14 @@
   min-width: 0;
 }
 
-.question-item h2 {
+.question-item h4 {
   font-size: 1.05rem;
   line-height: 1.4;
   margin: 0.35rem 0 0;
+}
+
+.question-item--editing {
+  padding: 0;
 }
 
 .question-key {
@@ -153,10 +188,6 @@
   gap: 0.7rem 1.2rem;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   margin: 1.1rem 0;
-}
-
-.question-details div {
-  min-width: 0;
 }
 
 .question-details .detail-wide {
@@ -189,7 +220,6 @@
   padding-top: 1rem;
 }
 
-.reference-files h3,
 .reference-files-help {
   margin: 0;
 }
@@ -222,15 +252,6 @@
   background: color-mix(in oklch, var(--pm-surface-2) 58%, transparent);
   border-radius: var(--pm-radius-sm);
   padding: 0.65rem 0.75rem;
-}
-
-.reference-files li > span:first-child {
-  flex: 1;
-  min-width: 0;
-}
-
-.reference-files li strong {
-  overflow-wrap: anywhere;
 }
 
 .reference-file-actions {

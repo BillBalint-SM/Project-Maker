@@ -5,6 +5,7 @@ import { catchError } from 'rxjs/operators';
 import type {
   BaseQuestionBank,
   CreateBaseQuestionInput,
+  PackagedPlaybookSummary,
   ProjectQuestionSchema,
   PublishProjectQuestionSchemaInput,
   UpdateBaseQuestionInput,
@@ -18,6 +19,12 @@ export class QuestionBankApiService {
     return this.http
       .get<BaseQuestionBank>('/api/settings/base-questions')
       .pipe(catchError((error: unknown) => failApiRequest(error, 'load the Question Bank')));
+  }
+
+  loadPlaybooks(): Observable<readonly PackagedPlaybookSummary[]> {
+    return this.http
+      .get<readonly PackagedPlaybookSummary[]>('/api/playbooks')
+      .pipe(catchError((error: unknown) => failApiRequest(error, 'load the playbooks')));
   }
 
   createBaseQuestion(input: CreateBaseQuestionInput): Observable<BaseQuestionBank> {

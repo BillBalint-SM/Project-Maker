@@ -25,7 +25,7 @@
     </p-message>
   }
 
-  @if (showForm()) {
+  <ng-template #questionEditor>
     <p-card styleClass="question-form-card">
       <ng-template #title>{{ isEditing() ? 'Edit base question' : 'New base question' }}</ng-template>
       <ng-template #subtitle>
@@ -220,6 +220,10 @@
         </div>
       </form>
     </p-card>
+  </ng-template>
+
+  @if (showForm() && !isEditing()) {
+    <ng-container [ngTemplateOutlet]="questionEditor" />
   }
 
   @if (loading()) {
@@ -242,6 +246,7 @@
     <div class="bank-meta" data-testid="question-bank-meta">
       <span>Published version: <strong>{{ currentBank.version }}</strong></span>
       <span>{{ currentBank.questions.length }} questions</span>
+      <span>{{ filteredQuestions().length }} shown</span>
     </div>
 
     @if (currentBank.questions.length === 0) {
@@ -253,34 +258,123 @@
         }
       </div>
     } @else {
+      <div class="question-browser-toolbar" aria-label="Question Bank filters" data-testid="question-bank-filters">
+        <label class="question-search" for="question-bank-search">
+          <span>Search questions</span>
+          <input
+            id="question-bank-search"
+            type="search"
+            autocomplete="off"
+            placeholder="Key, topic, text, control point, or file"
+            [value]="searchQuery()"
+            data-testid="question-bank-search"
+            (input)="setSearchQuery($any($event.target).value)"
+          />
+        </label>
+        <label class="playbook-filter" for="question-bank-playbook-filter">
+          <span>Playbook</span>
+          <select
+            id="question-bank-playbook-filter"
+            [value]="playbookFilter()"
+            data-testid="question-bank-playbook-filter"
+            (change)="setPlaybookFilter($any($event.target).value)"
+          >
+            <option value="ALL">All playbooks</option>
+            @for (playbook of playbooks(); track playbook.id + ':' + playbook.version) {
+              <option [value]="playbook.id">{{ playbook.name }}</option>
+            }
+            <option value="UNASSIGNED">Unassigned</option>
+          </select>
+        </label>
+        <div class="status-filter" role="group" aria-label="Question status">
+          <span>Status</span>
+          <div>
+            <button
+              type="button"
+              [class.active]="statusFilter() === 'ALL'"
+              [attr.aria-pressed]="statusFilter() === 'ALL'"
+              data-testid="question-status-all"
+              (click)="setStatusFilter('ALL')"
+            >All {{ statusCounts().ALL }}</button>
+            <button
+              type="button"
+              [class.active]="statusFilter() === 'ACTIVE'"
+              [attr.aria-pressed]="statusFilter() === 'ACTIVE'"
+              data-testid="question-status-active"
+              (click)="setStatusFilter('ACTIVE')"
+            >Active {{ statusCounts().ACTIVE }}</button>
+            <button
+              type="button"
+              [class.active]="statusFilter() === 'INACTIVE'"
+              [attr.aria-pressed]="statusFilter() === 'INACTIVE'"
+              data-testid="question-status-inactive"
+              (click)="setStatusFilter('INACTIVE')"
+            >Inactive {{ statusCounts().INACTIVE }}</button>
+          </div>
+        </div>
+      </div>
+
+      @if (filteredQuestions().length === 0) {
+        <div class="state-panel compact" data-testid="question-bank-no-results">
+          <h2>No matching questions</h2>
+          <p>Change the search, playbook, or status filter.</p>
+          <p-button label="Clear filters" severity="secondary" (onClick)="clearBrowserFilters()" />
+        </div>
+      } @else {
       <div class="question-list" data-testid="question-bank-list">
-        @for (question of currentBank.questions; track question.id) {
-          <article class="question-item" [attr.data-testid]="'base-question-' + question.id">
+        @for (playbookGroup of questionGroups(); track playbookGroup.id) {
+          <section
+            class="playbook-group"
+            [attr.aria-labelledby]="'playbook-' + playbookGroup.id"
+            [attr.data-testid]="'question-playbook-group-' + playbookGroup.id"
+          >
+            <h2 [id]="'playbook-' + playbookGroup.id">{{ playbookGroup.name }}</h2>
+            @for (topicGroup of playbookGroup.topics; track topicGroup.topic) {
+              <section class="topic-group" [attr.data-testid]="'question-topic-group-' + playbookGroup.id + '-' + topicGroup.topic">
+                <h3>{{ topicGroup.topic }} <span>{{ topicGroup.questions.length }}</span></h3>
+                @for (question of topicGroup.questions; track question.id) {
+          <article
+            class="question-item"
+            [class.question-item--editing]="isEditingQuestion(question.id)"
+            [attr.data-testid]="'base-question-' + question.id"
+          >
+            @if (isEditingQuestion(question.id)) {
+              <ng-container [ngTemplateOutlet]="questionEditor" />
+            } @else {
             <div class="question-item-heading">
               <div>
                 <span class="question-key">{{ question.stableKey }}</span>
-                <h2>{{ question.text }}</h2>
+                <h4>{{ question.text }}</h4>
+                <p>{{ question.controlPoint }} · Order {{ question.order }}</p>
               </div>
               <div class="question-tags">
                 <p-tag [value]="questionTypeLabel(question.type)" />
-                <p-tag [value]="question.active ? 'Active' : 'Archived'" [severity]="question.active ? 'success' : 'secondary'" />
+                <p-tag [value]="question.active ? 'Active' : 'Inactive'" [severity]="question.active ? 'success' : 'secondary'" />
+                <p-button
+                  label="Edit"
+                  severity="secondary"
+                  [outlined]="true"
+                  [attr.aria-label]="'Edit question: ' + question.text"
+                  [attr.data-testid]="'edit-base-question-' + question.id"
+                  (onClick)="editQuestion(question)"
+                />
               </div>
             </div>
-            <dl class="question-details">
-              <div><dt>Topic</dt><dd>{{ question.topic }}</dd></div>
-              <div><dt>Control point</dt><dd>{{ question.controlPoint }}</dd></div>
-              <div><dt>Display order</dt><dd>{{ question.order }}</dd></div>
-              <div><dt>Required</dt><dd>{{ question.required ? 'Yes' : 'No' }}</dd></div>
-              @if (question.options?.length) {
-                <div class="detail-wide"><dt>Response options</dt><dd>{{ question.options.join(' · ') }}</dd></div>
+            <details class="question-more">
+              <summary>Details and reference files ({{ question.referenceFiles.length }})</summary>
+              <dl class="question-details">
+                <div><dt>Required</dt><dd>{{ question.required ? 'Yes' : 'No' }}</dd></div>
+                <div><dt>Required for estimation</dt><dd>{{ question.requiredForEstimate ? 'Yes' : 'No' }}</dd></div>
+                <div><dt>Blocking</dt><dd>{{ question.blocking ? 'Yes' : 'No' }}</dd></div>
+                @if (question.options?.length) {
+                  <div class="detail-wide"><dt>Response options</dt><dd>{{ question.options.join(' · ') }}</dd></div>
+                }
+              </dl>
+              @if (question.hint) {
+                <p class="question-hint"><strong>Response guidance:</strong> {{ question.hint }}</p>
               }
-            </dl>
-            @if (question.hint) {
-              <p class="question-hint"><strong>Response guidance:</strong> {{ question.hint }}</p>
-            }
             <section class="reference-files" [attr.aria-label]="'Reference files: ' + question.text">
-              <h3>Reference files</h3>
-              <p class="reference-files-help">Changes create a new published Question Bank version; the earlier version’s file set remains unchanged.</p>
+              <p class="reference-files-help">File changes publish a new Question Bank version; earlier versions remain unchanged.</p>
               <ul>
                 @for (file of question.referenceFiles; track file.id) {
                   <li>
@@ -302,8 +396,8 @@
                 }
               </ul>
               <div class="reference-file-upload">
-                <label>
-                  File
+                <label class="file-picker">
+                  <span>Add a reference file</span>
                   <input
                     type="file"
                     accept=".pdf,.doc,.docx,.rtf,.odt,.xls,.xlsx,.csv,.ods,.ppt,.pptx,.odp,.txt,.md,.png,.jpg,.jpeg,.mpp,.vsdx"
@@ -321,18 +415,16 @@
                 />
               </div>
             </section>
-            <div class="item-actions">
-              <p-button
-                label="Edit base question"
-                severity="secondary"
-                [outlined]="true"
-                [attr.data-testid]="'edit-base-question-' + question.id"
-                (onClick)="editQuestion(question)"
-              />
-            </div>
+            </details>
+            }
           </article>
+                }
+              </section>
+            }
+          </section>
         }
       </div>
+      }
     }
   }
 </section>

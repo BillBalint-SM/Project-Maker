@@ -1,5 +1,5 @@
-import { DOCUMENT } from '@angular/common';
-import { Component, inject, OnInit, signal } from '@angular/core';
+import { DOCUMENT, NgTemplateOutlet } from '@angular/common';
+import { afterNextRender, Component, computed, inject, Injector, OnInit, signal } from '@angular/core';
 import {
   AbstractControl,
   FormControl,
@@ -14,11 +14,13 @@ import { MessageModule } from 'primeng/message';
 import { ProgressSpinnerModule } from 'primeng/progressspinner';
 import { SelectModule } from 'primeng/select';
 import { TagModule } from 'primeng/tag';
+import { forkJoin } from 'rxjs';
 import type {
   BaseQuestion,
   BaseQuestionBank,
   BaseQuestionType,
   CreateBaseQuestionInput,
+  PackagedPlaybookSummary,
   UpdateBaseQuestionInput,
 } from '@project-maker/contracts';
 
@@ -43,12 +45,26 @@ type QuestionFormControls = {
   options: FormControl<string>;
 };
 
+type QuestionStatusFilter = 'ALL' | 'ACTIVE' | 'INACTIVE';
+
+interface QuestionTopicGroup {
+  readonly topic: string;
+  readonly questions: readonly BaseQuestion[];
+}
+
+interface QuestionPlaybookGroup {
+  readonly id: string;
+  readonly name: string;
+  readonly topics: readonly QuestionTopicGroup[];
+}
+
 @Component({
   selector: 'app-question-bank-page',
   imports: [
     ButtonModule,
     CardModule,
     MessageModule,
+    NgTemplateOutlet,
     ProgressSpinnerModule,
     ReactiveFormsModule,
     SelectModule,
@@ -60,10 +76,12 @@ type QuestionFormControls = {
 export class QuestionBankPage implements OnInit {
   private readonly api = inject(QuestionBankApiService);
   private readonly document = inject(DOCUMENT);
+  private readonly injector = inject(Injector);
 
   readonly questionTypes = baseQuestionTypeOptions;
   readonly questionTypeLabel = baseQuestionTypeLabel;
   readonly bank = signal<BaseQuestionBank | null>(null);
+  readonly playbooks = signal<readonly PackagedPlaybookSummary[]>([]);
   readonly loading = signal(true);
   readonly loadError = signal<string | null>(null);
   readonly actionError = signal<string | null>(null);
@@ -73,6 +91,33 @@ export class QuestionBankPage implements OnInit {
   readonly editingId = signal<string | null>(null);
   readonly referenceSavingId = signal<string | null>(null);
   readonly selectedReferenceFiles = signal<ReadonlyMap<string, File>>(new Map());
+  readonly searchQuery = signal('');
+  readonly statusFilter = signal<QuestionStatusFilter>('ALL');
+  readonly playbookFilter = signal('ALL');
+  readonly filteredQuestions = computed(() => {
+    const search = normalizeSearch(this.searchQuery());
+    return (this.bank()?.questions ?? []).filter((question) => {
+      const matchesStatus =
+        this.statusFilter() === 'ALL' ||
+        (this.statusFilter() === 'ACTIVE' ? question.active : !question.active);
+      const playbook = playbookForQuestion(question, this.playbooks());
+      const matchesPlaybook =
+        this.playbookFilter() === 'ALL' || playbook.id === this.playbookFilter();
+      const matchesSearch = search.length === 0 || questionSearchText(question).includes(search);
+      return matchesStatus && matchesPlaybook && matchesSearch;
+    });
+  });
+  readonly questionGroups = computed(() =>
+    buildQuestionGroups(this.filteredQuestions(), this.playbooks()),
+  );
+  readonly statusCounts = computed(() => {
+    const questions = this.bank()?.questions ?? [];
+    return {
+      ALL: questions.length,
+      ACTIVE: questions.filter((question) => question.active).length,
+      INACTIVE: questions.filter((question) => !question.active).length,
+    };
+  });
 
   readonly questionForm = new FormGroup<QuestionFormControls>({
     stableKey: new FormControl('', {
@@ -120,9 +165,10 @@ export class QuestionBankPage implements OnInit {
     this.loading.set(true);
     this.loadError.set(null);
     this.actionError.set(null);
-    this.api.loadBaseQuestionBank().subscribe({
-      next: (bank) => {
+    forkJoin({ bank: this.api.loadBaseQuestionBank(), playbooks: this.api.loadPlaybooks() }).subscribe({
+      next: ({ bank, playbooks }) => {
         this.bank.set(bank);
+        this.playbooks.set(playbooks);
         this.loading.set(false);
       },
       error: (error: Error) => {
@@ -147,13 +193,42 @@ export class QuestionBankPage implements OnInit {
     this.actionError.set(null);
     this.feedback.set(null);
     this.resetForm(question, question.order);
+    afterNextRender(() => this.document.getElementById('question-text')?.focus(), {
+      injector: this.injector,
+    });
+  }
+
+  setSearchQuery(value: string): void {
+    this.searchQuery.set(value);
+  }
+
+  setStatusFilter(filter: QuestionStatusFilter): void {
+    this.statusFilter.set(filter);
+  }
+
+  setPlaybookFilter(value: string): void {
+    this.playbookFilter.set(value);
+  }
+
+  clearBrowserFilters(): void {
+    this.searchQuery.set('');
+    this.statusFilter.set('ALL');
+    this.playbookFilter.set('ALL');
+  }
+
+  isEditingQuestion(questionId: string): boolean {
+    return this.editingId() === questionId;
   }
 
   cancelForm(): void {
+    const editingId = this.editingId();
     this.showForm.set(false);
     this.editingId.set(null);
     this.actionError.set(null);
     this.resetForm(null, (this.bank()?.questions.length ?? 0) + 1);
+    if (editingId) {
+      this.focusEditButtonAfterNextRender(editingId);
+    }
   }
 
   isEditing(): boolean {
@@ -231,6 +306,9 @@ export class QuestionBankPage implements OnInit {
         this.showForm.set(false);
         this.editingId.set(null);
         this.resetForm(null, bank.questions.length + 1);
+        if (editingId) {
+          this.focusEditButtonAfterNextRender(editingId);
+        }
       },
       error: (error: Error) => {
         this.actionError.set(error.message);
@@ -323,6 +401,18 @@ export class QuestionBankPage implements OnInit {
       this.questionForm.controls.stableKey.enable();
     }
   }
+
+  private focusEditButtonAfterNextRender(questionId: string): void {
+    afterNextRender(
+      () => {
+        const host = this.document.querySelector(
+          `[data-testid="edit-base-question-${questionId}"]`,
+        );
+        host?.querySelector('button')?.focus();
+      },
+      { injector: this.injector },
+    );
+  }
 }
 
 function isSelectType(type: BaseQuestionType): boolean {
@@ -345,4 +435,64 @@ function nonBlankValidator(control: AbstractControl<unknown>): ValidationErrors 
   return typeof control.value === 'string' && control.value.trim().length > 0
     ? null
     : { nonBlank: true };
+}
+
+function normalizeSearch(value: string): string {
+  return value
+    .normalize('NFKD')
+    .replace(/\p{Diacritic}/gu, '')
+    .toLocaleLowerCase()
+    .trim();
+}
+
+function questionSearchText(question: BaseQuestion): string {
+  return normalizeSearch(
+    [
+      question.stableKey,
+      question.topic,
+      question.controlPoint,
+      question.text,
+      question.hint ?? '',
+      ...(question.options ?? []),
+      ...question.referenceFiles.map((file) => file.originalName),
+    ].join(' '),
+  );
+}
+
+function playbookForQuestion(
+  question: BaseQuestion,
+  playbooks: readonly PackagedPlaybookSummary[],
+): Pick<PackagedPlaybookSummary, 'id' | 'name'> {
+  return (
+    [...playbooks]
+      .sort((left, right) => right.id.length - left.id.length)
+      .find((playbook) => question.stableKey.startsWith(`${playbook.id}-`)) ?? {
+      id: 'UNASSIGNED',
+      name: 'Unassigned',
+    }
+  );
+}
+
+function buildQuestionGroups(
+  questions: readonly BaseQuestion[],
+  playbooks: readonly PackagedPlaybookSummary[],
+): readonly QuestionPlaybookGroup[] {
+  const groups = new Map<string, { name: string; topics: Map<string, BaseQuestion[]> }>();
+  for (const question of questions) {
+    const playbook = playbookForQuestion(question, playbooks);
+    const group = groups.get(playbook.id) ?? { name: playbook.name, topics: new Map() };
+    const topicQuestions = group.topics.get(question.topic) ?? [];
+    topicQuestions.push(question);
+    group.topics.set(question.topic, topicQuestions);
+    groups.set(playbook.id, group);
+  }
+
+  return [...groups.entries()].map(([id, group]) => ({
+    id,
+    name: group.name,
+    topics: [...group.topics.entries()].map(([topic, topicQuestions]) => ({
+      topic,
+      questions: topicQuestions,
+    })),
+  }));
 }
