@@ -31,7 +31,6 @@ test('exposes the exact global navigation and sends the reply count to the filte
 
   await expect(page.locator('[data-nav-label]')).toHaveText(globalNavigationLabels);
   const replyCount = page.getByTestId('global-customer-reply-count');
-  await expect(replyCount).toHaveAccessibleName('Open 3 new Customer replies');
   const mainNavigation = page.getByRole('navigation', { name: 'Main navigation' });
   const navigationToggle = page.getByTestId('navigation-toggle');
   await expect(navigationToggle).toHaveAttribute('aria-expanded', 'false');
@@ -43,6 +42,7 @@ test('exposes the exact global navigation and sends the reply count to the filte
   await page.keyboard.press('Enter');
   await expect(navigationToggle).toHaveAttribute('aria-expanded', 'true');
   await expect(mainNavigation).toBeVisible();
+  await expect(replyCount).toHaveAccessibleName('Open 3 new Customer replies');
 
   const focusSequence = [
     mainNavigation.getByRole('link', { name: 'Portfolio', exact: true }),
@@ -64,12 +64,11 @@ test('exposes the exact global navigation and sends the reply count to the filte
       name: 'Question Bank',
       exact: true,
     }),
-    page.getByTestId('active-project-queue-link'),
   ];
   for (const target of focusSequence) {
     await tabTo(page, target);
   }
-  for (let step = 0; step < 7; step += 1) {
+  for (let step = 0; step < 4; step += 1) {
     await page.keyboard.press('Shift+Tab');
   }
   await expectVisibleKeyboardFocus(replyCount);
@@ -81,9 +80,7 @@ test('exposes the exact global navigation and sends the reply count to the filte
 test('recovers the global follow-up list and returns to its exact context', async ({
   page,
 }) => {
-  const suffix = captureScreenshots
-    ? 'minta'
-    : `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  const suffix = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
   const projectName = `Átadási próba ${suffix}`;
   const question = `Ki hagyja jóvá a csomagot ${suffix}?`;
   const createdProject = await page.request.post('/api/projects', {

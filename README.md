@@ -39,7 +39,7 @@ pnpm verify
 
 The repository pins pnpm `11.20.0`. If the workstation exposes another global version, use `npx --yes pnpm@11.20.0 <command>` instead of changing the repository requirement.
 
-`pnpm verify` runs workspace type checks, API and web tests, and production builds. It expects a dedicated non-production PostgreSQL test database. Run browser E2E only when the affected behavior crosses routes, persistence, or reload boundaries:
+`pnpm verify` starts a disposable PostgreSQL container, runs workspace type checks, API and web tests, and production builds, then removes the container. Run browser E2E only when the affected behavior crosses routes, persistence, or reload boundaries; it uses the same isolated database lifecycle:
 
 ```powershell
 pnpm test:e2e

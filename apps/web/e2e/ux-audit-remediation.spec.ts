@@ -85,6 +85,7 @@ test.describe('UX audit remediation', () => {
 
     await expect(page.getByTestId('navigation-panel')).toHaveClass(/open/);
     await expect(page.getByTestId('logout-error')).toHaveText('Unable to sign out. Check your connection and try again.');
+    await openNavigation(page);
     await page.getByRole('button', { name: 'Retry sign out', exact: true }).click();
 
     await expect(page).toHaveURL('/login');

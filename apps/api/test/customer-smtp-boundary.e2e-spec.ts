@@ -51,7 +51,7 @@ describe('Customer SMTP boundary', () => {
   after(async () => app.close());
 
   it('removes the legacy customer-review route without creating a new legacy audit event', async () => {
-    const projectId = await createProject(app, 'legacy-route');
+    const { id: projectId } = await createProject(app, 'legacy-route');
 
     await request(app.getHttpServer())
       .post(`/projects/${projectId}/customer-review-email`)
@@ -88,7 +88,7 @@ describe('Customer SMTP boundary', () => {
   });
 
   it('rejects revision input and keeps the manual ping free of internal delivery content', async () => {
-    const projectId = await createProject(app, 'revision-free-ping');
+    const { id: projectId } = await createProject(app, 'revision-free-ping');
     const handoffText = await createInterviewHandoffPreview(app, projectId);
     const revision = await request(app.getHttpServer())
       .post(`/projects/${projectId}/markdown-revisions`)
@@ -125,7 +125,7 @@ describe('Customer SMTP boundary', () => {
   });
 
   it('keeps the scheduled ping free of internal delivery content', async () => {
-    const projectId = await createProject(app, 'scheduled-boundary');
+    const { id: projectId, email } = await createProject(app, 'scheduled-boundary');
     const handoffText = await createInterviewHandoffPreview(app, projectId);
     const revision = await request(app.getHttpServer())
       .post(`/projects/${projectId}/markdown-revisions`)
@@ -152,9 +152,9 @@ describe('Customer SMTP boundary', () => {
     );
     const results = await followUpService.processDuePings(dueAt);
 
-    assert.equal(results.length, 1);
+    assert.equal(results.filter((result) => result.projectId === projectId).length, 1);
     assertPingHasNoInternalDeliveryContent(
-      delivered[0],
+      delivered.find((message) => message.to === email),
       revision.body.content as string,
       handoffText,
     );
@@ -162,18 +162,22 @@ describe('Customer SMTP boundary', () => {
   });
 });
 
-async function createProject(app: INestApplication, label: string): Promise<string> {
+async function createProject(
+  app: INestApplication,
+  label: string,
+): Promise<{ readonly id: string; readonly email: string }> {
+  const email = `smtp-boundary-${Date.now()}-${Math.random()}@example.test`;
   const response = await request(app.getHttpServer())
     .post('/projects')
     .send({
       name: `SMTP boundary ${label} ${Date.now()}-${Math.random()}`,
       customerContactName: 'Teszt Ügyfél',
-      customerContactEmail: `smtp-boundary-${Date.now()}-${Math.random()}@example.test`,
+      customerContactEmail: email,
       internalOwnerName: 'Teszt PO/PM',
       nextActionOwnerRole: 'INTERNAL_OWNER',
     })
     .expect(201);
-  return response.body.id as string;
+  return { id: response.body.id as string, email };
 }
 
 async function createInterviewHandoffPreview(

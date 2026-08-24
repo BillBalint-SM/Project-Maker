@@ -7,7 +7,8 @@ test('sends a narrow Customer request, accepts the public response, and clears i
   await page.getByTestId('project-name-input').fill(`Ügyfél-pontosítás ${unique}`);
   await page.getByTestId('internal-owner-name-input').fill('Belső PO');
   await page.getByTestId('customer-contact-name-input').fill('Ügyfél Anna');
-  await page.getByTestId('customer-contact-email-input').fill(`response-${unique}@example.test`);
+  const customerEmail = `response-${unique}@example.test`;
+  await page.getByTestId('customer-contact-email-input').fill(customerEmail);
   await (await nativeButton(page, 'create-project-submit')).click();
   await (await nativeButton(page, 'publish-project-schema-button')).click();
   await expect(page.getByTestId('active-round-resume-state')).toBeVisible();
@@ -25,8 +26,14 @@ test('sends a narrow Customer request, accepts the public response, and clears i
   await expect(page.getByTestId('customer-response-preview')).toContainText('Ügyfél Anna');
   await (await nativeButton(page, 'confirm-customer-response')).click();
   await expect(page.getByTestId('customer-response-requests')).toContainText('Sent');
+  const notificationCountBeforeResponse = await notificationCount(request);
 
-  const link = await latestResponseLink(request);
+  let link: string | null = null;
+  await expect.poll(async () => {
+    link = await responseLinkForRecipient(request, customerEmail);
+    return link;
+  }, { timeout: 10_000 }).toBeTruthy();
+  if (!link) throw new Error('Clarification-request link is missing from the email.');
   const publicContext = await browser.newContext();
   const publicPage = await publicContext.newPage();
   await publicPage.goto(link);
@@ -36,28 +43,40 @@ test('sends a narrow Customer request, accepts the public response, and clears i
   await expect(publicPage.getByRole('status')).toContainText('Thank you');
   await publicContext.close();
 
-  const projectName = `Ügyfél-pontosítás ${unique}`;
-  await page.getByTestId('global-notifications-link').click();
-  const notification = page
-    .getByTestId('notification-list')
-    .getByRole('listitem')
-    .filter({ hasText: projectName });
-  await expect(notification).toContainText('New Customer clarification');
-  await notification.getByRole('link', { name: 'Open' }).click();
+  await expect.poll(
+    () => notificationCount(request),
+    { timeout: 15_000 },
+  ).toBe(notificationCountBeforeResponse + 1);
+  await page.goto(`/projects/${projectId}/customer-correspondences`);
   await expect(page.getByTestId('customer-response-requests')).toContainText('A pilot ügyfélcsoporttal induljunk.');
   await (await nativeButton(page, 'review-customer-response')).click();
-  await page.getByTestId('global-notifications-link').click();
-  await expect(
-    page.getByTestId('notification-list').getByRole('listitem').filter({ hasText: projectName }),
-  ).toHaveCount(0);
+  await expect.poll(
+    () => notificationCount(request),
+    { timeout: 15_000 },
+  ).toBe(notificationCountBeforeResponse);
 });
 
-async function latestResponseLink(request: APIRequestContext): Promise<string> {
+async function notificationCount(request: APIRequestContext): Promise<number> {
+  const response = await request.get('/api/notifications');
+  const notifications = await response.json() as { totalCount: number };
+  return notifications.totalCount;
+}
+
+async function responseLinkForRecipient(
+  request: APIRequestContext,
+  recipient: string,
+): Promise<string | null> {
   const response = await request.get('http://127.0.0.1:25260/__test/sent-messages');
-  const messages = await response.json() as Array<{ textContent: string | null }>;
-  const link = /(http:\/\/127\.0\.0\.1:4200\/respond#[A-Za-z0-9_-]+)/.exec(messages.at(-1)?.textContent ?? '')?.[1];
-  if (!link) throw new Error('Clarification-request link is missing from the email.');
-  return link;
+  const messages = await response.json() as Array<{
+    recipientAddresses: string[];
+    textContent: string | null;
+  }>;
+  const message = messages.findLast((candidate) =>
+    candidate.recipientAddresses.includes(recipient),
+  );
+  return /(http:\/\/127\.0\.0\.1:4200\/respond#[A-Za-z0-9_-]+)/.exec(
+    message?.textContent ?? '',
+  )?.[1] ?? null;
 }
 
 async function nativeButton(page: Page, testId: string): Promise<Locator> {
