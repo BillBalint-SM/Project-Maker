@@ -111,11 +111,59 @@ describe('AppComponent', () => {
     await fixture.whenStable();
     const toggle = fixture.nativeElement.querySelector('[data-testid="navigation-toggle"]') as HTMLButtonElement;
     expect(toggle.getAttribute('aria-label')).toBe('Open navigation menu');
-    expect(toggle.textContent).toContain('Menu');
+    expect(toggle.textContent).toContain('Navigate');
 
     toggle.click();
     fixture.detectChanges();
     expect(toggle.getAttribute('aria-label')).toBe('Close navigation menu');
+  });
+
+  it('opens Journey navigation with Control K and moves focus to the first destination', async () => {
+    await TestBed.configureTestingModule({
+      imports: [AppComponent],
+      providers: [
+        provideRouter([]),
+        { provide: AuthApiService, useValue: { currentUser: signal({ id: firstUserId, email: 'po@example.test' }), logout: () => of(undefined) } },
+        { provide: CustomerRepliesApiService, useValue: { summaryChanges: of(replyUpdate(0)), summary: () => of({ newReplyCount: 0, projectCount: 0, projects: [] }) } },
+        { provide: NotificationsApiService, useValue: { current: signal(null), load: () => of({ items: [], totalCount: 0 }) } },
+      ],
+    }).compileComponents();
+
+    const fixture = TestBed.createComponent(AppComponent);
+    await fixture.whenStable();
+    const event = new KeyboardEvent('keydown', { key: 'k', ctrlKey: true, cancelable: true });
+    document.dispatchEvent(event);
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    expect(event.defaultPrevented).toBe(true);
+    expect(fixture.nativeElement.querySelector('[data-testid="navigation-panel"]')?.classList.contains('open')).toBe(true);
+    expect(document.activeElement).toBe(
+      fixture.nativeElement.querySelector('[data-testid="global-portfolio-link"]'),
+    );
+  });
+
+  it('moves focus to main content after a route activation beyond the initial route', async () => {
+    await TestBed.configureTestingModule({
+      imports: [AppComponent],
+      providers: [
+        provideRouter([]),
+        { provide: AuthApiService, useValue: { currentUser: signal({ id: firstUserId, email: 'po@example.test' }), logout: () => of(undefined) } },
+        { provide: CustomerRepliesApiService, useValue: { summaryChanges: of(replyUpdate(0)), summary: () => of({ newReplyCount: 0, projectCount: 0, projects: [] }) } },
+        { provide: NotificationsApiService, useValue: { current: signal(null), load: () => of({ items: [], totalCount: 0 }) } },
+      ],
+    }).compileComponents();
+
+    const fixture = TestBed.createComponent(AppComponent);
+    await fixture.whenStable();
+    fixture.componentInstance.handleRouteActivate();
+    fixture.componentInstance.handleRouteActivate();
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    expect(document.activeElement).toBe(
+      fixture.nativeElement.querySelector('#main-content'),
+    );
   });
 
   it('shows a retry for a failed Customer-reply summary without reloading Notifications', async () => {

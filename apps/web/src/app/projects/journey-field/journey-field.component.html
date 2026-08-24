@@ -1,0 +1,123 @@
+<section class="journey-field" aria-labelledby="journey-field-title" data-testid="journey-field">
+  <header class="journey-field__intro">
+    <div class="journey-field__copy">
+      <span class="eyebrow">Preparation field</span>
+      <h2 id="journey-field-title">See the route. Move the work.</h2>
+      <p>
+        Every node is a real project on the current portfolio page, positioned by its canonical
+        preparation state. Select a node to reveal the next move.
+      </p>
+    </div>
+    <nav class="view-switch" aria-label="Portfolio view">
+      <a routerLink="/" aria-current="page">Journey</a>
+      <a routerLink="/projects/active">Queue</a>
+    </nav>
+  </header>
+
+  <div class="journey-field__scope" aria-live="polite">
+    <span><strong>{{ entries().length }}</strong> on this page</span>
+    <span>{{ totalCount() }} across the current filter</span>
+    <span>Page {{ page() }} of {{ pageCount() || 1 }}</span>
+  </div>
+
+  @if (locatedEntries().length > 0) {
+    <div
+      class="journey-canvas"
+      role="group"
+      aria-label="Projects by preparation stage"
+      data-testid="journey-canvas"
+    >
+      <ol class="journey-route">
+        @for (stage of stages(); track stage.state; let index = $index) {
+          <li class="journey-stage" [attr.data-state]="stage.state">
+            <div class="journey-stage__head">
+              <span class="journey-stage__index">0{{ index + 1 }}</span>
+              <h3>{{ stage.shortLabel }}</h3>
+              <a
+                routerLink="/projects/active"
+                [queryParams]="queueQueryParams(stage.state)"
+                [attr.aria-label]="'Open ' + stage.label + ' projects in Queue'"
+              >{{ stage.items.length }} here</a>
+            </div>
+
+            <div class="journey-stage__nodes">
+              @for (entry of stage.visibleItems; track entry.project.id) {
+                <button
+                  type="button"
+                  class="journey-node"
+                  [class.journey-node--selected]="selectedEntry()?.project?.id === entry.project.id"
+                  [attr.aria-pressed]="selectedEntry()?.project?.id === entry.project.id"
+                  [attr.aria-label]="entry.project.name + ', ' + entry.workState.urgencyLabel"
+                  [attr.title]="entry.project.name"
+                  [attr.data-testid]="'journey-node-' + entry.project.id"
+                  (click)="selectProject(entry.project.id)"
+                >
+                  <span class="journey-node__signal" aria-hidden="true"></span>
+                  <span class="journey-node__copy">
+                    <strong>{{ entry.project.name }}</strong>
+                    <small>{{ entry.workState.urgencyLabel }}</small>
+                  </span>
+                </button>
+              } @empty {
+                <span class="journey-stage__empty">No project here</span>
+              }
+              @if (stage.items.length > stage.visibleItems.length) {
+                <a class="journey-stage__overflow" routerLink="/projects/active" [queryParams]="queueQueryParams(stage.state)">
+                  +{{ stage.items.length - stage.visibleItems.length }} more in Queue
+                </a>
+              }
+            </div>
+          </li>
+        }
+      </ol>
+    </div>
+
+    @if (selectedEntry(); as entry) {
+      <aside class="journey-detail" aria-labelledby="journey-detail-title" data-testid="journey-detail">
+        <div class="journey-detail__identity">
+          <span>{{ entry.workState.preparationStatus.label }}</span>
+          <h3 id="journey-detail-title">{{ entry.project.name }}</h3>
+          <p>{{ entry.workState.urgencyLabel }}</p>
+        </div>
+        <dl>
+          <div>
+            <dt>Next action</dt>
+            <dd>{{ entry.workState.nextAction || 'Not specified' }}</dd>
+          </div>
+          <div>
+            <dt>Owner</dt>
+            <dd>{{ entry.workState.nextActionOwner.displayName || 'Not assigned' }}</dd>
+          </div>
+          <div>
+            <dt>Due</dt>
+            <dd>{{ entry.workState.dueAt ? (entry.workState.dueAt | date: 'yyyy-MM-dd HH:mm') : 'Not specified' }}</dd>
+          </div>
+          @if (progressLabel(entry.workState.progress); as progress) {
+            <div>
+              <dt>Progress</dt>
+              <dd>{{ progress }}</dd>
+            </div>
+          }
+        </dl>
+        <a
+          class="journey-detail__action"
+          [routerLink]="projectRoute(entry)"
+          [queryParams]="{ returnTo: '/' }"
+          [fragment]="actionFragment(entry)"
+        >{{ entry.workState.primaryAction.label }} <span aria-hidden="true">→</span></a>
+      </aside>
+    }
+  } @else {
+    <div class="journey-field__empty">
+      <h3>No preparation positions yet</h3>
+      <p>The projects on this page do not have a canonical preparation state to place on the route.</p>
+    </div>
+  }
+
+  @if (unlocatedCount() > 0) {
+    <p class="journey-field__notice">
+      {{ unlocatedCount() }} project{{ unlocatedCount() === 1 ? '' : 's' }} on this page
+      {{ unlocatedCount() === 1 ? 'does' : 'do' }} not have a preparation position yet.
+    </p>
+  }
+</section>

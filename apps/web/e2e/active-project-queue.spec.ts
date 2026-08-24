@@ -31,7 +31,7 @@ test('searches and filters the Active project queue with reload-safe replace-his
   await page.goto('/');
   await page.getByTestId('active-project-queue-link').click();
   await expect(page).toHaveURL('/projects/active');
-  await expect(page.getByRole('heading', { name: 'Active Project Queue' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Queue', exact: true })).toBeVisible();
   await page.getByTestId('queue-search').fill(`  ARVIZTURO MUNKASOR ${uniquePart.toUpperCase()}  `);
 
   const projectLink = page.getByTestId(`queue-project-${project.id}`);
@@ -81,7 +81,7 @@ test('completes the keyboard employee journey and restores the paged queue URL a
   await tabTo(page, overdueFilter);
   await page.keyboard.press('Space');
   await expect(overdueFilter).toBeChecked();
-  await expect(page.getByRole('region', { name: 'Next action overdue' })).toBeVisible();
+  await expect(page.getByRole('rowgroup', { name: 'Next action overdue' })).toBeVisible();
   await expect(page.locator('.queue-row')).toHaveCount(10);
 
   const nextPage = page.getByTestId('queue-next-page');
@@ -206,11 +206,11 @@ test('pages through one urgency group with history and recovers an obsolete curs
   await page.getByTestId('queue-search').fill(uniquePart);
   await expect(page).toHaveURL(new RegExp(`q=${uniquePart}`));
   await expect(page.locator('.queue-row')).toHaveCount(10);
-  await expect(page.getByRole('heading', { name: 'Next action overdue' })).toBeVisible();
+  await expect(page.getByRole('rowgroup', { name: 'Next action overdue' })).toBeVisible();
   await page.getByTestId('queue-next-page').click();
   await expect(page).toHaveURL(/cursor=/);
   await expect(page.locator('.queue-row')).toHaveCount(1);
-  await expect(page.getByRole('heading', { name: 'Next action overdue' })).toBeVisible();
+  await expect(page.getByRole('rowgroup', { name: 'Next action overdue' })).toBeVisible();
 
   await page.goBack();
   await expect(page).not.toHaveURL(/cursor=/);
@@ -331,10 +331,13 @@ test('preserves ordered semantic work groups without losing row content', async 
 
   const groups = page.getByTestId('active-queue-group');
   await expect(groups).toHaveCount(2);
-  await expect(groups.nth(0).getByRole('heading')).toHaveText('Next action overdue');
-  await expect(groups.nth(1).getByRole('heading')).toHaveText('In progress');
-  await expect(groups.nth(0).getByRole('listitem')).toContainText('Egyeztesd a következő workshopot.');
-  await expect(groups.nth(0).getByRole('listitem')).toContainText('Kovács Anna');
+  await expect(groups.nth(0)).toHaveRole('rowgroup');
+  await expect(groups.nth(0)).toHaveAccessibleName('Next action overdue');
+  await expect(groups.nth(1)).toHaveRole('rowgroup');
+  await expect(groups.nth(1)).toHaveAccessibleName('In progress');
+  const overdueRow = groups.nth(0).getByRole('row').nth(1);
+  await expect(overdueRow).toContainText('Egyeztesd a következő workshopot.');
+  await expect(overdueRow).toContainText('Kovács Anna');
   await expect(page.getByTestId(`queue-action-${overdueProject.id}`)).toBeVisible();
   await expect(page.getByTestId(`queue-action-${ordinaryProject.id}`)).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);

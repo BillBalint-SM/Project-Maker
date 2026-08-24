@@ -17,10 +17,6 @@
         </span>
       </a>
 
-      <div class="journey-rail" aria-hidden="true">
-        <span>Discover</span><i>01</i><span>Decide</span><i>02</i><span>Deliver</span>
-      </div>
-
       <div class="header-tools">
         <app-theme-toggle />
         <button
@@ -36,7 +32,8 @@
           <span class="navigation-toggle-icon" aria-hidden="true">
             <i></i><i></i><i></i>
           </span>
-          <span>Menu</span>
+        <span class="navigation-toggle-label">Navigate</span>
+          <kbd aria-hidden="true">Ctrl K</kbd>
         </button>
       </div>
 
@@ -48,9 +45,9 @@
         [attr.aria-hidden]="!navigationOpen()"
       >
         <section class="workspace-intro" aria-labelledby="workspace-map-intro-title">
-          <span class="map-index">PM / MAP 01</span>
-          <h2 id="workspace-map-intro-title">Follow the work, not the menu.</h2>
-          <p>Orient in the portfolio, move preparation forward, then configure the tools behind it.</p>
+          <span class="map-index">PM / JOURNEY 01</span>
+          <h2 id="workspace-map-intro-title">Choose the next move.</h2>
+          <p>Use Journey for spatial orientation or switch to Queue when speed and density matter.</p>
           <a
             class="workspace-map-link"
             routerLink="/workspace-map"
@@ -70,6 +67,7 @@
               <ul>
                 <li>
                   <a
+                    #navigationFirstLink
                     aria-label="Portfolio"
                     data-testid="global-portfolio-link"
                     routerLink="/"
@@ -264,6 +262,6 @@
   <app-theme-toggle [floating]="true" />
 }
 
-<main id="main-content" class="app-main" tabindex="-1">
-  <router-outlet />
+<main #mainContent id="main-content" class="app-main" tabindex="-1">
+  <router-outlet (activate)="handleRouteActivate()" />
 </main>

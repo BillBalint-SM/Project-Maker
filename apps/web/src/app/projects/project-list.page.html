@@ -1,48 +1,26 @@
 <section aria-labelledby="projects-title">
   <div class="heading-row">
     <div class="page-heading">
-      <span class="eyebrow">Portfolio</span>
-      <h1 id="projects-title">Portfolio Overview</h1>
-      <p>A paginated, server-filtered view of projects with their latest status update and formal decision.</p>
+      <span class="eyebrow">Portfolio / Journey</span>
+      <h1 id="projects-title">Project Journey</h1>
+      <p>Orient by preparation stage, select the work that matters, and continue from its canonical next action.</p>
     </div>
     <div class="heading-actions">
-      <a pButton routerLink="/projects/active" data-testid="active-project-queue-link">Active Project Queue</a>
+      <a pButton routerLink="/projects/active" data-testid="active-project-queue-link">Queue · Power view</a>
       <a pButton routerLink="/projects/new" severity="secondary" data-testid="new-project-button">New Project</a>
     </div>
   </div>
 
-  <aside class="journey-preview-panel" aria-labelledby="journey-preview-title" data-testid="journey-preview">
-    <div class="journey-preview-copy">
-      <span class="eyebrow">Project preparation journey</span>
-      <h2 id="journey-preview-title">See how work moves from first question to delivery handoff.</h2>
-      <p>
-        Orient in the Portfolio, build confirmed context, close discovery gaps, prepare the
-        Specification, and hand off only after reviewing the exact output.
-      </p>
-      <a
-        pButton
-        routerLink="/workspace-map"
-        [queryParams]="workspaceMapQueryParams"
-        severity="secondary"
-        data-testid="portfolio-workspace-map-link"
-      >Explore the Workspace Map</a>
-    </div>
-    <a
-      class="journey-preview-visual"
-      routerLink="/workspace-map"
-      [queryParams]="workspaceMapQueryParams"
-      aria-label="Open the interactive Project Preparation Journey"
-    >
-      <img
-        [src]="journeyPreviewUrl()"
-        alt="Preview of the Project Preparation Journey from Portfolio Overview to Project Specification and Git handoff."
-        width="1440"
-        height="900"
-        loading="lazy"
-        decoding="async"
+  @if (!loading() && !loadError()) {
+    @if (portfolio(); as journeyPortfolio) {
+      <app-journey-field
+        [entries]="journeyPortfolio.items"
+        [page]="journeyPortfolio.page"
+        [pageCount]="journeyPortfolio.pageCount"
+        [totalCount]="journeyPortfolio.totalCount"
       />
-    </a>
-  </aside>
+    }
+  }
 
   <form class="portfolio-filters" [formGroup]="filterForm" (ngSubmit)="applyFilters()" aria-label="Portfolio filters">
     <label>
@@ -151,7 +129,11 @@
         }
       </div>
     } @else {
-      <p class="result-count">{{ currentPortfolio.totalCount }} projects · page {{ currentPortfolio.page }} of {{ currentPortfolio.pageCount }}</p>
+      <div class="register-heading">
+        <span class="eyebrow">Project register</span>
+        <h2>Current filter</h2>
+        <p class="result-count">{{ currentPortfolio.totalCount }} projects · page {{ currentPortfolio.page }} of {{ currentPortfolio.pageCount }}</p>
+      </div>
       <div class="project-grid" data-testid="portfolio-results">
         @for (entry of currentPortfolio.items; track entry.project.id) {
           <a class="project-card" [routerLink]="projectRoute(entry)" [queryParams]="projectContextQueryParams" [fragment]="entry.workState ? actionFragment(entry.workState.primaryAction.target) : undefined" [attr.data-testid]="'project-card-' + entry.project.id">

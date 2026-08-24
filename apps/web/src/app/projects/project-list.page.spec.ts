@@ -1,7 +1,7 @@
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
-import { of } from 'rxjs';
+import { of, Subject } from 'rxjs';
 import { describe, expect, it, vi } from 'vitest';
 import type { CustomerMailboxSyncStatus, PortfolioPage, ProjectPortfolioEntry } from '@project-maker/contracts';
 
@@ -11,7 +11,7 @@ import { CustomerRepliesApiService } from './customer-replies-api.service';
 import { DecisionPortfolioApiService } from './decision-portfolio-api.service';
 import { ProjectListPage } from './project-list.page';
 
-describe('ProjectListPage correspondence mailbox synchronization', () => {
+describe('ProjectListPage', () => {
   it('shows mailbox freshness and refreshes through the employee action', async () => {
     const initial: CustomerMailboxSyncStatus = {
       mailboxAddress: 'project-maker@pte.hu',
@@ -55,14 +55,9 @@ describe('ProjectListPage correspondence mailbox synchronization', () => {
     expect(
       fixture.nativeElement.querySelector('[data-testid="active-project-queue-link"]')?.getAttribute('href'),
     ).toBe('/projects/active');
-    expect(
-      fixture.nativeElement.querySelector('[data-testid="portfolio-workspace-map-link"]')
-        ?.getAttribute('href'),
-    ).toBe('/workspace-map?view=user-workflow');
-    expect(
-      fixture.nativeElement.querySelector('[data-testid="journey-preview"] img')
-        ?.getAttribute('src'),
-    ).toBe('/diagrams/previews/project-maker-user-workflow.preview.dark.png');
+    expect(fixture.nativeElement.querySelector('[data-testid="journey-field"]')).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('[data-testid="journey-field"]')?.textContent)
+      .toContain('No preparation positions yet');
     expect(fixture.nativeElement.querySelector('[data-testid="projects-empty"]')?.textContent)
       .toContain('Create your first project');
     expect(fixture.nativeElement.querySelectorAll('[data-testid="first-project-checklist"] li'))
@@ -200,6 +195,76 @@ describe('ProjectListPage correspondence mailbox synchronization', () => {
     expect(card?.textContent).not.toContain('Write-model owner');
     expect(card?.textContent).not.toContain('Write-model next action.');
     expect(card?.textContent).not.toContain('Historical status next step.');
+    expect(
+      fixture.nativeElement.querySelector(
+        '[data-testid="journey-node-11111111-1111-4111-8111-111111111111"]',
+      )?.textContent,
+    ).toContain('Ügyfélválaszos projekt');
+    expect(fixture.nativeElement.querySelector('[data-testid="journey-detail"]')?.textContent)
+      .toContain('Canonical operational next action.');
+  });
+
+  it('hides stale Journey data while a refresh is loading or has failed', async () => {
+    const initialRequest = new Subject<PortfolioPage>();
+    const refreshRequest = new Subject<PortfolioPage>();
+    const portfolioApi = {
+      portfolio: vi.fn()
+        .mockReturnValueOnce(initialRequest)
+        .mockReturnValueOnce(refreshRequest),
+    };
+
+    await TestBed.configureTestingModule({
+      imports: [ProjectListPage],
+      providers: [
+        provideRouter([]),
+        { provide: DecisionPortfolioApiService, useValue: portfolioApi },
+        { provide: AuthApiService, useValue: { currentUser: signal({ id: 'user-1', email: 'po@example.test' }) } },
+        {
+          provide: CustomerMailboxSyncApiService,
+          useValue: {
+            status: vi.fn().mockReturnValue(of({
+              mailboxAddress: null,
+              state: 'NOT_CONFIGURED',
+              baselineEstablished: false,
+              lastSuccessfulSyncAt: null,
+              refreshInProgress: false,
+            } satisfies CustomerMailboxSyncStatus)),
+            refresh: vi.fn(),
+          },
+        },
+        {
+          provide: CustomerRepliesApiService,
+          useValue: {
+            summary: vi.fn().mockReturnValue(of({ newReplyCount: 0, projectCount: 0, projects: [] })),
+          },
+        },
+      ],
+    }).compileComponents();
+
+    const fixture = TestBed.createComponent(ProjectListPage);
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('[data-testid="projects-loading"]')).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('[data-testid="journey-field"]')).toBeNull();
+
+    initialRequest.next(emptyPortfolio());
+    initialRequest.complete();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('[data-testid="journey-field"]')).not.toBeNull();
+
+    fixture.componentInstance.loadProjects();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('[data-testid="projects-loading"]')).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('[data-testid="journey-field"]')).toBeNull();
+
+    refreshRequest.error(new Error('Portfolio refresh failed'));
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance.portfolio()).toEqual(emptyPortfolio());
+    expect(fixture.nativeElement.querySelector('[data-testid="projects-error"]')).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('[data-testid="journey-field"]')).toBeNull();
   });
 });
 

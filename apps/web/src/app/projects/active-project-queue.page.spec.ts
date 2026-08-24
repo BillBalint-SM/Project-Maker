@@ -109,6 +109,8 @@ describe('ActiveProjectQueuePageComponent', () => {
       cursor: undefined,
     });
     expect(element.querySelectorAll('[data-testid="active-queue-group"]')).toHaveLength(2);
+    expect(element.querySelector('[data-testid="active-queue-table"]')?.tagName).toBe('TABLE');
+    expect(element.querySelector('.view-switch a')?.getAttribute('href')).toBe('/');
     expect(element.textContent).toContain('New Customer reply');
     expect(element.textContent).toContain('4 / 9 questions answered');
     expect(element.textContent).toContain('In progress');

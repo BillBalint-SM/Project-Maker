@@ -1,483 +1,340 @@
 # Project Maker Design System
 
-Status: **locked application-wide source of truth**
-Owner: Project Maker product design
-Last updated: 2026-08-23
-Applies to: the Angular web application, authentication shell, navigation shell, feature pages, and shared components
+Status: locked production direction
 
-Future Hallmark work must read this file before proposing page-level changes. Page briefs may choose composition and content density, but they may not introduce a parallel palette, typography system, logo treatment, navigation grammar, or motion language.
+Selected: 2026-08-24
+Authority: this file defines the visual and interaction system for the Project Maker web application.
 
-## 1. Design direction
+## 1. Product position
 
-Project Maker is a **nocturnal control room for project preparation**: precise, alive, and directional without looking theatrical. The interface should make the preparation journey feel visible and navigable, as though scattered discovery converges into a decision and then into an executable project.
+Project Maker is a preparation journey, not a generic project dashboard. Its interface should let an operator answer three questions immediately:
 
-| Hallmark dimension | Locked choice |
-| --- | --- |
+1. Where is each project in preparation?
+2. Which project needs attention now?
+3. What is the canonical next action?
+
+The production core is **B — Journey Field**. The separate **Queue** view keeps the dense operational logic of direction D for power users, but it uses the same B typography, color, shape, focus, and motion system. D does not introduce a second visual theme.
+
+## 2. Locked Hallmark selection
+
+| Axis | Selection |
+|---|---|
+| Verb | Redesign |
+| Scope | Application shell, Portfolio core, Queue power view |
 | Genre | Atmospheric |
-| Macrostructure | Workbench |
-| Navigation | N11 mega-menu, adapted as an opaque control panel |
-| Theme | Custom: nocturnal control room / sharp convergence |
-| Theme axes | Dark-default + true light / geometric sans / cool |
-| Primary color role | Blue = structure, navigation, active system state |
-| Restricted semantic roles | Magenta = discovery; yellow = decision and focus |
-| Display type | Bricolage Grotesque Variable |
-| Body and UI type | IBM Plex Sans Variable |
-| Primary viewport | Desktop, 1024 px and wider |
-| Compact safety range | Shell and authentication must remain usable at 320–768 px |
+| Core macrostructure | Map / Diagram |
+| Queue macrostructure | Dense operational table with Bento information logic |
+| Navigation | N4: visible Navigate trigger plus Control/Command K |
+| Footer | None; this is an application shell |
+| Theme | Midnight, dark by default with a complete light pair |
+| Type | Tomorrow display + IBM Plex Sans body |
+| Enrichment | None |
+| Motion | One route reveal, selection feedback, direct control feedback |
 
-“Atmospheric” describes depth, hierarchy, and spatial tension here. It does **not** authorize ambient blooms, decorative glows, glass panels, gradient headings, or autonomous animation.
+The atmospheric quality comes from spatial sequencing, deep tinted surfaces, decisive contrast, and controlled neon signals. It does not come from glass, glow clouds, looping particles, fake terminal chrome, or gradient headlines.
 
-## 2. Product language
+## 3. Identity: the Journey Mark
 
-Keep established Project Maker domain terms intact. Visual redesign is not permission to rename domain concepts or turn professional workflow language into marketing copy.
+The Project Maker mark is a rising route with three preparation nodes and a forward corner.
 
-- The user belongs to an **Operator organization**.
-- A **Project Idea** begins the **Project preparation journey**.
-- Preparation is organized through **Discovery**, **Decision**, and the downstream project workflow already present in the product.
-- The guided feeling comes from sequence, spatial hierarchy, status, and progressive disclosure—not from an invented onboarding narrative or a fake “AI assistant tour.”
-- Use real Project Maker UI and real states in workbench presentations. Do not place product screenshots inside fake browser or device chrome.
+- The route expresses movement through preparation.
+- The first magenta node represents discovery.
+- The cyan node represents active movement.
+- The yellow node represents decision and readiness.
+- The arrow corner expresses a concrete next action.
+- A dark under-stroke keeps the mark legible in both themes and at favicon size.
 
-## 3. Identity: the convergence mark
-
-The Project Maker mark is a sharp, compact convergence symbol:
-
-1. A structural blue trajectory establishes the route.
-2. A shorter magenta branch represents discovery entering the route.
-3. Both resolve at a yellow decision point.
-4. The resulting silhouette points forward and remains legible at favicon size.
-
-The mark must work as a single-color cutout as well as in the three-role color version. Geometry is angular, balanced, and intentional; no soft blob, generic spark, isolated letter “P,” cube, or infinity loop. The mark is static. Color separation—not glow or animation—carries the concept.
-
-The wordmark uses Bricolage Grotesque Variable at a firm weight with tight tracking. “Project Maker” stays readable; it is not compressed into an acronym in the primary lockup.
+The primary wordmark reads “Project Maker” in Tomorrow at 600. Do not compress it to an acronym in the main shell.
 
 ## 4. Color system
 
-All application color must resolve through named role tokens. Do not use raw palette values inside feature styles. The dark theme is the default; the light theme is a complete theme, not an inverted afterthought. Both themes preserve the same semantic hues.
+All production views use this single role system.
 
-### Role usage
+### 4.1 Dark — default
 
-| Role | Dark | Light | Purpose |
-| --- | --- | --- | --- |
-| `paper` | `oklch(12% 0.022 265)` | `oklch(97% 0.009 255)` | Page canvas |
-| `paper-2` | `oklch(16% 0.026 265)` | `oklch(94.5% 0.012 255)` | Shell and secondary region |
-| `paper-3` | `oklch(21% 0.030 265)` | `oklch(91% 0.016 255)` | Raised/selected region |
-| `rule` | `oklch(34% 0.034 260)` | `oklch(74% 0.028 255)` | Strong structural divider |
-| `rule-2` | `oklch(27% 0.030 262)` | `oklch(84% 0.022 255)` | Default border |
-| `control-border` | `oklch(52% 0.032 258)` | `oklch(56% 0.030 258)` | Perceivable form-control boundary |
-| `muted` | `oklch(70% 0.030 255)` | `oklch(43% 0.032 260)` | Secondary readable text |
-| `neutral` | `oklch(50% 0.032 258)` | `oklch(56% 0.030 258)` | Disabled/inactive state |
-| `ink-2` | `oklch(80% 0.022 255)` | `oklch(31% 0.028 260)` | Supporting text |
-| `ink` | `oklch(95% 0.012 250)` | `oklch(18% 0.025 265)` | Primary text |
-| `accent` | `oklch(72% 0.170 245)` | `oklch(51% 0.190 252)` | Structural blue, primary action, active route |
-| `accent-ink` | `oklch(13% 0.025 265)` | `oklch(97% 0.009 255)` | Text/icon on structural blue |
-| `discovery` | `oklch(72% 0.200 328)` | `oklch(50% 0.220 328)` | Discovery state and branch only |
-| `decision` | `oklch(88% 0.170 96)` | `oklch(60% 0.150 90)` | Decision state, decisive checkpoint |
-| `decision-text` | `oklch(88% 0.170 96)` | `oklch(51% 0.150 90)` | Accessible yellow label text on theme surfaces |
-| `focus` | `oklch(88% 0.190 96)` | `oklch(54% 0.180 90)` | Keyboard focus ring |
-| `success` | `oklch(74% 0.150 150)` | `oklch(46% 0.140 150)` | Successful outcome |
-| `warning` | `oklch(82% 0.150 82)` | `oklch(52% 0.140 78)` | Warning |
-| `danger` | `oklch(70% 0.190 28)` | `oklch(50% 0.190 28)` | Destructive/error state |
+| Role | Value | Use |
+|---|---|---|
+| Paper | `oklch(12% 0.03 255)` | Main canvas |
+| Paper deep | `oklch(8% 0.028 255)` | Shell and route field |
+| Paper 2 | `oklch(17% 0.038 255)` | Primary surfaces |
+| Paper 3 | `oklch(23% 0.045 252)` | Raised controls |
+| Ink | `oklch(95% 0.012 235)` | Primary text |
+| Ink 2 | `oklch(81% 0.03 225)` | Secondary text |
+| Muted | `oklch(70% 0.035 230)` | Supporting copy |
+| Rule | `oklch(45% 0.07 225)` | Strong separators |
+| Rule 2 | `oklch(31% 0.055 245)` | Quiet separators |
+| Accent | `oklch(78% 0.15 195)` | Route, primary action, selected state |
+| Accent ink | `oklch(12% 0.03 255)` | Text on accent |
+| Discovery | `oklch(74% 0.19 328)` | Discovery signal only |
+| Decision/focus | `oklch(86% 0.17 95)` | Decision and focus |
+| Success | `oklch(76% 0.14 155)` | Confirmed success |
+| Warning | `oklch(82% 0.15 82)` | Warning |
+| Danger | `oklch(71% 0.19 28)` | Error and destructive state |
 
-Blue owns the broadest chromatic footprint. Magenta and yellow are domain signals, not alternate decorative accents. A surface should normally show one dominant chromatic role; discovery and decision colors may meet only where the journey relationship itself is being explained.
+### 4.2 Light
+
+| Role | Value |
+|---|---|
+| Paper | `oklch(98% 0.012 235)` |
+| Paper deep | `oklch(91% 0.026 238)` |
+| Paper 2 | `oklch(94% 0.02 235)` |
+| Paper 3 | `oklch(89% 0.03 232)` |
+| Ink | `oklch(16% 0.035 255)` |
+| Ink 2 | `oklch(30% 0.04 250)` |
+| Muted | `oklch(42% 0.045 245)` |
+| Rule | `oklch(58% 0.065 235)` |
+| Rule 2 | `oklch(78% 0.04 235)` |
+| Accent | `oklch(40% 0.15 225)` |
+| Accent ink | `oklch(98% 0.012 235)` |
+| Discovery | `oklch(43% 0.17 328)` |
+| Decision | `oklch(40% 0.13 85)` |
+| Focus | `oklch(43% 0.19 275)` |
+| Success | `oklch(39% 0.13 155)` |
+| Warning | `oklch(40% 0.13 76)` |
+| Danger | `oklch(43% 0.19 28)` |
+
+### 4.3 Footprint rules
+
+- Accent occupies no more than roughly five percent of a normal viewport outside the Journey route.
+- Magenta never becomes a general secondary button color.
+- Yellow is reserved for decision semantics, focus, and exceptional attention.
+- Color never carries state by itself; pair it with text, count, shape, or position.
+- Never use pure black or pure white as a base surface.
 
 ## 5. Typography
 
-- **Display and wordmark:** `"Bricolage Grotesque Variable"`, fallback `"Arial Narrow"`, `ui-sans-serif`, `sans-serif`.
-- **Body, controls, labels, and technical values:** `"IBM Plex Sans Variable"`, fallback `"Segoe UI"`, `ui-sans-serif`, `sans-serif`.
-- Keep the system to these two families. Technical values use tabular figures instead of introducing a third monospace family.
-- Display headings are roman, tight, and decisive: weight 720, tracking `-0.035em`, line height `0.98–1.08`.
-- Body copy is weight 400–450 with line height `1.5–1.65`.
-- Labels may use weight 600 and modest tracking up to `0.04em`; do not turn every section label into an uppercase eyebrow ornament.
-- Heading color is solid `ink`. Gradient text is prohibited.
+- Display and wordmark: `"Tomorrow"`, weights 500–700.
+- Body and UI: `"IBM Plex Sans Variable"`, weights 400–700.
+- Technical values use IBM Plex Sans with tabular numerals; there is no third non-code face.
+- Display headings are roman, balanced where supported, and use line-height 1.04 or greater.
+- Body copy uses 1.5–1.65 line-height and a 45–75 character measure.
+- Labels use restrained tracking; do not turn every section title into an all-caps eyebrow pair.
 
-## 6. Shape, spacing, and depth
+## 6. Shape, space, and depth
 
-- Use the 4 px spacing seed expressed through the tokens below.
-- Prefer cut planes, rules, alignment, and small radius changes over floating cards.
-- Card and control radii are `0.25rem`. Pills are reserved for status, compact counts, and binary segmented controls.
-- Elevation is rare. A restrained neutral shadow may identify one truly overlaid control; never tint a shadow into a glow.
-- Borders are functional: they explain zones, selection, or hierarchy. Avoid boxing every paragraph.
+- Spacing follows the named four-pixel-derived scale in `tokens.css`.
+- Card radius: 12 px.
+- Control radius: 8 px.
+- Pills are reserved for true compact statuses.
+- Use fine tinted rules before shadows. Shadows distinguish overlays and selected depth only.
+- Avoid card nesting. Journey nodes are controls on a route, not cards inside a hero card.
 
-## 7. Workbench macrostructure
+## 7. Core: Journey Field
 
-The application shell and major preparation pages use a Workbench rhythm:
+The Portfolio route is the spatial home of the product.
 
-1. **Functional heading:** page name, current project context, status, and the next meaningful action.
-2. **Workspace map:** a concise, spatial view of the Project preparation journey. It reveals the route and current position once when meaningful, then remains stable.
-3. **Primary work zone:** real forms, records, evidence, decisions, and project UI.
-4. **Context rail or support zone:** history, guidance, metadata, or actions that support the active task.
-5. **Resolution:** a clear saved/ready/blocked state and the next route.
+- Position projects only from `ProjectWorkState.preparationStatus.state`.
+- The six positions are Schema required, Intake in progress, Clarification required, Decision Review required, Estimate preparable, and Estimate ready.
+- Never infer position from administrative project status, health, readiness percentage, or decision score.
+- The map declares its scope: current filtered page, current page number, and total matching count.
+- A selected node reveals only canonical data: preparation label, urgency, next action, owner, due date, factual progress, and primary action.
+- Projects without a preparation state are not placed at a fabricated position; show an honest unavailable count.
+- The register beneath the field remains a secondary browse surface.
 
-Desktop compositions may be asymmetrical, but the reading order must remain obvious. The “magába szippant” quality comes from visible progress, strong direction, and controlled transitions—not from decorative spectacle.
+## 8. Power view: Queue
 
-## 8. N11 navigation adaptation
+Queue is a separate route for operators who value scanning speed and density.
 
-Use an N11 mega-menu for the desktop shell, with these Project Maker-specific constraints:
+- Use the existing active-queue endpoint, server counts, URL filters, cursors, retry behavior, and stale-data behavior.
+- Group rows by urgency in the server-defined order.
+- Present a semantic data table on wide screens and a label/value row layout on compact screens.
+- Metrics may show only real `totalCount` and `groupCounts`; no decorative percentages or synthetic velocity scores.
+- Journey and Queue are peer views of the same work and always share the Midnight palette.
 
-- The closed bar is compact and stable; the active destination uses blue structure color and a shape/weight cue.
-- The open panel is opaque `paper-2`/`paper-3`, full-width within the shell, and at most four columns or 60 vh high.
-- Group destinations by existing product areas and domain labels. Do not create vague marketing categories.
-- A dim scrim may clarify modality. Backdrop blur and glass are prohibited.
-- Open by click and keyboard. Hover may be an enhancement only and must include a close grace period.
-- Only one panel is open at a time. `Escape` closes and returns focus to the trigger. Triggers expose `aria-expanded` and `aria-controls`.
-- In the 320–768 px range, replace the mega panel with a drawer/accordion pattern. The compact shell must not horizontally scroll.
+## 9. Navigation
 
-## 9. Theme behavior
+Navigation uses N4 behavior:
 
-- First visit uses dark theme unless the product already has a stored explicit user choice.
-- Users can choose dark or light from an accessible labeled control; icon-only sun/moon affordances require an accessible name and state.
-- Persist an explicit choice and apply it before the application paints when platform constraints allow, avoiding a theme flash.
-- Apply exactly one root class: `pm-dark` or `pm-light`. Components consume semantic tokens only.
-- Native form controls receive the matching `color-scheme`.
-- Light theme preserves depth through ink, rule, and paper relationships. It does not replace navy with pure white or neon colors with pastels.
+- A visible **Navigate** control is always present for discovery.
+- Control K and Command K open the same surface and move focus to its first destination.
+- Escape closes it and restores focus to the trigger.
+- The panel groups Orient, Move, and Configure destinations; it is opaque and readable in both themes.
+- Current-route state uses text, border, and a narrow cyan signal.
+- Compact layouts preserve the same destinations and do not rely on hover.
 
-## 10. Motion contract
+## 10. Theme behavior
 
-Motion is allowed only for:
+- Dark is the first-visit default.
+- The user can explicitly select light or dark.
+- The choice persists through the existing theme state.
+- Both themes map the same semantic roles; components never branch on raw color values.
+- PrimeNG consumes the same role system through `app.theme.ts`.
 
-1. **Workspace map reveal:** a one-time opacity/translate reveal that explains sequence.
-2. **Route transition:** a short opacity/translate handoff that maintains spatial continuity.
-3. **Direct control feedback:** press, expand/collapse, selection, validation, and focus response.
+## 11. Motion
 
-Use only `transform` and `opacity`. No ambient infinite animation, animated background, floating particle, pulsing glow, looping scan line, or autonomous carousel. Reduced-motion mode removes spatial travel and caps feedback at 150 ms opacity changes.
+Only three motion families are allowed:
 
-## 11. Responsive and accessibility requirements
+1. Journey canvas: a single opacity/vertical arrival when real data appears.
+2. Selection and row feedback: background and border-color changes.
+3. Route transitions: the existing short directional view transition.
 
-- Design the full Workbench for 1024 px and wider.
-- At 768 px and below, collapse multi-column work zones and use compact navigation.
-- At 320, 375, 414, and 768 px, the shell and authentication flow must remain operable without horizontal scrolling, clipped actions, or inaccessible dialogs.
-- Keep focus visible with the yellow focus role and a non-color shape/rule change where practical.
-- Normal text targets WCAG AA contrast. Muted text is still readable text, never disabled-gray decoration.
-- Interactive targets are at least 44 × 44 px on compact layouts; desktop pointer targets may be denser only when keyboard equivalents remain clear.
-- Do not encode Discovery, Decision, success, warning, or danger by color alone. Pair them with text, icon, position, or shape.
-- Preserve logical DOM order when visual layout changes.
+No motion may change layout geometry. Every transform or animation has a `prefers-reduced-motion` fallback. Focus rings appear immediately.
 
-## 12. Explicit exclusions
+## 12. Responsive and accessibility contract
+
+- No document-level horizontal scroll from 320 px through 1920 px.
+- Test 320, 375, 414, 768, 1280×800, and 1440 widths.
+- Journey stages reflow from six to three to one column without changing semantic order.
+- Queue becomes a label/value layout before the table would overflow.
+- Interactive controls are at least 44 CSS px high where practical and at least 24×24 CSS px everywhere.
+- Every control has visible hover, focus-visible, active, and disabled treatment through the shared state layer.
+- Normal text meets WCAG 2.1 AA 4.5:1; large text, icons, boundaries, and focus indicators meet 3:1.
+- Keyboard focus is not obscured by the sticky shell or navigation surface.
+- Project names may truncate only where the full name remains available through the accessible label and title.
+- Dark and light are verified independently.
+
+## 13. Explicit exclusions
 
 Do not introduce:
 
-- glassmorphism, backdrop blur, translucent glass cards, or frosted mega-menus;
-- decorative glow, neon bloom, aurora, or halo effects;
-- gradient headings or ornamental eyebrow labels;
-- ambient or infinite motion;
-- fake browser/device chrome around product UI;
-- excessive rounded cards or pill-shaped primary buttons;
-- a second page-local theme, palette, font stack, logo, or motion grammar;
-- renamed Project Maker domain concepts for visual novelty.
+- cyan-to-magenta gradients or gradient text;
+- glassmorphism, backdrop blur as decoration, bloom clouds, or ambient glow;
+- fake browser, terminal, phone, or IDE chrome;
+- looping route animation, parallax, or particle systems;
+- emoji as structural icons;
+- a second green/terminal palette for Queue;
+- fabricated product metrics or fake global completion percentages;
+- generic hero → three cards → CTA structures.
 
-## 13. Canonical token exports
+## 14. Canonical exports
 
-The following four formats express the same locked semantic system. The Angular application remains SCSS/PrimeNG; Tailwind and shadcn blocks are portability mappings, not framework migration instructions.
+The executable source of truth is [`tokens.css`](tokens.css). The mappings below preserve the same semantic roles for other toolchains.
 
-### Format 1 — `tokens.css` source specification
-
-This block is the portable core of the implemented root `tokens.css`; the application file also contains the required Project Maker compatibility aliases and elevation roles.
+### 14.1 CSS
 
 ```css
 :root,
 .pm-dark {
-  color-scheme: dark;
-
-  --color-paper: oklch(12% 0.022 265);
-  --color-paper-2: oklch(16% 0.026 265);
-  --color-paper-3: oklch(21% 0.03 265);
-  --color-rule: oklch(34% 0.034 260);
-  --color-rule-2: oklch(27% 0.03 262);
-  --color-control-border: oklch(52% 0.032 258);
-  --color-muted: oklch(70% 0.03 255);
-  --color-neutral: oklch(50% 0.032 258);
-  --color-ink-2: oklch(80% 0.022 255);
-  --color-ink: oklch(95% 0.012 250);
-  --color-accent: oklch(72% 0.17 245);
-  --color-accent-ink: oklch(13% 0.025 265);
-  --color-discovery: oklch(72% 0.2 328);
-  --color-decision: oklch(88% 0.17 96);
-  --color-decision-text: oklch(88% 0.17 96);
-  --color-focus: oklch(88% 0.19 96);
-  --color-success: oklch(74% 0.15 150);
-  --color-warning: oklch(82% 0.15 82);
-  --color-danger: oklch(70% 0.19 28);
-
-  --font-display: "Bricolage Grotesque Variable", "Arial Narrow", ui-sans-serif, sans-serif;
-  --font-body: "IBM Plex Sans Variable", "Segoe UI", ui-sans-serif, sans-serif;
-  --font-wordmark: var(--font-display);
-
-  --text-xs: 0.75rem;
-  --text-sm: 0.875rem;
-  --text-base: 1rem;
-  --text-md: 1.25rem;
-  --text-lg: 1.5625rem;
-  --text-xl: 1.9531rem;
-  --text-2xl: 2.4414rem;
-  --text-display: clamp(2.5rem, 4vw + 1rem, 4.5rem);
-
-  --space-3xs: 0.25rem;
-  --space-2xs: 0.5rem;
-  --space-xs: 0.75rem;
-  --space-sm: 1rem;
-  --space-md: 1.5rem;
-  --space-lg: 2rem;
-  --space-xl: 3rem;
-  --space-2xl: 4.5rem;
-  --space-3xl: 7rem;
-
-  --radius-card: 0.25rem;
-  --radius-control: 0.25rem;
-  --radius-pill: 999px;
-
-  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
-  --ease-in: cubic-bezier(0.7, 0, 0.84, 0);
-  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
-  --duration-micro: 120ms;
-  --duration-short: 220ms;
-  --duration-long: 320ms;
-  --shadow-overlay: 0 1rem 2.5rem oklch(4% 0.02 265 / 0.32);
+  --color-paper: oklch(12% 0.03 255);
+  --color-paper-deep: oklch(8% 0.028 255);
+  --color-paper-2: oklch(17% 0.038 255);
+  --color-paper-3: oklch(23% 0.045 252);
+  --color-ink: oklch(95% 0.012 235);
+  --color-ink-2: oklch(81% 0.03 225);
+  --color-muted: oklch(70% 0.035 230);
+  --color-rule: oklch(45% 0.07 225);
+  --color-rule-2: oklch(31% 0.055 245);
+  --color-accent: oklch(78% 0.15 195);
+  --color-accent-ink: oklch(12% 0.03 255);
+  --color-discovery: oklch(74% 0.19 328);
+  --color-decision: oklch(86% 0.17 95);
+  --color-focus: oklch(86% 0.17 95);
 }
 
 .pm-light {
-  color-scheme: light;
-
-  --color-paper: oklch(97% 0.009 255);
-  --color-paper-2: oklch(94.5% 0.012 255);
-  --color-paper-3: oklch(91% 0.016 255);
-  --color-rule: oklch(74% 0.028 255);
-  --color-rule-2: oklch(84% 0.022 255);
-  --color-control-border: oklch(56% 0.03 258);
-  --color-muted: oklch(43% 0.032 260);
-  --color-neutral: oklch(56% 0.03 258);
-  --color-ink-2: oklch(31% 0.028 260);
-  --color-ink: oklch(18% 0.025 265);
-  --color-accent: oklch(51% 0.19 252);
-  --color-accent-ink: oklch(97% 0.009 255);
-  --color-discovery: oklch(50% 0.22 328);
-  --color-decision: oklch(60% 0.15 90);
-  --color-decision-text: oklch(51% 0.15 90);
-  --color-focus: oklch(54% 0.18 90);
-  --color-success: oklch(46% 0.14 150);
-  --color-warning: oklch(52% 0.14 78);
-  --color-danger: oklch(50% 0.19 28);
-  --shadow-overlay: 0 1rem 2.5rem oklch(18% 0.025 265 / 0.14);
+  --color-paper: oklch(98% 0.012 235);
+  --color-paper-deep: oklch(91% 0.026 238);
+  --color-paper-2: oklch(94% 0.02 235);
+  --color-paper-3: oklch(89% 0.03 232);
+  --color-ink: oklch(16% 0.035 255);
+  --color-ink-2: oklch(30% 0.04 250);
+  --color-muted: oklch(42% 0.045 245);
+  --color-rule: oklch(58% 0.065 235);
+  --color-rule-2: oklch(78% 0.04 235);
+  --color-accent: oklch(40% 0.15 225);
+  --color-accent-ink: oklch(98% 0.012 235);
+  --color-discovery: oklch(43% 0.17 328);
+  --color-decision: oklch(40% 0.13 85);
+  --color-focus: oklch(43% 0.19 275);
 }
 
-@media (prefers-reduced-motion: reduce) {
-  :root {
-    --duration-micro: 80ms;
-    --duration-short: 120ms;
-    --duration-long: 150ms;
-  }
+:root {
+  --font-display: "Tomorrow", "Arial Narrow", ui-sans-serif, system-ui, sans-serif;
+  --font-body: "IBM Plex Sans Variable", "Segoe UI", ui-sans-serif, system-ui, sans-serif;
+  --radius-card: 0.75rem;
+  --radius-control: 0.5rem;
 }
 ```
 
-### Format 2 — Tailwind CSS v4 mapping
+### 14.2 Tailwind CSS v4
 
 ```css
-@theme {
-  --color-paper: oklch(12% 0.022 265);
-  --color-paper-2: oklch(16% 0.026 265);
-  --color-paper-3: oklch(21% 0.03 265);
-  --color-rule: oklch(34% 0.034 260);
-  --color-rule-2: oklch(27% 0.03 262);
-  --color-control-border: oklch(52% 0.032 258);
-  --color-muted: oklch(70% 0.03 255);
-  --color-neutral: oklch(50% 0.032 258);
-  --color-ink-2: oklch(80% 0.022 255);
-  --color-ink: oklch(95% 0.012 250);
-  --color-accent: oklch(72% 0.17 245);
-  --color-accent-ink: oklch(13% 0.025 265);
-  --color-discovery: oklch(72% 0.2 328);
-  --color-decision: oklch(88% 0.17 96);
-  --color-decision-text: oklch(88% 0.17 96);
-  --color-focus: oklch(88% 0.19 96);
-  --color-success: oklch(74% 0.15 150);
-  --color-warning: oklch(82% 0.15 82);
-  --color-danger: oklch(70% 0.19 28);
-
-  --font-display: "Bricolage Grotesque Variable", "Arial Narrow", ui-sans-serif, sans-serif;
-  --font-sans: "IBM Plex Sans Variable", "Segoe UI", ui-sans-serif, sans-serif;
-
-  --spacing-3xs: 0.25rem;
-  --spacing-2xs: 0.5rem;
-  --spacing-xs: 0.75rem;
-  --spacing-sm: 1rem;
-  --spacing-md: 1.5rem;
-  --spacing-lg: 2rem;
-  --spacing-xl: 3rem;
-  --spacing-2xl: 4.5rem;
-  --spacing-3xl: 7rem;
-
-  --radius-card: 0.25rem;
-  --radius-control: 0.25rem;
-  --animate-duration-micro: 120ms;
-  --animate-duration-short: 220ms;
-  --animate-duration-long: 320ms;
-  --ease-control-out: cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-.pm-light {
-  --color-paper: oklch(97% 0.009 255);
-  --color-paper-2: oklch(94.5% 0.012 255);
-  --color-paper-3: oklch(91% 0.016 255);
-  --color-rule: oklch(74% 0.028 255);
-  --color-rule-2: oklch(84% 0.022 255);
-  --color-control-border: oklch(56% 0.03 258);
-  --color-muted: oklch(43% 0.032 260);
-  --color-neutral: oklch(56% 0.03 258);
-  --color-ink-2: oklch(31% 0.028 260);
-  --color-ink: oklch(18% 0.025 265);
-  --color-accent: oklch(51% 0.19 252);
-  --color-accent-ink: oklch(97% 0.009 255);
-  --color-discovery: oklch(50% 0.22 328);
-  --color-decision: oklch(60% 0.15 90);
-  --color-decision-text: oklch(51% 0.15 90);
-  --color-focus: oklch(54% 0.18 90);
-  --color-success: oklch(46% 0.14 150);
-  --color-warning: oklch(52% 0.14 78);
-  --color-danger: oklch(50% 0.19 28);
+@theme inline {
+  --color-pm-paper: var(--color-paper);
+  --color-pm-paper-deep: var(--color-paper-deep);
+  --color-pm-surface: var(--color-paper-2);
+  --color-pm-surface-raised: var(--color-paper-3);
+  --color-pm-ink: var(--color-ink);
+  --color-pm-muted: var(--color-muted);
+  --color-pm-rule: var(--color-rule);
+  --color-pm-accent: var(--color-accent);
+  --color-pm-discovery: var(--color-discovery);
+  --color-pm-decision: var(--color-decision);
+  --font-pm-display: var(--font-display);
+  --font-pm-body: var(--font-body);
+  --radius-pm-card: var(--radius-card);
+  --radius-pm-control: var(--radius-control);
 }
 ```
 
-### Format 3 — DTCG JSON
+### 14.3 DTCG JSON
 
 ```json
 {
-  "$schema": "https://www.designtokens.org/schemas/2025.10/format.schema.json",
-  "theme": {
+  "color": {
     "dark": {
-      "color": {
-        "$type": "color",
-        "paper": { "$value": { "colorSpace": "oklch", "components": [0.12, 0.022, 265], "alpha": 1 } },
-        "paper-2": { "$value": { "colorSpace": "oklch", "components": [0.16, 0.026, 265], "alpha": 1 } },
-        "paper-3": { "$value": { "colorSpace": "oklch", "components": [0.21, 0.03, 265], "alpha": 1 } },
-        "rule": { "$value": { "colorSpace": "oklch", "components": [0.34, 0.034, 260], "alpha": 1 } },
-        "rule-2": { "$value": { "colorSpace": "oklch", "components": [0.27, 0.03, 262], "alpha": 1 } },
-        "control-border": { "$value": { "colorSpace": "oklch", "components": [0.52, 0.032, 258], "alpha": 1 } },
-        "muted": { "$value": { "colorSpace": "oklch", "components": [0.70, 0.03, 255], "alpha": 1 } },
-        "neutral": { "$value": { "colorSpace": "oklch", "components": [0.50, 0.032, 258], "alpha": 1 } },
-        "ink-2": { "$value": { "colorSpace": "oklch", "components": [0.80, 0.022, 255], "alpha": 1 } },
-        "ink": { "$value": { "colorSpace": "oklch", "components": [0.95, 0.012, 250], "alpha": 1 } },
-        "accent": { "$value": { "colorSpace": "oklch", "components": [0.72, 0.17, 245], "alpha": 1 } },
-        "accent-ink": { "$value": { "colorSpace": "oklch", "components": [0.13, 0.025, 265], "alpha": 1 } },
-        "discovery": { "$value": { "colorSpace": "oklch", "components": [0.72, 0.20, 328], "alpha": 1 } },
-        "decision": { "$value": { "colorSpace": "oklch", "components": [0.88, 0.17, 96], "alpha": 1 } },
-        "decision-text": { "$value": { "colorSpace": "oklch", "components": [0.88, 0.17, 96], "alpha": 1 } },
-        "focus": { "$value": { "colorSpace": "oklch", "components": [0.88, 0.19, 96], "alpha": 1 } },
-        "success": { "$value": { "colorSpace": "oklch", "components": [0.74, 0.15, 150], "alpha": 1 } },
-        "warning": { "$value": { "colorSpace": "oklch", "components": [0.82, 0.15, 82], "alpha": 1 } },
-        "danger": { "$value": { "colorSpace": "oklch", "components": [0.70, 0.19, 28], "alpha": 1 } }
-      }
+      "paper": { "$type": "color", "$value": "oklch(12% 0.03 255)" },
+      "ink": { "$type": "color", "$value": "oklch(95% 0.012 235)" },
+      "accent": { "$type": "color", "$value": "oklch(78% 0.15 195)" },
+      "discovery": { "$type": "color", "$value": "oklch(74% 0.19 328)" },
+      "decision": { "$type": "color", "$value": "oklch(86% 0.17 95)" }
     },
     "light": {
-      "color": {
-        "$type": "color",
-        "paper": { "$value": { "colorSpace": "oklch", "components": [0.97, 0.009, 255], "alpha": 1 } },
-        "paper-2": { "$value": { "colorSpace": "oklch", "components": [0.945, 0.012, 255], "alpha": 1 } },
-        "paper-3": { "$value": { "colorSpace": "oklch", "components": [0.91, 0.016, 255], "alpha": 1 } },
-        "rule": { "$value": { "colorSpace": "oklch", "components": [0.74, 0.028, 255], "alpha": 1 } },
-        "rule-2": { "$value": { "colorSpace": "oklch", "components": [0.84, 0.022, 255], "alpha": 1 } },
-        "control-border": { "$value": { "colorSpace": "oklch", "components": [0.56, 0.03, 258], "alpha": 1 } },
-        "muted": { "$value": { "colorSpace": "oklch", "components": [0.43, 0.032, 260], "alpha": 1 } },
-        "neutral": { "$value": { "colorSpace": "oklch", "components": [0.56, 0.03, 258], "alpha": 1 } },
-        "ink-2": { "$value": { "colorSpace": "oklch", "components": [0.31, 0.028, 260], "alpha": 1 } },
-        "ink": { "$value": { "colorSpace": "oklch", "components": [0.18, 0.025, 265], "alpha": 1 } },
-        "accent": { "$value": { "colorSpace": "oklch", "components": [0.51, 0.19, 252], "alpha": 1 } },
-        "accent-ink": { "$value": { "colorSpace": "oklch", "components": [0.97, 0.009, 255], "alpha": 1 } },
-        "discovery": { "$value": { "colorSpace": "oklch", "components": [0.50, 0.22, 328], "alpha": 1 } },
-        "decision": { "$value": { "colorSpace": "oklch", "components": [0.60, 0.15, 90], "alpha": 1 } },
-        "decision-text": { "$value": { "colorSpace": "oklch", "components": [0.51, 0.15, 90], "alpha": 1 } },
-        "focus": { "$value": { "colorSpace": "oklch", "components": [0.54, 0.18, 90], "alpha": 1 } },
-        "success": { "$value": { "colorSpace": "oklch", "components": [0.46, 0.14, 150], "alpha": 1 } },
-        "warning": { "$value": { "colorSpace": "oklch", "components": [0.52, 0.14, 78], "alpha": 1 } },
-        "danger": { "$value": { "colorSpace": "oklch", "components": [0.50, 0.19, 28], "alpha": 1 } }
-      }
+      "paper": { "$type": "color", "$value": "oklch(98% 0.012 235)" },
+      "ink": { "$type": "color", "$value": "oklch(16% 0.035 255)" },
+      "accent": { "$type": "color", "$value": "oklch(40% 0.15 225)" },
+      "discovery": { "$type": "color", "$value": "oklch(43% 0.17 328)" },
+      "decision": { "$type": "color", "$value": "oklch(40% 0.13 85)" }
     }
   },
   "font": {
-    "display": { "$type": "fontFamily", "$value": ["Bricolage Grotesque Variable", "Arial Narrow", "sans-serif"] },
+    "display": { "$type": "fontFamily", "$value": ["Tomorrow", "Arial Narrow", "sans-serif"] },
     "body": { "$type": "fontFamily", "$value": ["IBM Plex Sans Variable", "Segoe UI", "sans-serif"] }
   },
-  "space": {
-    "$type": "dimension",
-    "3xs": { "$value": { "value": 0.25, "unit": "rem" } },
-    "2xs": { "$value": { "value": 0.5, "unit": "rem" } },
-    "xs": { "$value": { "value": 0.75, "unit": "rem" } },
-    "sm": { "$value": { "value": 1, "unit": "rem" } },
-    "md": { "$value": { "value": 1.5, "unit": "rem" } },
-    "lg": { "$value": { "value": 2, "unit": "rem" } },
-    "xl": { "$value": { "value": 3, "unit": "rem" } },
-    "2xl": { "$value": { "value": 4.5, "unit": "rem" } },
-    "3xl": { "$value": { "value": 7, "unit": "rem" } }
-  },
-  "duration": {
-    "$type": "duration",
-    "micro": { "$value": { "value": 120, "unit": "ms" } },
-    "short": { "$value": { "value": 220, "unit": "ms" } },
-    "long": { "$value": { "value": 320, "unit": "ms" } }
+  "radius": {
+    "card": { "$type": "dimension", "$value": "0.75rem" },
+    "control": { "$type": "dimension", "$value": "0.5rem" }
   }
 }
 ```
 
-### Format 4 — shadcn dark/light mapping
-
-Values below are OKLCH component triples for consumers that wrap them with `oklch(var(--token))`.
+### 14.4 shadcn-compatible roles
 
 ```css
-:root,
-.dark,
-.pm-dark {
-  --background: 0.12 0.022 265;
-  --foreground: 0.95 0.012 250;
-  --card: 0.16 0.026 265;
-  --card-foreground: 0.95 0.012 250;
-  --popover: 0.21 0.03 265;
-  --popover-foreground: 0.95 0.012 250;
-  --primary: 0.72 0.17 245;
-  --primary-foreground: 0.13 0.025 265;
-  --secondary: 0.21 0.03 265;
-  --secondary-foreground: 0.80 0.022 255;
-  --muted: 0.21 0.03 265;
-  --muted-foreground: 0.70 0.03 255;
-  --accent: 0.21 0.03 265;
-  --accent-foreground: 0.95 0.012 250;
-  --destructive: 0.70 0.19 28;
-  --destructive-foreground: 0.13 0.025 265;
-  --border: 0.27 0.03 262;
-  --input: 0.52 0.032 258;
-  --ring: 0.88 0.19 96;
-  --discovery: 0.72 0.20 328;
-  --decision: 0.88 0.17 96;
-  --decision-text: 0.88 0.17 96;
-  --success: 0.74 0.15 150;
-  --warning: 0.82 0.15 82;
+:root {
+  --background: oklch(98% 0.012 235);
+  --foreground: oklch(16% 0.035 255);
+  --card: oklch(94% 0.02 235);
+  --card-foreground: oklch(16% 0.035 255);
+  --primary: oklch(40% 0.15 225);
+  --primary-foreground: oklch(98% 0.012 235);
+  --muted: oklch(89% 0.03 232);
+  --muted-foreground: oklch(42% 0.045 245);
+  --border: oklch(78% 0.04 235);
+  --ring: oklch(43% 0.19 275);
+  --radius: 0.5rem;
 }
 
-.pm-light {
-  --background: 0.97 0.009 255;
-  --foreground: 0.18 0.025 265;
-  --card: 0.945 0.012 255;
-  --card-foreground: 0.18 0.025 265;
-  --popover: 0.91 0.016 255;
-  --popover-foreground: 0.18 0.025 265;
-  --primary: 0.51 0.19 252;
-  --primary-foreground: 0.97 0.009 255;
-  --secondary: 0.91 0.016 255;
-  --secondary-foreground: 0.31 0.028 260;
-  --muted: 0.91 0.016 255;
-  --muted-foreground: 0.43 0.032 260;
-  --accent: 0.91 0.016 255;
-  --accent-foreground: 0.18 0.025 265;
-  --destructive: 0.50 0.19 28;
-  --destructive-foreground: 0.97 0.009 255;
-  --border: 0.84 0.022 255;
-  --input: 0.56 0.03 258;
-  --ring: 0.54 0.18 90;
-  --discovery: 0.50 0.22 328;
-  --decision: 0.60 0.15 90;
-  --decision-text: 0.51 0.15 90;
-  --success: 0.46 0.14 150;
-  --warning: 0.52 0.14 78;
+.dark {
+  --background: oklch(12% 0.03 255);
+  --foreground: oklch(95% 0.012 235);
+  --card: oklch(17% 0.038 255);
+  --card-foreground: oklch(95% 0.012 235);
+  --primary: oklch(78% 0.15 195);
+  --primary-foreground: oklch(12% 0.03 255);
+  --muted: oklch(23% 0.045 252);
+  --muted-foreground: oklch(70% 0.035 230);
+  --border: oklch(31% 0.055 245);
+  --ring: oklch(86% 0.17 95);
 }
 ```
 
-## 14. Governance rule
+## 15. Governance
 
-Any implementation departure from this document must be explicit and justified by a product, accessibility, or platform constraint. Record durable changes in `design-system/project-maker/MASTER.md` and prepend a corresponding entry to `.hallmark/log.json`.
+A production UI change is acceptable only when it:
+
+1. uses the semantic roles from `tokens.css`;
+2. preserves the truthful distinction between Journey position and Queue urgency;
+3. supports dark and light without component-specific color branching;
+4. passes focused tests, typecheck, production build, keyboard checks, responsive checks, and the Hallmark slop test;
+5. updates this document when it changes a locked design decision.

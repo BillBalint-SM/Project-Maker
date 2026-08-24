@@ -1,303 +1,215 @@
 # Project Maker — Master Design System
 
-Version: 2.0
-Updated: 2026-08-23
-Status: Active
-Canonical token and export source: [`../../design.md`](../../design.md)
+Status: active
 
-## 1. Authority and scope
+Supersedes: the previous Workbench/N11 production direction
 
-This document turns the locked choices in `design.md` into application-level implementation rules. `design.md` wins if the two documents conflict. Page-level specifications may refine composition and content, but they may not fork the visual identity.
+Canonical visual tokens: [`tokens.css`](../../tokens.css)
+Full rationale and export formats: [`design.md`](../../design.md)
 
-The system applies to:
+## 1. Product character
 
-- the public and authenticated Angular shell;
-- sign-in and authentication states;
-- Project Maker feature routes and shared components;
-- PrimeNG component styling and application-native controls;
-- responsive behavior and route/control motion;
-- the Project Maker mark, wordmark, and favicon family.
+Project Maker is a preparation journey with an operational power layer.
 
-The redesign preserves existing product behavior and domain vocabulary. It does not authorize workflow changes, new domain concepts, or renamed concepts.
+- **Journey** is the core Portfolio view: spatial, orienting, selective.
+- **Queue** is the power-user view: dense, fast, scan-first.
+- Both views expose the same underlying work and use one visual system.
+- Dark is the default; light is a complete user-selectable counterpart.
 
-## 2. Product character
+The target feeling is cinematic but controlled: deep midnight surfaces, sharp route geometry, clear cyan movement, magenta discovery, and yellow decision signals.
 
-Project Maker is a **nocturnal control room for project preparation**. Its visual signature is sharp convergence: discovery enters a structured route, decisions create direction, and the workbench makes the next meaningful action visible.
+## 2. Locked selections
 
-The interface should feel:
+| Dimension | Production rule |
+|---|---|
+| Hallmark genre | Atmospheric |
+| Core macrostructure | Map / Diagram |
+| Queue macrostructure | Operational table with Bento information logic |
+| Navigation | N4 visible Navigate trigger + Control/Command K |
+| Theme | Midnight dark/light |
+| Display | Tomorrow |
+| Body | IBM Plex Sans Variable |
+| Identity | Journey Mark |
+| Footer | None |
+| Enrichment | None |
 
-- precise rather than sterile;
-- dynamic through sequence and response rather than constant animation;
-- atmospheric through deep tonal hierarchy rather than effects;
-- professional and domain-specific rather than generic SaaS;
-- dense enough for serious work, with enough negative space to clarify priority.
+## 3. Domain guardrails
 
-The requested guided-tour feeling is a composition principle. It is not a literal scripted onboarding overlay unless a separate product requirement introduces one.
+### Journey
 
-## 3. Locked Hallmark selections
+Use only `ProjectWorkState.preparationStatus.state` to place a project. The legal sequence is:
 
-| Dimension | Selection | Application rule |
-| --- | --- | --- |
-| Genre | Atmospheric | Use tonal depth, scale, and spatial tension; effects remain prohibited. |
-| Macrostructure | Workbench | Organize major routes around context, active work, support, and resolution. |
-| Navigation | N11 mega-menu | Desktop uses an opaque grouped panel; compact layouts use drawer/accordion navigation. |
-| Theme | Custom | Nocturnal control room / sharp convergence. |
-| Theme axes | Dark-default + light / geometric sans / cool | Both themes are complete and share semantic roles. |
-| Enrichment | None | No decorative asset collection is required to carry the interface. |
+1. `SCHEMA_REQUIRED`
+2. `INTAKE_IN_PROGRESS`
+3. `CLARIFICATION_REQUIRED`
+4. `DECISION_REVIEW_REQUIRED`
+5. `ESTIMATE_PREPARABLE`
+6. `ESTIMATE_READY`
 
-## 4. Domain guardrails
+Do not use project administration status, health, readiness percentage, decision score, or a fabricated progress calculation as a spatial substitute.
 
-Use established Project Maker terminology exactly where it expresses product meaning:
+### Queue
 
-- **Operator organization** for the organization boundary;
-- **Project Idea** for the initial project concept;
-- **Project preparation journey** for the end-to-end preparation flow;
-- **Discovery** and **Decision** as domain stages/signals where already applicable;
-- the current application labels for downstream project and administration areas.
+Use the existing active-queue contract and preserve:
 
-Do not substitute fashionable synonyms for domain terms. Navigation grouping must reflect real product areas, permissions, and routes.
+- server-defined urgency order and `groupCounts`;
+- URL-backed search and filters;
+- opaque cursor navigation;
+- explicit refresh, retry, stale-data, and cursor-recovery states;
+- canonical `nextAction`, owner, due date, factual progress, and `primaryAction`.
 
-## 5. Identity system
+## 4. Identity
 
-### 5.1 Convergence mark
+The Journey Mark is a rising route with three colored nodes and a forward corner.
 
-The mark is constructed from angular trajectories converging at a decision point:
+- Magenta: discovery input.
+- Cyan: active route.
+- Yellow: decision/readiness.
+- Dark under-stroke: contrast in both themes.
 
-- structural route: blue;
-- discovery branch: magenta;
-- decision node: yellow;
-- negative space: the active theme canvas.
+Use the full “Project Maker” wordmark in the application shell. The mark may stand alone only where the product name is already present, such as the favicon.
 
-The form must remain recognizable at 16 px, retain balanced weight at 24–32 px, and support a one-color version for constrained contexts. It must not depend on glow, blur, animation, or tiny internal detail. The silhouette is the identity.
+## 5. Color architecture
 
-Avoid generic symbols: standalone “P,” sparkle, hexagon/cube, infinity loop, brain, wand, or chatbot star.
+Consume semantic roles only:
 
-### 5.2 Wordmark
+- `--color-paper`, `--color-paper-deep`, `--color-paper-2`, `--color-paper-3`
+- `--color-ink`, `--color-ink-2`, `--color-muted`
+- `--color-rule`, `--color-rule-2`, `--color-control-border`
+- `--color-accent`, `--color-accent-ink`
+- `--color-discovery`, `--color-decision`, `--color-focus`
+- `--color-success`, `--color-warning`, `--color-danger`
 
-- Typeface: Bricolage Grotesque Variable.
-- Style: roman, firm weight, slightly tight tracking.
-- Primary wording: “Project Maker.”
-- Do not gradient-fill, bevel, glow, or animate the wordmark.
-- Compact shell states may show the mark alone when an accessible product name remains available.
+Legacy `--pm-*` variables are compatibility aliases to these roles, not a second palette.
 
-## 6. Color architecture
+Rules:
 
-Use the semantic tokens and exact OKLCH values in `design.md`. The palette has three chromatic responsibilities:
+- Accent is structural and interactive, not decorative fill.
+- Discovery and decision colors keep their domain meaning.
+- Queue never switches to Terminal green.
+- State always has a text, count, or geometric cue in addition to color.
+- Pure black, pure white, and zero-chroma surfaces are prohibited.
 
-1. **Blue / `accent`:** structural hierarchy, primary action, active route, selected system state.
-2. **Magenta / `discovery`:** evidence-gathering and discovery signals only.
-3. **Yellow / `decision` and `focus`:** decision checkpoints and keyboard focus.
+## 6. Typography
 
-Black/navy appears only as tinted `paper` roles, never pure black. Light surfaces are cool tinted papers, never pure white.
+- Use Tomorrow at 500–700 for the wordmark and high-level headings.
+- Use IBM Plex Sans Variable for body, controls, labels, and technical values.
+- Use tabular figures for counts and aligned operational data.
+- Keep body copy at 45–75 characters where it reads as prose.
+- Display headings are roman and use line-height 1.04 or greater.
+- Do not add a third face for badges, labels, or Queue data.
 
-### 6.1 Footprint rules
+## 7. Layout
 
-- Blue may occupy controls, active navigation, and route structure.
-- Magenta and yellow normally occupy small nodes, status bars, icons, or labels.
-- Do not use magenta as a second primary button color.
-- Do not use yellow as a large background field unless the content is specifically a decision state and contrast has been verified.
-- Status colors always pair with text, icon, or shape.
-- Feature CSS consumes role tokens; raw OKLCH values belong only in the canonical token layer.
+### Application shell
 
-### 6.2 Surface hierarchy
+- The sticky shell keeps brand, theme selection, and Navigate trigger visible.
+- The Navigate panel groups Orient, Move, and Configure.
+- The surface is opaque and may scroll inside the viewport when necessary.
+- Escape closes the panel and restores trigger focus.
+- Control/Command K opens it and focuses the first destination.
 
-| Level | Role | Typical use |
-| --- | --- | --- |
-| Canvas | `paper` | Route background |
-| Shell | `paper-2` | Navigation, side regions, grouped sections |
-| Raised/active | `paper-3` | Selected row, open panel, active work zone |
-| Default boundary | `rule-2` | Inputs, section dividers, inactive borders |
-| Strong boundary | `rule` | Active split, important separation |
+### Journey core
 
-Use surface changes and rules before adding a shadow. The single neutral overlay shadow is reserved for true overlays.
+- Page heading and view switch establish hierarchy before the field.
+- The field declares its page/filter scope.
+- Six stages read in DOM order and reflow without reordering.
+- A node selection updates a factual detail strip.
+- The project register remains secondary and follows the field.
 
-## 7. Typography
+### Queue power view
 
-### 7.1 Families
+- Real summary counts form a compact metric rail.
+- Search, urgency, and preparation filters form one control strip.
+- Wide layouts use a semantic table.
+- Compact layouts convert rows to labelled value groups before horizontal overflow occurs.
 
-- Display, high-level page title, wordmark: `Bricolage Grotesque Variable`.
-- Body, navigation, forms, tables, metadata, and controls: `IBM Plex Sans Variable`.
-- Numeric and technical values use IBM Plex Sans with tabular figures.
-- Maximum typeface count: two.
+## 8. Components and states
 
-### 7.2 Hierarchy
+### Buttons and links
 
-- Display headings: weight 720, tracking `-0.035em`, line height `0.98–1.08`.
-- Section headings: weight 650–700, compact but not all-caps by default.
-- Body: weight 400–450, line height `1.5–1.65`.
-- Labels: weight 600, maximum tracking `0.04em`.
-- Microcopy never drops below 12 px and must remain high enough contrast to read.
+- Minimum control height: 44 CSS px.
+- Primary fill uses `--color-accent` with `--color-accent-ink`.
+- Focus uses a two-pixel `--color-focus` outline with offset.
+- Hover changes one visual property family; active feedback does not shift surrounding layout.
+- Disabled state uses semantic disablement, reduced emphasis, and a not-allowed cursor.
 
-Use solid `ink` for headings. Italic display text, gradient text, and repetitive ornamental eyebrows are outside the system.
+### Inputs
 
-## 8. Layout system
+- Height matches adjacent controls.
+- Border remains one pixel in every state.
+- Focus uses outline, never a thicker border.
+- Error state uses danger plus a written message.
+- Helper/error slots reserve their line where the shared field pattern applies.
 
-### 8.1 Desktop workbench
+### Panels
 
-At 1024 px and wider, major preparation routes follow a repeatable sequence:
+- Use a tinted rule before adding elevation.
+- Card radius is 12 px; control radius is 8 px.
+- Avoid nested cards.
+- Overlays use the shared raised shadow and an opaque readable surface.
 
-1. **Functional heading** — route/project identity, status, next action.
-2. **Workspace map** — route context and current position in the Project preparation journey.
-3. **Primary work zone** — the form, evidence, record, decision, or configuration being worked on.
-4. **Context zone** — history, guidance, metadata, related actions, or validation.
-5. **Resolution state** — saved, ready, blocked, or next route.
+### Status
 
-This is a hierarchy, not a mandatory card template. Pages should not accumulate interchangeable floating panels.
+- Urgency, preparation state, health, and formal decision remain distinct concepts.
+- Do not merge labels or colors across those concepts for visual convenience.
 
-### 8.2 Grid and density
+## 9. Motion
 
-- Use the 4 px seed and the named spacing scale from `design.md`.
-- Prefer alignment and rule-based grouping over container proliferation.
-- Allow asymmetry when it makes the active task dominant.
-- Constrain long reading lines while allowing tables, maps, and work surfaces to use the width they need.
-- Dense operational areas may reduce vertical spacing, but control targets and readable line height remain intact.
+Authorized families:
 
-### 8.3 Compact safety
+1. One Journey canvas arrival.
+2. Background/border selection feedback.
+3. Existing short route transition.
 
-The primary product target is desktop, but the shell and authentication experience must work at 320–768 px:
+All motion uses transform/opacity or paint-only properties, remains interruptible, and has a reduced-motion fallback. No looping ambient motion, parallax, mesh animation, or layout-property animation.
 
-- no horizontal document scroll;
-- no clipped theme, sign-in, account, or navigation actions;
-- no dialog wider than the viewport minus safe gutters;
-- controls wrap or stack in logical reading order;
-- essential actions remain reachable with touch and keyboard;
-- layouts are checked at 320, 375, 414, and 768 px.
+## 10. Theme contract
 
-Feature workbenches may become single-column in this range. They must communicate if a specialized desktop-only work surface has a genuine minimum supported width rather than failing silently.
+- The document root owns `pm-dark` or `pm-light`.
+- First visit defaults to `pm-dark`.
+- User choice persists through `AppThemeState`.
+- PrimeNG tokens in `app.theme.ts` map to the same palette.
+- Feature styles use roles and never detect the theme to pick raw colors.
+- Dark and light interaction states are verified independently.
 
-## 9. Navigation: N11 control panel
+## 11. Accessibility and responsive contract
 
-### 9.1 Desktop
+- Preserve the skip link and semantic main landmark.
+- Maintain logical heading and keyboard order.
+- Every icon-only control has an accessible name and state.
+- Decorative SVG is hidden; meaningful SVG has a title/description.
+- Normal text reaches 4.5:1; large text, controls, and focus indicators reach 3:1.
+- No page-level horizontal scroll at 320–1920 px.
+- Validate 320, 375, 414, 768, 1280×800, and 1440 widths.
+- Clickable navigation and CTA labels remain on one line.
+- Reduced motion removes every authored transform or animation.
 
-- Keep the closed application bar stable between routes.
-- Use existing product areas to group destinations, up to four columns.
-- Keep the open panel at or below 60 vh and provide internal scrolling only when unavoidable.
-- The panel is opaque `paper-2`/`paper-3` with structural rules. No translucency or backdrop blur.
-- A low-opacity neutral scrim may dim the workbench; it must not blur it.
-- Open with click and keyboard. Hover is optional enhancement and requires a close grace period.
-- Only one navigation group opens at a time.
-- `Escape` closes the panel and restores focus to its trigger.
-- Triggers expose `aria-expanded` and `aria-controls`; focus moves predictably through grouped links.
+## 12. Prohibited patterns
 
-### 9.2 Compact
+- Cyan-to-magenta gradients and gradient text.
+- Decorative glow, glass, blur, aurora, or particles.
+- Fake browser, terminal, device, or IDE chrome.
+- Emoji used as interface icons.
+- Fabricated counts, percentages, or performance claims.
+- A second visual language for Queue.
+- Generic equal-card marketing grids.
+- Color-only state encoding.
 
-At 768 px and below, use a drawer with accordion groups:
+## 13. Verification
 
-- preserve destination order and naming;
-- expose a clearly labeled close action;
-- contain focus while modal and restore it on close;
-- avoid nested horizontal scrolling;
-- do not shrink the desktop mega-menu into an unusable miniature.
+For a change to Journey, Queue, shell, theme, or tokens:
 
-## 10. Components
+1. Run the focused adjacent Vitest specs.
+2. Run web typecheck.
+3. Run the web production build.
+4. Exercise dark and light.
+5. Exercise keyboard navigation, Control/Command K, Escape, and focus restoration.
+6. Inspect 320, 375, 414, 768, 1280×800, and 1440 widths.
+7. Verify reduced motion.
+8. Run GitNexus `detect_changes` against the current remote main before commit.
+9. Run the Hallmark 58-gate slop test before handoff.
 
-### 10.1 Buttons
+## 14. Change control
 
-- Primary: blue `accent` fill with `accent-ink`; one visually primary action per action group.
-- Secondary: paper surface, rule border, `ink` text.
-- Tertiary: text/icon with a structural hover/focus cue.
-- Destructive: `danger` only for an actual destructive action.
-- Radius: `radius-control`, not pill, except a true segmented/binary control.
-- Press feedback may use a short translate/scale transform within the motion contract.
-
-### 10.2 Inputs and forms
-
-- Labels remain visible; placeholders do not replace labels.
-- Inputs use paper hierarchy and structural border, with yellow focus ring.
-- Error, warning, and success states combine color with text/icon.
-- Helper and validation text remain adjacent to the control they explain.
-- Form actions keep a predictable order across themes and breakpoints.
-
-### 10.3 Cards and panels
-
-- Use a panel only when it establishes a meaningful region or state.
-- Default treatment is opaque surface plus rule; no glass or glow.
-- Radius is 4 px.
-- Avoid card-inside-card stacking. Use dividers, columns, or typographic hierarchy instead.
-
-### 10.4 Status and journey markers
-
-- Pills are allowed for concise status/count only.
-- Discovery markers use magenta plus label/icon/shape.
-- Decision markers use yellow plus label/icon/shape.
-- Current route uses blue plus a position or weight change.
-- Completed/blocked states use their semantic roles and explicit text.
-
-### 10.5 Overlays
-
-- Menus, dialogs, and popovers are opaque.
-- One restrained neutral overlay shadow may separate them from the workbench.
-- Backdrop blur, tinted glow, and stacked translucent layers are prohibited.
-
-## 11. Theme implementation contract
-
-- Default root class: `pm-dark`.
-- Alternate root class: `pm-light`.
-- Exactly one is present on the document root.
-- Explicit user choice is persistent and applied before first meaningful paint where platform constraints allow.
-- Native controls use the matching `color-scheme`.
-- Components consume semantic tokens; they do not branch on theme in feature code unless a third-party API requires it.
-- Both themes must support all interaction, validation, disabled, overlay, and focus states.
-- System preference may inform a future opt-in “system” option, but it must not silently override a stored explicit choice.
-
-## 12. Motion implementation contract
-
-Only three motion families are authorized:
-
-| Family | Purpose | Maximum normal duration |
-| --- | --- | --- |
-| Workspace map reveal | Explain the route/current position once | 320 ms |
-| Route transition | Maintain continuity between routes | 320 ms |
-| Direct control feedback | Press, expand, collapse, validate, select, focus | 220 ms |
-
-- Animate `transform` and `opacity` only.
-- No infinite or autonomous motion.
-- Do not animate background position, box shadow, filter, blur, layout dimensions, or decorative particles.
-- Reduced-motion mode removes spatial travel and caps opacity feedback at 150 ms.
-- Route motion must never delay navigation or input readiness.
-
-## 13. Accessibility
-
-- Target WCAG AA for normal text and interactive components.
-- Use the yellow `focus` role for a visible focus indicator; keep a non-color boundary/offset where practical.
-- Touch targets are at least 44 × 44 px in compact layouts.
-- Maintain logical DOM and focus order when workbench columns rearrange.
-- Menus, drawers, dialogs, and disclosures expose correct names, states, relationships, and focus behavior.
-- Do not remove focus outlines without an equal or stronger replacement.
-- Announce validation and asynchronous state changes appropriately.
-- Check dark and light themes independently; passing one is not evidence for the other.
-
-## 14. Prohibited patterns
-
-- Ambient infinite animation or decorative looping motion.
-- Aurora backgrounds, blooms, halos, scan lines, particles, or glow.
-- Glassmorphism, backdrop blur, or translucent cards/menus.
-- Gradient-filled headings or wordmarks.
-- Repetitive uppercase eyebrow ornament.
-- Fake browser/device frames around product UI.
-- Excessive rounded cards and pill-shaped primary controls.
-- Raw color literals in feature styles.
-- Page-local fonts, themes, logo variants, or semantic color remapping.
-- Visual renaming of established Project Maker domain concepts.
-
-## 15. Proportional verification
-
-Validate only the directly affected behavior and highest-risk regressions:
-
-1. Build and type-check the Angular web application.
-2. Exercise theme selection, persistence, reload behavior, and initial-paint behavior in both themes.
-3. Keyboard-test N11 open/close, `Escape`, focus restoration, and compact drawer behavior.
-4. Check shell and authentication at 320, 375, 414, 768, 1024, and a representative wide desktop viewport.
-5. Check contrast and visible focus for primary, secondary, disabled, discovery, decision, warning, danger, and overlay states in dark and light.
-6. Verify reduced motion for the workspace map, route transitions, and control feedback.
-7. Use focused visual regression coverage for the shell, authentication, one representative workbench, and the logo/favicon—not every route indiscriminately.
-
-## 16. Change control
-
-Durable changes require all of the following:
-
-1. update `design.md` first;
-2. update this master specification if implementation guidance changes;
-3. keep every inline export synchronized;
-4. prepend a newest-first record to `.hallmark/log.json`;
-5. explain any accessibility, product, or platform reason for departing from a locked choice.
+A future redesign may change these locked choices only when the product direction changes deliberately. When that happens, update `design.md`, this file, `tokens.css`, the PrimeNG bridge, and the Hallmark log together.

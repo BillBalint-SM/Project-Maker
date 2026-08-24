@@ -1,60 +1,60 @@
-/* Hallmark · genre: atmospheric · macrostructure: Workbench · theme: custom · design-system: design.md · designed-as-app */
-/* Hallmark · pre-emit critique: P5 H5 E4 S5 R4 V5 */
+/* Hallmark · genre: atmospheric · macrostructure: Map / Diagram + operational Queue · theme: Midnight · design-system: design.md · designed-as-app */
+/* Hallmark · pre-emit critique: P5 H5 E4 S5 R5 V5 */
 :root,
 .pm-dark {
   color-scheme: dark;
 
-  --color-paper: oklch(12% 0.022 265);
-  --color-paper-deep: oklch(8% 0.02 265);
-  --color-paper-2: oklch(16% 0.026 265);
-  --color-paper-3: oklch(21% 0.03 265);
-  --color-rule: oklch(34% 0.034 260);
-  --color-rule-2: oklch(27% 0.03 262);
-  --color-control-border: oklch(52% 0.032 258);
-  --color-muted: oklch(70% 0.03 255);
-  --color-neutral: oklch(50% 0.032 258);
-  --color-ink-2: oklch(80% 0.022 255);
-  --color-ink: oklch(95% 0.012 250);
-  --color-accent: oklch(72% 0.17 245);
-  --color-accent-ink: oklch(13% 0.025 265);
-  --color-discovery: oklch(72% 0.2 328);
-  --color-decision: oklch(88% 0.17 96);
-  --color-decision-text: oklch(88% 0.17 96);
-  --color-decision-ink: oklch(13% 0.025 265);
-  --color-focus: oklch(88% 0.19 96);
-  --color-success: oklch(74% 0.15 150);
+  --color-paper: oklch(12% 0.03 255);
+  --color-paper-deep: oklch(8% 0.028 255);
+  --color-paper-2: oklch(17% 0.038 255);
+  --color-paper-3: oklch(23% 0.045 252);
+  --color-rule: oklch(45% 0.07 225);
+  --color-rule-2: oklch(31% 0.055 245);
+  --color-control-border: oklch(52% 0.065 225);
+  --color-muted: oklch(70% 0.035 230);
+  --color-neutral: oklch(52% 0.05 235);
+  --color-ink-2: oklch(81% 0.03 225);
+  --color-ink: oklch(95% 0.012 235);
+  --color-accent: oklch(78% 0.15 195);
+  --color-accent-ink: oklch(12% 0.03 255);
+  --color-discovery: oklch(74% 0.19 328);
+  --color-decision: oklch(86% 0.17 95);
+  --color-decision-text: oklch(86% 0.17 95);
+  --color-decision-ink: oklch(12% 0.03 255);
+  --color-focus: oklch(86% 0.17 95);
+  --color-success: oklch(76% 0.14 155);
   --color-warning: oklch(82% 0.15 82);
-  --color-danger: oklch(70% 0.19 28);
+  --color-danger: oklch(71% 0.19 28);
 
-  --shadow-card: 0 0.8rem 2rem oklch(3% 0.02 275 / 0.28);
-  --shadow-raised: 0 1.25rem 3.5rem oklch(3% 0.02 275 / 0.44);
-  --shadow-overlay: 0 2rem 5rem oklch(3% 0.02 275 / 0.58);
+  --shadow-card: 0 0.8rem 2rem oklch(4% 0.025 255 / 0.28);
+  --shadow-raised: 0 1.25rem 3.5rem oklch(4% 0.025 255 / 0.44);
+  --shadow-overlay: 0 2rem 5rem oklch(4% 0.025 255 / 0.58);
 }
 
 .pm-light {
   color-scheme: light;
 
-  --color-paper: oklch(97% 0.009 255);
-  --color-paper-deep: oklch(93% 0.014 255);
-  --color-paper-2: oklch(94.5% 0.012 255);
-  --color-paper-3: oklch(91% 0.016 255);
-  --color-rule: oklch(74% 0.028 255);
-  --color-rule-2: oklch(84% 0.022 255);
-  --color-control-border: oklch(56% 0.03 258);
-  --color-muted: oklch(43% 0.032 260);
-  --color-neutral: oklch(56% 0.03 258);
-  --color-ink-2: oklch(31% 0.028 260);
-  --color-ink: oklch(18% 0.025 265);
-  --color-accent: oklch(51% 0.19 252);
-  --color-accent-ink: oklch(97% 0.009 255);
-  --color-discovery: oklch(50% 0.22 328);
-  --color-decision: oklch(60% 0.15 90);
-  --color-decision-text: oklch(51% 0.15 90);
-  --color-decision-ink: oklch(18% 0.025 265);
-  --color-focus: oklch(54% 0.18 90);
-  --color-success: oklch(46% 0.14 150);
-  --color-warning: oklch(52% 0.14 78);
-  --color-danger: oklch(50% 0.19 28);
+  --color-paper: oklch(98% 0.012 235);
+  --color-paper-deep: oklch(91% 0.026 238);
+  --color-paper-2: oklch(94% 0.02 235);
+  --color-paper-3: oklch(89% 0.03 232);
+  --color-rule: oklch(58% 0.065 235);
+  --color-rule-2: oklch(78% 0.04 235);
+  --color-control-border: oklch(56% 0.065 235);
+  --color-muted: oklch(42% 0.045 245);
+  --color-neutral: oklch(52% 0.052 238);
+  --color-ink-2: oklch(30% 0.04 250);
+  --color-ink: oklch(16% 0.035 255);
+  --color-accent: oklch(40% 0.15 225);
+  --color-accent-ink: oklch(98% 0.012 235);
+  --color-discovery: oklch(43% 0.17 328);
+  --color-decision: oklch(40% 0.13 85);
+  --color-decision-text: oklch(35% 0.13 85);
+  --color-decision-ink: oklch(98% 0.012 235);
+  --color-focus: oklch(43% 0.19 275);
+  --color-success: oklch(39% 0.13 155);
+  --color-warning: oklch(40% 0.13 76);
+  --color-danger: oklch(43% 0.19 28);
 
   --shadow-card: 0 0.55rem 1.6rem oklch(24% 0.035 270 / 0.1);
   --shadow-raised: 0 1rem 2.8rem oklch(24% 0.035 270 / 0.15);
@@ -62,11 +62,11 @@
 }
 
 :root {
-  --font-display: "Bricolage Grotesque Variable", "Arial Narrow", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Tomorrow", "Arial Narrow", ui-sans-serif, system-ui, sans-serif;
   --font-body: "IBM Plex Sans Variable", "Segoe UI", ui-sans-serif, system-ui, sans-serif;
   --font-outlier: var(--font-body);
-  --display-weight: 650;
-  --tracking-display: -0.035em;
+  --display-weight: 600;
+  --tracking-display: -0.025em;
   --tracking-label: 0.045em;
 
   --text-xs: 0.75rem;
@@ -92,9 +92,9 @@
 
   --rule-hair: 1px;
   --rule-fine: 2px;
-  --radius-card: 0.25rem;
+  --radius-card: 0.75rem;
   --radius-pill: 999px;
-  --radius-control: 0.25rem;
+  --radius-control: 0.5rem;
   --radius-input: var(--radius-control);
 
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);

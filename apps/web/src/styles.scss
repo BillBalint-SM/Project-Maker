@@ -1,7 +1,9 @@
-/* Hallmark · genre: atmospheric · macrostructure: Workbench · theme: custom · design-system: design.md · nav: N11 · footer: none · contrast: pass (40–41) · slop: pass (42–45) · honest: pass (46) · chrome: pass (47) · tokens: pass (48) · responsive: pass (49) · icons: pass (30) · mobile: pass (34, 49, 50–57) · designed-as-app */
+/* Hallmark · genre: atmospheric · macrostructure: Map / Diagram + operational Queue · theme: Midnight · design-system: design.md · nav: N4 · footer: none · contrast: pass (40–41) · slop: pass (58 gates) · honest: pass (46) · chrome: pass (47) · tokens: pass (48) · responsive: pass (49) · icons: pass (30) · mobile: pass (34, 49, 50–57) · designed-as-app */
 @import "../../../tokens.css";
-@import "@fontsource-variable/bricolage-grotesque/wght.css";
 @import "@fontsource-variable/ibm-plex-sans/wght.css";
+@import "@fontsource/tomorrow/500.css";
+@import "@fontsource/tomorrow/600.css";
+@import "@fontsource/tomorrow/700.css";
 
 * {
   box-sizing: border-box;
@@ -204,7 +206,7 @@ table {
 .page-heading h1 {
   color: var(--pm-text);
   font-size: clamp(2.1rem, 4.5vw, 3.75rem);
-  line-height: 0.98;
+  line-height: 1.04;
   margin: var(--space-2xs) 0 var(--space-xs);
   max-width: 20ch;
 }
@@ -289,7 +291,6 @@ form > small {
   background: var(--pm-surface-1);
   border: var(--rule-hair) solid var(--pm-border);
   border-radius: var(--radius-card);
-  box-shadow: var(--pm-shadow-sm);
   padding: clamp(var(--space-sm), 2vw, var(--space-md));
 }
 
@@ -315,6 +316,39 @@ form > small {
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-xs);
+}
+
+.view-switch {
+  align-items: center;
+  border: var(--rule-hair) solid var(--pm-border-strong);
+  border-radius: var(--radius-control);
+  display: flex;
+  flex: 0 0 auto;
+  line-height: 1;
+  padding: var(--space-3xs);
+}
+
+.view-switch a {
+  align-items: center;
+  border-radius: calc(var(--radius-control) / 2);
+  color: var(--pm-text-muted);
+  display: inline-flex;
+  font-weight: 650;
+  min-height: 2.75rem;
+  padding: var(--space-2xs) var(--space-sm);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.view-switch a[aria-current="page"] {
+  background: var(--pm-blue);
+  color: var(--color-accent-ink);
+}
+
+@media (hover: hover) {
+  .view-switch a:not([aria-current="page"]):hover {
+    color: var(--pm-text);
+  }
 }
 
 .pm-form-grid {
@@ -358,7 +392,6 @@ p-tag {
   background: var(--pm-surface-1);
   border: var(--rule-hair) solid var(--pm-border);
   border-radius: var(--radius-card);
-  box-shadow: var(--pm-shadow-sm);
   color: var(--pm-text);
   overflow: hidden;
 }
@@ -381,9 +414,39 @@ p-tag {
 }
 
 .p-button:not(.p-button-secondary):not(.p-button-success):not(.p-button-info):not(.p-button-warn):not(.p-button-help):not(.p-button-danger):not(.p-button-contrast):not(.p-button-outlined):not(.p-button-text):not(.p-button-link) {
-  background: var(--color-accent);
-  border-color: var(--color-accent);
-  color: var(--color-accent-ink);
+  background: var(--color-accent) !important;
+  border-color: var(--color-accent) !important;
+  color: var(--color-accent-ink) !important;
+}
+
+.p-button.p-button-secondary:not(.p-button-outlined):not(.p-button-text):not(.p-button-link) {
+  background: var(--pm-surface-2) !important;
+  border-color: var(--pm-border-strong) !important;
+  color: var(--pm-text) !important;
+}
+
+@media (hover: hover) {
+  .p-button:not(.p-button-secondary):not(.p-button-success):not(.p-button-info):not(.p-button-warn):not(.p-button-help):not(.p-button-danger):not(.p-button-contrast):not(.p-button-outlined):not(.p-button-text):not(.p-button-link):hover:not(:disabled) {
+    background: color-mix(in oklch, var(--color-accent) 84%, var(--color-ink)) !important;
+    border-color: color-mix(in oklch, var(--color-accent) 84%, var(--color-ink)) !important;
+  }
+
+  .p-button.p-button-secondary:not(.p-button-outlined):not(.p-button-text):not(.p-button-link):hover:not(:disabled) {
+    background: var(--pm-surface-3) !important;
+  }
+}
+
+app-root .navigation-toggle kbd {
+  background: var(--pm-canvas-deep);
+  border: var(--rule-hair) solid var(--pm-border);
+  border-radius: calc(var(--radius-input) / 2);
+  color: var(--pm-text-muted);
+  font-family: var(--font-body);
+  font-size: var(--text-xs);
+  font-weight: 500;
+  line-height: 1;
+  padding: var(--space-3xs) var(--space-2xs);
+  white-space: nowrap;
 }
 
 .p-button:not(:disabled):active {
@@ -451,6 +514,11 @@ p-tag {
   font-weight: 650;
   letter-spacing: 0.01em;
   max-width: 100%;
+}
+
+.p-tag:not(.p-tag-secondary):not(.p-tag-success):not(.p-tag-info):not(.p-tag-warn):not(.p-tag-danger):not(.p-tag-contrast) {
+  background: color-mix(in oklch, var(--pm-blue) 14%, var(--pm-surface-2)) !important;
+  color: var(--pm-text) !important;
 }
 
 .p-tag-label {
@@ -523,7 +591,6 @@ app-root .user-email {
 }
 
 @media (min-width: 62rem) {
-  app-root .journey-rail.journey-rail { display: flex; }
   app-root .header-inner.header-inner { padding-inline: var(--space-lg); }
   app-root .app-main.app-main { padding-inline: var(--space-lg); }
 }
@@ -541,12 +608,17 @@ app-root .user-email {
   app-root .workspace-intro.workspace-intro.workspace-intro p { max-width: 52ch; }
   app-root .header-tools .theme-toggle__label { display: none; }
   app-root .header-tools .theme-toggle { padding-inline: var(--space-xs); width: 2.75rem; }
+  app-root .navigation-toggle kbd { display: none; }
+}
+
+@media (max-width: 48rem) {
+  .view-switch { align-self: flex-start; }
 }
 
 @media (max-width: 35rem) {
   app-root .brand-copy.brand-copy.brand-copy small { display: none; }
   app-root .brand.brand.brand img { height: 2.5rem; width: 2.5rem; }
-  app-root .navigation-toggle > span:last-child { display: none; }
+  app-root .navigation-toggle-label { display: none; }
   app-root .navigation-toggle.navigation-toggle { justify-content: center; padding-inline: var(--space-xs); width: 2.75rem; }
   app-root .header-controls.header-controls {
     left: calc(var(--space-2xs) + env(safe-area-inset-left));
@@ -556,6 +628,14 @@ app-root .user-email {
   }
   app-root .user-actions.user-actions { align-items: center; flex-wrap: wrap; }
   app-root .user-account.user-account { flex: 1 1 100%; }
+
+  .view-switch {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: 100%;
+  }
+
+  .view-switch a { justify-content: center; }
 }
 
 @media (forced-colors: active) {

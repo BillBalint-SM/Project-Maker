@@ -1,6 +1,28 @@
 [
   {
     "date": "2026-08-24",
+    "scope": "app",
+    "verb": "redesign",
+    "genre": "atmospheric",
+    "macrostructure": "Map / Diagram core + operational table Queue",
+    "nav": "N4 visible trigger + Control/Command K",
+    "footer": "none",
+    "theme": "Midnight",
+    "theme_axes": "dark-default + light / geometric-display + sans-body / cool-neon",
+    "vibe": "cinematic preparation field with a sharp power-user layer",
+    "enrichment": "none",
+    "brief": "Promote B — Journey Field to production core and preserve D logic as Queue in the B palette",
+    "design_system": "design.md",
+    "variation_knobs": "real preparation-state nodes; canonical detail strip; page-scoped route; semantic urgency table",
+    "contrast": "pass (40–41; computed WCAG contrast in dark/light for core text, controls, tags, active tabs, and hover states)",
+    "slop_test": "pass (58 gates; final Hallmark/CSS audit: 0 critical, 0 major)",
+    "honest_chrome_tokens": "pass (46–48; no fabricated metrics or redrawn chrome; semantic token system)",
+    "responsive": "pass (49; Journey and Queue have no document overflow at 320, 375, 414, 768, and 1280 px)",
+    "mobile": "pass (34, 49, 50–57; staged Journey reflow, label/value Queue, one-line affordances, compact shell)",
+    "validation": "pnpm typecheck; 39 web test files / 138 tests; full workspace production build; canonical Queue Playwright 6 scenarios; visual Playwright 2 core scenarios across 5 widths with dark/light contrast, hover, keyboard navigation, route focus, node selection, and table reflow"
+  },
+  {
+    "date": "2026-08-24",
     "scope": "prototype",
     "verb": "explore",
     "genre": "playful",

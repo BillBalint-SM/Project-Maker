@@ -1,11 +1,15 @@
 <section aria-labelledby="active-queue-title">
-  <a class="back-link" routerLink="/">← Back to Portfolio Overview</a>
-
-  <div class="page-heading">
-    <span class="eyebrow">Portfolio</span>
-    <h1 id="active-queue-title">Active Project Queue</h1>
-    <p>Next actions for active projects, prioritized by urgency.</p>
-  </div>
+  <header class="queue-hero">
+    <div class="page-heading">
+      <span class="eyebrow">Portfolio / Power view</span>
+      <h1 id="active-queue-title">Queue</h1>
+      <p>Scan real next actions at operational density, prioritized by urgency.</p>
+    </div>
+    <nav class="view-switch" aria-label="Portfolio view">
+      <a routerLink="/">Journey</a>
+      <a routerLink="/projects/active" aria-current="page">Queue</a>
+    </nav>
+  </header>
 
   @if (cursorRecoveryNotice()) {
     <div class="state-panel" data-testid="queue-cursor-recovery" role="status">
@@ -14,7 +18,10 @@
   }
 
   <section class="queue-filters" aria-labelledby="queue-filter-title">
-    <h2 id="queue-filter-title">Filter list</h2>
+    <div class="queue-filter-heading">
+      <span class="eyebrow">Control strip</span>
+      <h2 id="queue-filter-title">Narrow the signal</h2>
+    </div>
     <label class="search-field">
       <span>Project name</span>
       <input type="search" [formControl]="search" placeholder="Search project names" data-testid="queue-search" />
@@ -85,6 +92,25 @@
       </button>
     </div>
   } @else if (page(); as queuePage) {
+    <div class="queue-metrics" aria-label="Active project summary">
+      <div>
+        <span>Active</span>
+        <strong>{{ queuePage.totalCount }}</strong>
+      </div>
+      <div>
+        <span>Customer replies</span>
+        <strong>{{ queuePage.groupCounts.CUSTOMER_REPLY }}</strong>
+      </div>
+      <div>
+        <span>Overdue</span>
+        <strong>{{ queuePage.groupCounts.OVERDUE }}</strong>
+      </div>
+      <div>
+        <span>Due soon</span>
+        <strong>{{ queuePage.groupCounts.DUE_SOON }}</strong>
+      </div>
+    </div>
+
     @if (queuePage.totalCount === 0) {
       <div class="state-panel" data-testid="active-queue-empty">
         @if (hasActiveFilters()) {
@@ -110,68 +136,69 @@
         }
       </div>
 
-      <div class="queue-groups">
-        @for (group of groups(); track group.urgency) {
-          <section class="queue-group" data-testid="active-queue-group" [attr.aria-labelledby]="'queue-group-' + group.urgency">
-            <div class="group-heading">
-              <h2 [id]="'queue-group-' + group.urgency">{{ group.label }}</h2>
-              <span>
-                {{ group.items.length }} shown of {{ queuePage.groupCounts[group.urgency] }} projects
-              </span>
-            </div>
-            <ul>
+      <div class="queue-table-frame">
+        <table class="queue-table" data-testid="active-queue-table">
+          <caption class="visually-hidden">Active projects grouped by urgency with their canonical next actions.</caption>
+          <thead>
+            <tr>
+              <th scope="col">Project</th>
+              <th scope="col">Stage</th>
+              <th scope="col">Next action</th>
+              <th scope="col">Owner</th>
+              <th scope="col">Due</th>
+              <th scope="col">Signal</th>
+              <th scope="col"><span class="visually-hidden">Open action</span></th>
+            </tr>
+          </thead>
+          @for (group of groups(); track group.urgency) {
+            <tbody data-testid="active-queue-group" [attr.aria-labelledby]="'queue-group-' + group.urgency">
+              <tr class="group-heading">
+                <th colspan="7" scope="rowgroup">
+                  <span [id]="'queue-group-' + group.urgency">{{ group.label }}</span>
+                  <small>{{ group.items.length }} shown of {{ queuePage.groupCounts[group.urgency] }} projects</small>
+                </th>
+              </tr>
               @for (item of group.items; track item.projectId) {
-                <li class="queue-row">
-                  <div class="project-column">
+                <tr class="queue-row">
+                  <th scope="row" data-label="Project">
                     <a
                       class="project-name"
                       [routerLink]="projectRoute(item.projectId)"
                       [queryParams]="projectContextQueryParams()"
                       [attr.data-testid]="'queue-project-' + item.projectId"
                     >{{ item.projectName }}</a>
-                    <div class="tags">
-                      <p-tag [value]="item.urgencyLabel" />
-                      <p-tag [value]="item.preparationStatus.label" severity="secondary" />
-                    </div>
-                  </div>
-                  <dl>
-                    <div>
-                      <dt>Next action</dt>
-                      <dd>{{ item.nextAction || 'Not specified' }}</dd>
-                    </div>
-                    <div>
-                      <dt>Owner</dt>
-                      <dd>{{ item.nextActionOwner.displayName || 'Not assigned' }}</dd>
-                    </div>
-                    <div>
-                      <dt>Due date</dt>
-                      <dd>{{ item.dueAt ? (item.dueAt | date: 'yyyy-MM-dd HH:mm') : 'Not specified' }}</dd>
-                    </div>
+                    <p-tag [value]="item.urgencyLabel" />
+                  </th>
+                  <td data-label="Stage">{{ item.preparationStatus.label }}</td>
+                  <td data-label="Next action">{{ item.nextAction || 'Not specified' }}</td>
+                  <td data-label="Owner">{{ item.nextActionOwner.displayName || 'Not assigned' }}</td>
+                  <td data-label="Due">{{ item.dueAt ? (item.dueAt | date: 'yyyy-MM-dd HH:mm') : 'Not specified' }}</td>
+                  <td data-label="Signal">
                     @if (item.urgency === 'CUSTOMER_REPLY') {
-                      <div>
-                        <dt>New replies</dt>
-                        <dd>{{ item.newReplyCount }}</dd>
-                      </div>
+                      <span>{{ item.newReplyCount }} new {{ item.newReplyCount === 1 ? 'reply' : 'replies' }}</span>
+                      @if (progressLabel(item.progress); as progress) {
+                        <small>{{ progress }}</small>
+                      }
+                    } @else if (progressLabel(item.progress); as progress) {
+                      {{ progress }}
+                    } @else {
+                      —
                     }
-                    @if (progressLabel(item.progress); as progress) {
-                      <div>
-                        <dt>Progress</dt>
-                        <dd>{{ progress }}</dd>
-                      </div>
-                    }
-                  </dl>
-                  <a
-                    pButton
-                    [routerLink]="actionRoute(item)"
-                    [queryParams]="projectContextQueryParams()"
-                    [fragment]="actionFragment(item.primaryAction.target)"
-                    [attr.data-testid]="'queue-action-' + item.projectId"
-                  >{{ item.primaryAction.label }}</a>
-                </li>
+                  </td>
+                  <td class="queue-row__action" data-label="Action">
+                    <a
+                      pButton
+                      [routerLink]="actionRoute(item)"
+                      [queryParams]="projectContextQueryParams()"
+                      [fragment]="actionFragment(item.primaryAction.target)"
+                      [attr.data-testid]="'queue-action-' + item.projectId"
+                    >{{ item.primaryAction.label }}</a>
+                  </td>
+                </tr>
               }
-            </ul>
-          </section>
-        }
+            </tbody>
+          }
+        </table>
       </div>
 
       <nav class="queue-pagination" aria-label="Active project queue pagination">

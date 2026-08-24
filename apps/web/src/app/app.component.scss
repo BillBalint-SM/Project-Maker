@@ -83,27 +83,6 @@
   letter-spacing: 0.025em;
 }
 
-.journey-rail {
-  align-items: center;
-  color: var(--pm-text-muted);
-  display: none;
-  font-family: var(--font-outlier);
-  font-size: 0.68rem;
-  gap: var(--space-2xs);
-  margin: 0 auto;
-}
-
-.journey-rail i {
-  align-items: center;
-  border: var(--rule-hair) solid var(--pm-border);
-  color: var(--pm-blue);
-  display: inline-flex;
-  font-style: normal;
-  height: 1.5rem;
-  justify-content: center;
-  width: 1.5rem;
-}
-
 .header-tools {
   align-items: center;
   display: flex;
@@ -188,7 +167,7 @@
 
 .workspace-intro h2 {
   font-size: clamp(1.65rem, 3vw, 2.65rem);
-  line-height: 0.98;
+  line-height: 1.04;
   margin: var(--space-sm) 0;
   max-width: 12ch;
 }

@@ -1,5 +1,5 @@
 import { DatePipe } from '@angular/common';
-import { Component, computed, DestroyRef, inject, OnInit, signal } from '@angular/core';
+import { Component, DestroyRef, inject, OnInit, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormControl, FormGroup, ReactiveFormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
@@ -20,9 +20,9 @@ import { ProgressSpinnerModule } from 'primeng/progressspinner';
 import { TagModule } from 'primeng/tag';
 
 import { AuthApiService } from '../auth/auth-api.service';
-import { AppThemeState } from '../theme/app-theme.state';
 import { CustomerMailboxSyncApiService } from './customer-mailbox-sync-api.service';
 import { DecisionPortfolioApiService } from './decision-portfolio-api.service';
+import { JourneyFieldComponent } from './journey-field/journey-field.component';
 import { projectActionFragment, projectActionRoute } from './project-action-route';
 import { projectStatusLabel } from './project-status-label';
 import { projectWorkProgressLabel } from './project-work-progress-label';
@@ -38,6 +38,7 @@ interface SavedPortfolioView {
     ButtonModule,
     CardModule,
     DatePipe,
+    JourneyFieldComponent,
     MessageModule,
     ProgressSpinnerModule,
     ReactiveFormsModule,
@@ -51,7 +52,6 @@ export class ProjectListPage implements OnInit {
   private readonly portfolioApi = inject(DecisionPortfolioApiService);
   private readonly mailboxApi = inject(CustomerMailboxSyncApiService);
   private readonly auth = inject(AuthApiService);
-  private readonly appTheme = inject(AppThemeState);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
@@ -94,11 +94,6 @@ export class ProjectListPage implements OnInit {
   ];
   readonly progressLabel = projectWorkProgressLabel;
   readonly actionFragment = projectActionFragment;
-  readonly workspaceMapQueryParams = { view: 'user-workflow' } as const;
-  readonly journeyPreviewUrl = computed(
-    () =>
-      `/diagrams/previews/project-maker-user-workflow.preview.${this.appTheme.theme()}.png`,
-  );
 
   ngOnInit(): void {
     this.loadSavedViews();

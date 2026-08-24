@@ -1,9 +1,11 @@
 import {
+  afterNextRender,
   Component,
   DestroyRef,
   ElementRef,
   effect,
   inject,
+  Injector,
   OnInit,
   signal,
   viewChild,
@@ -24,6 +26,7 @@ import { ThemeToggleComponent } from './theme/theme-toggle.component';
   styleUrl: './app.component.scss',
   host: {
     '(document:keydown.escape)': 'handleNavigationEscape()',
+    '(document:keydown)': 'handleNavigationShortcut($event)',
   },
 })
 export class AppComponent implements OnInit {
@@ -32,6 +35,7 @@ export class AppComponent implements OnInit {
   private readonly notifications = inject(NotificationsApiService);
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly injector = inject(Injector);
   private loadedSummaryForUserId: string | null = null;
   private loadedNotificationsForUserId: string | null = null;
   private summaryRequestForUserId: string | null = null;
@@ -39,6 +43,7 @@ export class AppComponent implements OnInit {
   private summaryLoadSubscription: Subscription | null = null;
   private notificationLoadSubscription: Subscription | null = null;
   private activeUserId: string | null = null;
+  private routeActivated = false;
 
   readonly currentUser = this.auth.currentUser;
   readonly newReplyCount = signal(0);
@@ -49,6 +54,8 @@ export class AppComponent implements OnInit {
   readonly logoutError = signal<string | null>(null);
   readonly navigationOpen = signal(false);
   private readonly navigationToggleElement = viewChild<ElementRef<HTMLButtonElement>>('navigationToggle');
+  private readonly navigationFirstLinkElement = viewChild<ElementRef<HTMLAnchorElement>>('navigationFirstLink');
+  private readonly mainContentElement = viewChild<ElementRef<HTMLElement>>('mainContent');
   private readonly loadReplySummary = effect(() => {
     const user = this.currentUser();
     const nextUserId = user?.id ?? null;
@@ -194,7 +201,38 @@ export class AppComponent implements OnInit {
       return;
     }
     this.closeNavigation();
-    queueMicrotask(() => this.navigationToggleElement()?.nativeElement.focus());
+    afterNextRender(
+      () => this.navigationToggleElement()?.nativeElement.focus(),
+      { injector: this.injector },
+    );
+  }
+
+  handleNavigationShortcut(event: KeyboardEvent): void {
+    if (!(event.ctrlKey || event.metaKey) || event.key.toLocaleLowerCase() !== 'k') {
+      return;
+    }
+    event.preventDefault();
+    const navigationWasOpen = this.navigationOpen();
+    this.navigationOpen.set(true);
+    if (navigationWasOpen) {
+      this.navigationFirstLinkElement()?.nativeElement.focus();
+      return;
+    }
+    afterNextRender(
+      () => this.navigationFirstLinkElement()?.nativeElement.focus(),
+      { injector: this.injector },
+    );
+  }
+
+  handleRouteActivate(): void {
+    if (!this.routeActivated) {
+      this.routeActivated = true;
+      return;
+    }
+    afterNextRender(
+      () => this.mainContentElement()?.nativeElement.focus(),
+      { injector: this.injector },
+    );
   }
 
   handleHeaderFocusOut(event: FocusEvent): void {
