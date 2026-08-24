@@ -100,6 +100,28 @@
             <a routerLink="/settings/questions">Open Question Bank</a>
           </div>
         } @else {
+          <div class="template-selection">
+            <label for="question-template-selection">Question Template</label>
+            <select
+              id="question-template-selection"
+              [value]="selectedQuestionTemplateId() ?? ''"
+              [disabled]="schemaSaving() || hasOpenRound() || projectArchived()"
+              data-testid="question-template-selection"
+              (change)="selectQuestionTemplate($any($event.target).value)"
+            >
+              <option value="">Manual question selection</option>
+              @for (template of publishedQuestionTemplates(); track template.id) {
+                <option [value]="template.id" [disabled]="!isPublishedTemplateAvailable(template)">
+                  {{ template.name }} · v{{ template.latestPublishedVersion }}
+                  @if (!isPublishedTemplateAvailable(template)) { · unavailable }
+                </option>
+              }
+            </select>
+            <small>
+              Apply the latest published version, or keep a manual selection.
+              <a routerLink="/settings/question-templates">Manage Question Templates</a>
+            </small>
+          </div>
           <fieldset class="question-selection" data-testid="interview-question-selection">
             <legend>Select active base questions</legend>
             @for (question of activeQuestions(); track question.stableKey) {
@@ -123,6 +145,9 @@
             @if (schema(); as currentSchema) {
               <span data-testid="project-schema-status">
                 Accepted question schema v{{ currentSchema.schemaVersion }} (bank v{{ currentSchema.bankVersion }})
+                @if (currentSchema.questionTemplate; as template) {
+                  · Question Template {{ template.name }} v{{ template.version }}
+                }
               </span>
             } @else {
               <span data-testid="project-schema-status">No accepted question schema yet.</span>

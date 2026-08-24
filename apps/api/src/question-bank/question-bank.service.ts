@@ -14,6 +14,7 @@ import type {
   BaseQuestionBank,
   BaseQuestionType,
   ProjectQuestionSchema,
+  ProjectSchemaQuestionInput,
   ProjectSchemaQuestion,
   QuestionReferenceFile,
 } from '@project-maker/contracts';
@@ -35,6 +36,7 @@ import { ProjectSchemaQuestionEntity } from './project-schema-question.entity';
 import { QuestionReferenceFileContentEntity } from './question-reference-file-content.entity';
 import { QuestionReferenceFileEntity } from './question-reference-file.entity';
 import { loadQuestionReferenceFiles } from './question-reference-file-projection';
+import { QuestionTemplateService, type PublishedQuestionTemplate } from './question-template.service';
 
 @Injectable()
 export class QuestionBankService {
@@ -44,6 +46,7 @@ export class QuestionBankService {
     @InjectRepository(BaseQuestionEntity)
     private readonly baseQuestionRepository: Repository<BaseQuestionEntity>,
     private readonly dataSource: DataSource,
+    private readonly questionTemplates: QuestionTemplateService,
     config: ConfigService,
   ) {
     this.maxAttachmentBytes = resolveAttachmentLimitBytes(
@@ -304,7 +307,25 @@ export class QuestionBankService {
         );
       }
 
-      const stableKeys = input.questions.map((question) => question.stableKey);
+      const hasManualSelection = input.questions !== undefined;
+      const hasTemplateSelection = input.questionTemplateId !== undefined;
+      if (hasManualSelection === hasTemplateSelection) {
+        throw new BadRequestException(
+          'Provide either questions or questionTemplateId, but not both.',
+        );
+      }
+      let templateSource: PublishedQuestionTemplate | null = null;
+      let selections: readonly ProjectSchemaQuestionInput[];
+      if (input.questionTemplateId) {
+        templateSource = await this.questionTemplates.requireLatestPublished(
+          input.questionTemplateId,
+          manager,
+        );
+        selections = templateSource.version.questions;
+      } else {
+        selections = input.questions!;
+      }
+      const stableKeys = selections.map((question) => question.stableKey);
       if (new Set(stableKeys).size !== stableKeys.length) {
         throw new BadRequestException('Project question schema contains duplicate stable keys.');
       }
@@ -315,7 +336,7 @@ export class QuestionBankService {
           .filter((question) => question.active)
           .map((question) => [question.stableKey, question]),
       );
-      const selectedQuestions = input.questions.map((selection, index) => {
+      const selectedQuestions = selections.map((selection, index) => {
         const question = activeQuestionsByKey.get(selection.stableKey);
         if (!question) {
           throw new BadRequestException(
@@ -331,6 +352,9 @@ export class QuestionBankService {
         schemaVersion: (previousSchema?.schemaVersion ?? 0) + 1,
         bankVersion,
         publishedAt: new Date(),
+        questionTemplateId: templateSource?.template.id ?? null,
+        questionTemplateName: templateSource?.version.name ?? null,
+        questionTemplateVersion: templateSource?.version.version ?? null,
         source: 'QUESTION_SCHEMA_API',
       });
       await manager.getRepository(ProjectQuestionSchemaEntity).save(schema);
@@ -355,6 +379,12 @@ export class QuestionBankService {
           schemaVersion: String(schema.schemaVersion),
           bankVersion: String(bankVersion),
           questionCount: String(schemaQuestions.length),
+          ...(templateSource
+            ? {
+                questionTemplateId: templateSource.template.id,
+                questionTemplateVersion: String(templateSource.version.version),
+              }
+            : {}),
         },
       });
       return toProjectSchema(
@@ -652,6 +682,13 @@ function toProjectSchema(
     schemaVersion: schema.schemaVersion,
     bankVersion: schema.bankVersion,
     publishedAt: toIso(schema.publishedAt, 'publishedAt'),
+    questionTemplate: schema.questionTemplateId === null
+      ? null
+      : {
+          id: schema.questionTemplateId,
+          name: schema.questionTemplateName!,
+          version: schema.questionTemplateVersion!,
+        },
     questions,
   };
 }

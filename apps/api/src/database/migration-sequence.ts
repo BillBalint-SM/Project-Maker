@@ -36,6 +36,7 @@ import { ProjectArchiveResume0033ProjectArchiveResume1788681600000 } from '../mi
 import { ProjectDraftDeletion0034ProjectDraftDeletion1788768000000 } from '../migrations/0034-project-draft-deletion';
 import { QuestionBankReferenceFiles0035QuestionBankReferenceFiles1788854400000 } from '../migrations/0035-question-bank-reference-files';
 import { ProfessionalEnglishProductLanguage0036ProfessionalEnglishProductLanguage1788940800000 } from '../migrations/0036-professional-english-product-language';
+import { QuestionTemplateLibrary0037QuestionTemplateLibrary1789027200000 } from '../migrations/0037-question-template-library';
 
 export type ApiMigration = new () => MigrationInterface;
 
@@ -76,6 +77,7 @@ export const migrationSequence: readonly ApiMigration[] = [
   ProjectDraftDeletion0034ProjectDraftDeletion1788768000000,
   QuestionBankReferenceFiles0035QuestionBankReferenceFiles1788854400000,
   ProfessionalEnglishProductLanguage0036ProfessionalEnglishProductLanguage1788940800000,
+  QuestionTemplateLibrary0037QuestionTemplateLibrary1789027200000,
 ];
 
 export function migrationsThrough(migrationName: string): readonly ApiMigration[] {

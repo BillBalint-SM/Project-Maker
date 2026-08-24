@@ -14,6 +14,9 @@ import { ProjectSchemaQuestionEntity } from './project-schema-question.entity';
 import { QuestionReferenceFileContentEntity } from './question-reference-file-content.entity';
 import { QuestionReferenceFileEntity } from './question-reference-file.entity';
 import { QuestionBankService } from './question-bank.service';
+import { QuestionTemplateController } from './question-template.controller';
+import { QuestionTemplateEntity, QuestionTemplateVersionEntity } from './question-template.entity';
+import { QuestionTemplateService } from './question-template.service';
 
 @Module({
   imports: [
@@ -34,10 +37,12 @@ import { QuestionBankService } from './question-bank.service';
       AuditEvent,
       QuestionReferenceFileContentEntity,
       QuestionReferenceFileEntity,
+      QuestionTemplateEntity,
+      QuestionTemplateVersionEntity,
     ]),
   ],
-  controllers: [BaseQuestionsController, ProjectQuestionSchemaController],
-  providers: [QuestionBankService],
-  exports: [QuestionBankService],
+  controllers: [BaseQuestionsController, ProjectQuestionSchemaController, QuestionTemplateController],
+  providers: [QuestionBankService, QuestionTemplateService],
+  exports: [QuestionBankService, QuestionTemplateService],
 })
 export class QuestionBankModule {}

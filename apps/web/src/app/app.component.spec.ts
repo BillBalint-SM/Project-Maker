@@ -419,6 +419,7 @@ describe('AppComponent', () => {
       'Specification templates',
       'Git connections',
       'Question Bank',
+      'Question Templates',
     ]);
     expect(
       fixture.nativeElement.querySelector('.workspace-map-link')?.getAttribute('href'),

@@ -5,6 +5,7 @@ import {
   IsBoolean,
   IsOptional,
   IsString,
+  IsUUID,
   Matches,
   MaxLength,
   ValidateNested,
@@ -26,9 +27,14 @@ export class ProjectSchemaQuestionDto {
 }
 
 export class PublishProjectQuestionSchemaDto {
+  @IsOptional()
   @IsArray()
   @ArrayNotEmpty()
   @ValidateNested({ each: true })
   @Type(() => ProjectSchemaQuestionDto)
-  questions!: ProjectSchemaQuestionDto[];
+  questions?: ProjectSchemaQuestionDto[];
+
+  @IsOptional()
+  @IsUUID()
+  questionTemplateId?: string;
 }

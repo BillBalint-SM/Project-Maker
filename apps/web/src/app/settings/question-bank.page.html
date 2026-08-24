@@ -6,11 +6,14 @@
       <p>Manage the base questions available for new Project question schemas.</p>
     </div>
     @if (!showForm() && !loading() && !loadError()) {
-      <p-button
-        label="New base question"
-        data-testid="new-base-question-button"
-        (onClick)="openCreateForm()"
-      />
+      <div class="form-actions">
+        <a routerLink="/settings/question-templates">Question Templates</a>
+        <p-button
+          label="New base question"
+          data-testid="new-base-question-button"
+          (onClick)="openCreateForm()"
+        />
+      </div>
     }
   </div>
 

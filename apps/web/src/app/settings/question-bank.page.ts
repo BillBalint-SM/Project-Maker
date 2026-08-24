@@ -1,5 +1,6 @@
 import { DOCUMENT, NgTemplateOutlet } from '@angular/common';
 import { afterNextRender, Component, computed, inject, Injector, OnInit, signal } from '@angular/core';
+import { RouterLink } from '@angular/router';
 import {
   AbstractControl,
   FormControl,
@@ -67,6 +68,7 @@ interface QuestionPlaybookGroup {
     NgTemplateOutlet,
     ProgressSpinnerModule,
     ReactiveFormsModule,
+    RouterLink,
     SelectModule,
     TagModule,
   ],

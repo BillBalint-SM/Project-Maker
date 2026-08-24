@@ -1,0 +1,66 @@
+:host { display: block; }
+
+.heading-row,
+.template-heading,
+.card-actions,
+.editor-actions,
+.question-row,
+.question-choice,
+.question-flags {
+  align-items: center;
+  display: flex;
+}
+
+.heading-row,
+.template-heading { justify-content: space-between; }
+.heading-row { gap: 1.5rem; }
+.heading-row .page-heading { flex: 1; }
+
+.editor-card { display: block; margin: 1.5rem 0; }
+.editor-fields { display: grid; gap: 0.45rem; }
+.editor-fields input,
+.browser-toolbar input,
+.browser-toolbar select {
+  border: 1px solid var(--p-form-field-border-color);
+  border-radius: var(--p-form-field-border-radius);
+  font: inherit;
+  padding: 0.7rem 0.8rem;
+}
+.field-error,
+.warning { color: var(--p-red-500); }
+.selection-summary,
+.result-count { color: var(--p-text-muted-color); }
+
+.question-groups { display: grid; gap: 1rem; max-height: 34rem; overflow: auto; }
+.question-group { border-top: 1px solid var(--pm-border); }
+.question-group h2 { font-size: 1rem; }
+.question-group h2 span { color: var(--p-text-muted-color); font-weight: 400; }
+.question-row { border-top: 1px solid var(--pm-border); gap: 1rem; justify-content: space-between; padding: 0.75rem 0; }
+.question-choice { flex: 1; gap: 0.65rem; min-width: 0; }
+.question-choice span { display: grid; gap: 0.2rem; }
+.question-choice small { color: var(--p-text-muted-color); }
+.question-flags { flex-wrap: wrap; gap: 0.8rem; }
+.question-flags label { white-space: nowrap; }
+.editor-actions,
+.card-actions { gap: 0.65rem; justify-content: flex-end; margin-top: 1rem; }
+
+.browser-toolbar { display: grid; gap: 1rem; grid-template-columns: 2fr 1fr 1fr; margin-top: 1.5rem; }
+.browser-toolbar label { display: grid; gap: 0.4rem; }
+.template-grid { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(19rem, 1fr)); }
+.template-card { background: var(--pm-surface-1); border: 1px solid var(--pm-border); border-radius: var(--pm-radius-md); padding: 1.1rem; }
+.template-heading { align-items: flex-start; gap: 1rem; }
+.template-heading h2,
+.template-heading p { margin: 0; }
+.template-heading p,
+.assignments { color: var(--p-text-muted-color); }
+.template-card dl { display: flex; gap: 1.5rem; margin: 1rem 0; }
+.template-card dl div { display: grid; gap: 0.2rem; }
+.template-card dt { color: var(--p-text-muted-color); font-size: 0.8rem; }
+.template-card dd { font-weight: 700; margin: 0; }
+.assignments a { margin-left: 0.25rem; }
+
+@media (max-width: 760px) {
+  .heading-row,
+  .question-row { align-items: stretch; flex-direction: column; }
+  .browser-toolbar { grid-template-columns: 1fr; }
+}

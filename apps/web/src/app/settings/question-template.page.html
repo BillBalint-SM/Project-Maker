@@ -1,0 +1,180 @@
+<section aria-labelledby="question-template-title">
+  <div class="heading-row">
+    <div class="page-heading">
+      <span class="eyebrow">Configure</span>
+      <h1 id="question-template-title">Question Templates</h1>
+      <p>Prepare focused, versioned question selections before assigning them to a project.</p>
+    </div>
+    <p-button label="New Question Template" data-testid="new-question-template" (onClick)="startCreate()" />
+  </div>
+
+  @if (actionError()) {
+    <p-message severity="error" role="alert">{{ actionError() }}</p-message>
+  }
+  @if (feedback()) {
+    <p-message severity="success">{{ feedback() }}</p-message>
+  }
+
+  @if (editorOpen()) {
+    <p-card styleClass="editor-card">
+      <ng-template #title>{{ editingId() ? 'Edit Question Template draft' : 'Create Question Template' }}</ng-template>
+      <div class="editor-fields">
+        <label for="question-template-name">Name</label>
+        <input id="question-template-name" type="text" maxlength="255" [formControl]="nameControl" />
+        @if (nameControl.touched && nameControl.invalid) {
+          <small class="field-error">Enter a name of no more than 255 characters.</small>
+        }
+        <label for="template-question-search">Find Question Bank questions</label>
+        <input
+          id="template-question-search"
+          type="search"
+          placeholder="Search by question, topic, or stable key"
+          [value]="questionSearch()"
+          (input)="questionSearch.set($any($event.target).value)"
+        />
+      </div>
+
+      <p class="selection-summary" aria-live="polite">{{ draftQuestions().length }} questions selected</p>
+      <div class="question-groups">
+        @for (group of questionGroups(); track group.topic) {
+          <section class="question-group" [attr.aria-labelledby]="'template-topic-' + $index">
+            <h2 [id]="'template-topic-' + $index">{{ group.topic }} <span>{{ group.questions.length }}</span></h2>
+            @for (question of group.questions; track question.stableKey) {
+              <article class="question-row">
+                <label class="question-choice">
+                  <input
+                    type="checkbox"
+                    [checked]="isSelected(question.stableKey)"
+                    (change)="toggleQuestion(question, $any($event.target).checked)"
+                  />
+                  <span><strong>{{ question.text }}</strong><small>{{ question.stableKey }}</small></span>
+                </label>
+                <div class="question-flags" [attr.aria-label]="'Template rules for ' + question.text">
+                  <label>
+                    <input
+                      type="checkbox"
+                      [checked]="questionFlag(question.stableKey, 'required')"
+                      [disabled]="!isSelected(question.stableKey)"
+                      (change)="setQuestionFlag(question.stableKey, 'required', $any($event.target).checked)"
+                    />
+                    Required
+                  </label>
+                  <label>
+                    <input
+                      type="checkbox"
+                      [checked]="questionFlag(question.stableKey, 'blocking')"
+                      [disabled]="!isSelected(question.stableKey)"
+                      (change)="setQuestionFlag(question.stableKey, 'blocking', $any($event.target).checked)"
+                    />
+                    Blocking
+                  </label>
+                </div>
+              </article>
+            }
+          </section>
+        } @empty {
+          <p class="empty-state">No active Question Bank questions match this search.</p>
+        }
+      </div>
+      <div class="editor-actions">
+        <p-button label="Cancel" severity="secondary" [outlined]="true" (onClick)="closeEditor()" />
+        <p-button
+          [label]="editingId() ? 'Save draft' : 'Create draft'"
+          [loading]="saving()"
+          [disabled]="saving()"
+          data-testid="save-question-template"
+          (onClick)="save()"
+        />
+      </div>
+    </p-card>
+  }
+
+  @if (loading()) {
+    <div class="state-panel" aria-live="polite">
+      <p-progress-spinner ariaLabel="Loading Question Templates" />
+      <p>Loading Question Templates and the Question Bank…</p>
+    </div>
+  } @else if (loadError()) {
+    <div class="state-panel" role="alert">
+      <h2>Question Templates could not be loaded</h2>
+      <p>{{ loadError() }}</p>
+      <p-button label="Retry" severity="secondary" (onClick)="load()" />
+    </div>
+  } @else {
+    <div class="browser-toolbar" aria-label="Question Template filters">
+      <label>
+        Search
+        <input
+          type="search"
+          placeholder="Template or project name"
+          [value]="searchQuery()"
+          (input)="searchQuery.set($any($event.target).value)"
+        />
+      </label>
+      <label>
+        Project
+        <select [value]="projectFilter()" (change)="projectFilter.set($any($event.target).value)">
+          <option value="ALL">All projects</option>
+          @for (projectName of projectNames(); track projectName) {
+            <option [value]="projectName">{{ projectName }}</option>
+          }
+        </select>
+      </label>
+      <label>
+        State
+        <select [value]="stateFilter()" (change)="stateFilter.set($any($event.target).value)">
+          <option value="ALL">All states</option>
+          <option value="DRAFT">Draft</option>
+          <option value="PUBLISHED">Published</option>
+          <option value="CHANGES_PENDING">Unpublished changes</option>
+        </select>
+      </label>
+    </div>
+
+    <p class="result-count" aria-live="polite">{{ filteredTemplates().length }} Question Templates</p>
+    <div class="template-grid">
+      @for (template of filteredTemplates(); track template.id) {
+        <article class="template-card">
+          <div class="template-heading">
+            <div>
+              <h2>{{ template.name }}</h2>
+              <p>{{ template.draftQuestions.length }} draft questions</p>
+            </div>
+            <p-tag [value]="stateLabel(template.state)" severity="secondary" />
+          </div>
+          <dl>
+            <div><dt>Published</dt><dd>{{ template.latestPublishedVersion ? 'v' + template.latestPublishedVersion : 'Not yet' }}</dd></div>
+            <div><dt>Projects</dt><dd>{{ template.assignedProjects.length }}</dd></div>
+          </dl>
+          @if (template.assignedProjects.length > 0) {
+            <p class="assignments">
+              Used by:
+              @for (assignment of template.assignedProjects; track assignment.projectId) {
+                <a [routerLink]="['/projects', assignment.projectId, 'interview']">{{ assignment.projectName }}</a>@if (!$last) {, }
+              }
+            </p>
+          }
+          @if (template.unavailableQuestionCount > 0) {
+            <p class="warning" role="status">
+              {{ template.unavailableQuestionCount }} selected question(s) are inactive or missing. Update the draft before publishing.
+            </p>
+          }
+          <div class="card-actions">
+            <p-button label="Edit draft" severity="secondary" [outlined]="true" (onClick)="edit(template)" />
+            <p-button
+              label="Publish"
+              [loading]="saving()"
+              [disabled]="saving() || template.state === 'PUBLISHED' || template.unavailableQuestionCount > 0"
+              (onClick)="publish(template)"
+            />
+          </div>
+        </article>
+      } @empty {
+        <div class="state-panel compact">
+          <h2>No matching Question Templates</h2>
+          <p>Create a draft or adjust the filters.</p>
+        </div>
+      }
+    </div>
+  }
+</section>

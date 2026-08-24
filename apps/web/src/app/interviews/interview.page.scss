@@ -140,6 +140,27 @@
   text-transform: uppercase;
 }
 
+.template-selection {
+  display: grid;
+  gap: 0.45rem;
+  margin-bottom: 1rem;
+}
+
+.template-selection label {
+  font-weight: 800;
+}
+
+.template-selection select {
+  border: 1px solid var(--p-form-field-border-color);
+  border-radius: var(--p-form-field-border-radius);
+  font: inherit;
+  padding: 0.7rem 0.8rem;
+}
+
+.template-selection small {
+  color: var(--p-text-muted-color);
+}
+
 .question-navigator {
   background: color-mix(in oklch, var(--pm-surface-2) 76%, transparent);
   border: 1px solid var(--pm-border);

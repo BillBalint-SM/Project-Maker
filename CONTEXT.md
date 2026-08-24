@@ -201,6 +201,18 @@ select questions. A successful Question Bank change creates a successor version
 and never rewrites an earlier Project question schema.
 _Avoid_: Live mutation of an active interview, unversioned question source
 
+**Question Template**:
+An Operator organization-maintained, reusable selection policy for creating a
+Project question schema. Its editable draft and immutable published versions
+remain separate from Question Bank content and from every Project's accepted schema.
+_Avoid_: Question Scheme Template, Project question schema, copied questionnaire
+
+**Published Question Template version**:
+An immutable ordered selection of Question Bank stable keys and Project-schema
+overrides that may be applied to future Projects. A Project schema records the
+exact template version and Question Bank version it used.
+_Avoid_: Mutable template, Question Bank version, Project question schema
+
 **Project question schema**:
 The approved selection of Question Bank questions for one project. Its
 acceptance creates and opens that project's Initial Intake interview round.

@@ -16,6 +16,7 @@ import type {
   InterviewRound,
   ProjectQuestionSchema,
   PublishProjectQuestionSchemaInput,
+  QuestionTemplateSummary,
   RoundQuestionSnapshot,
 } from '@project-maker/contracts';
 
@@ -25,6 +26,7 @@ import { ProjectApiService } from '../projects/project-api.service';
 import { ProjectAttachmentBlockComponent } from '../projects/attachments/project-attachment-block.component';
 import { ProjectAttachmentsApiService } from '../projects/attachments/project-attachments-api.service';
 import { QuestionBankApiService } from '../settings/question-bank-api.service';
+import { QuestionTemplateApiService } from '../settings/question-template-api.service';
 import { baseQuestionTypeLabel } from '../base-question-type-label';
 
 const textAutosaveDelayMs = 750;
@@ -92,6 +94,7 @@ export class InterviewPage implements OnInit, OnDestroy {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly questionBankApi = inject(QuestionBankApiService);
+  private readonly questionTemplateApi = inject(QuestionTemplateApiService);
   private readonly interviewApi = inject(InterviewApiService);
   private readonly projectApi = inject(ProjectApiService);
   private readonly projectAttachmentsApi = inject(ProjectAttachmentsApiService);
@@ -104,6 +107,8 @@ export class InterviewPage implements OnInit, OnDestroy {
   readonly bank = signal<BaseQuestionBank | null>(null);
   readonly schema = signal<ProjectQuestionSchema | null>(null);
   readonly selectedKeys = signal<readonly string[]>([]);
+  readonly questionTemplates = signal<readonly QuestionTemplateSummary[]>([]);
+  readonly selectedQuestionTemplateId = signal<string | null>(null);
   readonly round = signal<InterviewRound | null>(null);
   readonly answerStates = signal<ReadonlyMap<string, QuestionAnswerState>>(new Map());
   readonly assessmentStates = signal<ReadonlyMap<string, QuestionAssessmentState>>(new Map());
@@ -208,6 +213,7 @@ export class InterviewPage implements OnInit, OnDestroy {
     this.resetQuestionNavigator();
     forkJoin({
       bank: this.questionBankApi.loadBaseQuestionBank(),
+      templates: this.questionTemplateApi.list(),
       schema: this.questionBankApi.loadProjectSchema(this.projectId),
       activeRound: this.requestedRoundId
         ? this.interviewApi.getRound(this.projectId, this.requestedRoundId)
@@ -215,8 +221,9 @@ export class InterviewPage implements OnInit, OnDestroy {
       project: this.projectApi.loadProjectWorkspace(this.projectId),
       attachments: this.projectAttachmentsApi.list(this.projectId),
     }).subscribe({
-      next: ({ bank, schema, activeRound, project, attachments }) => {
+      next: ({ bank, templates, schema, activeRound, project, attachments }) => {
         this.bank.set(bank);
+        this.questionTemplates.set(templates);
         this.schema.set(schema);
         this.round.set(activeRound);
         this.projectArchived.set(project.status === 'ARCHIVED');
@@ -268,6 +275,7 @@ export class InterviewPage implements OnInit, OnDestroy {
     if (this.hasOpenRound() || this.projectArchived()) {
       return;
     }
+    this.selectedQuestionTemplateId.set(null);
     const next = new Set(this.selectedKeys());
     if (checked) {
       next.add(stableKey);
@@ -280,6 +288,36 @@ export class InterviewPage implements OnInit, OnDestroy {
 
   selectedCount(): number {
     return this.selectedKeys().length;
+  }
+
+  publishedQuestionTemplates(): readonly QuestionTemplateSummary[] {
+    return this.questionTemplates().filter((template) => template.latestPublishedVersion !== null);
+  }
+
+  isPublishedTemplateAvailable(template: QuestionTemplateSummary): boolean {
+    const activeKeys = new Set(
+      (this.bank()?.questions ?? [])
+        .filter((question) => question.active)
+        .map((question) => question.stableKey),
+    );
+    return template.latestPublishedQuestions?.every((question) => activeKeys.has(question.stableKey))
+      ?? false;
+  }
+
+  selectQuestionTemplate(templateId: string): void {
+    if (this.hasOpenRound() || this.projectArchived()) {
+      return;
+    }
+    if (!templateId) {
+      this.selectedQuestionTemplateId.set(null);
+      return;
+    }
+    const template = this.questionTemplates().find((item) => item.id === templateId);
+    if (!template?.latestPublishedQuestions || !this.isPublishedTemplateAvailable(template)) {
+      return;
+    }
+    this.selectedQuestionTemplateId.set(template.id);
+    this.selectedKeys.set(template.latestPublishedQuestions.map((question) => question.stableKey));
   }
 
   publishSchema(): void {
@@ -302,18 +340,21 @@ export class InterviewPage implements OnInit, OnDestroy {
     const existingByKey = new Map(
       this.schema()?.questions.map((question) => [question.stableKey, question]) ?? [],
     );
-    const input: PublishProjectQuestionSchemaInput = {
-      questions: this.activeQuestions()
-        .filter((question) => this.isSelected(question.stableKey))
-        .map((question) => {
-          const existing = existingByKey.get(question.stableKey);
-          return {
-            stableKey: question.stableKey,
-            required: existing?.required ?? question.required,
-            blocking: existing?.blocking ?? question.blocking,
-          };
-        }),
-    };
+    const selectedTemplateId = this.selectedQuestionTemplateId();
+    const input: PublishProjectQuestionSchemaInput = selectedTemplateId
+      ? { questionTemplateId: selectedTemplateId }
+      : {
+          questions: this.activeQuestions()
+            .filter((question) => this.isSelected(question.stableKey))
+            .map((question) => {
+              const existing = existingByKey.get(question.stableKey);
+              return {
+                stableKey: question.stableKey,
+                required: existing?.required ?? question.required,
+                blocking: existing?.blocking ?? question.blocking,
+              };
+            }),
+        };
 
     this.schemaSaving.set(true);
     this.actionError.set(null);

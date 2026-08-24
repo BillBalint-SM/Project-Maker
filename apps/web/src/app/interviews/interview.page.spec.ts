@@ -6,6 +6,7 @@ import type {
   BaseQuestionBank,
   InterviewRound,
   ProjectQuestionSchema,
+  QuestionTemplateSummary,
   RoundQuestionSnapshot,
 } from '@project-maker/contracts';
 
@@ -13,6 +14,7 @@ import { appConfig } from '../app.config';
 import { ProjectApiService } from '../projects/project-api.service';
 import { ProjectAttachmentsApiService } from '../projects/attachments/project-attachments-api.service';
 import { QuestionBankApiService } from '../settings/question-bank-api.service';
+import { QuestionTemplateApiService } from '../settings/question-template-api.service';
 import { InterviewApiService, interviewApiErrorBrand } from './interview-api.service';
 import { InterviewPage } from './interview.page';
 
@@ -891,6 +893,40 @@ describe('InterviewPage', () => {
       .toBe('Stakeholder round');
   });
 
+  it('applies a published Question Template by id instead of copying its selection', async () => {
+    const questionBankApi = createQuestionBankApi(null, null);
+    questionBankApi.loadProjectSchema.mockReturnValue(of(null));
+    questionBankApi.createProjectSchema.mockReturnValue(of({
+      ...buildSchema(),
+      questionTemplate: { id: 'template-1', name: 'Delivery intake', version: 2 },
+    }));
+    const interviewApi = createInterviewApi(null, null);
+    interviewApi.createRound.mockReturnValue(of(buildOpenRound(buildTextQuestion({}))));
+    const template: QuestionTemplateSummary = {
+      id: 'template-1', name: 'Delivery intake',
+      draftQuestions: [{ stableKey: 'general-001', required: true, blocking: true }],
+      latestPublishedVersion: 2,
+      latestPublishedQuestions: [{ stableKey: 'general-001', required: true, blocking: true }],
+      state: 'PUBLISHED', unavailableQuestionCount: 0, assignedProjects: [],
+      updatedAt: '2026-08-24T00:00:00.000Z',
+    };
+    const page = await renderInterviewPage(
+      'project-123', questionBankApi, interviewApi, undefined, [template],
+    );
+    const select = page.nativeElement.querySelector(
+      '[data-testid="question-template-selection"]',
+    ) as HTMLSelectElement;
+    select.value = template.id;
+    select.dispatchEvent(new Event('change'));
+    page.fixture.detectChanges();
+    findButton(page.nativeElement, '[data-testid="publish-project-schema-button"]')?.click();
+    await page.fixture.whenStable();
+
+    expect(questionBankApi.createProjectSchema).toHaveBeenCalledWith(
+      'project-123', { questionTemplateId: template.id },
+    );
+  });
+
   it('uses clarification copy for an explicitly requested clarification round', async () => {
     const questionBankApi = createQuestionBankApi(null, null);
     const interviewApi = createInterviewApi(null, null);
@@ -980,6 +1016,7 @@ async function renderInterviewPage(
     readonly finishRound: ReturnType<typeof vi.fn>;
   },
   roundId?: string,
+  templates: readonly QuestionTemplateSummary[] = [],
 ): Promise<{ readonly fixture: ComponentFixture<InterviewPage>; readonly nativeElement: HTMLElement }> {
   TestBed.resetTestingModule();
   await TestBed.configureTestingModule({
@@ -997,6 +1034,7 @@ async function renderInterviewPage(
         },
       },
       { provide: QuestionBankApiService, useValue: questionBankApi },
+      { provide: QuestionTemplateApiService, useValue: { list: vi.fn().mockReturnValue(of(templates)) } },
       { provide: InterviewApiService, useValue: interviewApi },
       {
         provide: ProjectApiService,
@@ -1096,6 +1134,7 @@ function buildSchema(): ProjectQuestionSchema {
     schemaVersion: 2,
     bankVersion: 3,
     publishedAt: '2026-08-06T10:05:00.000Z',
+    questionTemplate: null,
     questions: [buildSchemaTextQuestion()],
   };
 }
@@ -1329,6 +1368,7 @@ function buildBooleanSchema(): ProjectQuestionSchema {
     schemaVersion: 2,
     bankVersion: 3,
     publishedAt: '2026-08-06T10:05:00.000Z',
+    questionTemplate: null,
     questions: [
       {
         id: 'schema-question-boolean',
@@ -1356,6 +1396,7 @@ function buildOptionalTextSchema(): ProjectQuestionSchema {
     schemaVersion: 2,
     bankVersion: 3,
     publishedAt: '2026-08-06T10:05:00.000Z',
+    questionTemplate: null,
     questions: [
       {
         id: 'schema-question-optional',
@@ -1403,6 +1444,7 @@ function buildLongTextSchema(question: RoundQuestionSnapshot): ProjectQuestionSc
     schemaVersion: 2,
     bankVersion: 3,
     publishedAt: '2026-08-06T10:05:00.000Z',
+    questionTemplate: null,
     questions: [
       {
         id: 'schema-question-long-text',

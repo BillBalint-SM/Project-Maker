@@ -80,8 +80,47 @@ export interface ProjectSchemaQuestionInput {
   readonly blocking?: boolean;
 }
 
-export interface PublishProjectQuestionSchemaInput {
+export type PublishProjectQuestionSchemaInput =
+  | {
+      readonly questions: readonly ProjectSchemaQuestionInput[];
+      readonly questionTemplateId?: never;
+    }
+  | {
+      readonly questions?: never;
+      readonly questionTemplateId: string;
+    };
+
+export type QuestionTemplateState = 'DRAFT' | 'PUBLISHED' | 'CHANGES_PENDING';
+
+export interface QuestionTemplateProjectAssignment {
+  readonly projectId: string;
+  readonly projectName: string;
+  readonly schemaVersion: number;
+}
+
+export interface QuestionTemplateSummary {
+  readonly id: string;
+  readonly name: string;
+  readonly draftQuestions: readonly ProjectSchemaQuestionInput[];
+  readonly latestPublishedVersion: number | null;
+  readonly latestPublishedQuestions: readonly ProjectSchemaQuestionInput[] | null;
+  readonly state: QuestionTemplateState;
+  readonly unavailableQuestionCount: number;
+  readonly assignedProjects: readonly QuestionTemplateProjectAssignment[];
+  readonly updatedAt: string;
+}
+
+export interface CreateQuestionTemplateInput {
+  readonly name: string;
   readonly questions: readonly ProjectSchemaQuestionInput[];
+}
+
+export interface UpdateQuestionTemplateDraftInput extends CreateQuestionTemplateInput {}
+
+export interface QuestionTemplateProvenance {
+  readonly id: string;
+  readonly name: string;
+  readonly version: number;
 }
 
 export interface ProjectSchemaQuestion {
@@ -106,5 +145,6 @@ export interface ProjectQuestionSchema {
   readonly schemaVersion: number;
   readonly bankVersion: number;
   readonly publishedAt: string;
+  readonly questionTemplate: QuestionTemplateProvenance | null;
   readonly questions: readonly ProjectSchemaQuestion[];
 }

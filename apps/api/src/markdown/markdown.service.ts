@@ -546,6 +546,13 @@ async function loadLatestProjectSchema(
     schemaVersion: schema.schemaVersion,
     bankVersion: schema.bankVersion,
     publishedAt: toIso(schema.publishedAt, 'schema publishedAt'),
+    questionTemplate: schema.questionTemplateId === null
+      ? null
+      : {
+          id: schema.questionTemplateId,
+          name: schema.questionTemplateName!,
+          version: schema.questionTemplateVersion!,
+        },
     questions,
   };
 }

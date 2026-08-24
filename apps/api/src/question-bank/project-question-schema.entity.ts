@@ -17,6 +17,15 @@ export class ProjectQuestionSchemaEntity {
   @Column({ name: 'published_at', type: 'timestamptz' })
   publishedAt!: Date;
 
+  @Column({ name: 'question_template_id', type: 'uuid', nullable: true })
+  questionTemplateId!: string | null;
+
+  @Column({ name: 'question_template_name', type: 'varchar', length: 255, nullable: true })
+  questionTemplateName!: string | null;
+
+  @Column({ name: 'question_template_version', type: 'integer', nullable: true })
+  questionTemplateVersion!: number | null;
+
   @Column({ type: 'varchar', length: 50 })
   source!: string;
 }

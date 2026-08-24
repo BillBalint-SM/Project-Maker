@@ -138,6 +138,14 @@ const protectedRoutes: Routes = [
     title: 'Question Bank | Project Maker',
   },
   {
+    path: 'settings/question-templates',
+    loadComponent: () =>
+      import('./settings/question-template.page').then(
+        (module) => module.QuestionTemplatePage,
+      ),
+    title: 'Question Templates | Project Maker',
+  },
+  {
     path: 'settings/markdown-templates',
     loadComponent: () =>
       import('./settings/markdown-template.page').then(
