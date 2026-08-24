@@ -175,15 +175,112 @@
                 <p>Update the project schema, then start a new round.</p>
               </div>
             } @else {
-              <div class="round-questions" data-testid="round-questions">
-                @for (question of currentRound.questions; track question.id; let index = $index) {
+              <nav class="question-navigator" aria-label="Initial Intake questions" data-testid="intake-question-navigator">
+                <div class="question-filter-group" role="group" aria-label="Filter questions">
+                  @for (filter of questionFilterOptions; track filter.value) {
+                    <button
+                      type="button"
+                      class="question-filter"
+                      [class.question-filter--active]="questionFilter() === filter.value"
+                      [attr.aria-pressed]="questionFilter() === filter.value"
+                      [attr.data-testid]="filter.testId"
+                      (click)="setQuestionFilter(filter.value)"
+                    >
+                      {{ filter.label }} <span>{{ questionFilterCounts()[filter.value] }}</span>
+                    </button>
+                  }
+                </div>
+
+                <div class="question-navigator-actions">
+                  @if (!focusMode()) {
+                    @if (availableQuestionSections().length > 1) {
+                      <label class="section-jump">
+                        <span>Section</span>
+                        <select data-testid="question-section-jump" (change)="jumpToQuestionSection($event)">
+                          <option value="">Jump to section</option>
+                          @for (section of availableQuestionSections(); track section.id) {
+                            <option [value]="section.id">{{ section.topic }} ({{ section.questions.length }})</option>
+                          }
+                        </select>
+                      </label>
+                    }
+                    <button
+                      type="button"
+                      class="navigator-action"
+                      [disabled]="filteredRoundQuestions().length === 0"
+                      data-testid="enter-question-focus-mode"
+                      (click)="enterFocusMode()"
+                    >
+                      Focus mode
+                    </button>
+                  } @else {
+                    <button
+                      type="button"
+                      class="navigator-action"
+                      [disabled]="!canShowPreviousFocusedQuestion()"
+                      data-testid="previous-focused-question"
+                      (click)="showPreviousFocusedQuestion()"
+                    >
+                      Previous
+                    </button>
+                    <span class="focus-position" aria-live="polite">
+                      Question {{ focusPosition().current }} of {{ focusPosition().total }}
+                    </span>
+                    <button
+                      type="button"
+                      class="navigator-action"
+                      [disabled]="!canShowNextFocusedQuestion()"
+                      data-testid="next-focused-question"
+                      (click)="showNextFocusedQuestion()"
+                    >
+                      Next
+                    </button>
+                    <button
+                      type="button"
+                      class="navigator-action"
+                      data-testid="exit-question-focus-mode"
+                      (click)="exitFocusMode()"
+                    >
+                      Exit focus
+                    </button>
+                  }
+                </div>
+                @if (!focusMode()) {
+                  <p class="question-filter-summary" aria-live="polite">
+                    {{ filteredRoundQuestions().length }} of {{ currentRound.questions.length }} questions shown
+                  </p>
+                }
+              </nav>
+
+              @if (displayedRoundQuestions().length === 0) {
+                <div class="state-panel compact question-filter-empty" data-testid="question-filter-empty">
+                  <h2>No matching questions</h2>
+                  <p>Choose another filter to continue the Initial Intake.</p>
+                  <button type="button" class="navigator-action" (click)="clearQuestionFilter()">
+                    Clear filter
+                  </button>
+                </div>
+              } @else {
+              <div class="round-questions" [class.round-questions--focus]="focusMode()" data-testid="round-questions">
+                @for (section of displayedQuestionSections(); track section.id) {
+                  <section
+                    class="question-topic-section"
+                    [attr.aria-labelledby]="focusMode() ? null : section.id + '-title'"
+                  >
+                    @if (!focusMode()) {
+                      <h2 class="question-topic-heading" [id]="section.id + '-title'" tabindex="-1">
+                        {{ section.topic }} <span>{{ section.questions.length }}</span>
+                      </h2>
+                    }
+                @for (question of section.questions; track question.id) {
                   <article
                     class="round-question"
                     [id]="'round-question-' + question.id"
+                    tabindex="-1"
                     [attr.data-testid]="'round-question-' + question.id"
                   >
                     <div class="question-heading">
-                      <span class="question-number">{{ index + 1 }}</span>
+                      <span class="question-number">{{ questionNumber(question) }}</span>
                       <div class="question-heading-copy">
                         <h2>{{ question.text }}</h2>
                         <small>{{ question.topic }} · {{ questionTypeLabel(question.type) }}</small>
@@ -437,7 +534,10 @@
                     }
                   </article>
                 }
+                  </section>
+                }
               </div>
+              }
             }
 
             @if (currentRound.status === 'OPEN') {

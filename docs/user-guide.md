@@ -120,6 +120,8 @@ On a new Project's **Initial Intake** page, select the active questions required
 
 Answer the displayed questions in the open round. Text answers save after a short pause; wait for the visible saved state before leaving the page. Selection, number, date, and boolean answers save directly. The same open round and its saved answers load when you return.
 
+Use **All**, **Blocking**, **Unanswered**, and **Answered** to narrow a long intake without changing its saved content. **Section** jumps to a question topic. **Focus mode** shows one question at a time with Previous and Next controls; its queue stays stable while answers are entered, and the selected filter is applied again when focus mode is closed.
+
 Attach Project work files only where the intake checklist allows it. These are Project-owned work attachments and remain separate from Question Bank reference files and Customer-message attachment metadata.
 
 When the meeting ends, use the appropriate completion action:

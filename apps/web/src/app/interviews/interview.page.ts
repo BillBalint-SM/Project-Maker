@@ -1,5 +1,5 @@
 import { DOCUMENT } from '@angular/common';
-import { afterNextRender, Component, Injector, OnDestroy, OnInit, inject, signal } from '@angular/core';
+import { afterNextRender, Component, computed, Injector, OnDestroy, OnInit, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { forkJoin } from 'rxjs';
 import { ButtonModule } from 'primeng/button';
@@ -39,6 +39,20 @@ const completionBlockedByPendingAssessmentMessage =
 
 type QuestionSaveStatus = 'idle' | 'saving' | 'saved' | 'error';
 type AssessmentMode = 'automatic' | 'partial' | 'not-relevant';
+type IntakeQuestionFilter = 'ALL' | 'BLOCKING' | 'UNANSWERED' | 'ANSWERED';
+
+interface IntakeQuestionSection {
+  readonly id: string;
+  readonly topic: string;
+  readonly questions: readonly RoundQuestionSnapshot[];
+}
+
+interface IntakeQuestionFilterOption {
+  readonly value: IntakeQuestionFilter;
+  readonly label: string;
+  readonly testId: string;
+}
+
 interface QuestionAnswerState {
   readonly draft: AnswerValue | null;
   readonly persisted: AnswerValue | null;
@@ -106,6 +120,63 @@ export class InterviewPage implements OnInit, OnDestroy {
   readonly projectPlaybookId = signal('general');
   readonly handoffContentRevision = signal(0);
   readonly attachments = signal<readonly GovernedAttachment[]>([]);
+  readonly questionFilter = signal<IntakeQuestionFilter>('ALL');
+  readonly questionFilterOptions: readonly IntakeQuestionFilterOption[] = [
+    { value: 'ALL', label: 'All', testId: 'question-filter-all' },
+    { value: 'BLOCKING', label: 'Blocking', testId: 'question-filter-blocking' },
+    { value: 'UNANSWERED', label: 'Unanswered', testId: 'question-filter-unanswered' },
+    { value: 'ANSWERED', label: 'Answered', testId: 'question-filter-answered' },
+  ];
+  readonly focusMode = signal(false);
+  readonly focusQuestionIds = signal<readonly string[]>([]);
+  readonly focusedQuestionId = signal<string | null>(null);
+  readonly questionFilterCounts = computed(() => {
+    const questions = this.round()?.questions ?? [];
+    const answered = questions.filter((question) => this.hasDraftAnswer(question)).length;
+    return {
+      ALL: questions.length,
+      BLOCKING: questions.filter((question) => question.blocking).length,
+      UNANSWERED: questions.length - answered,
+      ANSWERED: answered,
+    };
+  });
+  readonly filteredRoundQuestions = computed(() => {
+    const questions = this.round()?.questions ?? [];
+    switch (this.questionFilter()) {
+      case 'BLOCKING':
+        return questions.filter((question) => question.blocking);
+      case 'UNANSWERED':
+        return questions.filter((question) => !this.hasDraftAnswer(question));
+      case 'ANSWERED':
+        return questions.filter((question) => this.hasDraftAnswer(question));
+      default:
+        return questions;
+    }
+  });
+  readonly displayedRoundQuestions = computed(() => {
+    if (!this.focusMode()) {
+      return this.filteredRoundQuestions();
+    }
+    const focusedId = this.focusedQuestionId();
+    const focusedQuestion = this.round()?.questions.find((question) => question.id === focusedId);
+    return focusedQuestion ? [focusedQuestion] : [];
+  });
+  readonly availableQuestionSections = computed(() =>
+    buildQuestionSections(this.filteredRoundQuestions()),
+  );
+  readonly displayedQuestionSections = computed(() =>
+    buildQuestionSections(this.displayedRoundQuestions()),
+  );
+  readonly focusPosition = computed(() => {
+    const ids = this.focusQuestionIds();
+    const index = ids.indexOf(this.focusedQuestionId() ?? '');
+    return { current: index >= 0 ? index + 1 : 0, total: ids.length };
+  });
+  readonly canShowPreviousFocusedQuestion = computed(() => this.focusPosition().current > 1);
+  readonly canShowNextFocusedQuestion = computed(() => {
+    const position = this.focusPosition();
+    return position.current > 0 && position.current < position.total;
+  });
 
   ngOnInit(): void {
     this.loadInterviewData();
@@ -134,6 +205,7 @@ export class InterviewPage implements OnInit, OnDestroy {
     this.round.set(null);
     this.answerStates.set(new Map());
     this.assessmentStates.set(new Map());
+    this.resetQuestionNavigator();
     forkJoin({
       bank: this.questionBankApi.loadBaseQuestionBank(),
       schema: this.questionBankApi.loadProjectSchema(this.projectId),
@@ -331,6 +403,54 @@ export class InterviewPage implements OnInit, OnDestroy {
 
   currentAnswer(question: RoundQuestionSnapshot): AnswerValue | null {
     return this.answerState(question).draft;
+  }
+
+  setQuestionFilter(filter: IntakeQuestionFilter): void {
+    this.questionFilter.set(filter);
+    if (this.focusMode()) {
+      this.startFocusQueue();
+    }
+  }
+
+  clearQuestionFilter(): void {
+    this.setQuestionFilter('ALL');
+  }
+
+  enterFocusMode(): void {
+    if (this.filteredRoundQuestions().length === 0) {
+      return;
+    }
+    this.focusMode.set(true);
+    this.startFocusQueue();
+  }
+
+  exitFocusMode(): void {
+    this.focusMode.set(false);
+    this.focusQuestionIds.set([]);
+    this.focusedQuestionId.set(null);
+  }
+
+  showPreviousFocusedQuestion(): void {
+    this.moveFocusedQuestion(-1);
+  }
+
+  showNextFocusedQuestion(): void {
+    this.moveFocusedQuestion(1);
+  }
+
+  jumpToQuestionSection(event: Event): void {
+    const select = event.target as HTMLSelectElement;
+    if (!select.value) {
+      return;
+    }
+    const heading = this.document.getElementById(`${select.value}-title`);
+    heading?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    heading?.focus({ preventScroll: true });
+    select.value = '';
+  }
+
+  questionNumber(question: RoundQuestionSnapshot): number {
+    return (this.round()?.questions.findIndex((candidate) => candidate.id === question.id) ?? -1) + 1;
   }
 
   setTextDraft(question: RoundQuestionSnapshot, value: string): void {
@@ -789,6 +909,44 @@ export class InterviewPage implements OnInit, OnDestroy {
     );
   }
 
+  private hasDraftAnswer(question: RoundQuestionSnapshot): boolean {
+    return this.currentAnswer(question) !== null;
+  }
+
+  private resetQuestionNavigator(): void {
+    this.questionFilter.set('ALL');
+    this.exitFocusMode();
+  }
+
+  private startFocusQueue(): void {
+    const ids = this.filteredRoundQuestions().map((question) => question.id);
+    this.focusQuestionIds.set(ids);
+    this.focusedQuestionId.set(ids[0] ?? null);
+    this.focusQuestionAfterNextRender();
+  }
+
+  private moveFocusedQuestion(offset: -1 | 1): void {
+    const ids = this.focusQuestionIds();
+    const currentIndex = ids.indexOf(this.focusedQuestionId() ?? '');
+    const nextId = ids[currentIndex + offset];
+    if (!nextId) {
+      return;
+    }
+    this.focusedQuestionId.set(nextId);
+    this.focusQuestionAfterNextRender();
+  }
+
+  private focusQuestionAfterNextRender(): void {
+    const questionId = this.focusedQuestionId();
+    if (!questionId) {
+      return;
+    }
+    afterNextRender(
+      () => this.document.getElementById(`round-question-${questionId}`)?.focus(),
+      { injector: this.injector },
+    );
+  }
+
   private answerState(question: RoundQuestionSnapshot): QuestionAnswerState {
     return (
       this.answerStates().get(question.id) ??
@@ -1142,6 +1300,23 @@ export class InterviewPage implements OnInit, OnDestroy {
   private hasPersistedValidAnswer(question: RoundQuestionSnapshot): boolean {
     return this.answerState(question).persisted !== null && question.answeredAt !== null;
   }
+}
+
+function buildQuestionSections(
+  questions: readonly RoundQuestionSnapshot[],
+): readonly IntakeQuestionSection[] {
+  const sections = new Map<string, RoundQuestionSnapshot[]>();
+  for (const question of questions) {
+    const sectionQuestions = sections.get(question.topic) ?? [];
+    sectionQuestions.push(question);
+    sections.set(question.topic, sectionQuestions);
+  }
+
+  return [...sections.entries()].map(([topic, sectionQuestions]) => ({
+    id: `round-section-${sectionQuestions[0].id}`,
+    topic,
+    questions: sectionQuestions,
+  }));
 }
 
 function buildAnswerStates(

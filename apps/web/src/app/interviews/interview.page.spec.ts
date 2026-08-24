@@ -17,6 +17,120 @@ import { InterviewApiService, interviewApiErrorBrand } from './interview-api.ser
 import { InterviewPage } from './interview.page';
 
 describe('InterviewPage', () => {
+  it('filters Initial Intake questions by blocking and answer state with visible counts', async () => {
+    const answeredBlocking = buildTextQuestion({});
+    const unansweredOptional = buildOptionalTextQuestion({});
+    const unansweredBlocking = buildLongTextQuestion({
+      id: 'snapshot-blocking-unanswered',
+      topic: 'Hatókör',
+    });
+    const interviewApi = createInterviewApi(
+      buildOpenRoundWithQuestions([answeredBlocking, unansweredOptional, unansweredBlocking]),
+      null,
+    );
+    const page = await renderInterviewPage(
+      'project-123',
+      createQuestionBankApi(null, null),
+      interviewApi,
+    );
+
+    expect(page.nativeElement.querySelector('[data-testid="question-filter-all"]')?.textContent).toContain('3');
+    expect(page.nativeElement.querySelector('[data-testid="question-filter-blocking"]')?.textContent).toContain('2');
+    expect(page.nativeElement.querySelector('[data-testid="question-filter-unanswered"]')?.textContent).toContain('2');
+    expect(page.nativeElement.querySelector('[data-testid="question-filter-answered"]')?.textContent).toContain('1');
+
+    (page.nativeElement.querySelector('[data-testid="question-filter-unanswered"]') as HTMLButtonElement).click();
+    page.fixture.detectChanges();
+
+    expect(page.nativeElement.querySelector('[data-testid="round-question-snapshot-1"]')).toBeNull();
+    expect(page.nativeElement.querySelector('[data-testid="round-question-snapshot-optional"]')).not.toBeNull();
+    expect(page.nativeElement.querySelector('[data-testid="round-question-snapshot-blocking-unanswered"]')).not.toBeNull();
+
+    (page.nativeElement.querySelector('[data-testid="question-filter-blocking"]') as HTMLButtonElement).click();
+    page.fixture.detectChanges();
+
+    expect(page.nativeElement.querySelector('[data-testid="round-question-snapshot-1"]')).not.toBeNull();
+    expect(page.nativeElement.querySelector('[data-testid="round-question-snapshot-optional"]')).toBeNull();
+    expect(page.nativeElement.querySelector('[data-testid="round-question-snapshot-blocking-unanswered"]')).not.toBeNull();
+  });
+
+  it('keeps an unanswered focus queue stable while a response is drafted', async () => {
+    const firstQuestion = buildOptionalTextQuestion({});
+    const secondQuestion = buildLongTextQuestion({ id: 'snapshot-second', topic: 'Hatókör' });
+    const interviewApi = createInterviewApi(
+      buildOpenRoundWithQuestions([firstQuestion, secondQuestion]),
+      null,
+    );
+    const page = await renderInterviewPage(
+      'project-123',
+      createQuestionBankApi(null, null),
+      interviewApi,
+    );
+
+    (page.nativeElement.querySelector('[data-testid="question-filter-unanswered"]') as HTMLButtonElement).click();
+    (page.nativeElement.querySelector('[data-testid="enter-question-focus-mode"]') as HTMLButtonElement).click();
+    page.fixture.detectChanges();
+
+    const firstInput = page.nativeElement.querySelector(
+      '[data-testid="round-answer-input-snapshot-optional"]',
+    ) as HTMLInputElement;
+    setInputValue(firstInput, 'Új válasz');
+    page.fixture.detectChanges();
+
+    expect(page.nativeElement.querySelector('[data-testid="round-question-snapshot-optional"]')).not.toBeNull();
+    expect(page.nativeElement.querySelector('.focus-position')?.textContent).toContain('Question 1 of 2');
+
+    (page.nativeElement.querySelector('[data-testid="next-focused-question"]') as HTMLButtonElement).click();
+    page.fixture.detectChanges();
+
+    expect(page.nativeElement.querySelector('[data-testid="round-question-snapshot-optional"]')).toBeNull();
+    expect(page.nativeElement.querySelector('[data-testid="round-question-snapshot-second"]')).not.toBeNull();
+
+    (page.nativeElement.querySelector('[data-testid="exit-question-focus-mode"]') as HTMLButtonElement).click();
+    page.fixture.detectChanges();
+
+    expect(page.nativeElement.querySelector('[data-testid="round-question-snapshot-optional"]')).toBeNull();
+    expect(page.nativeElement.querySelector('[data-testid="round-question-snapshot-second"]')).not.toBeNull();
+  });
+
+  it('exposes topic sections through the section jump control', async () => {
+    const interviewApi = createInterviewApi(
+      buildOpenRoundWithQuestions([
+        buildTextQuestion({}),
+        buildOptionalTextQuestion({}),
+        buildLongTextQuestion({ id: 'snapshot-goal-detail' }),
+      ]),
+      null,
+    );
+    const page = await renderInterviewPage(
+      'project-123',
+      createQuestionBankApi(null, null),
+      interviewApi,
+    );
+    const sectionSelect = page.nativeElement.querySelector(
+      '[data-testid="question-section-jump"]',
+    ) as HTMLSelectElement;
+    const sectionHeadings = [...page.nativeElement.querySelectorAll('.question-topic-heading')];
+
+    expect([...sectionSelect.options].map((option) => option.textContent?.trim())).toEqual([
+      'Jump to section',
+      'Cél (2)',
+      'Részlet (1)',
+    ]);
+    expect(sectionHeadings.map((heading) => heading.textContent?.trim())).toEqual([
+      'Cél 2',
+      'Részlet 1',
+    ]);
+
+    const detailHeading = sectionHeadings[1] as HTMLElement;
+    detailHeading.scrollIntoView = vi.fn();
+    sectionSelect.value = sectionSelect.options[2].value;
+    sectionSelect.dispatchEvent(new Event('change'));
+
+    expect(detailHeading.scrollIntoView).toHaveBeenCalledWith({ behavior: 'smooth', block: 'start' });
+    expect(document.activeElement).toBe(detailHeading);
+  });
+
   it('resumes the active initial intake round and disables schema editing', async () => {
     const questionBankApi = createQuestionBankApi(null, null);
     const interviewApi = createInterviewApi(buildOpenRound(buildTextQuestion({})), null);
