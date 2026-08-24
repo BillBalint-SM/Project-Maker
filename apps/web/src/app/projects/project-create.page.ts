@@ -12,8 +12,11 @@ import { CardModule } from 'primeng/card';
 import { InputTextModule } from 'primeng/inputtext';
 import { MessageModule } from 'primeng/message';
 import type { PackagedPlaybookSummary } from '@project-maker/contracts';
+import type { QuestionTemplateSummary } from '@project-maker/contracts';
+import { forkJoin } from 'rxjs';
 
 import { ProjectApiService } from './project-api.service';
+import { QuestionTemplateApiService } from '../settings/question-template-api.service';
 
 @Component({
   selector: 'app-project-create-page',
@@ -31,10 +34,12 @@ import { ProjectApiService } from './project-api.service';
 export class ProjectCreatePage implements OnInit {
   private readonly api = inject(ProjectApiService);
   private readonly router = inject(Router);
+  private readonly questionTemplateApi = inject(QuestionTemplateApiService);
 
   readonly createError = signal<string | null>(null);
   readonly saving = signal(false);
   readonly playbooks = signal<readonly PackagedPlaybookSummary[]>([]);
+  readonly questionTemplates = signal<readonly QuestionTemplateSummary[]>([]);
   private readonly creationRequestId = crypto.randomUUID();
 
   readonly createForm = new FormGroup({
@@ -62,11 +67,24 @@ export class ProjectCreatePage implements OnInit {
       nonNullable: true,
       validators: [Validators.required],
     }),
+    questionTemplateId: new FormControl('', {
+      nonNullable: true,
+      validators: [Validators.required],
+    }),
   });
 
   ngOnInit(): void {
-    this.api.listPlaybooks().subscribe({
-      next: (playbooks) => this.playbooks.set(playbooks),
+    forkJoin({
+      playbooks: this.api.listPlaybooks(),
+      templates: this.questionTemplateApi.list(),
+    }).subscribe({
+      next: ({ playbooks, templates }) => {
+        this.playbooks.set(playbooks);
+        this.questionTemplates.set(templates.filter(
+          (template) => template.latestPublishedVersion !== null &&
+            template.latestPublishedUnavailableQuestionCount === 0,
+        ));
+      },
       error: (error: Error) => this.createError.set(error.message),
     });
   }
@@ -91,6 +109,7 @@ export class ProjectCreatePage implements OnInit {
         nextActionOwnerRole: 'INTERNAL_OWNER',
         playbookId,
         playbookVersion: Number(versionText),
+        questionTemplateId: value.questionTemplateId,
       })
       .subscribe({
         next: (project) => {

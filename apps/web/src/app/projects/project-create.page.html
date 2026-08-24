@@ -50,6 +50,31 @@
       </div>
 
       <div class="field">
+        <label for="project-question-template">Question Template</label>
+        <select
+          id="project-question-template"
+          class="full-width"
+          formControlName="questionTemplateId"
+          data-testid="project-question-template-select"
+          [attr.aria-invalid]="createForm.controls.questionTemplateId.invalid && createForm.controls.questionTemplateId.touched"
+        >
+          <option value="">Select a published Question Template</option>
+          @for (template of questionTemplates(); track template.id) {
+            <option [value]="template.id">
+              {{ template.name }} · v{{ template.latestPublishedVersion }}
+            </option>
+          }
+        </select>
+        @if (questionTemplates().length === 0) {
+          <small>
+            Create and publish a <a routerLink="/settings/question-templates">Question Template</a> before creating a Project.
+          </small>
+        } @else if (createForm.controls.questionTemplateId.invalid && createForm.controls.questionTemplateId.touched) {
+          <small class="field-error">Select a published Question Template.</small>
+        }
+      </div>
+
+      <div class="field">
         <label for="internal-owner-name">Internal project owner</label>
         <input
           pInputText

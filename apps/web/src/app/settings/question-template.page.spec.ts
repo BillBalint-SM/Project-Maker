@@ -7,6 +7,7 @@ import { appConfig } from '../app.config';
 import { QuestionBankApiService } from './question-bank-api.service';
 import { QuestionTemplateApiService } from './question-template-api.service';
 import { QuestionTemplatePage } from './question-template.page';
+import { ProjectApiService } from '../projects/project-api.service';
 
 describe('QuestionTemplatePage', () => {
   it('creates a draft from selected Question Bank questions', async () => {
@@ -16,6 +17,7 @@ describe('QuestionTemplatePage', () => {
       create: vi.fn().mockReturnValue(of(created)),
       updateDraft: vi.fn(),
       publish: vi.fn(),
+      delete: vi.fn(),
     };
     const page = await renderPage(api);
 
@@ -31,6 +33,7 @@ describe('QuestionTemplatePage', () => {
     expect(api.create).toHaveBeenCalledWith({
       name: 'Delivery intake',
       questions: [{ stableKey: 'general-001', required: true, blocking: true }],
+      focusedProjectId: null,
     });
   });
 
@@ -40,7 +43,7 @@ describe('QuestionTemplatePage', () => {
         buildTemplate({ name: 'Alpha intake', projectName: 'Alpha' }),
         buildTemplate({ id: '22222222-2222-4222-8222-222222222222', name: 'Beta intake', projectName: 'Beta' }),
       ])),
-      create: vi.fn(), updateDraft: vi.fn(), publish: vi.fn(),
+      create: vi.fn(), updateDraft: vi.fn(), publish: vi.fn(), delete: vi.fn(),
     };
     const page = await renderPage(api);
     const projectSelect = page.nativeElement.querySelectorAll('.browser-toolbar select')[0] as HTMLSelectElement;
@@ -60,6 +63,7 @@ async function renderPage(api: object): Promise<{ fixture: ComponentFixture<Ques
     providers: [
       ...appConfig.providers,
       { provide: QuestionTemplateApiService, useValue: api },
+      { provide: ProjectApiService, useValue: { listProjects: vi.fn().mockReturnValue(of([])) } },
       { provide: QuestionBankApiService, useValue: { loadBaseQuestionBank: vi.fn().mockReturnValue(of(buildBank())) } },
     ],
   }).compileComponents();
@@ -88,7 +92,8 @@ function buildTemplate(overrides: { id?: string; name: string; projectName?: str
     id: overrides.id ?? '11111111-1111-4111-8111-111111111111', name: overrides.name,
     draftQuestions: [{ stableKey: 'general-001', required: true, blocking: true }],
     latestPublishedVersion: null, latestPublishedQuestions: null, state: 'DRAFT',
-    unavailableQuestionCount: 0,
+    unavailableQuestionCount: 0, latestPublishedUnavailableQuestionCount: 0,
+    focusedProject: null,
     assignedProjects: overrides.projectName ? [{ projectId: overrides.id ?? 'project-1', projectName: overrides.projectName, schemaVersion: 1 }] : [],
     updatedAt: '2026-08-24T00:00:00.000Z',
   };

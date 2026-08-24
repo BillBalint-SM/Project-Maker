@@ -232,6 +232,17 @@ export class InterviewPage implements OnInit, OnDestroy {
         this.answerStates.set(buildAnswerStates(activeRound));
         this.assessmentStates.set(buildAssessmentStates(activeRound));
         this.selectedKeys.set(this.buildSelectedKeys(bank, schema, activeRound, project.playbook.id));
+        if (!schema && !activeRound && project.questionTemplateId) {
+          const selectedTemplate = templates.find(
+            (template) => template.id === project.questionTemplateId,
+          );
+          if (selectedTemplate && this.isPublishedTemplateAvailable(selectedTemplate)) {
+            this.selectedQuestionTemplateId.set(selectedTemplate.id);
+            this.selectedKeys.set(
+              selectedTemplate.latestPublishedQuestions?.map((question) => question.stableKey) ?? [],
+            );
+          }
+        }
         this.loading.set(false);
         this.focusRequestedHandoffAfterNextRender(activeRound);
       },

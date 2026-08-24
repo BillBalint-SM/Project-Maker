@@ -43,6 +43,12 @@ export class QuestionTemplateApiService {
       )
       .pipe(catchError((error: unknown) => failRequest(error, 'publish the Question Template')));
   }
+
+  delete(templateId: string): Observable<void> {
+    return this.http
+      .delete<void>(`/api/settings/question-templates/${encodeURIComponent(templateId)}`)
+      .pipe(catchError((error: unknown) => failRequest(error, 'delete the Question Template')));
+  }
 }
 
 function failRequest(error: unknown, action: string): Observable<never> {

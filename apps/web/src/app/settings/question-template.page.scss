@@ -19,6 +19,7 @@
 .editor-card { display: block; margin: 1.5rem 0; }
 .editor-fields { display: grid; gap: 0.45rem; }
 .editor-fields input,
+.editor-fields select,
 .browser-toolbar input,
 .browser-toolbar select {
   border: 1px solid var(--p-form-field-border-color);
@@ -53,6 +54,7 @@
 .template-heading p { margin: 0; }
 .template-heading p,
 .assignments { color: var(--p-text-muted-color); }
+.focused-project { margin: 0.75rem 0; }
 .template-card dl { display: flex; gap: 1.5rem; margin: 1rem 0; }
 .template-card dl div { display: grid; gap: 0.2rem; }
 .template-card dt { color: var(--p-text-muted-color); font-size: 0.8rem; }

@@ -109,9 +109,13 @@
               data-testid="question-template-selection"
               (change)="selectQuestionTemplate($any($event.target).value)"
             >
-              <option value="">Manual question selection</option>
+              <option value="" [selected]="selectedQuestionTemplateId() === null">Manual question selection</option>
               @for (template of publishedQuestionTemplates(); track template.id) {
-                <option [value]="template.id" [disabled]="!isPublishedTemplateAvailable(template)">
+                <option
+                  [value]="template.id"
+                  [selected]="selectedQuestionTemplateId() === template.id"
+                  [disabled]="!isPublishedTemplateAvailable(template)"
+                >
                   {{ template.name }} · v{{ template.latestPublishedVersion }}
                   @if (!isPublishedTemplateAvailable(template)) { · unavailable }
                 </option>

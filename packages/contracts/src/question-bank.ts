@@ -98,6 +98,11 @@ export interface QuestionTemplateProjectAssignment {
   readonly schemaVersion: number;
 }
 
+export interface QuestionTemplateFocusedProject {
+  readonly id: string;
+  readonly name: string;
+}
+
 export interface QuestionTemplateSummary {
   readonly id: string;
   readonly name: string;
@@ -106,6 +111,8 @@ export interface QuestionTemplateSummary {
   readonly latestPublishedQuestions: readonly ProjectSchemaQuestionInput[] | null;
   readonly state: QuestionTemplateState;
   readonly unavailableQuestionCount: number;
+  readonly latestPublishedUnavailableQuestionCount: number;
+  readonly focusedProject: QuestionTemplateFocusedProject | null;
   readonly assignedProjects: readonly QuestionTemplateProjectAssignment[];
   readonly updatedAt: string;
 }
@@ -113,6 +120,7 @@ export interface QuestionTemplateSummary {
 export interface CreateQuestionTemplateInput {
   readonly name: string;
   readonly questions: readonly ProjectSchemaQuestionInput[];
+  readonly focusedProjectId?: string | null;
 }
 
 export interface UpdateQuestionTemplateDraftInput extends CreateQuestionTemplateInput {}

@@ -83,6 +83,9 @@ export class Project {
   @Column({ name: 'playbook_version', type: 'integer', default: 1 })
   playbookVersion!: number;
 
+  @Column({ name: 'question_template_id', type: 'uuid', nullable: true })
+  questionTemplateId!: string | null;
+
   @Column({ name: 'initiative_id', type: 'uuid', nullable: true })
   initiativeId!: string | null;
 

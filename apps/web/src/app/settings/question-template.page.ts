@@ -12,12 +12,14 @@ import type {
   BaseQuestion,
   BaseQuestionBank,
   ProjectSchemaQuestionInput,
+  ProjectWorkspace,
   QuestionTemplateState,
   QuestionTemplateSummary,
 } from '@project-maker/contracts';
 
 import { QuestionBankApiService } from './question-bank-api.service';
 import { QuestionTemplateApiService } from './question-template-api.service';
+import { ProjectApiService } from '../projects/project-api.service';
 
 type TemplateStateFilter = 'ALL' | QuestionTemplateState;
 
@@ -43,11 +45,13 @@ interface QuestionGroup {
 export class QuestionTemplatePage implements OnInit {
   private readonly api = inject(QuestionTemplateApiService);
   private readonly questionBankApi = inject(QuestionBankApiService);
+  private readonly projectApi = inject(ProjectApiService);
   private readonly document = inject(DOCUMENT);
   private readonly injector = inject(Injector);
 
   readonly templates = signal<readonly QuestionTemplateSummary[]>([]);
   readonly bank = signal<BaseQuestionBank | null>(null);
+  readonly projects = signal<readonly ProjectWorkspace[]>([]);
   readonly loading = signal(true);
   readonly saving = signal(false);
   readonly loadError = signal<string | null>(null);
@@ -64,9 +68,13 @@ export class QuestionTemplatePage implements OnInit {
     nonNullable: true,
     validators: [Validators.required, Validators.maxLength(255)],
   });
+  readonly focusedProjectIdControl = new FormControl('', { nonNullable: true });
 
   readonly projectNames = computed(() =>
-    [...new Set(this.templates().flatMap((template) => template.assignedProjects.map((item) => item.projectName)))]
+    [...new Set(this.templates().flatMap((template) => [
+      ...template.assignedProjects.map((item) => item.projectName),
+      ...(template.focusedProject ? [template.focusedProject.name] : []),
+    ]))]
       .sort((left, right) => left.localeCompare(right)),
   );
   readonly filteredTemplates = computed(() => {
@@ -74,9 +82,11 @@ export class QuestionTemplatePage implements OnInit {
     return this.templates().filter((template) => {
       const matchesText = !query || normalize([
         template.name,
+        template.focusedProject?.name ?? '',
         ...template.assignedProjects.map((item) => item.projectName),
       ].join(' ')).includes(query);
       const matchesProject = this.projectFilter() === 'ALL' ||
+        template.focusedProject?.name === this.projectFilter() ||
         template.assignedProjects.some((item) => item.projectName === this.projectFilter());
       const matchesState = this.stateFilter() === 'ALL' || template.state === this.stateFilter();
       return matchesText && matchesProject && matchesState;
@@ -106,10 +116,15 @@ export class QuestionTemplatePage implements OnInit {
   load(): void {
     this.loading.set(true);
     this.loadError.set(null);
-    forkJoin({ templates: this.api.list(), bank: this.questionBankApi.loadBaseQuestionBank() }).subscribe({
-      next: ({ templates, bank }) => {
+    forkJoin({
+      templates: this.api.list(),
+      bank: this.questionBankApi.loadBaseQuestionBank(),
+      projects: this.projectApi.listProjects(),
+    }).subscribe({
+      next: ({ templates, bank, projects }) => {
         this.templates.set(templates);
         this.bank.set(bank);
+        this.projects.set(projects);
         this.loading.set(false);
       },
       error: (error: Error) => {
@@ -122,6 +137,7 @@ export class QuestionTemplatePage implements OnInit {
   startCreate(): void {
     this.editingId.set(null);
     this.nameControl.setValue('');
+    this.focusedProjectIdControl.setValue('');
     this.draftQuestions.set([]);
     this.openEditor();
   }
@@ -129,6 +145,7 @@ export class QuestionTemplatePage implements OnInit {
   edit(template: QuestionTemplateSummary): void {
     this.editingId.set(template.id);
     this.nameControl.setValue(template.name);
+    this.focusedProjectIdControl.setValue(template.focusedProject?.id ?? '');
     this.draftQuestions.set(template.draftQuestions);
     this.openEditor();
   }
@@ -173,7 +190,11 @@ export class QuestionTemplatePage implements OnInit {
       );
       return;
     }
-    const input = { name: this.nameControl.value.trim(), questions: this.orderedDraftQuestions() };
+    const input = {
+      name: this.nameControl.value.trim(),
+      questions: this.orderedDraftQuestions(),
+      focusedProjectId: this.focusedProjectIdControl.value || null,
+    };
     const id = this.editingId();
     this.saving.set(true);
     this.actionError.set(null);
@@ -203,6 +224,27 @@ export class QuestionTemplatePage implements OnInit {
         this.replaceTemplate(published);
         this.saving.set(false);
         this.feedback.set(`Question Template v${published.latestPublishedVersion} published.`);
+      },
+      error: (error: Error) => {
+        this.actionError.set(error.message);
+        this.saving.set(false);
+      },
+    });
+  }
+
+  deleteTemplate(template: QuestionTemplateSummary): void {
+    if (this.saving() || !this.document.defaultView?.confirm(
+      `Delete “${template.name}”? Existing Project schemas keep their historical provenance.`,
+    )) {
+      return;
+    }
+    this.saving.set(true);
+    this.actionError.set(null);
+    this.api.delete(template.id).subscribe({
+      next: () => {
+        this.templates.update((templates) => templates.filter((item) => item.id !== template.id));
+        this.saving.set(false);
+        this.feedback.set('Question Template deleted. Existing Project history was retained.');
       },
       error: (error: Error) => {
         this.actionError.set(error.message);

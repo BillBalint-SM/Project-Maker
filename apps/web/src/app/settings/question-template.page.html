@@ -24,6 +24,14 @@
         @if (nameControl.touched && nameControl.invalid) {
           <small class="field-error">Enter a name of no more than 255 characters.</small>
         }
+        <label for="question-template-focused-project">Focused project</label>
+        <select id="question-template-focused-project" [formControl]="focusedProjectIdControl">
+          <option value="">No focused project</option>
+          @for (project of projects(); track project.id) {
+            <option [value]="project.id">{{ project.name }}</option>
+          }
+        </select>
+        <small>Optional organizational context; the template can still be used by other Projects.</small>
         <label for="template-question-search">Find Question Bank questions</label>
         <input
           id="template-question-search"
@@ -146,6 +154,9 @@
             <div><dt>Published</dt><dd>{{ template.latestPublishedVersion ? 'v' + template.latestPublishedVersion : 'Not yet' }}</dd></div>
             <div><dt>Projects</dt><dd>{{ template.assignedProjects.length }}</dd></div>
           </dl>
+          <p class="focused-project">
+            <strong>Focused project:</strong> {{ template.focusedProject?.name ?? 'None' }}
+          </p>
           @if (template.assignedProjects.length > 0) {
             <p class="assignments">
               Used by:
@@ -160,6 +171,13 @@
             </p>
           }
           <div class="card-actions">
+            <p-button
+              label="Delete"
+              severity="danger"
+              [outlined]="true"
+              [disabled]="saving()"
+              (onClick)="deleteTemplate(template)"
+            />
             <p-button label="Edit draft" severity="secondary" [outlined]="true" (onClick)="edit(template)" />
             <p-button
               label="Publish"

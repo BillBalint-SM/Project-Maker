@@ -54,4 +54,8 @@ export class CreateProjectDto {
   @IsOptional()
   @IsIn([1])
   playbookVersion?: number;
+
+  @IsOptional()
+  @IsUUID('4')
+  questionTemplateId?: string;
 }

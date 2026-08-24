@@ -37,6 +37,12 @@ describe('QuestionTemplateApiService', () => {
     expect(publishRequest.request.method).toBe('POST');
     publishRequest.flush({ id });
     await publish;
+
+    const remove = firstValueFrom(api.delete(id));
+    const deleteRequest = http.expectOne(`/api/settings/question-templates/${id}`);
+    expect(deleteRequest.request.method).toBe('DELETE');
+    deleteRequest.flush(null);
+    await remove;
     http.verify();
   });
 });

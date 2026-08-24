@@ -907,18 +907,17 @@ describe('InterviewPage', () => {
       draftQuestions: [{ stableKey: 'general-001', required: true, blocking: true }],
       latestPublishedVersion: 2,
       latestPublishedQuestions: [{ stableKey: 'general-001', required: true, blocking: true }],
-      state: 'PUBLISHED', unavailableQuestionCount: 0, assignedProjects: [],
+      state: 'PUBLISHED', unavailableQuestionCount: 0,
+      latestPublishedUnavailableQuestionCount: 0, focusedProject: null, assignedProjects: [],
       updatedAt: '2026-08-24T00:00:00.000Z',
     };
     const page = await renderInterviewPage(
-      'project-123', questionBankApi, interviewApi, undefined, [template],
+      'project-123', questionBankApi, interviewApi, undefined, [template], template.id,
     );
     const select = page.nativeElement.querySelector(
       '[data-testid="question-template-selection"]',
     ) as HTMLSelectElement;
-    select.value = template.id;
-    select.dispatchEvent(new Event('change'));
-    page.fixture.detectChanges();
+    expect(select.value).toBe(template.id);
     findButton(page.nativeElement, '[data-testid="publish-project-schema-button"]')?.click();
     await page.fixture.whenStable();
 
@@ -1017,6 +1016,7 @@ async function renderInterviewPage(
   },
   roundId?: string,
   templates: readonly QuestionTemplateSummary[] = [],
+  projectQuestionTemplateId: string | null = null,
 ): Promise<{ readonly fixture: ComponentFixture<InterviewPage>; readonly nativeElement: HTMLElement }> {
   TestBed.resetTestingModule();
   await TestBed.configureTestingModule({
@@ -1042,6 +1042,7 @@ async function renderInterviewPage(
           loadProjectWorkspace: vi.fn().mockReturnValue(of({
             status: 'DRAFT',
             playbook: { id: 'general', version: 1, name: 'Általános projekt' },
+            questionTemplateId: projectQuestionTemplateId,
           })),
         },
       },

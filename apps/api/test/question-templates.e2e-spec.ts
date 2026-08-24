@@ -52,7 +52,18 @@ describe('Question Template Library (e2e)', () => {
       customerContactEmail: `template-${Date.now()}@example.test`,
       internalOwnerName: 'Internal Owner',
       nextActionOwnerRole: 'INTERNAL_OWNER',
+      questionTemplateId: created.body.id,
     }).expect(201);
+    assert.equal(project.body.questionTemplateId, created.body.id);
+
+    const focused = await request(app.getHttpServer())
+      .put(`/settings/question-templates/${created.body.id as string}/draft`)
+      .send({ name, questions, focusedProjectId: project.body.id })
+      .expect(200);
+    assert.deepEqual(focused.body.focusedProject, {
+      id: project.body.id,
+      name: projectName,
+    });
     const schema = await request(app.getHttpServer())
       .post(`/projects/${project.body.id as string}/question-schema`)
       .send({ questionTemplateId: created.body.id })
@@ -93,6 +104,25 @@ describe('Question Template Library (e2e)', () => {
       .expect(200);
     assert.equal(retainedSchema.body.questions.length, 2);
     assert.equal(retainedSchema.body.questionTemplate.version, 1);
+
+    await request(app.getHttpServer())
+      .delete(`/settings/question-templates/${created.body.id as string}`)
+      .expect(204);
+    const afterDelete = await request(app.getHttpServer())
+      .get('/settings/question-templates')
+      .expect(200);
+    assert.equal(
+      (afterDelete.body as Array<{ id: string }>).some((item) => item.id === created.body.id),
+      false,
+    );
+    const historyAfterDelete = await request(app.getHttpServer())
+      .get(`/projects/${project.body.id as string}/question-schema`)
+      .expect(200);
+    assert.equal(historyAfterDelete.body.questionTemplate.version, 1);
+    await request(app.getHttpServer())
+      .post('/settings/question-templates')
+      .send({ name, questions })
+      .expect(201);
   });
 
   it('rejects unpublished templates and ambiguous Project schema inputs', async () => {
@@ -111,6 +141,14 @@ describe('Question Template Library (e2e)', () => {
       internalOwnerName: 'Internal Owner',
       nextActionOwnerRole: 'INTERNAL_OWNER',
     }).expect(201);
+
+    await request(app.getHttpServer()).post('/projects').send({
+      name: `Unpublished Selection ${randomUUID()}`,
+      customerContactName: 'Customer Contact',
+      customerContactEmail: `unpublished-${Date.now()}@example.test`,
+      internalOwnerName: 'Internal Owner',
+      questionTemplateId: template.body.id,
+    }).expect(400);
 
     await request(app.getHttpServer())
       .post(`/projects/${project.body.id as string}/question-schema`)

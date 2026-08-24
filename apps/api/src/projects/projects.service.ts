@@ -24,6 +24,7 @@ import { UpdateProjectBasicsDto } from './dto/update-project-basics.dto';
 import { UpdateProjectWorkspaceDto } from './dto/update-project-workspace.dto';
 import { UpdateProjectPlaybookDto } from './dto/update-project-playbook.dto';
 import { Project } from './project.entity';
+import { QuestionTemplateEntity, QuestionTemplateVersionEntity } from '../question-bank/question-template.entity';
 
 const archivedStatus: ProjectStatus = 'ARCHIVED';
 const draftStatus: ProjectStatus = 'DRAFT';
@@ -81,6 +82,10 @@ export class ProjectsService {
         dueAt: parseDueAt(input.dueAt),
         playbookId: input.playbookId ?? 'general',
         playbookVersion: input.playbookVersion ?? 1,
+        questionTemplateId: await requirePublishedQuestionTemplate(
+          input.questionTemplateId,
+          manager,
+        ),
       });
 
       synchronizeCompatibilityOwner(project);
@@ -390,9 +395,24 @@ export function toWorkspace(project: Project): ProjectWorkspace {
       name: playbookName(project.playbookId, project.playbookVersion),
     },
     initiativeId: project.initiativeId,
+    questionTemplateId: project.questionTemplateId,
     createdAt: toIso(project.createdAt, 'createdAt'),
     updatedAt: toIso(project.updatedAt, 'updatedAt'),
   };
+}
+
+async function requirePublishedQuestionTemplate(
+  templateId: string | undefined,
+  manager: EntityManager,
+): Promise<string | null> {
+  if (!templateId) return null;
+  const template = await manager.getRepository(QuestionTemplateEntity).findOneBy({ id: templateId });
+  if (!template) throw new BadRequestException('Question Template not found or no longer available.');
+  const published = await manager.getRepository(QuestionTemplateVersionEntity).exists({
+    where: { templateId },
+  });
+  if (!published) throw new BadRequestException('Select a published Question Template.');
+  return template.id;
 }
 
 function playbookName(id: string, version: number): string {

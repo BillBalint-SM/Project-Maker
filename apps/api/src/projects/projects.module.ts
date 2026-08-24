@@ -12,6 +12,7 @@ import {
   activeProjectQueueClockToken,
 } from './active-project-queue.service';
 import { Project } from './project.entity';
+import { QuestionTemplateEntity, QuestionTemplateVersionEntity } from '../question-bank/question-template.entity';
 import { ProjectWorkStateController } from './project-work-state.controller';
 import { ProjectWorkStateReadModel } from './project-work-state-read-model';
 import { ProjectsController } from './projects.controller';
@@ -20,7 +21,13 @@ import { PlaybooksController } from './playbooks.controller';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Project, AuditEvent, DiscoveryFollowUpEntity]),
+    TypeOrmModule.forFeature([
+      Project,
+      AuditEvent,
+      DiscoveryFollowUpEntity,
+      QuestionTemplateEntity,
+      QuestionTemplateVersionEntity,
+    ]),
     MarkdownModule,
     ProjectPreparationModule,
   ],

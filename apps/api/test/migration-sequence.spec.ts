@@ -45,6 +45,7 @@ const expectedMigrationNames = [
   'QuestionBankReferenceFiles0035QuestionBankReferenceFiles1788854400000',
   'ProfessionalEnglishProductLanguage0036ProfessionalEnglishProductLanguage1788940800000',
   'QuestionTemplateLibrary0037QuestionTemplateLibrary1789027200000',
+  'QuestionTemplateLifecycle0038QuestionTemplateLifecycle1789113600000',
 ] as const;
 
 type MigrationConstructor = new () => { readonly name?: string };

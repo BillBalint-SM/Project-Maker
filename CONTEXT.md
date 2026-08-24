@@ -204,7 +204,8 @@ _Avoid_: Live mutation of an active interview, unversioned question source
 **Question Template**:
 An Operator organization-maintained, reusable selection policy for creating a
 Project question schema. Its editable draft and immutable published versions
-remain separate from Question Bank content and from every Project's accepted schema.
+remain separate from Question Bank content and from every Project's accepted schema;
+an optional focused Project is organizational context, not exclusive ownership.
 _Avoid_: Question Scheme Template, Project question schema, copied questionnaire
 
 **Published Question Template version**:

@@ -46,6 +46,7 @@ export interface CreateProjectInput {
   readonly dueAt?: string | null;
   readonly playbookId?: string;
   readonly playbookVersion?: number;
+  readonly questionTemplateId?: string;
 }
 
 export interface ProjectPlaybookSelection {
@@ -79,6 +80,7 @@ export interface ProjectWorkspace {
   readonly dueAt: string | null;
   readonly playbook: ProjectPlaybookSelection;
   readonly initiativeId: string | null;
+  readonly questionTemplateId?: string | null;
   readonly createdAt: string;
   readonly updatedAt: string;
 }

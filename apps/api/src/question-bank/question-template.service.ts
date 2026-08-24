@@ -3,11 +3,11 @@ import { randomUUID } from 'node:crypto';
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import type {
   ProjectSchemaQuestionInput,
+  QuestionTemplateFocusedProject,
   QuestionTemplateProjectAssignment,
   QuestionTemplateSummary,
 } from '@project-maker/contracts';
-import { EntityManager, In, QueryFailedError } from 'typeorm';
-import { DataSource } from 'typeorm';
+import { DataSource, EntityManager, In, QueryFailedError } from 'typeorm';
 
 import { Project } from '../projects/project.entity';
 import { BaseQuestionEntity } from './base-question.entity';
@@ -38,11 +38,13 @@ export class QuestionTemplateService {
     }
     const activeKeys = await loadLatestActiveQuestionKeys(manager);
     const assignments = await loadCurrentAssignments(manager);
+    const focusedProjects = await loadFocusedProjects(manager, templates);
     return templates.map((template) =>
       toSummary(
         template,
         latestVersions.get(template.id) ?? null,
         activeKeys,
+        focusedProjects.get(template.focusedProjectId ?? '') ?? null,
         assignments.get(template.id) ?? [],
       ),
     );
@@ -53,10 +55,17 @@ export class QuestionTemplateService {
       id: randomUUID(),
       name: requireName(input.name),
       draftQuestions: normalizeSelections(input.questions),
+      focusedProjectId: await requireFocusedProject(input.focusedProjectId, this.dataSource.manager),
     });
     try {
       const saved = await this.dataSource.getRepository(QuestionTemplateEntity).save(template);
-      return toSummary(saved, null, await loadLatestActiveQuestionKeys(this.dataSource.manager), []);
+      return toSummary(
+        saved,
+        null,
+        await loadLatestActiveQuestionKeys(this.dataSource.manager),
+        await focusedProjectFor(saved, this.dataSource.manager),
+        [],
+      );
     } catch (error) {
       throw mapWriteError(error);
     }
@@ -69,6 +78,12 @@ export class QuestionTemplateService {
     const template = await this.findTemplate(templateId);
     template.name = requireName(input.name);
     template.draftQuestions = normalizeSelections(input.questions);
+    if (input.focusedProjectId !== undefined) {
+      template.focusedProjectId = await requireFocusedProject(
+        input.focusedProjectId,
+        this.dataSource.manager,
+      );
+    }
     try {
       const saved = await this.dataSource.getRepository(QuestionTemplateEntity).save(template);
       const latest = await this.latestVersion(templateId, this.dataSource.manager);
@@ -76,6 +91,7 @@ export class QuestionTemplateService {
         saved,
         latest,
         await loadLatestActiveQuestionKeys(this.dataSource.manager),
+        await focusedProjectFor(saved, this.dataSource.manager),
         (await loadCurrentAssignments(this.dataSource.manager)).get(templateId) ?? [],
       );
     } catch (error) {
@@ -106,6 +122,7 @@ export class QuestionTemplateService {
         template,
         version,
         activeKeys,
+        await focusedProjectFor(template, manager),
         (await loadCurrentAssignments(manager)).get(templateId) ?? [],
       );
     });
@@ -121,6 +138,11 @@ export class QuestionTemplateService {
     if (!version) throw new ConflictException('The selected Question Template has no published version.');
     requireAvailableSelections(version.questions, await loadLatestActiveQuestionKeys(manager));
     return { template, version };
+  }
+
+  async delete(templateId: string): Promise<void> {
+    const template = await this.findTemplate(templateId);
+    await this.dataSource.getRepository(QuestionTemplateEntity).softDelete(template.id);
   }
 
   private async findTemplate(templateId: string): Promise<QuestionTemplateEntity> {
@@ -222,6 +244,7 @@ function toSummary(
   template: QuestionTemplateEntity,
   latest: QuestionTemplateVersionEntity | null,
   activeKeys: ReadonlySet<string>,
+  focusedProject: QuestionTemplateFocusedProject | null,
   assignedProjects: readonly QuestionTemplateProjectAssignment[],
 ): QuestionTemplateSummary {
   const matchesLatest = latest !== null &&
@@ -237,9 +260,45 @@ function toSummary(
     unavailableQuestionCount: template.draftQuestions.filter(
       (question) => !activeKeys.has(question.stableKey),
     ).length,
+    latestPublishedUnavailableQuestionCount: latest?.questions.filter(
+      (question) => !activeKeys.has(question.stableKey),
+    ).length ?? 0,
+    focusedProject,
     assignedProjects,
     updatedAt: template.updatedAt.toISOString(),
   };
+}
+
+async function requireFocusedProject(
+  projectId: string | null | undefined,
+  manager: EntityManager,
+): Promise<string | null> {
+  if (!projectId) return null;
+  const project = await manager.getRepository(Project).findOneBy({ id: projectId });
+  if (!project) throw new BadRequestException('Focused Project not found.');
+  return project.id;
+}
+
+async function loadFocusedProjects(
+  manager: EntityManager,
+  templates: readonly QuestionTemplateEntity[],
+): Promise<ReadonlyMap<string, QuestionTemplateFocusedProject>> {
+  const ids = [...new Set(templates.flatMap((template) =>
+    template.focusedProjectId ? [template.focusedProjectId] : [],
+  ))];
+  const projects = ids.length > 0
+    ? await manager.getRepository(Project).findBy({ id: In(ids) })
+    : [];
+  return new Map(projects.map((project) => [project.id, { id: project.id, name: project.name }]));
+}
+
+async function focusedProjectFor(
+  template: QuestionTemplateEntity,
+  manager: EntityManager,
+): Promise<QuestionTemplateFocusedProject | null> {
+  if (!template.focusedProjectId) return null;
+  const project = await manager.getRepository(Project).findOneBy({ id: template.focusedProjectId });
+  return project ? { id: project.id, name: project.name } : null;
 }
 
 function mapWriteError(error: unknown): unknown {

@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, ParseUUIDPipe, Post, Put } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, ParseUUIDPipe, Post, Put } from '@nestjs/common';
 import type { QuestionTemplateSummary } from '@project-maker/contracts';
 
 import { SaveQuestionTemplateDraftDto } from './dto/save-question-template-draft.dto';
@@ -31,5 +31,13 @@ export class QuestionTemplateController {
     @Param('templateId', new ParseUUIDPipe()) templateId: string,
   ): Promise<QuestionTemplateSummary> {
     return this.templates.publish(templateId);
+  }
+
+  @Delete(':templateId')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  delete(
+    @Param('templateId', new ParseUUIDPipe()) templateId: string,
+  ): Promise<void> {
+    return this.templates.delete(templateId);
   }
 }
