@@ -86,8 +86,8 @@ describe('ProjectListPage correspondence mailbox synchronization', () => {
         status: 'DRAFT',
         internalOwnerName: 'PO Péter',
         nextActionOwnerRole: 'INTERNAL_OWNER',
-        nextActionOwner: { role: 'INTERNAL_OWNER', displayName: 'PO Péter', complete: true },
-        nextAction: 'Egyeztesd a pontosított terjedelmet.',
+        nextActionOwner: { role: 'INTERNAL_OWNER', displayName: 'Write-model owner', complete: true },
+        nextAction: 'Write-model next action.',
         dueAt: '2026-08-20T12:00:00.000Z',
         playbook: { id: 'general', version: 1, name: 'Általános projekt' },
         initiativeId: null,
@@ -105,8 +105,8 @@ describe('ProjectListPage correspondence mailbox synchronization', () => {
           label: 'Initial Intake in progress',
           primaryAction: { target: 'INTERVIEW', label: 'Open Initial Intake' },
         },
-        nextAction: 'Egyeztesd a pontosított terjedelmet.',
-        nextActionOwner: { role: 'INTERNAL_OWNER', displayName: 'PO Péter', complete: true },
+        nextAction: 'Canonical operational next action.',
+        nextActionOwner: { role: 'INTERNAL_OWNER', displayName: 'Canonical owner', complete: true },
         dueAt: '2026-08-20T12:00:00.000Z',
         newReplyCount: 2,
         progress: { kind: 'INTERVIEW_ANSWERS', answeredQuestions: 4, totalQuestions: 9 },
@@ -124,7 +124,20 @@ describe('ProjectListPage correspondence mailbox synchronization', () => {
           readinessPercentage: null,
           decisionScore: null,
           latestDecision: null,
-          latestStatus: null,
+          latestStatus: {
+            id: '22222222-2222-4222-8222-222222222222',
+            projectId: entry.project.id,
+            version: 1,
+            health: 'ON_TRACK',
+            summary: 'Historical status snapshot',
+            changes: null,
+            risks: null,
+            nextStep: 'Historical status next step.',
+            actorId: '33333333-3333-4333-8333-333333333333',
+            createdAt: '2026-08-19T08:00:00.000Z',
+            updatedAt: '2026-08-19T08:00:00.000Z',
+            editable: true,
+          },
           goal: null,
           initiative: null,
         }],
@@ -178,6 +191,11 @@ describe('ProjectListPage correspondence mailbox synchronization', () => {
     expect(card?.textContent).toContain('Open Customer correspondence');
     expect(card?.textContent).toContain('4 / 9 questions answered');
     expect(card?.textContent).toContain('New Customer reply');
+    expect(card?.textContent).toContain('Canonical owner');
+    expect(card?.textContent).toContain('Canonical operational next action.');
+    expect(card?.textContent).not.toContain('Write-model owner');
+    expect(card?.textContent).not.toContain('Write-model next action.');
+    expect(card?.textContent).not.toContain('Historical status next step.');
   });
 });
 

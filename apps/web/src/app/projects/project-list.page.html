@@ -157,8 +157,8 @@
               @if (workState.newReplyCount > 0) { <span class="reply-indicator">{{ workState.newReplyCount }} new Customer replies</span> }
             }
             <dl>
-              <div><dt>Next-action owner</dt><dd>{{ entry.project.nextActionOwner.displayName || 'Not assigned' }}</dd></div>
-              <div><dt>Next action</dt><dd>{{ entry.latestStatus?.nextStep ?? entry.project.nextAction ?? 'Not specified' }}</dd></div>
+              <div><dt>Next-action owner</dt><dd>{{ entry.workState?.nextActionOwner?.displayName || 'Not assigned' }}</dd></div>
+              <div><dt>Next action</dt><dd>{{ entry.workState?.nextAction ?? 'Not specified' }}</dd></div>
             </dl>
             @if (progressLabel(entry.workState?.progress); as progress) { <p class="project-progress">{{ progress }}</p> }
             <span class="open-label">{{ entry.workState?.primaryAction?.label ?? 'Open Project Status' }} <span aria-hidden="true">→</span></span>

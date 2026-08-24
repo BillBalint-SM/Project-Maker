@@ -70,7 +70,8 @@ _Avoid_: One-page project workspace, all-workflow editor
 One human-authored periodic snapshot of a Project's health, summary, changes,
 risks, and next step. The latest update remains editable until a newer update is
 recorded; retained earlier updates form the history. It never replaces the
-server-derived Project preparation state or Human-readable project activity.
+server-derived Project preparation state, Operational coordination data, or
+Human-readable project activity.
 _Avoid_: Project status, audit event, automatic progress report
 
 **Portfolio overview**:

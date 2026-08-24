@@ -86,7 +86,7 @@ The [Project Preparation Journey map](visual-maps.md#user-workflow) provides an 
 
 Use **Portfolio Overview** as the starting point. Search by Project or owner, filter by health, decision, and Project scope, then select **Apply filters**. You can name the current filter set and save it in the browser; saved views are local to that browser, not shared server-side configuration.
 
-Project cards show the current preparation state, coordination information, and the primary action. Use the card action to open the relevant Project context instead of manually constructing a URL. The **Correspondence mailbox** panel links to unmatched Customer messages and can refresh mailbox-derived information.
+Project cards show the current preparation state, canonical Project Coordination next action and owner, and the primary action. A status update's next step remains part of that historical snapshot and does not replace current coordination. Use the card action to open the relevant Project context instead of manually constructing a URL. The **Correspondence mailbox** panel links to unmatched Customer messages and can refresh mailbox-derived information.
 
 ### Active project queue and Discovery Follow-ups
 
