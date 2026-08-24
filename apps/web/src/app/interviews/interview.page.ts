@@ -25,6 +25,7 @@ import { InterviewHandoffComponent } from './interview-handoff/interview-handoff
 import { ProjectApiService } from '../projects/project-api.service';
 import { ProjectAttachmentBlockComponent } from '../projects/attachments/project-attachment-block.component';
 import { ProjectAttachmentsApiService } from '../projects/attachments/project-attachments-api.service';
+import { ProjectContextState } from '../projects/project-context/project-context.state';
 import { QuestionBankApiService } from '../settings/question-bank-api.service';
 import { QuestionTemplateApiService } from '../settings/question-template-api.service';
 import { baseQuestionTypeLabel } from '../base-question-type-label';
@@ -97,6 +98,7 @@ export class InterviewPage implements OnInit, OnDestroy {
   private readonly questionTemplateApi = inject(QuestionTemplateApiService);
   private readonly interviewApi = inject(InterviewApiService);
   private readonly projectApi = inject(ProjectApiService);
+  private readonly projectContext = inject(ProjectContextState, { optional: true });
   private readonly projectAttachmentsApi = inject(ProjectAttachmentsApiService);
   private readonly autosaveTimers = new Map<string, ReturnType<typeof setTimeout>>();
   private readonly inFlightRequestIds = new Map<string, Set<number>>();
@@ -107,6 +109,17 @@ export class InterviewPage implements OnInit, OnDestroy {
   readonly bank = signal<BaseQuestionBank | null>(null);
   readonly schema = signal<ProjectQuestionSchema | null>(null);
   readonly selectedKeys = signal<readonly string[]>([]);
+  readonly readinessIncompatibleSelection = computed(() => {
+    const prefix = `${this.projectPlaybookId()}-`;
+    const expectedKeys = (this.bank()?.questions ?? [])
+      .filter((question) => question.stableKey.startsWith(prefix))
+      .map((question) => question.stableKey);
+    const selectedKeys = new Set(this.selectedKeys());
+    return selectedKeys.size > 0 && (
+      selectedKeys.size !== expectedKeys.length ||
+      expectedKeys.some((stableKey) => !selectedKeys.has(stableKey))
+    );
+  });
   readonly questionTemplates = signal<readonly QuestionTemplateSummary[]>([]);
   readonly selectedQuestionTemplateId = signal<string | null>(null);
   readonly round = signal<InterviewRound | null>(null);
@@ -444,6 +457,7 @@ export class InterviewPage implements OnInit, OnDestroy {
     this.assessmentStates.set(buildAssessmentStates(round));
     this.roundSaving.set(false);
     this.feedback.set('Initial Intake round started.');
+    this.projectContext?.reload();
   }
 
   private showInitialRoundStartFailure(): void {

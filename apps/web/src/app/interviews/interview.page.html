@@ -101,30 +101,42 @@
           </div>
         } @else {
           <div class="template-selection">
-            <label for="question-template-selection">Question Template</label>
-            <select
-              id="question-template-selection"
-              [value]="selectedQuestionTemplateId() ?? ''"
-              [disabled]="schemaSaving() || hasOpenRound() || projectArchived()"
-              data-testid="question-template-selection"
-              (change)="selectQuestionTemplate($any($event.target).value)"
-            >
-              <option value="" [selected]="selectedQuestionTemplateId() === null">Manual question selection</option>
-              @for (template of publishedQuestionTemplates(); track template.id) {
-                <option
-                  [value]="template.id"
-                  [selected]="selectedQuestionTemplateId() === template.id"
-                  [disabled]="!isPublishedTemplateAvailable(template)"
-                >
-                  {{ template.name }} · v{{ template.latestPublishedVersion }}
-                  @if (!isPublishedTemplateAvailable(template)) { · unavailable }
-                </option>
-              }
-            </select>
-            <small>
-              Apply the latest published version, or keep a manual selection.
-              <a routerLink="/settings/question-templates">Manage Question Templates</a>
-            </small>
+            @if (hasOpenRound() || projectArchived()) {
+              <strong>Question Template</strong>
+              <span data-testid="question-template-provenance">
+                @if (schema()?.questionTemplate; as template) {
+                  {{ template.name }} · v{{ template.version }}
+                } @else {
+                  Manual question selection
+                }
+              </span>
+              <small>Retained by the accepted Project question schema.</small>
+            } @else {
+              <label for="question-template-selection">Question Template</label>
+              <select
+                id="question-template-selection"
+                [value]="selectedQuestionTemplateId() ?? ''"
+                [disabled]="schemaSaving()"
+                data-testid="question-template-selection"
+                (change)="selectQuestionTemplate($any($event.target).value)"
+              >
+                <option value="" [selected]="selectedQuestionTemplateId() === null">Manual question selection</option>
+                @for (template of publishedQuestionTemplates(); track template.id) {
+                  <option
+                    [value]="template.id"
+                    [selected]="selectedQuestionTemplateId() === template.id"
+                    [disabled]="!isPublishedTemplateAvailable(template)"
+                  >
+                    {{ template.name }} · v{{ template.latestPublishedVersion }}
+                    @if (!isPublishedTemplateAvailable(template)) { · unavailable }
+                  </option>
+                }
+              </select>
+              <small>
+                Apply the latest published version, or keep a manual selection.
+                <a routerLink="/settings/question-templates">Manage Question Templates</a>
+              </small>
+            }
           </div>
           <fieldset class="question-selection" data-testid="interview-question-selection">
             <legend>Select active base questions</legend>
@@ -144,6 +156,18 @@
               </label>
             }
           </fieldset>
+
+          @if (readinessIncompatibleSelection()) {
+            <p-message
+              severity="warn"
+              data-testid="readiness-incompatible-schema-warning"
+              role="status"
+            >
+              This focused schema does not contain the complete discovery playbook.
+              Estimation Readiness and Decision Review will remain unavailable after this round.
+              Start a later Initial Intake with the complete question set to use those contexts.
+            </p-message>
+          }
 
           <div class="schema-status">
             @if (schema(); as currentSchema) {

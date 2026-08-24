@@ -16,6 +16,7 @@ import {
   sessionCookieName,
   sessionTokenFrom,
   shouldBypassAuthenticationInTests,
+  testInternalUser,
 } from './auth.constants';
 import type { AuthenticatedRequest, InternalUserView } from './auth-request';
 import { AuthService, type AuthResult } from './auth.service';
@@ -26,7 +27,6 @@ import { PublicRoute } from './public-route';
 interface HeaderResponse {
   setHeader(name: string, value: string): void;
 }
-
 @Controller('auth')
 export class AuthController {
   constructor(
@@ -155,8 +155,3 @@ export class AuthController {
     return ['localhost', '127.0.0.1', '::1'].includes(hostname) ? '' : '; Secure';
   }
 }
-
-const testInternalUser: InternalUserView = {
-  id: '00000000-0000-4000-8000-000000000001',
-  email: 'e2e-user@example.test',
-};

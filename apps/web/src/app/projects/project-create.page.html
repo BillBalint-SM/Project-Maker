@@ -141,7 +141,7 @@
           label="Save draft and exit"
           severity="secondary"
           [loading]="saving()"
-          [disabled]="saving()"
+          [disabled]="saving() || configurationLoading() || questionTemplates().length === 0"
           data-testid="save-project-draft"
           (onClick)="createProject('portfolio')"
         />
@@ -149,7 +149,7 @@
           type="submit"
           label="Save and continue to Initial Intake"
           [loading]="saving()"
-          [disabled]="saving()"
+          [disabled]="saving() || configurationLoading() || questionTemplates().length === 0"
           data-testid="create-project-submit"
         />
         <a pButton routerLink="/" class="p-button-secondary p-button-text">Cancel</a>

@@ -38,6 +38,7 @@ export class ProjectCreatePage implements OnInit {
 
   readonly createError = signal<string | null>(null);
   readonly saving = signal(false);
+  readonly configurationLoading = signal(true);
   readonly playbooks = signal<readonly PackagedPlaybookSummary[]>([]);
   readonly questionTemplates = signal<readonly QuestionTemplateSummary[]>([]);
   private readonly creationRequestId = crypto.randomUUID();
@@ -67,7 +68,7 @@ export class ProjectCreatePage implements OnInit {
       nonNullable: true,
       validators: [Validators.required],
     }),
-    questionTemplateId: new FormControl('', {
+    questionTemplateId: new FormControl({ value: '', disabled: true }, {
       nonNullable: true,
       validators: [Validators.required],
     }),
@@ -80,18 +81,34 @@ export class ProjectCreatePage implements OnInit {
     }).subscribe({
       next: ({ playbooks, templates }) => {
         this.playbooks.set(playbooks);
-        this.questionTemplates.set(templates.filter(
+        const availableTemplates = templates.filter(
           (template) => template.latestPublishedVersion !== null &&
             template.latestPublishedUnavailableQuestionCount === 0,
-        ));
+        );
+        this.questionTemplates.set(availableTemplates);
+        if (availableTemplates.length > 0) {
+          this.createForm.controls.questionTemplateId.enable({ emitEvent: false });
+        }
+        if (availableTemplates.length === 1) {
+          this.createForm.controls.questionTemplateId.setValue(availableTemplates[0].id);
+        }
+        this.configurationLoading.set(false);
       },
-      error: (error: Error) => this.createError.set(error.message),
+      error: (error: Error) => {
+        this.createError.set(error.message);
+        this.configurationLoading.set(false);
+      },
     });
   }
 
   createProject(destination: 'portfolio' | 'schema'): void {
     this.createForm.markAllAsTouched();
-    if (this.createForm.invalid || this.saving()) {
+    if (
+      this.createForm.invalid ||
+      this.saving() ||
+      this.configurationLoading() ||
+      this.questionTemplates().length === 0
+    ) {
       return;
     }
 

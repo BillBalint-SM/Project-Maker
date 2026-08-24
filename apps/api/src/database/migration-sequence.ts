@@ -38,6 +38,7 @@ import { QuestionBankReferenceFiles0035QuestionBankReferenceFiles1788854400000 }
 import { ProfessionalEnglishProductLanguage0036ProfessionalEnglishProductLanguage1788940800000 } from '../migrations/0036-professional-english-product-language';
 import { QuestionTemplateLibrary0037QuestionTemplateLibrary1789027200000 } from '../migrations/0037-question-template-library';
 import { QuestionTemplateLifecycle0038QuestionTemplateLifecycle1789113600000 } from '../migrations/0038-question-template-lifecycle';
+import { DefaultQuestionTemplate0039DefaultQuestionTemplate1789200000000 } from '../migrations/0039-default-question-template';
 
 export type ApiMigration = new () => MigrationInterface;
 
@@ -80,6 +81,7 @@ export const migrationSequence: readonly ApiMigration[] = [
   ProfessionalEnglishProductLanguage0036ProfessionalEnglishProductLanguage1788940800000,
   QuestionTemplateLibrary0037QuestionTemplateLibrary1789027200000,
   QuestionTemplateLifecycle0038QuestionTemplateLifecycle1789113600000,
+  DefaultQuestionTemplate0039DefaultQuestionTemplate1789200000000,
 ];
 
 export function migrationsThrough(migrationName: string): readonly ApiMigration[] {

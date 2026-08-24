@@ -13,6 +13,7 @@ import type {
 import { appConfig } from '../app.config';
 import { ProjectApiService } from '../projects/project-api.service';
 import { ProjectAttachmentsApiService } from '../projects/attachments/project-attachments-api.service';
+import { ProjectContextState } from '../projects/project-context/project-context.state';
 import { QuestionBankApiService } from '../settings/question-bank-api.service';
 import { QuestionTemplateApiService } from '../settings/question-template-api.service';
 import { InterviewApiService, interviewApiErrorBrand } from './interview-api.service';
@@ -134,7 +135,10 @@ describe('InterviewPage', () => {
   });
 
   it('resumes the active initial intake round and disables schema editing', async () => {
-    const questionBankApi = createQuestionBankApi(null, null);
+    const questionBankApi = createQuestionBankApi(null, {
+      ...buildSchema(),
+      questionTemplate: { id: 'template-retained', name: 'Audit template', version: 1 },
+    });
     const interviewApi = createInterviewApi(buildOpenRound(buildTextQuestion({})), null);
 
     const page = await renderInterviewPage('project-123', questionBankApi, interviewApi);
@@ -157,6 +161,12 @@ describe('InterviewPage', () => {
     ).toBeNull();
     expect(answerInput?.value).toBe('Meglévő válasz');
     expect(schemaCheckbox?.disabled).toBe(true);
+    expect(
+      page.nativeElement.querySelector('[data-testid="question-template-selection"]'),
+    ).toBeNull();
+    expect(
+      page.nativeElement.querySelector('[data-testid="question-template-provenance"]')?.textContent,
+    ).toContain('Audit template · v1');
   });
 
   it('loads the exact requested source round instead of the active round', async () => {
@@ -893,7 +903,7 @@ describe('InterviewPage', () => {
       .toBe('Stakeholder round');
   });
 
-  it('applies a published Question Template by id instead of copying its selection', async () => {
+  it('applies a published Question Template and refreshes Project context after starting intake', async () => {
     const questionBankApi = createQuestionBankApi(null, null);
     questionBankApi.loadProjectSchema.mockReturnValue(of(null));
     questionBankApi.createProjectSchema.mockReturnValue(of({
@@ -911,8 +921,10 @@ describe('InterviewPage', () => {
       latestPublishedUnavailableQuestionCount: 0, focusedProject: null, assignedProjects: [],
       updatedAt: '2026-08-24T00:00:00.000Z',
     };
+    const projectContext = { reload: vi.fn() };
     const page = await renderInterviewPage(
       'project-123', questionBankApi, interviewApi, undefined, [template], template.id,
+      projectContext,
     );
     const select = page.nativeElement.querySelector(
       '[data-testid="question-template-selection"]',
@@ -924,6 +936,41 @@ describe('InterviewPage', () => {
     expect(questionBankApi.createProjectSchema).toHaveBeenCalledWith(
       'project-123', { questionTemplateId: template.id },
     );
+    expect(projectContext.reload).toHaveBeenCalledOnce();
+  });
+
+  it('warns before accepting a focused schema that cannot produce readiness results', async () => {
+    const bank: BaseQuestionBank = {
+      version: 3,
+      questions: [
+        buildBaseTextQuestion(),
+        {
+          ...buildBaseTextQuestion(),
+          id: 'base-question-2',
+          stableKey: 'general-002',
+          order: 2,
+        },
+      ],
+    };
+    const questionBankApi = createQuestionBankApi(bank, null);
+    questionBankApi.loadProjectSchema.mockReturnValue(of(null));
+    const template: QuestionTemplateSummary = {
+      id: 'template-focused', name: 'Focused discovery',
+      draftQuestions: [{ stableKey: 'general-001' }], latestPublishedVersion: 1,
+      latestPublishedQuestions: [{ stableKey: 'general-001' }], state: 'PUBLISHED',
+      unavailableQuestionCount: 0, latestPublishedUnavailableQuestionCount: 0,
+      focusedProject: null, assignedProjects: [], updatedAt: '2026-08-24T00:00:00.000Z',
+    };
+
+    const page = await renderInterviewPage(
+      'project-123', questionBankApi, createInterviewApi(null, null), undefined,
+      [template], template.id,
+    );
+
+    expect(
+      page.nativeElement.querySelector('[data-testid="readiness-incompatible-schema-warning"]')
+        ?.textContent,
+    ).toContain('Estimation Readiness and Decision Review will remain unavailable');
   });
 
   it('uses clarification copy for an explicitly requested clarification round', async () => {
@@ -1017,6 +1064,7 @@ async function renderInterviewPage(
   roundId?: string,
   templates: readonly QuestionTemplateSummary[] = [],
   projectQuestionTemplateId: string | null = null,
+  projectContext?: { readonly reload: ReturnType<typeof vi.fn> },
 ): Promise<{ readonly fixture: ComponentFixture<InterviewPage>; readonly nativeElement: HTMLElement }> {
   TestBed.resetTestingModule();
   await TestBed.configureTestingModule({
@@ -1036,6 +1084,7 @@ async function renderInterviewPage(
       { provide: QuestionBankApiService, useValue: questionBankApi },
       { provide: QuestionTemplateApiService, useValue: { list: vi.fn().mockReturnValue(of(templates)) } },
       { provide: InterviewApiService, useValue: interviewApi },
+      ...(projectContext ? [{ provide: ProjectContextState, useValue: projectContext }] : []),
       {
         provide: ProjectApiService,
         useValue: {

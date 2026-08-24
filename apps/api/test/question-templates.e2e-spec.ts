@@ -19,6 +19,24 @@ describe('Question Template Library (e2e)', () => {
 
   after(async () => app.close());
 
+  it('starts with a published complete General v1 Question Template', async () => {
+    const templates = await request(app.getHttpServer())
+      .get('/settings/question-templates')
+      .expect(200);
+    const defaultTemplate = (templates.body as Array<{
+      name: string;
+      latestPublishedVersion: number | null;
+      latestPublishedQuestions: Array<{ stableKey: string }> | null;
+    }>).find((template) => template.name === 'Complete General Discovery');
+
+    assert.ok(defaultTemplate);
+    assert.equal(defaultTemplate.latestPublishedVersion, 1);
+    assert.deepEqual(
+      defaultTemplate.latestPublishedQuestions?.map((question) => question.stableKey),
+      Array.from({ length: 30 }, (_, index) => `general-${String(index + 1).padStart(3, '0')}`),
+    );
+  });
+
   it('publishes a reusable template and retains its provenance on the Project schema', async () => {
     const bank = await request(app.getHttpServer()).get('/settings/base-questions').expect(200);
     const activeQuestions = (bank.body.questions as Array<{ stableKey: string; active: boolean }>)

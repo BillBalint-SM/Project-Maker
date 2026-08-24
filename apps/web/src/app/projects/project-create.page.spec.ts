@@ -33,9 +33,10 @@ describe('ProjectCreatePage', () => {
     fixture.detectChanges();
     await fixture.whenStable();
 
-    fixture.componentInstance.createForm.setValue({
+    expect(fixture.componentInstance.createForm.controls.questionTemplateId.value).toBe(template.id);
+    fixture.componentInstance.createForm.patchValue({
       name: 'Alpha', customerContactName: 'Ada', customerContactEmail: 'ada@example.com',
-      internalOwnerName: 'Grace', playbook: 'general:1', questionTemplateId: template.id,
+      internalOwnerName: 'Grace', playbook: 'general:1',
     });
     fixture.componentInstance.createProject('schema');
 
@@ -44,7 +45,42 @@ describe('ProjectCreatePage', () => {
     }));
     expect(navigate).toHaveBeenCalledWith(['/projects', 'project-1', 'interview']);
   });
+
+  it('blocks Project creation when no published Question Template is available', async () => {
+    const projectApi = {
+      listPlaybooks: vi.fn().mockReturnValue(of([
+        { id: 'general', version: 1, name: 'General project discovery' },
+      ])),
+      createProject: vi.fn(),
+    };
+    TestBed.resetTestingModule();
+    await TestBed.configureTestingModule({
+      imports: [ProjectCreatePage],
+      providers: [
+        ...appConfig.providers,
+        { provide: ProjectApiService, useValue: projectApi },
+        { provide: QuestionTemplateApiService, useValue: { list: vi.fn().mockReturnValue(of([])) } },
+      ],
+    }).compileComponents();
+    const fixture = TestBed.createComponent(ProjectCreatePage);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(nativeButton(fixture, 'save-project-draft').disabled).toBe(true);
+    expect(nativeButton(fixture, 'create-project-submit').disabled).toBe(true);
+    fixture.componentInstance.createProject('schema');
+    expect(projectApi.createProject).not.toHaveBeenCalled();
+  });
 });
+
+function nativeButton(fixture: { nativeElement: HTMLElement }, testId: string): HTMLButtonElement {
+  const button = fixture.nativeElement.querySelector(
+    `[data-testid="${testId}"] button`,
+  ) as HTMLButtonElement | null;
+  if (!button) throw new Error(`Missing native button for ${testId}.`);
+  return button;
+}
 
 function buildTemplate(): QuestionTemplateSummary {
   return {

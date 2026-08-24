@@ -177,6 +177,9 @@ test.describe('project start journey', () => {
     await acceptButton.dblclick();
 
     await expect(page.getByTestId('active-round-resume-state')).toBeVisible();
+    await expect(page.getByTestId('project-context-preparation')).toContainText(
+      'Initial Intake in progress',
+    );
     expect(schemaRequests).toBe(1);
     expect(roundStartRequests).toBe(1);
     const activeRound = await page.request.get(`/api/projects/${projectId}/rounds/active`);
@@ -322,7 +325,7 @@ test.describe('project start journey', () => {
     await expect(page.getByRole('link', { name: new RegExp(projectName) })).toHaveCount(1);
   });
 
-  test('keeps a Project-start draft resumable when the Question Bank has no active questions', async ({
+  test('blocks Project creation clearly when no published Question Template is available', async ({
     page,
   }) => {
     const initialBankResponse = await page.request.get('/api/settings/base-questions');
@@ -333,19 +336,18 @@ test.describe('project start journey', () => {
 
     try {
       await setBaseQuestionActivity(page, activeStableKeys, false);
-      await createProjectAndOpenSchema(page);
-      const projectId = projectIdFromInterviewUrl(page);
-      await expect(page.getByTestId('interview-no-active-questions')).toContainText(
-        'Activate at least one base question',
-      );
-      await expect(page.getByTestId('publish-project-schema-button')).toHaveCount(0);
-      await expect(page.getByRole('heading', { name: 'Initial Intake round' })).toHaveCount(0);
+      await page.goto('/projects/new');
+      await page.getByTestId('project-name-input').fill('Unavailable Question Template draft');
 
-      await page.reload();
-      await expect(page.getByTestId('interview-no-active-questions')).toBeVisible();
-      const activeRound = await page.request.get(`/api/projects/${projectId}/rounds/active`);
-      expect(activeRound.status()).toBe(200);
-      expect(await activeRound.json()).toBeNull();
+      await expect(page.getByTestId('project-question-template-select')).toBeDisabled();
+      await expect(page.getByText(
+        'Create and publish a Question Template before creating a Project.',
+      )).toBeVisible();
+      await expect(await nativeButton(page, 'save-project-draft')).toBeDisabled();
+      await expect(await nativeButton(page, 'create-project-submit')).toBeDisabled();
+      await expect(page.getByTestId('project-name-input')).toHaveValue(
+        'Unavailable Question Template draft',
+      );
     } finally {
       await setBaseQuestionActivity(page, activeStableKeys, true);
     }

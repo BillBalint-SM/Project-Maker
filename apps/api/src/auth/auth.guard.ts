@@ -13,6 +13,7 @@ import {
   mcpTokenFrom,
   sessionTokenFrom,
   shouldBypassAuthenticationInTests,
+  testInternalUser,
 } from './auth.constants';
 import type { AuthenticatedRequest } from './auth-request';
 import { AuthService } from './auth.service';
@@ -56,6 +57,8 @@ export class AuthGuard implements CanActivate {
       }
     }
     if (shouldBypassAuthenticationInTests()) {
+      request.internalUser = testInternalUser;
+      setCurrentAuditActor(testInternalUser.id);
       return true;
     }
 

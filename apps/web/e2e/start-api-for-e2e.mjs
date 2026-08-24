@@ -26,6 +26,7 @@ async function main() {
   const controlServer = createHttpServer((request, response) => gateway.control(request, response));
   await listen(controlServer, fixturePort, '127.0.0.1');
   await pnpm(['--dir', repositoryDirectory, '--filter', '@project-maker/api', 'migration:run']);
+  await seedTestInternalUser(process.env.DATABASE_URL);
   const api = spawnPnpm(['--dir', repositoryDirectory, '--filter', '@project-maker/api', 'start'], {
     env: {
       ...process.env,
@@ -116,6 +117,7 @@ async function tlsIdentity() { const ca = await generate([{ name: 'commonName', 
 function pnpm(args) { return new Promise((resolvePromise, rejectPromise) => { const child = spawnPnpm(args, { env: process.env, stdio: 'inherit', windowsHide: true }); child.on('error', rejectPromise); child.on('exit', (code, signal) => signal ? rejectPromise(new Error(`pnpm was terminated by ${signal}.`)) : code ? rejectPromise(new Error(`pnpm exited with code ${code}.`)) : resolvePromise()); }); }
 function spawnPnpm(args, options) { return process.platform === 'win32' ? spawn('cmd.exe', ['/d', '/s', '/c', 'npx', '--yes', 'pnpm@11.20.0', ...args], options) : spawn('npx', ['--yes', 'pnpm@11.20.0', ...args], options); }
 async function resetLocalE2eDatabase(databaseUrl) { safeDatabaseUrl(databaseUrl); const client = new Client({ connectionString: databaseUrl }); await client.connect(); try { await client.query('DROP SCHEMA IF EXISTS public CASCADE'); await client.query('CREATE SCHEMA public'); } finally { await client.end(); } }
+async function seedTestInternalUser(databaseUrl) { const client = new Client({ connectionString: databaseUrl }); await client.connect(); try { await client.query('INSERT INTO internal_users (id, email, password_hash, active) VALUES ($1, $2, $3, true)', ['00000000-0000-4000-8000-000000000001', 'e2e-user@example.test', 'playwright-test-auth-bypass-not-used']); } finally { await client.end(); } }
 function safeDatabaseUrl(databaseUrl) { let url; try { url = new URL(databaseUrl); } catch { throw new Error('DATABASE_URL must be a valid local PostgreSQL URL for web E2E.'); } const name = url.pathname.replace(/^\//, ''); if (!['postgres:', 'postgresql:'].includes(url.protocol) || !['127.0.0.1', 'localhost', '[::1]'].includes(url.hostname) || !/(^|[_-])(e2e|test)([_-]|$)/i.test(name)) throw new Error('Web E2E resets its database before migrations. DATABASE_URL must point to a localhost PostgreSQL database whose name contains test or e2e.'); }
 
 await main();
