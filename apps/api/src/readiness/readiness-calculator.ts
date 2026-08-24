@@ -291,18 +291,18 @@ function readinessBand(policy: GeneralPlaybook, percentage: number): string {
     throw new TypeError('Readiness policy thresholds are not ordered.');
   }
   if (percentage < thresholds.clarificationBelow) {
-    return 'Clarification required';
+    return 'Needs clarification';
   }
   if (percentage >= thresholds.developmentReadyFrom) {
-    return 'Ready for development';
+    return 'Strong information base';
   }
   if (percentage >= thresholds.estimateReadyFrom) {
-    return 'Ready for estimation';
+    return 'Substantially prepared';
   }
   if (percentage >= thresholds.estimatePreparationFrom) {
-    return 'Ready for estimation preparation';
+    return 'Developing information base';
   }
-  return 'Clarification required';
+  return 'Needs clarification';
 }
 
 function createGaps(input: ReadinessCalculatorInput): readonly ReadinessGap[] {

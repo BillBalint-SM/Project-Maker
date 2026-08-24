@@ -1,19 +1,50 @@
+import type { ProjectDecisionReview } from './decision-review.js';
+import type { DiscoveryFollowUp } from './discovery-follow-ups.js';
+import type { Evidence, Insight } from './discovery.js';
+import type { FormalDecision } from './decision-portfolio.js';
 import type { InterviewRound } from './interviews.js';
 import type { ProjectQuestionSchema } from './question-bank.js';
+import type { ProjectReadiness } from './readiness.js';
 import type { ProjectWorkspace } from './projects.js';
 
 export const markdownRevisionReasons = ['MANUAL', 'MILESTONE'] as const;
 
 export type MarkdownRevisionReason = (typeof markdownRevisionReasons)[number];
 
-export const markdownSourceSnapshotVersion = 1 as const;
+export const markdownSourceSnapshotVersion = 2 as const;
 
-export interface MarkdownRevisionSourceSnapshot {
-  readonly version: typeof markdownSourceSnapshotVersion;
+interface MarkdownRevisionSourceSnapshotBase {
   readonly project: ProjectWorkspace;
   readonly projectSchema: ProjectQuestionSchema | null;
   readonly interviewRounds: readonly InterviewRound[];
 }
+
+export interface MarkdownRevisionSourceSnapshotV1 extends MarkdownRevisionSourceSnapshotBase {
+  readonly version: 1;
+}
+
+export interface MarkdownRevisionSourceInsight extends Omit<Insight, 'projectId' | 'evidence'> {
+  readonly evidenceIds: readonly string[];
+}
+
+export interface MarkdownRevisionSourceSnapshotV2 extends MarkdownRevisionSourceSnapshotBase {
+  readonly version: typeof markdownSourceSnapshotVersion;
+  readonly discovery: {
+    readonly insights: readonly MarkdownRevisionSourceInsight[];
+    readonly evidence: readonly Evidence[];
+    readonly followUps: readonly DiscoveryFollowUp[];
+  };
+  readonly decision: {
+    readonly readiness: ProjectReadiness;
+    readonly review: ProjectDecisionReview;
+    readonly formalDecision: FormalDecision | null;
+    readonly referencedSpecification: MarkdownRevisionSummary | null;
+  };
+}
+
+export type MarkdownRevisionSourceSnapshot =
+  | MarkdownRevisionSourceSnapshotV1
+  | MarkdownRevisionSourceSnapshotV2;
 
 export interface CreateMarkdownRevisionInput {
   readonly reason: MarkdownRevisionReason;
@@ -45,3 +76,8 @@ export interface MarkdownRevision {
   readonly previousRevisionId: string | null;
   readonly template: MarkdownRevisionTemplateProvenance | null;
 }
+
+export type MarkdownRevisionSummary = Pick<
+  MarkdownRevision,
+  'id' | 'version' | 'reason' | 'milestone' | 'createdAt'
+>;

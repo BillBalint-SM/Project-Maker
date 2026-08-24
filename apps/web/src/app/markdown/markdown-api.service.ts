@@ -6,6 +6,7 @@ import type {
   CreateMarkdownRevisionInput,
   MarkdownGenerationConfiguration,
   MarkdownRevision,
+  MarkdownRevisionSummary,
 } from '@project-maker/contracts';
 
 @Injectable({ providedIn: 'root' })
@@ -32,10 +33,10 @@ export class MarkdownApiService {
       .pipe(catchError((error: unknown) => failApiRequest(error, 'load the specification templates')));
   }
 
-  listRevisions(projectId: string): Observable<readonly MarkdownRevision[]> {
+  listRevisions(projectId: string): Observable<readonly MarkdownRevisionSummary[]> {
     const encodedProjectId = encodeURIComponent(projectId);
     return this.http
-      .get<readonly MarkdownRevision[]>(
+      .get<readonly MarkdownRevisionSummary[]>(
         `/api/projects/${encodedProjectId}/markdown-revisions`,
       )
       .pipe(catchError((error: unknown) => failApiRequest(error, 'load the specification versions')));
@@ -106,7 +107,11 @@ function mapApiError(error: unknown, action: string): ActionableApiError {
 }
 
 function safeMarkdownConflictMessage(error: HttpErrorResponse): string | null {
-  if (!isRecord(error.error) || typeof error.error['message'] !== 'string') return null;
+  if (!isRecord(error.error)) return null;
+  if (error.error['code'] === 'SPECIFICATION_SOURCE_INTEGRITY_ERROR') {
+    return 'The Specification source provenance is incomplete. Correct the linked Insight, Evidence, follow-up, or decision source and try again.';
+  }
+  if (typeof error.error['message'] !== 'string') return null;
   const message = error.error['message'];
   if (message.startsWith('Required template block is unavailable:')) {
     return `${message} Add the named project data and try again.`;

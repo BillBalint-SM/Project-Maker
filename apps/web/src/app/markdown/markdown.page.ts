@@ -18,6 +18,7 @@ import type {
   CreateMarkdownRevisionInput,
   MarkdownGenerationConfiguration,
   MarkdownRevision,
+  MarkdownRevisionSummary,
   MarkdownRevisionReason,
 } from '@project-maker/contracts';
 import { markdownRevisionReasons } from '@project-maker/contracts';
@@ -67,7 +68,7 @@ export class MarkdownPage implements OnInit {
       validators: [Validators.maxLength(255)],
     }),
   });
-  readonly revisions = signal<readonly MarkdownRevision[]>([]);
+  readonly revisions = signal<readonly MarkdownRevisionSummary[]>([]);
   readonly configuration = signal<MarkdownGenerationConfiguration | null>(null);
   readonly selectedRevision = signal<MarkdownRevision | null>(null);
   readonly loading = signal(true);

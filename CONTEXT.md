@@ -313,6 +313,14 @@ listed under `Version history`. It retains the selected published template and
 source snapshot; later project or template changes do not rewrite it.
 _Avoid_: Markdown revision, live project state, editable historical snapshot
 
+**Specification source contract**:
+The versioned, immutable source snapshot retained by one Specification version.
+Version 2 adds the current Insights and their referenced Evidence, Discovery
+follow-ups, readiness, Decision Review, and latest formal decision to the Project,
+question-schema, and interview data retained by version 1. Stored version 1
+snapshots remain readable and are never backfilled.
+_Avoid_: Live Project query, duplicated frontend provenance model, rewritten historical snapshot
+
 **Default Markdown template**:
 The initial published Markdown template available from the Markdown template
 library. It gives every project a usable, human-readable starting point

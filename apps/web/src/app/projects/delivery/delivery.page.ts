@@ -9,7 +9,7 @@ import type {
   DeliveryPackage,
   DeliveryPackageItemInput,
   GitSetup,
-  MarkdownRevision,
+  MarkdownRevisionSummary,
   SaveDeliveryPackageInput,
 } from '@project-maker/contracts';
 import { ButtonModule } from 'primeng/button';
@@ -58,7 +58,7 @@ export class DeliveryPage implements OnInit {
   private readonly destroyRef = inject(DestroyRef);
 
   readonly projectId = this.route.snapshot.paramMap.get('projectId') ?? '';
-  readonly revisions = signal<readonly MarkdownRevision[]>([]);
+  readonly revisions = signal<readonly MarkdownRevisionSummary[]>([]);
   readonly deliveryPackage = signal<DeliveryPackage | null>(null);
   readonly gitSetups = signal<readonly GitSetup[]>([]);
   readonly handoffs = signal<readonly DeliveryHandoff[]>([]);

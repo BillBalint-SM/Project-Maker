@@ -1,7 +1,7 @@
 <p-card data-testid="decision-review-card">
   <ng-template #title>Decision Review</ng-template>
   <ng-template #subtitle>
-    The score and recommendation are based on six ratings and the current readiness assessment.
+    The score and estimation status are based on six ratings and the current information-readiness assessment.
   </ng-template>
 
   @if (loading()) {
@@ -70,6 +70,7 @@
     @if (!decisionReview.available) {
       <section class="decision-review-state" data-testid="decision-review-unavailable">
         <h2>Decision score unavailable</h2>
+        <p><strong>Estimation status:</strong> Not assessed yet.</p>
         @if (decisionReview.unavailableReasons.includes('INCOMPLETE_INPUT')) {
           <p>Rate all six criteria to calculate the decision score.</p>
         }
@@ -89,11 +90,11 @@
             <dd>{{ decisionReview.decisionScore }} · {{ decisionReview.decisionScoreLabel }}</dd>
           </div>
           <div data-testid="decision-review-recommendation">
-            <dt>Recommendation</dt>
+            <dt>Estimation status</dt>
             <dd>{{ recommendationLabels[decisionReview.recommendation] }}</dd>
           </div>
           <div data-testid="decision-review-readiness">
-            <dt>Readiness</dt>
+            <dt>Information readiness</dt>
             <dd>{{ decisionReview.readinessPercentage }}%</dd>
           </div>
           <div data-testid="decision-review-blocking-gap-count">
@@ -101,6 +102,7 @@
             <dd>{{ decisionReview.estimateBlockingGapCount }}</dd>
           </div>
         </dl>
+        <p class="decision-review-guidance">Policy-derived guidance, not a formal approval.</p>
         @if (decisionReview.clarificationMessages.length > 0) {
           <ul data-testid="decision-review-clarification-reasons">
             @for (message of decisionReview.clarificationMessages; track message) {

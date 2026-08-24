@@ -41,6 +41,12 @@
   line-height: 1.5;
 }
 
+.decision-review-guidance {
+  color: var(--p-text-muted-color);
+  line-height: 1.5;
+  margin: 0;
+}
+
 .decision-review-inputs,
 .decision-review-result dl {
   grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));

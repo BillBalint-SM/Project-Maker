@@ -222,6 +222,39 @@ describe('ProjectsController (e2e)', () => {
       .post(`/settings/markdown-templates/${template.body.id as string}/publish`)
       .expect(201);
 
+    const insight = await request(app.getHttpServer())
+      .post(`/projects/${projectId}/insights`)
+      .send({
+        statement: 'Metric-based demand is validated.',
+        sources: [{
+          kind: 'METRIC',
+          metricName: 'Adoption',
+          metricValue: '72',
+          metricUnit: '%',
+        }],
+      })
+      .expect(201);
+    await request(app.getHttpServer())
+      .post(`/projects/${projectId}/discovery-follow-ups`)
+      .send({
+        category: 'BUSINESS',
+        question: 'Confirm the remaining adoption segment.',
+        owner: 'Internal project owner',
+        dueDate: '2030-01-01',
+        nextStep: 'Validate the remaining segment.',
+      })
+      .expect(201);
+    await request(app.getHttpServer())
+      .post(`/projects/${projectId}/decisions`)
+      .send({
+        outcome: 'GO',
+        decisionDate: '2030-01-02',
+        decisionMaker: 'Decision owner',
+        rationale: 'Evidence supports continued preparation.',
+        insightIds: [insight.body.id],
+      })
+      .expect(201);
+
     const firstRevision = await request(app.getHttpServer())
       .post(`/projects/${projectId}/markdown-revisions`)
       .send({ reason: 'MANUAL', templateId: template.body.id })
@@ -235,6 +268,15 @@ describe('ProjectsController (e2e)', () => {
     assert.match(firstRevision.body.content, /^# Átadás — R1 project /m);
     assert.match(firstRevision.body.content, /markdown\\-template\\-provenance/);
     assert.match(firstRevision.body.content, /## Specification Version/);
+    assert.equal(firstRevision.body.sourceSnapshot.version, 2);
+    assert.equal(firstRevision.body.sourceSnapshot.discovery.insights.length, 1);
+    assert.equal(firstRevision.body.sourceSnapshot.discovery.evidence.length, 1);
+    assert.equal(firstRevision.body.sourceSnapshot.discovery.followUps.length, 1);
+    assert.equal(firstRevision.body.sourceSnapshot.decision.formalDecision.outcome, 'GO');
+    assert.match(firstRevision.body.content, /## Decision and Evidence Provenance/);
+    assert.match(firstRevision.body.content, /Metric\\-based demand is validated/);
+    assert.match(firstRevision.body.content, /Confirm the remaining adoption segment/);
+    assert.match(firstRevision.body.content, /\*\*EVD-1\*\*/);
     assert.equal(firstRevision.body.content.includes('```json'), false);
 
     const rememberedConfiguration = await request(app.getHttpServer())
@@ -247,6 +289,17 @@ describe('ProjectsController (e2e)', () => {
       .send({ reason: 'MANUAL' })
       .expect(201);
     assert.deepEqual(nextRevision.body.template, firstRevision.body.template);
+
+    const revisionList = await request(app.getHttpServer())
+      .get(`/projects/${projectId}/markdown-revisions`)
+      .expect(200);
+    assert.deepEqual(Object.keys(revisionList.body[0]).sort(), [
+      'createdAt',
+      'id',
+      'milestone',
+      'reason',
+      'version',
+    ]);
 
     const auditRows = await dataSource.query<Array<{ payload: Record<string, string> }>>(
       'SELECT "payload" FROM "audit_events" WHERE "project_id" = $1 AND "event_type" = $2',
@@ -308,7 +361,12 @@ describe('ProjectsController (e2e)', () => {
     await dataSource.query('ALTER TABLE "markdown_revisions" DISABLE TRIGGER "trg_markdown_revisions_immutable"');
     try {
       await dataSource.query(
-        'UPDATE "markdown_revisions" SET "template_id" = NULL, "template_name" = NULL, "template_version" = NULL WHERE "id" = $1',
+        `UPDATE "markdown_revisions"
+         SET "template_id" = NULL,
+             "template_name" = NULL,
+             "template_version" = NULL,
+             "source_snapshot" = ("source_snapshot" - 'discovery' - 'decision') || '{"version":1}'::jsonb
+         WHERE "id" = $1`,
         [ordered[0].id],
       );
     } finally {
@@ -318,6 +376,8 @@ describe('ProjectsController (e2e)', () => {
       .get(`/projects/${projectId}/markdown-revisions/${ordered[0].id as string}`)
       .expect(200);
     assert.equal(legacy.body.template, null);
+    assert.equal(legacy.body.sourceSnapshot.version, 1);
+    assert.equal('discovery' in legacy.body.sourceSnapshot, false);
     assert.equal(legacy.body.content, ordered[0].content);
   });
 
@@ -474,7 +534,7 @@ describe('ProjectsController (e2e)', () => {
       .post('/settings/markdown-templates')
       .send({
         name: `Döntési bemenetek ${projectId}`,
-        draftContent: '# {{project.name}}\n\n{{project.decisionReview}}',
+        draftContent: '# {{project.name}}\n\n{{project.readiness}}\n\n{{project.decisionReview}}',
       })
       .expect(201);
     await request(app.getHttpServer())
@@ -491,6 +551,10 @@ describe('ProjectsController (e2e)', () => {
     assert.match(revision.body.content, /Confidence: 4/);
     assert.match(revision.body.content, /Complexity: 2/);
     assert.match(revision.body.content, /Risk: 1/);
+    assert.match(revision.body.content, /Information readiness: \d+%/);
+    assert.match(revision.body.content, /Information state: (Needs clarification|Developing information base|Substantially prepared|Strong information base)/);
+    assert.match(revision.body.content, /Estimation status: (Clarification required|Ready to prepare an estimate|Ready for estimation)/);
+    assert.match(revision.body.content, /Policy guidance only; not a formal approval\./);
     assert.equal(revision.body.content.includes('ESTIMATE_'), false);
   });
 

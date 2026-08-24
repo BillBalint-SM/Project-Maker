@@ -51,9 +51,15 @@
           <dt>Intake completion</dt>
           <dd>{{ readiness.completionPercentage }}% · {{ readiness.completionLabel }}</dd>
         </div>
-        <div>
-          <dt>Readiness</dt>
-          <dd>{{ readiness.readinessPercentage }}% · {{ readiness.readinessBand }}</dd>
+        <div data-testid="readiness-review-information-readiness">
+          <dt>Information readiness</dt>
+          <dd>
+            <strong>{{ readiness.readinessPercentage }}%</strong>
+            <span>{{ readiness.readinessBand }}</span>
+          </dd>
+          <p class="readiness-review-summary-help">
+            Weighted assessment of project information, checklist coverage, ownership, and resolved Discovery follow-ups. It does not determine estimation status.
+          </p>
         </div>
       </dl>
 

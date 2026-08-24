@@ -19,6 +19,7 @@ RUN pnpm install --frozen-lockfile
 COPY packages/contracts packages/contracts
 RUN pnpm --filter @project-maker/contracts build
 
+COPY tokens.css tokens.css
 COPY apps/web apps/web
 
 RUN pnpm --filter @project-maker/web build

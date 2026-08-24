@@ -36,9 +36,24 @@
 }
 
 .readiness-review-summary dd {
-  font-size: 1.125rem;
-  font-weight: 700;
+  display: grid;
+  gap: 0.25rem;
   margin: 0.35rem 0 0;
+}
+
+.readiness-review-summary dd strong {
+  font-size: 1.5rem;
+}
+
+.readiness-review-summary dd span {
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.readiness-review-summary-help {
+  color: var(--p-text-muted-color);
+  line-height: 1.5;
+  margin: 0.75rem 0 0;
 }
 
 section {

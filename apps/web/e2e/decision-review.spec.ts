@@ -29,6 +29,9 @@ test.describe.serial('SCORE-01.2 Decision Review employee workflow', () => {
     await expect(page.getByTestId('decision-review-unavailable')).toContainText(
       'Rate all six criteria to calculate the decision score.',
     );
+    await expect(page.getByTestId('decision-review-unavailable')).toContainText(
+      'Estimation status: Not assessed yet.',
+    );
     await expect(page.getByTestId('decision-review-score')).toHaveCount(0);
 
     await setRating(page, 'businessValue', '5');
@@ -58,7 +61,13 @@ test.describe.serial('SCORE-01.2 Decision Review employee workflow', () => {
     await expect(page.getByTestId('decision-review-score')).toContainText('68');
     await expect(page.getByTestId('decision-review-score')).toContainText('High');
     await expect(page.getByTestId('decision-review-recommendation')).toContainText(
+      'Estimation status',
+    );
+    await expect(page.getByTestId('decision-review-recommendation')).toContainText(
       'Ready for estimation',
+    );
+    await expect(page.getByTestId('decision-review-available')).toContainText(
+      'Policy-derived guidance, not a formal approval.',
     );
     await expect(page.getByTestId('decision-review-readiness')).toContainText('100%');
     await expect(page.getByTestId('decision-review-blocking-gap-count')).toContainText('0');

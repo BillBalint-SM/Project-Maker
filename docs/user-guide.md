@@ -142,11 +142,11 @@ Archived Project Discovery content is read-only. Restore the Project before addi
 
 ## Readiness and Decision Review
 
-**Estimation Readiness** summarizes the current Initial Intake, checklist, and open follow-ups. Follow the provided links to fix the underlying source rather than attempting to edit a derived score.
+**Estimation Readiness** summarizes the current Initial Intake, checklist, ownership, and open follow-ups. **Intake completion** reports checklist progress. **Information readiness** is a weighted assessment of how usable the current source information is; its percentage and information-state label do not determine whether estimation can begin. Follow the provided links to fix the underlying source rather than attempting to edit a derived score.
 
 Create a **Discovery follow-up** when an uncertainty needs explicit ownership. Set its category, responsible person, next step, and target date; optionally link it to the relevant Initial Intake source. When resolving a follow-up, record the decision or substantive answer. Closed follow-ups are retained as history and are not reopened or deleted; create a new follow-up if new work emerges.
 
-**Decision Review** has six rated criteria and an explicit weighting model. Rate all required criteria to make the score and recommendation available. Treat its result as decision support: the team records a formal `Go`, `Conditional Go`, or `No-Go` decision separately when needed. The application does not issue that decision itself.
+**Decision Review** has six rated criteria and an explicit weighting model. Rate all required criteria to make the Decision Score and **Estimation status** available. Estimation status also considers current information readiness and estimation-blocking gaps. Until the review can be calculated, it is shown as **Not assessed yet**, not as blocked. Treat the result as policy-derived guidance: the team records a formal `Go`, `Conditional Go`, or `No-Go` decision separately when needed. The application does not issue that decision itself.
 
 ## Customer communication
 

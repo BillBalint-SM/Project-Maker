@@ -158,6 +158,13 @@ test.describe.serial('SCORE-01 readiness employee workflow', () => {
     );
     await expect(page.getByTestId('readiness-review-available')).toBeVisible();
     await expect(page.getByTestId('readiness-review-summary')).toBeVisible();
+    const informationReadiness = page.getByTestId('readiness-review-information-readiness');
+    await expect(informationReadiness).toContainText('Information readiness');
+    await expect(informationReadiness).toContainText(`${initialReadiness.readinessPercentage}%`);
+    await expect(informationReadiness).toContainText(initialReadiness.readinessBand);
+    await expect(page.getByTestId('readiness-review-summary')).not.toContainText(
+      /Ready for estimation/,
+    );
     await expect(page.getByTestId(/^readiness-review-factor-/)).toHaveCount(
       initialReadiness.factors.length,
     );

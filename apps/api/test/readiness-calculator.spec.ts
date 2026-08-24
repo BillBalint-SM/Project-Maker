@@ -126,7 +126,7 @@ describe('calculateProjectReadiness', () => {
     assert.equal(result.completionPercentage, 50);
     assert.equal(result.completionLabel, 'In progress');
     assert.equal(result.readinessPercentage, 55);
-    assert.equal(result.readinessBand, 'Ready for estimation preparation');
+    assert.equal(result.readinessBand, 'Developing information base');
     assert.deepEqual(
       result.factors.map((factor) => ({
         id: factor.id,
@@ -235,7 +235,7 @@ describe('calculateProjectReadiness', () => {
     assert.equal(result.completionPercentage, 0);
     assert.equal(result.completionLabel, 'Clarification required');
     assert.equal(result.readinessPercentage, 15);
-    assert.equal(result.readinessBand, 'Clarification required');
+    assert.equal(result.readinessBand, 'Needs clarification');
     assert.deepEqual(
       result.factors.map((factor) => ({ id: factor.id, percentage: factor.percentage })),
       [
@@ -249,7 +249,7 @@ describe('calculateProjectReadiness', () => {
     assert.deepEqual(result.gaps.map((gap) => gap.id), ['overview-ball-owner']);
   });
 
-  it('changes readiness bands exactly at policy thresholds and completion labels at zero and one hundred', () => {
+  it('changes information-readiness bands exactly at policy thresholds and completion labels at zero and one hundred', () => {
     const policy = generalPlaybook;
     const completeStatus = checklistStatusForValue(policy, 1);
     const missingStatus = checklistStatusForValue(policy, 0);
@@ -360,23 +360,23 @@ describe('calculateProjectReadiness', () => {
         [complete.readinessPercentage, complete.readinessBand, complete.completionLabel],
       ],
       [
-        [0, 'Clarification required', 'Clarification required'],
+        [0, 'Needs clarification', 'Clarification required'],
         [
           policy.scoring.readiness.thresholds.estimatePreparationFrom,
-          'Ready for estimation preparation',
+          'Developing information base',
           'In progress',
         ],
         [
           policy.scoring.readiness.thresholds.estimateReadyFrom,
-          'Ready for estimation',
+          'Substantially prepared',
           'In progress',
         ],
         [
           policy.scoring.readiness.thresholds.developmentReadyFrom,
-          'Ready for development',
+          'Strong information base',
           'In progress',
         ],
-        [100, 'Ready for development', 'Complete'],
+        [100, 'Strong information base', 'Complete'],
       ],
     );
   });

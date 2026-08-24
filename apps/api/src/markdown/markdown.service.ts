@@ -10,11 +10,17 @@ import {
 import type {
   CreateMarkdownRevisionInput,
   DecisionRecommendation,
+  DiscoveryFollowUp,
+  Evidence,
+  FormalDecision,
   MarkdownGenerationConfiguration,
   InterviewRound,
   MarkdownRevision,
   MarkdownRevisionReason,
+  MarkdownRevisionSummary,
+  MarkdownRevisionSourceInsight,
   MarkdownRevisionSourceSnapshot,
+  MarkdownRevisionSourceSnapshotV2,
   ProjectQuestionSchema,
   ProjectSchemaQuestion,
   ProjectWorkspace,
@@ -26,6 +32,11 @@ import { DataSource, EntityManager, In, QueryFailedError } from 'typeorm';
 
 import { AuditEvent, type AuditPayload } from '../audit/audit-event.entity';
 import { DecisionReviewService } from '../decision-review/decision-review.service';
+import { FormalDecisionEntity } from '../decision-portfolio/formal-decision.entity';
+import { DiscoveryFollowUpEntity } from '../discovery-follow-ups/discovery-follow-up.entity';
+import { EvidenceEntity } from '../discovery/evidence.entity';
+import { InsightEvidenceEntity } from '../discovery/insight-evidence.entity';
+import { InsightEntity } from '../discovery/insight.entity';
 import { InterviewRoundEntity } from '../interviews/interview-round.entity';
 import { RoundAnswerEntity } from '../interviews/round-answer.entity';
 import {
@@ -47,9 +58,16 @@ import {
 } from './markdown-revision.entity';
 import { renderTemplate, MarkdownTemplateService } from './markdown-template.service';
 
-const markdownSourceSnapshotVersion = 1 as const;
-const sourceSnapshotSections = ['project', 'projectSchema', 'interviewRounds'] as const;
+const markdownSourceSnapshotVersion = 2 as const;
+const sourceSnapshotSections = [
+  'project',
+  'projectSchema',
+  'interviewRounds',
+  'discovery',
+  'decision',
+] as const;
 const maxChangePathsPerSection = 20;
+const sourceIntegrityErrorCode = 'SPECIFICATION_SOURCE_INTEGRITY_ERROR';
 
 type SourceSnapshotSection = (typeof sourceSnapshotSections)[number];
 type ChangeKind = 'added' | 'removed' | 'changed';
@@ -108,8 +126,6 @@ export class MarkdownService {
     });
     const version = (previousRevision?.version ?? 0) + 1;
     const createdAt = new Date();
-    const sourceSnapshot = await buildSourceSnapshot(manager, project);
-    const changeSummary = summarizeChanges(previousRevision, sourceSnapshot, version);
     const selected = await this.templates.findPublished(
       input.templateId ?? project.markdownTemplateId,
     );
@@ -117,7 +133,14 @@ export class MarkdownService {
       this.readiness.getReadinessWithManager(manager, project.id),
       this.decisionReview.getReviewWithManager(manager, project.id),
     ]);
-    const content = renderTemplate(selected.version.content, renderValues({
+    const sourceSnapshot = await buildSourceSnapshot(
+      manager,
+      project,
+      readiness,
+      decisionReview,
+    );
+    const changeSummary = summarizeChanges(previousRevision, sourceSnapshot, version);
+    const content = `${renderTemplate(selected.version.content, renderValues({
       projectId: project.id,
       version,
       reason: input.reason,
@@ -126,9 +149,7 @@ export class MarkdownService {
       sourceSnapshot,
       changeSummary,
       previousRevision,
-      readiness,
-      decisionReview,
-    }));
+    })).trimEnd()}\n\n${renderProvenance(sourceSnapshot)}\n`;
     const revision = revisionRepository.create({
       id: randomUUID(),
       projectId: project.id,
@@ -199,6 +220,28 @@ export class MarkdownService {
     return revisions.map(toMarkdownRevision);
   }
 
+  async listSummaries(projectId: string): Promise<readonly MarkdownRevisionSummary[]> {
+    await findProject(this.dataSource.manager, projectId, false);
+    const revisions = await this.dataSource.manager.getRepository(MarkdownRevisionEntity).find({
+      select: {
+        id: true,
+        version: true,
+        reason: true,
+        milestone: true,
+        createdAt: true,
+      },
+      where: { projectId },
+      order: { version: 'DESC', id: 'ASC' },
+    });
+    return revisions.map((revision) => ({
+      id: revision.id,
+      version: revision.version,
+      reason: revision.reason,
+      milestone: revision.milestone,
+      createdAt: toIso(revision.createdAt, 'revision createdAt'),
+    }));
+  }
+
   async find(projectId: string, revisionId: string): Promise<MarkdownRevision> {
     await findProject(this.dataSource.manager, projectId, false);
     const revision = await this.dataSource.manager
@@ -245,15 +288,206 @@ function normalizeMilestone(value: string | null | undefined): string | null {
 async function buildSourceSnapshot(
   manager: EntityManager,
   project: Project,
-): Promise<MarkdownRevisionSourceSnapshot> {
-  const projectSchema = await loadLatestProjectSchema(manager, project.id);
-  const interviewRounds = await loadInterviewRounds(manager, project.id);
+  readiness: ProjectReadiness,
+  review: ProjectDecisionReview,
+): Promise<MarkdownRevisionSourceSnapshotV2> {
+  const [projectSchema, interviewRounds, formalDecision] = await Promise.all([
+    loadLatestProjectSchema(manager, project.id),
+    loadInterviewRounds(manager, project.id),
+    loadLatestFormalDecision(manager, project.id),
+  ]);
+  const discovery = await loadDiscoverySnapshot(manager, project.id, interviewRounds);
+  if (
+    formalDecision &&
+    formalDecision.insightIds.some(
+      (insightId) => !discovery.insights.some((insight) => insight.id === insightId),
+    )
+  ) {
+    throw sourceIntegrityError(
+      'Stored formal decision provenance references a missing Insight.',
+    );
+  }
+  const referencedSpecification = await loadReferencedSpecification(
+    manager,
+    project.id,
+    formalDecision?.specificationRevisionId ?? null,
+  );
   return {
     version: markdownSourceSnapshotVersion,
     project: toProjectWorkspace(project),
     projectSchema,
     interviewRounds,
+    discovery,
+    decision: { readiness, review, formalDecision, referencedSpecification },
   };
+}
+
+async function loadDiscoverySnapshot(
+  manager: EntityManager,
+  projectId: string,
+  interviewRounds: readonly InterviewRound[],
+): Promise<MarkdownRevisionSourceSnapshotV2['discovery']> {
+  const [insights, followUps] = await Promise.all([
+    manager.getRepository(InsightEntity).find({
+      where: { projectId },
+      order: { createdAt: 'ASC', id: 'ASC' },
+    }),
+    manager.getRepository(DiscoveryFollowUpEntity).find({
+      where: { projectId },
+      order: { createdAt: 'ASC', id: 'ASC' },
+    }),
+  ]);
+  const links = insights.length === 0
+    ? []
+    : await manager.getRepository(InsightEvidenceEntity).find({
+        where: { insightId: In(insights.map((insight) => insight.id)) },
+        order: { insightId: 'ASC', order: 'ASC' },
+      });
+  const evidenceIds = [...new Set(links.map((link) => link.evidenceId))];
+  const evidence = evidenceIds.length === 0
+    ? []
+    : await manager.getRepository(EvidenceEntity).find({
+        where: { id: In(evidenceIds), projectId },
+        order: { createdAt: 'ASC', id: 'ASC' },
+      });
+  if (evidence.length !== evidenceIds.length) {
+    throw sourceIntegrityError(
+      'Stored Insight provenance references missing or foreign Evidence.',
+    );
+  }
+  const evidenceById = new Map(evidence.map((item) => [item.id, item]));
+  const linksByInsight = groupBy(links, (link) => link.insightId);
+  const sourceQuestions = new Map(
+    interviewRounds.flatMap((round) =>
+      round.questions.map((question) => [question.id, question] as const),
+    ),
+  );
+
+  const sourceInsights = insights.map((insight): MarkdownRevisionSourceInsight => {
+    const insightLinks = linksByInsight.get(insight.id) ?? [];
+    if (
+      insightLinks.length === 0 ||
+      insightLinks.some((link) => !evidenceById.has(link.evidenceId))
+    ) {
+      throw sourceIntegrityError(
+        'Stored Insight provenance is incomplete.',
+      );
+    }
+    return {
+      id: insight.id,
+      statement: insight.statement,
+      version: insight.version,
+      evidenceIds: insightLinks.map((link) => link.evidenceId),
+      createdAt: toIso(insight.createdAt, 'insight createdAt'),
+      updatedAt: toIso(insight.updatedAt, 'insight updatedAt'),
+    };
+  });
+
+  return {
+    insights: sourceInsights,
+    evidence: evidence.map((item): Evidence => ({
+      id: item.id,
+      projectId: item.projectId,
+      kind: item.sourceKind,
+      title: item.title,
+      payload: item.payload,
+      createdAt: toIso(item.createdAt, 'evidence createdAt'),
+    })),
+    followUps: followUps.map((item): DiscoveryFollowUp => {
+      const source = item.sourceSnapshotId
+        ? sourceQuestions.get(item.sourceSnapshotId)
+        : null;
+      if (item.sourceSnapshotId && !source) {
+        throw sourceIntegrityError(
+          'Stored Discovery follow-up provenance references a missing question snapshot.',
+        );
+      }
+      return {
+        id: item.id,
+        projectId: item.projectId,
+        category: item.category,
+        question: item.question,
+        owner: item.owner,
+        dueDate: item.dueDate,
+        status: item.status,
+        decisionOrAnswer: item.decisionOrAnswer,
+        nextStep: item.nextStep,
+        createdAt: toIso(item.createdAt, 'discovery follow-up createdAt'),
+        updatedAt: toIso(item.updatedAt, 'discovery follow-up updatedAt'),
+        version: item.version,
+        source: source
+          ? {
+              snapshotId: source.id,
+              order: source.order,
+              topic: source.topic,
+              controlPoint: source.controlPoint,
+            }
+          : null,
+      };
+    }),
+  };
+}
+
+async function loadLatestFormalDecision(
+  manager: EntityManager,
+  projectId: string,
+): Promise<FormalDecision | null> {
+  const decision = await manager.getRepository(FormalDecisionEntity).findOne({
+    where: { projectId },
+    order: { version: 'DESC' },
+  });
+  return decision
+    ? {
+        id: decision.id,
+        projectId: decision.projectId,
+        version: decision.version,
+        outcome: decision.outcome,
+        decisionDate: decision.decisionDate,
+        decisionMaker: decision.decisionMaker,
+        rationale: decision.rationale,
+        conditions: decision.conditions,
+        reviewDate: decision.reviewDate,
+        referenceDecisionReview: decision.referenceDecisionReview,
+        insightIds: decision.insightIds,
+        specificationRevisionId: decision.specificationRevisionId,
+        actorId: decision.actorId,
+        createdAt: toIso(decision.createdAt, 'formal decision createdAt'),
+      }
+    : null;
+}
+
+async function loadReferencedSpecification(
+  manager: EntityManager,
+  projectId: string,
+  revisionId: string | null,
+): Promise<MarkdownRevisionSummary | null> {
+  if (!revisionId) return null;
+  const revision = await manager.getRepository(MarkdownRevisionEntity).findOne({
+    select: {
+      id: true,
+      version: true,
+      reason: true,
+      milestone: true,
+      createdAt: true,
+    },
+    where: { id: revisionId, projectId },
+  });
+  if (!revision) {
+    throw sourceIntegrityError(
+      'Stored formal decision provenance references a missing Specification version.',
+    );
+  }
+  return {
+    id: revision.id,
+    version: revision.version,
+    reason: revision.reason,
+    milestone: revision.milestone,
+    createdAt: toIso(revision.createdAt, 'referenced specification createdAt'),
+  };
+}
+
+function sourceIntegrityError(message: string): ConflictException {
+  return new ConflictException({ code: sourceIntegrityErrorCode, message });
 }
 
 async function loadLatestProjectSchema(
@@ -438,7 +672,11 @@ function summarizeChanges(
 
   const previousSnapshot = previousRevision.sourceSnapshot;
   const sectionChanges = sourceSnapshotSections
-    .map((section) => describeSectionChanges(previousSnapshot[section], currentSnapshot[section], section))
+    .map((section) => describeSectionChanges(
+      sourceSnapshotSection(previousSnapshot, section),
+      sourceSnapshotSection(currentSnapshot, section),
+      section,
+    ))
     .filter((section): section is SectionChangeReport => section !== null);
   if (sectionChanges.length === 0) {
     return `The source snapshot for specification version ${version} is unchanged since version ${previousRevision.version}.`;
@@ -466,6 +704,16 @@ function summarizeChanges(
     `Specification version ${version} records the following changes since version ${previousRevision.version}:`,
     ...details,
   ].join('\n');
+}
+
+function sourceSnapshotSection(
+  snapshot: MarkdownRevisionSourceSnapshot,
+  section: SourceSnapshotSection,
+): unknown {
+  if (section === 'discovery' || section === 'decision') {
+    return snapshot.version === 2 ? snapshot[section] : undefined;
+  }
+  return snapshot[section];
 }
 
 interface SectionChangeReport {
@@ -685,11 +933,9 @@ interface MarkdownRenderInput {
   readonly reason: MarkdownRevisionReason;
   readonly milestone: string | null;
   readonly createdAt: Date;
-  readonly sourceSnapshot: MarkdownRevisionSourceSnapshot;
+  readonly sourceSnapshot: MarkdownRevisionSourceSnapshotV2;
   readonly changeSummary: string;
   readonly previousRevision: MarkdownRevisionEntity | null;
-  readonly readiness: ProjectReadiness;
-  readonly decisionReview: ProjectDecisionReview;
 }
 
 function renderValues(input: MarkdownRenderInput): Readonly<Record<string, string | null>> {
@@ -711,8 +957,8 @@ function renderValues(input: MarkdownRenderInput): Readonly<Record<string, strin
     'project.context': renderProjectContext(input.sourceSnapshot.project),
     'project.schema': renderProjectSchema(input.sourceSnapshot.projectSchema),
     'project.initialIntake': renderInitialIntake(input.sourceSnapshot.interviewRounds),
-    'project.readiness': renderReadiness(input.readiness),
-    'project.decisionReview': renderDecisionReview(input.decisionReview),
+    'project.readiness': renderReadiness(input.sourceSnapshot.decision.readiness),
+    'project.decisionReview': renderDecisionReview(input.sourceSnapshot.decision.review),
   };
 }
 
@@ -770,7 +1016,8 @@ function renderReadiness(readiness: ProjectReadiness): string | null {
     '## Readiness',
     '',
     `- Completion: ${readiness.completionPercentage}% — ${escapeMarkdownInline(readiness.completionLabel)}`,
-    `- Readiness: ${readiness.readinessPercentage}% — ${escapeMarkdownInline(readiness.readinessBand)}`,
+    `- Information readiness: ${readiness.readinessPercentage}%`,
+    `- Information state: ${escapeMarkdownInline(readiness.readinessBand)}`,
     '',
     '### Open gaps',
     '',
@@ -799,11 +1046,148 @@ function renderDecisionReview(review: ProjectDecisionReview): string | null {
     '### Outcome',
     '',
     `- Decision score: ${review.decisionScore} — ${escapeMarkdownInline(review.decisionScoreLabel)}`,
-    `- Recommendation: ${decisionRecommendationLabel(review.recommendation)}`,
-    `- Readiness: ${review.readinessPercentage}%`,
+    `- Estimation status: ${decisionRecommendationLabel(review.recommendation)}`,
+    '- Policy guidance only; not a formal approval.',
+    `- Information readiness: ${review.readinessPercentage}%`,
     `- Estimate-blocking gaps: ${review.estimateBlockingGapCount}`,
     ...review.clarificationMessages.map((message) => `- ${escapeMarkdownInline(message)}`),
   ].join('\n');
+}
+
+function renderProvenance(snapshot: MarkdownRevisionSourceSnapshotV2): string {
+  const evidenceLabels = new Map(
+    snapshot.discovery.evidence.map((evidence, index) => [evidence.id, `EVD-${index + 1}`]),
+  );
+  const insightLabels = new Map(
+    snapshot.discovery.insights.map((insight, index) => [insight.id, `INS-${index + 1}`]),
+  );
+  const decision = snapshot.decision.formalDecision;
+  const clarificationAnswers = snapshot.interviewRounds
+    .filter((round) => round.type === 'CLARIFICATION')
+    .flatMap((round) => round.questions.filter((question) => question.answer !== null));
+  const resolvedFollowUps = snapshot.discovery.followUps.filter(
+    (followUp) => followUp.decisionOrAnswer !== null,
+  );
+  const openFollowUps = snapshot.discovery.followUps.filter(
+    (followUp) => followUp.decisionOrAnswer === null,
+  );
+  const readinessGaps = snapshot.decision.readiness.available
+    ? snapshot.decision.readiness.gaps
+    : [];
+  const clarificationMessages = snapshot.decision.review.available
+    ? snapshot.decision.review.clarificationMessages
+    : [];
+
+  return [
+    '## Decision and Evidence Provenance',
+    '',
+    '### Current decision',
+    '',
+    ...(decision
+      ? [
+          `- Outcome: ${formalDecisionOutcomeLabel(decision.outcome)}`,
+          `- Decision maker: ${escapeMarkdownInline(decision.decisionMaker)}`,
+          `- Decision date: ${decision.decisionDate}`,
+          `- Rationale: ${escapeMarkdownInline(decision.rationale)}`,
+          ...(decision.conditions
+            ? [`- Conditions: ${escapeMarkdownInline(decision.conditions)}`]
+            : []),
+          ...(decision.reviewDate ? [`- Review date: ${decision.reviewDate}`] : []),
+          `- Supporting insights: ${decision.insightIds.length === 0
+            ? 'None recorded'
+            : decision.insightIds.map((id) => insightLabels.get(id)).join(', ')}`,
+          `- Referenced Specification version: ${snapshot.decision.referencedSpecification
+            ? `v${snapshot.decision.referencedSpecification.version}`
+            : 'None recorded'}`,
+        ]
+      : ['No formal decision has been recorded.']),
+    '',
+    '### Supporting evidence',
+    '',
+    '#### Insights',
+    '',
+    ...(snapshot.discovery.insights.length === 0
+      ? ['No Insights have been recorded.']
+      : snapshot.discovery.insights.map((insight) =>
+          `- **${insightLabels.get(insight.id)}** ${escapeMarkdownInline(insight.statement)} — Sources: ${insight.evidenceIds.map((id) => evidenceLabels.get(id)).join(', ')}`,
+        )),
+    '',
+    '#### Clarification outcomes',
+    '',
+    ...(clarificationAnswers.length === 0
+      ? ['No answered clarification questions have been recorded.']
+      : clarificationAnswers.map((question) =>
+          `- **${escapeMarkdownInline(question.topic)} — ${escapeMarkdownInline(question.controlPoint)}:** ${formatAnswer(question.answer)}`,
+        )),
+    '',
+    '#### Resolved Discovery follow-ups',
+    '',
+    ...(resolvedFollowUps.length === 0
+      ? ['No resolved Discovery follow-ups have been recorded.']
+      : resolvedFollowUps.map((followUp) =>
+          `- **${escapeMarkdownInline(followUp.question)}:** ${escapeMarkdownInline(followUp.decisionOrAnswer ?? '')}${followUp.source ? ` — Source: ${escapeMarkdownInline(followUp.source.topic)} / ${escapeMarkdownInline(followUp.source.controlPoint)}` : ''}`,
+        )),
+    '',
+    '### Unresolved work',
+    '',
+    ...(openFollowUps.length === 0 && readinessGaps.length === 0 && clarificationMessages.length === 0
+      ? ['No unresolved work is recorded.']
+      : [
+          ...openFollowUps.map((followUp) =>
+            `- **Discovery follow-up:** ${escapeMarkdownInline(followUp.question)} Next step: ${escapeMarkdownInline(followUp.nextStep)}`,
+          ),
+          ...readinessGaps.map((gap) =>
+            `- **Readiness gap — ${escapeMarkdownInline(gap.severity)}:** ${escapeMarkdownInline(gap.message)} Next step: ${escapeMarkdownInline(gap.nextStep)}`,
+          ),
+          ...clarificationMessages.map((message) =>
+            `- **Decision clarification:** ${escapeMarkdownInline(message)}`,
+          ),
+        ]),
+    '',
+    '### Sources',
+    '',
+    ...(snapshot.discovery.evidence.length === 0
+      ? ['No Evidence sources have been recorded.']
+      : snapshot.discovery.evidence.map((evidence) =>
+          `- **${evidenceLabels.get(evidence.id)}** ${escapeMarkdownInline(evidence.title)} — ${evidenceSourceKindLabel(evidence.kind)}${evidencePayloadSummary(evidence)}`,
+        )),
+  ].join('\n');
+}
+
+function evidencePayloadSummary(evidence: Evidence): string {
+  const payload = evidence.payload;
+  const detail = evidence.kind === 'METRIC'
+    ? [payloadValue(payload['metricName']), payloadValue(payload['metricValue']), payloadValue(payload['metricUnit'])]
+        .filter((value): value is string => value !== null)
+        .join(' ')
+    : evidence.kind === 'HTTPS_LINK'
+      ? payloadValue(payload['url'])
+      : evidence.kind === 'ATTACHMENT'
+        ? payloadValue(payload['originalName'])
+        : evidence.kind === 'CUSTOMER_MESSAGE_EXCERPT'
+          ? payloadValue(payload['excerpt'])
+          : evidence.kind === 'CUSTOMER_RESPONSE'
+            ? payloadValue(payload['answer'])
+            : payloadValue(payload['answer']);
+  return detail ? `: ${escapeMarkdownInline(detail)}` : '';
+}
+
+function payloadValue(value: unknown): string | null {
+  if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+    return String(value);
+  }
+  if (Array.isArray(value)) {
+    return value.map(String).join(', ');
+  }
+  return null;
+}
+
+function evidenceSourceKindLabel(kind: Evidence['kind']): string {
+  return kind.toLowerCase().replaceAll('_', ' ');
+}
+
+function formalDecisionOutcomeLabel(outcome: FormalDecision['outcome']): string {
+  return outcome === 'GO' ? 'Go' : outcome === 'CONDITIONAL_GO' ? 'Conditional Go' : 'No-Go';
 }
 
 function decisionRecommendationLabel(
@@ -812,7 +1196,7 @@ function decisionRecommendationLabel(
   return recommendation === 'CLARIFICATION_REQUIRED'
     ? 'Clarification required'
     : recommendation === 'ESTIMATE_PREPARATION_POSSIBLE'
-      ? 'Estimate preparation possible'
+      ? 'Ready to prepare an estimate'
       : 'Ready for estimation';
 }
 
@@ -854,6 +1238,10 @@ function formatSectionName(section: SourceSnapshotSection): string {
     ? 'Project question schema'
     : section === 'interviewRounds'
       ? 'Interview rounds and answers'
+      : section === 'discovery'
+        ? 'Discovery evidence and follow-ups'
+        : section === 'decision'
+          ? 'Readiness and decisions'
       : 'Project workspace';
 }
 
