@@ -1,8 +1,8 @@
 # Project Maker — five design directions
 
-> **Throwaway, read-only design lab.** This prototype is isolated on the local
-> `codex/design-directions-prototype` worktree. It does not call the API, persist data,
-> change production routes, or modify the current Project Maker implementation.
+> **Throwaway, read-only design lab.** This prototype lives outside the production route tree. It
+> does not call the API, persist data, change application routes, or modify the current Project
+> Maker implementation.
 
 ## The design question
 
@@ -31,7 +31,9 @@ Then open any direction directly:
 
 Use the fixed bottom switcher or the left and right arrow keys to move between variants. In
 Journey Field, `Ctrl+K` or `Cmd+K` opens the navigation palette. The **Leírás** button explains the
-active concept in Hungarian.
+active concept in Hungarian. Every direction opens in its dark theme by default; the sun/moon
+control switches to the corresponding light theme. The selection is also shareable with
+`&theme=light` or `&theme=dark` in the URL.
 
 Google Fonts are requested over the network. If they are unavailable, the prototype uses its
 declared system fallbacks; layout and interactions remain functional.
@@ -40,18 +42,19 @@ declared system fallbacks; layout and interactions remain functional.
 
 | Direction | Concept and direction | Motivation | Opportunity | Material trade-off |
 | --- | --- | --- | --- | --- |
-| **A · Decision Ledger** | Projects become an edited decision ledger: a light Newsprint surface, newspaper masthead, long-document rhythm, typographic actions, and hairline rules. | Replace dashboard fatigue with a narrative reading order that foregrounds state, evidence, and the next decision. | Strong editorial/consultancy authority; useful foundation for executive review, decision logs, and print/PDF views. | Slower for high-volume cross-project triage and less spatially expressive about journey progress. |
-| **B · Journey Field** | The preparation journey becomes the navigation: Projects are selectable nodes on a dark cinematic map, supported by a command palette. | Create an immersive feeling through spatial orientation and purposeful reveal—not decorative animation. | Excellent for onboarding and explaining preparation state; a selected node can later zoom into its own Project workspace. | Responsive, keyboard, and accessible implementation is more complex; some power users will still prefer a table. |
-| **C · Quiet Workshop** | One current Project and next action dominate a warm paper/deep-green Split Studio; supporting work stays in a calm secondary list. | Reduce cognitive load during long focus sessions and help the user finish the next meaningful step. | Premium, calm professional character; especially strong for interviews, forms, and deep Project work. | Weaker for portfolio-level triage and intentionally less explicit about global information architecture. |
-| **D · Ops Grid** | A dense power-user instrument panel with a dark terminal palette, side rail, asymmetric bento cells, and tabular state. | Maximize scan speed and operational throughput for daily PMO use. | Natural home for shortcuts, saved views, queue handling, and live operational signals. | Steeper learning curve, potentially intimidating for occasional users, and needs a distinct mobile composition. |
-| **E · Project Playground** | Next actions become friendly, physical work objects in a cream, multi-accent Hum world with slab navigation and a small brand character. | Make rigorous Project work approachable and alive without hiding real states or next actions. | Strong onboarding, adoption, and memorable brand identity—the most overtly distinctive product personality. | May feel too informal in conservative operations; semantic colors need strict governance to avoid ambiguity. |
+| **A · Decision Ledger** | Projects become an edited decision ledger: dark-first Newsprint with a light editorial mode, newspaper masthead, long-document rhythm, typographic actions, and hairline rules. | Replace dashboard fatigue with a narrative reading order that foregrounds state, evidence, and the next decision. | Strong editorial/consultancy authority; useful foundation for executive review, decision logs, and print/PDF views. | Slower for high-volume cross-project triage and less spatially expressive about journey progress. |
+| **B · Journey Field** | The preparation journey becomes the navigation: Projects are selectable nodes on a cinematic dark map or its airy light counterpart, supported by a command palette. | Create an immersive feeling through spatial orientation and purposeful reveal—not decorative animation. | Excellent for onboarding and explaining preparation state; a selected node can later zoom into its own Project workspace. | Responsive, keyboard, and accessible implementation is more complex; some power users will still prefer a table. |
+| **C · Quiet Workshop** | One current Project and next action dominate a dark deep-green or warm-paper Split Studio; supporting work stays in a calm secondary list. | Reduce cognitive load during long focus sessions and help the user finish the next meaningful step. | Premium, calm professional character; especially strong for interviews, forms, and deep Project work. | Weaker for portfolio-level triage and intentionally less explicit about global information architecture. |
+| **D · Ops Grid** | A dense power-user instrument panel with a dark terminal default, light diagnostic mode, side rail, asymmetric bento cells, and tabular state. | Maximize scan speed and operational throughput for daily PMO use. | Natural home for shortcuts, saved views, queue handling, and live operational signals. | Steeper learning curve, potentially intimidating for occasional users, and needs a distinct mobile composition. |
+| **E · Project Playground** | Next actions become friendly, physical work objects in a neon night or cream daylight Hum world with slab navigation and a small brand character. | Make rigorous Project work approachable and alive without hiding real states or next actions. | Strong onboarding, adoption, and memorable brand identity—the most overtly distinctive product personality. | May feel too informal in conservative operations; semantic colors need strict governance to avoid ambiguity. |
 
 ## Prototype boundaries
 
 - Read-only sample data; no API calls, authentication, backend mutations, application routing, or persistence.
 - Static HTML, CSS, and JavaScript with a dependency-free local Node server.
-- No production components or existing functions/classes/methods are modified.
-- This worktree contains no commit or push as part of the design comparison.
+- No production components, functions, classes, methods, or routes are modified.
+- The prototype is committed as a standalone comparison artifact and is not imported by the
+  production Angular application.
 - The five directions are deliberately structurally different and are not proposals to combine all
   visual devices into one interface.
 

@@ -6,7 +6,7 @@ const concepts = [
     concept:
       'A Projectek szerkesztett napi munkanaplóként jelennek meg: dashboard helyett egy folyamatos, olvasásra komponált döntési sorrend vezeti a figyelmet.',
     direction:
-      'Világos Newsprint-világ, újság-masthead, erős tipográfiai hierarchia, hajszálvékony elválasztók és kizárólag szöveges elsődleges műveletek.',
+      'Sötét Newsprint az alap, világos szerkesztőségi móddal; újság-masthead, erős tipográfiai hierarchia, hajszálvékony elválasztók és szöveges elsődleges műveletek.',
     motivation:
       'Csökkenti a dashboard-fáradtságot, és a kártyák helyett a projekt történetét, állapotát és következő döntését teszi elsődlegessé.',
     opportunity:
@@ -21,7 +21,7 @@ const concepts = [
     concept:
       'Maga a Project preparation journey válik navigációvá: a Projectek állapotcsomópontok, a kiválasztás pedig azonnal megmutatja az egyetlen következő műveletet.',
     direction:
-      'Sötét, filmszerű térkép, Command Palette, szemantikusan színezett csomópontok és kevés, irányt jelző mozgás.',
+      'Alapértelmezett sötét, filmszerű térkép és levegős világos párja; Command Palette, szemantikusan színezett csomópontok és kevés, irányt jelző mozgás.',
     motivation:
       'A „magába szippantó” élményt nem dekoratív animációval, hanem térbeli tájékozódással és felfedezhető útvonallal teremti meg.',
     opportunity:
@@ -36,7 +36,7 @@ const concepts = [
     concept:
       'Egyetlen aktuális Project és következő művelet uralja a bal oldalt, míg a kapcsolódó munka rendezett, visszafogott listaként marad elérhető.',
     direction:
-      'Meleg papír és mélyzöld, minimális peremnavigáció, Split Studio elrendezés és halk keresztfade-ek.',
+      'Mélyzöld, sötét workshop az alap és meleg papír a világos mód; minimális peremnavigáció, Split Studio elrendezés és halk keresztfade-ek.',
     motivation:
       'Hosszú fókuszidőre és alacsonyabb kognitív terhelésre optimalizál: a felület nem sürget, hanem segít befejezni a következő értelmes lépést.',
     opportunity:
@@ -51,7 +51,7 @@ const concepts = [
     concept:
       'Egy power-user operációs műszerfal: minden cella egy munkafeladatot, állapotot vagy várakozó döntést képvisel, sűrű és gyorsan pásztázható rendszerben.',
     direction:
-      'Sötét Terminal-esztétika, oldalrail, aszimmetrikus Bento Grid, tabuláris adatok és azonnali állapotjelzés.',
+      'Sötét Terminal-esztétika és világos diagnosztikai mód, oldalrail, aszimmetrikus Bento Grid, tabuláris adatok és azonnali állapotjelzés.',
     motivation:
       'A lehető legnagyobb átfutási sebességet és információs sűrűséget célozza napi PMO- és operációs használathoz.',
     opportunity:
@@ -66,7 +66,7 @@ const concepts = [
     concept:
       'A következő műveletek barátságos, fizikainak ható munkaobjektumok; a felhasználó projektek és preparation kontextusok között is böngészhet.',
     direction:
-      'Krém alapú, többakcentes Hum-paletta, brutális slab navigáció, lekerekített formák, saját karakter és reszponzív, tapintható mozgás.',
+      'Neonos éjszakai Hum-paletta az alap és krémes világos mód, brutális slab navigáció, lekerekített formák, saját karakter és reszponzív, tapintható mozgás.',
     motivation:
       'Megközelíthetőbbé és élőbbé teszi a komoly domainmunkát anélkül, hogy elrejtené a Projectek valós állapotát vagy a következő műveletet.',
     opportunity:
@@ -107,6 +107,9 @@ const sections = [...document.querySelectorAll('[data-prototype]')];
 const previousButton = document.querySelector('#variant-previous');
 const nextButton = document.querySelector('#variant-next');
 const infoButton = document.querySelector('#variant-info');
+const themeButton = document.querySelector('#theme-toggle');
+const themeButtonLabel = themeButton.querySelector('.theme-toggle__label');
+const themeAwareLinks = [...document.querySelectorAll('a[href^="?variant="]')];
 const conceptDialog = document.querySelector('#concept-dialog');
 const skipLink = document.querySelector('#skip-link');
 const positionLabel = document.querySelector('#variant-position');
@@ -126,6 +129,7 @@ const conceptFields = {
 };
 
 let currentIndex = 0;
+let currentTheme = 'dark';
 
 function isEditableTarget(target) {
   return (
@@ -136,6 +140,32 @@ function isEditableTarget(target) {
 
 function closeOpenDialogs() {
   document.querySelectorAll('dialog[open]').forEach((dialog) => dialog.close());
+}
+
+function applyTheme(theme, { updateHistory = true, announce = true } = {}) {
+  currentTheme = theme === 'light' ? 'light' : 'dark';
+  const nextTheme = currentTheme === 'dark' ? 'light' : 'dark';
+  const actionLabel = `Switch to ${nextTheme} theme`;
+
+  document.documentElement.dataset.previewTheme = currentTheme;
+  themeButton.setAttribute('aria-label', actionLabel);
+  themeButton.title = actionLabel;
+  themeButtonLabel.textContent = nextTheme === 'light' ? 'Light' : 'Dark';
+  themeAwareLinks.forEach((link) => {
+    const linkUrl = new URL(link.href);
+    linkUrl.searchParams.set('theme', currentTheme);
+    link.setAttribute('href', `${linkUrl.search}${linkUrl.hash}`);
+  });
+
+  if (updateHistory) {
+    const url = new URL(window.location.href);
+    url.searchParams.set('theme', currentTheme);
+    window.history.replaceState({ variant: concepts[currentIndex].key, theme: currentTheme }, '', url);
+  }
+
+  if (announce) {
+    announcer.textContent = `${currentTheme === 'dark' ? 'Dark' : 'Light'} theme selected.`;
+  }
 }
 
 function updateConceptDialog(concept) {
@@ -193,9 +223,16 @@ function resolveInitialIndex() {
   return byLetter >= 0 ? byLetter : 0;
 }
 
+function resolveInitialTheme() {
+  return new URL(window.location.href).searchParams.get('theme') === 'light' ? 'light' : 'dark';
+}
+
 previousButton.addEventListener('click', () => activateVariant(currentIndex - 1));
 nextButton.addEventListener('click', () => activateVariant(currentIndex + 1));
 infoButton.addEventListener('click', () => conceptDialog.showModal());
+themeButton.addEventListener('click', () => {
+  applyTheme(currentTheme === 'dark' ? 'light' : 'dark');
+});
 
 document.addEventListener('keydown', (event) => {
   if (isEditableTarget(event.target)) return;
@@ -282,4 +319,9 @@ window.addEventListener('popstate', () => {
   activateVariant(resolveInitialIndex(), { updateHistory: false });
 });
 
+window.addEventListener('popstate', () => {
+  applyTheme(resolveInitialTheme(), { updateHistory: false });
+});
+
+applyTheme(resolveInitialTheme(), { updateHistory: false, announce: false });
 activateVariant(resolveInitialIndex(), { updateHistory: false, announce: false });

@@ -1,6 +1,6 @@
 <!-- Hallmark · pre-emit critique: P5 H5 E4 S5 R4 V5 -->
 <!doctype html>
-<html lang="en">
+<html lang="en" data-preview-theme="dark">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
@@ -9,6 +9,10 @@
       content="Öt izolált, read-only Project Maker designprototípus egyetlen URL-en."
     />
     <title>Project Maker · Five design directions</title>
+    <script>
+      document.documentElement.dataset.previewTheme =
+        new URL(window.location.href).searchParams.get('theme') === 'light' ? 'light' : 'dark';
+    </script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -48,6 +52,13 @@
       <symbol id="icon-warning" viewBox="0 0 24 24">
         <path d="M12 4 3 20h18L12 4Z" />
         <path d="M12 9v5M12 17h.01" />
+      </symbol>
+      <symbol id="icon-sun" viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="3.5" />
+        <path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" />
+      </symbol>
+      <symbol id="icon-moon" viewBox="0 0 24 24">
+        <path d="M20 15.2A8.5 8.5 0 0 1 8.8 4a8.5 8.5 0 1 0 11.2 11.2Z" />
       </symbol>
       <symbol id="icon-node" viewBox="0 0 24 24">
         <circle cx="6" cy="12" r="2" />
@@ -656,6 +667,11 @@
         <span id="variant-position">A / 5</span>
         <strong id="variant-name">Decision Ledger</strong>
       </div>
+      <button id="theme-toggle" type="button" aria-label="Switch to light theme" title="Switch to light theme">
+        <svg class="icon theme-toggle__sun" aria-hidden="true"><use href="#icon-sun"></use></svg>
+        <svg class="icon theme-toggle__moon" aria-hidden="true"><use href="#icon-moon"></use></svg>
+        <span class="theme-toggle__label" aria-hidden="true">Light</span>
+      </button>
       <button id="variant-info" type="button" lang="hu">Leírás</button>
       <button id="variant-next" type="button" aria-label="Next design direction">
         <svg class="icon" aria-hidden="true"><use href="#icon-arrow-right"></use></svg>
